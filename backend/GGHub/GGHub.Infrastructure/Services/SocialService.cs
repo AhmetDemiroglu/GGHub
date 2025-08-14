@@ -1,0 +1,278 @@
+﻿using GGHub.Application.Dtos;
+using GGHub.Application.Interfaces;
+using GGHub.Core.Entities;
+using GGHub.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+
+namespace GGHub.Infrastructure.Services
+{
+    public class SocialService : ISocialService
+    {
+        private readonly GGHubDbContext _context;
+        private readonly INotificationService _notificationService;
+        public SocialService(GGHubDbContext context, INotificationService notificationService)
+        {
+            _context = context;
+            _notificationService = notificationService;
+        }
+        public async Task<bool> FollowUserAsync(int followerId, string followeeUsername)
+        {
+            var followee = await _context.Users.FirstOrDefaultAsync(u => u.Username == followeeUsername);
+            if (followee == null || followee.Id == followerId) return false;
+
+            var isBlocked = await _context.UserBlocks
+                .AnyAsync(b => (b.BlockerId == followee.Id && b.BlockedId == followerId) ||
+                               (b.BlockerId == followerId && b.BlockedId == followee.Id));
+
+            if (isBlocked) return false;
+
+            var alreadyFollowing = await _context.Follows.AnyAsync(f => f.FollowerId == followerId && f.FolloweeId == followee.Id);
+            if (alreadyFollowing) return true;
+
+            var follow = new Follow { FollowerId = followerId, FolloweeId = followee.Id };
+            await _context.Follows.AddAsync(follow);
+            var success = await _context.SaveChangesAsync() > 0;
+
+            if (success)
+            {
+                var follower = await _context.Users.FindAsync(followerId);
+                if (follower != null)
+                {
+                    var message = $"{follower.Username} sizi takip etmeye başladı.";
+                    await _notificationService.CreateNotificationAsync(followee.Id, message, $"/profiles/{follower.Username}");
+                }
+            }
+            return success;
+        }
+        public async Task<bool> UnfollowUserAsync(int followerId, string followeeUsername)
+        {
+            var followee = await _context.Users.FirstOrDefaultAsync(u => u.Username == followeeUsername);
+            if (followee == null) return false;
+
+            var follow = await _context.Follows.FirstOrDefaultAsync(f => f.FollowerId == followerId && f.FolloweeId == followee.Id);
+            if (follow == null) return false; 
+
+            _context.Follows.Remove(follow);
+            return await _context.SaveChangesAsync() > 0;
+        }
+        public async Task<bool> FollowListAsync(int userId, int listId)
+        {
+            var listToFollow = await _context.UserLists.FirstOrDefaultAsync(l => l.Id == listId);
+            if (listToFollow == null || !listToFollow.IsPublic || listToFollow.UserId == userId) return false;
+
+            var alreadyFollowing = await _context.UserListFollows.AnyAsync(f => f.FollowerUserId == userId && f.FollowedListId == listId);
+            if (alreadyFollowing) return true;
+
+            var follow = new UserListFollow { FollowerUserId = userId, FollowedListId = listId };
+            await _context.UserListFollows.AddAsync(follow);
+            var success = await _context.SaveChangesAsync() > 0;
+
+            if (success)
+            {
+                var follower = await _context.Users.FindAsync(userId);
+                if (follower != null)
+                {
+                    var message = $"{follower.Username}, '{listToFollow.Name}' adlı listenizi takip etmeye başladı.";
+                    await _notificationService.CreateNotificationAsync(listToFollow.UserId, message, $"/lists/{listToFollow.Id}");
+                }
+            }
+            return success;
+        }
+
+        public async Task<bool> UnfollowListAsync(int userId, int listId)
+        {
+            var follow = await _context.UserListFollows.FirstOrDefaultAsync(f => f.FollowerUserId == userId && f.FollowedListId == listId);
+            if (follow == null) return false;
+
+            _context.UserListFollows.Remove(follow);
+            return await _context.SaveChangesAsync() > 0;
+        }
+        public async Task<IEnumerable<UserDto>> GetFollowersAsync(string username)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            if (user == null) return Enumerable.Empty<UserDto>();
+
+            return await _context.Follows
+                .Where(f => f.FolloweeId == user.Id)
+                .Include(f => f.Follower) 
+                .Select(f => new UserDto
+                {
+                    Id = f.Follower.Id,
+                    Username = f.Follower.Username
+                })
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<UserDto>> GetFollowingAsync(string username)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            if (user == null) return Enumerable.Empty<UserDto>();
+
+            return await _context.Follows
+                .Where(f => f.FollowerId == user.Id)
+                .Include(f => f.Followee) 
+                .Select(f => new UserDto
+                {
+                    Id = f.Followee.Id,
+                    Username = f.Followee.Username
+                })
+                .ToListAsync();
+        }
+        public async Task<MessageDto?> SendMessageAsync(int senderId, MessageForCreationDto messageDto)
+        {
+            var recipient = await _context.Users.FirstOrDefaultAsync(u => u.Username == messageDto.RecipientUsername);
+            if (recipient == null) return null;
+
+            var isBlocked = await _context.UserBlocks.AnyAsync(b => (b.BlockerId == recipient.Id && b.BlockedId == senderId) ||
+                           (b.BlockerId == senderId && b.BlockedId == recipient.Id));
+
+            if (isBlocked)
+            {
+                throw new InvalidOperationException("Bu kullanıcıya mesaj gönderemezsiniz veya bu kullanıcıyı engellediğiniz için mesaj gönderemezsiniz.");
+            }
+
+            if (senderId == recipient.Id)
+            {
+                throw new InvalidOperationException("Kendinize mesaj gönderemezsiniz.");
+            }
+
+            if (recipient.MessageSetting == Core.Enums.MessagePrivacySetting.None)
+                throw new InvalidOperationException("Bu kullanıcı mesaj kabul etmiyor.");
+
+            if (recipient.MessageSetting == Core.Enums.MessagePrivacySetting.Following)
+            {
+                var isSenderFollowedByRecipient = await _context.Follows
+                    .AnyAsync(f => f.FollowerId == recipient.Id && f.FolloweeId == senderId);
+
+                if (!isSenderFollowedByRecipient)
+                    throw new InvalidOperationException("Bu kullanıcı sadece takip ettiği kişilerden mesaj kabul ediyor.");
+            }
+
+            var message = new Message
+            {
+                SenderId = senderId,
+                RecipientId = recipient.Id,
+                Content = messageDto.Content
+            };
+
+            await _context.Messages.AddAsync(message);
+            await _context.SaveChangesAsync();
+
+            var sender = await _context.Users.FindAsync(senderId);
+
+            return new MessageDto
+            {
+                Id = message.Id,
+                SenderId = senderId,
+                SenderUsername = sender!.Username,
+                RecipientId = recipient.Id,
+                RecipientUsername = recipient.Username,
+                Content = message.Content,
+                SentAt = message.SentAt,
+                ReadAt = message.ReadAt
+            };
+        }
+        public async Task<IEnumerable<ConversationDto>> GetConversationsAsync(int userId)
+        {
+            var messages = await _context.Messages
+                .Include(m => m.Sender)
+                .Include(m => m.Recipient)
+                .Where(m => m.SenderId == userId || m.RecipientId == userId)
+                .OrderByDescending(m => m.SentAt)
+                .ToListAsync();
+
+            var conversations = messages
+                .GroupBy(m => m.SenderId == userId ? m.RecipientId : m.SenderId)
+                .Select(g =>
+                {
+                    var lastMessage = g.First();
+                    var partner = lastMessage.SenderId == userId ? lastMessage.Recipient : lastMessage.Sender;
+
+                    return new ConversationDto
+                    {
+                        PartnerId = partner.Id,
+                        PartnerUsername = partner.Username,
+                        PartnerProfileImageUrl = partner.ProfileImageUrl,
+                        LastMessage = lastMessage.Content,
+                        LastMessageSentAt = lastMessage.SentAt,
+                        UnreadCount = g.Count(m => m.RecipientId == userId && m.ReadAt == null)
+                    };
+                })
+                .OrderByDescending(c => c.LastMessageSentAt);
+
+            return conversations;
+        }
+        public async Task<IEnumerable<MessageDto>> GetMessageThreadAsync(int userId, string partnerUsername)
+        {
+            var partner = await _context.Users.FirstOrDefaultAsync(u => u.Username == partnerUsername);
+            if (partner == null)
+            {
+                throw new KeyNotFoundException("Konuşulacak kullanıcı bulunamadı.");
+            }
+
+            var messages = await _context.Messages
+                .Where(m => (m.RecipientId == userId && m.SenderId == partner.Id) ||
+                            (m.RecipientId == partner.Id && m.SenderId == userId))
+                .OrderByDescending(m => m.SentAt)
+                .Select(m => new MessageDto 
+                {
+                    Id = m.Id,
+                    SenderId = m.SenderId,
+                    SenderUsername = m.Sender.Username,
+                    RecipientId = m.RecipientId,
+                    RecipientUsername = m.Recipient.Username,
+                    Content = m.Content,
+                    ReadAt = m.ReadAt,
+                    SentAt = m.SentAt
+                })
+                .ToListAsync();
+
+            var unreadMessages = await _context.Messages
+                .Where(m => m.RecipientId == userId && m.SenderId == partner.Id && m.ReadAt == null)
+                .ToListAsync();
+
+            if (unreadMessages.Any())
+            {
+                foreach (var message in unreadMessages)
+                {
+                    message.ReadAt = DateTime.UtcNow;
+                }
+                await _context.SaveChangesAsync();
+            }
+
+            return messages;
+        }
+        public async Task<bool> BlockUserAsync(int blockerId, string blockedUsername)
+        {
+            var blockedUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == blockedUsername);
+            if (blockedUser == null || blockedUser.Id == blockerId) return false;
+
+            var alreadyBlocked = await _context.UserBlocks.AnyAsync(b => b.BlockerId == blockerId && b.BlockedId == blockedUser.Id);
+            if (alreadyBlocked) return true;
+
+            var followingLink = await _context.Follows
+                .FirstOrDefaultAsync(f => f.FollowerId == blockerId && f.FolloweeId == blockedUser.Id);
+            if (followingLink != null) _context.Follows.Remove(followingLink);
+
+            var followerLink = await _context.Follows
+                .FirstOrDefaultAsync(f => f.FollowerId == blockedUser.Id && f.FolloweeId == blockerId);
+            if (followerLink != null) _context.Follows.Remove(followerLink);
+
+            var block = new UserBlock { BlockerId = blockerId, BlockedId = blockedUser.Id };
+            await _context.UserBlocks.AddAsync(block);
+            return await _context.SaveChangesAsync() > 0;
+        }
+
+        public async Task<bool> UnblockUserAsync(int blockerId, string blockedUsername)
+        {
+            var blockedUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == blockedUsername);
+            if (blockedUser == null) return false;
+
+            var block = await _context.UserBlocks.FirstOrDefaultAsync(b => b.BlockerId == blockerId && b.BlockedId == blockedUser.Id);
+            if (block == null) return false;
+
+            _context.UserBlocks.Remove(block);
+            return await _context.SaveChangesAsync() > 0;
+        }
+    }
+}
