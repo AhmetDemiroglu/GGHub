@@ -1,6 +1,6 @@
 # GGHub - Oyuncular için Modern bir Sosyal Platform
 
-![.NET Build](https://github.com/github/docs/actions/workflows/build.yml/badge.svg)
+[![.NET Build](https://github.com/github/docs/actions/workflows/build.yml/badge.svg)
 [![Lisans: MIT](https://img.shields.io/badge/Lisans-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 GGHub, oyun severlerin oyunları keşfetmesi, kendi listelerini oluşturması, yorum yapması ve diğer oyuncularla etkileşime girmesi için tasarlanmış modern bir sosyal platformdur. Bu repo, projenin hem backend hem de frontend kodlarını barındıran bir monorepo'dur.
