@@ -1,4 +1,5 @@
 ﻿using GGHub.Application.Dtos;
+using GGHub.Application.DTOs.Common;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
 using GGHub.Infrastructure.Dtos;
@@ -70,44 +71,46 @@ namespace GGHub.Infrastructure.Services
             }
         }
 
-        public async Task<IEnumerable<Game>> GetGamesAsync(GameQueryParams queryParams)
+        public async Task<PaginatedResult<GameDto>> GetGamesAsync(GameQueryParams queryParams)
         {
             var requestUrl = $"{_apiSettings.BaseUrl}games?key={_apiSettings.ApiKey}&page={queryParams.Page}&page_size={queryParams.PageSize}";
 
-            if (!string.IsNullOrWhiteSpace(queryParams.Search))
-            {
-                requestUrl += $"&search={queryParams.Search}";
-            }
-
-            if (!string.IsNullOrWhiteSpace(queryParams.Genres))
-            {
-                requestUrl += $"&genres={queryParams.Genres}";
-            }
-
-            if (!string.IsNullOrWhiteSpace(queryParams.Ordering))
-            {
-                requestUrl += $"&ordering={queryParams.Ordering}";
-            }
+            if (!string.IsNullOrWhiteSpace(queryParams.Search)) { requestUrl += $"&search={queryParams.Search}"; }
+            if (!string.IsNullOrWhiteSpace(queryParams.Genres)) { requestUrl += $"&genres={queryParams.Genres}"; }
+            if (!string.IsNullOrWhiteSpace(queryParams.Ordering)) { requestUrl += $"&ordering={queryParams.Ordering}"; }
+            if (!string.IsNullOrWhiteSpace(queryParams.Genres)) { requestUrl += $"&genres={queryParams.Genres}"; }
+            if (!string.IsNullOrWhiteSpace(queryParams.Platforms)) {requestUrl += $"&platforms={queryParams.Platforms}";}
 
             var response = await _httpClient.GetFromJsonAsync<PaginatedResponseDto<RawgGameDto>>(requestUrl);
 
             if (response == null || !response.Results.Any())
             {
-                return Enumerable.Empty<Game>();
+                return new PaginatedResult<GameDto> {  };
             }
 
-            var games = response.Results.Select(dto => new Game
+            var gameDtos = response.Results.Select(dto => new GameDto
             {
+                Id = 0,
                 RawgId = dto.Id,
                 Slug = dto.Slug,
                 Name = dto.Name,
                 Released = dto.Released,
                 BackgroundImage = dto.BackgroundImage,
                 Rating = dto.Rating,
-                Metacritic = dto.Metacritic
-            });
+                Metacritic = dto.Metacritic,
+                Description = null,
+                CoverImage = null,
+                Platforms = dto.Platforms?.Select(p => new PlatformDto { Name = p.Platform.Name, Slug = p.Platform.Slug }).ToList() ?? new List<PlatformDto>(),
+                Genres = dto.Genres?.Select(g => new GenreDto { Name = g.Name, Slug = g.Slug }).ToList() ?? new List<GenreDto>()
+            }).ToList();
 
-            return games;
+            return new PaginatedResult<GameDto>
+            {
+                Items = gameDtos,
+                TotalCount = response.Count,
+                Page = queryParams.Page,
+                PageSize = queryParams.PageSize
+            };
         }
         public async Task<Game> GetOrCreateGameByRawgIdAsync(int rawgId)
         {

@@ -29,5 +29,10 @@ namespace GGHub.Infrastructure.Dtos
 
         [JsonPropertyName("metacritic")]
         public int? Metacritic { get; set; }
+        [JsonPropertyName("platforms")]
+        public List<RawgPlatformWrapperDto> Platforms { get; set; }
+
+        [JsonPropertyName("genres")]
+        public List<RawgGenreDto> Genres { get; set; }
     }
 }

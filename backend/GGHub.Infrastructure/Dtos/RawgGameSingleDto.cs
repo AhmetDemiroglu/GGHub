@@ -36,5 +36,10 @@ namespace GGHub.Infrastructure.Dtos
         public double? Rating { get; set; }
         [JsonPropertyName("image")]
         public string? CoverImage { get; set; }
+        [JsonPropertyName("platforms")]
+        public List<RawgPlatformWrapperDto> Platform { get; set; }
+
+        [JsonPropertyName("genres")]
+        public List<RawgGenreDto> Genre { get; set; }
     }
 }

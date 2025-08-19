@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@core/components/ui/button";
+import { Button } from "@/core/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@core/components/ui/tooltip";
 import { ChevronLeft, ChevronRight, Home, List, MessageSquare, Users } from "lucide-react";
 import Link from "next/link";
