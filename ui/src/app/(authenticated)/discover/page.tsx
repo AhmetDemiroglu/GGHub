@@ -5,11 +5,13 @@ import { gameApi } from "@/api/gaming/game.api";
 import { GameCard } from "@core/components/other/game-card";
 import { useQuery } from "@tanstack/react-query";
 import { DataPagination } from "@core/components/other/data-pagination";
+import { DateFilter } from "@core/components/other/date-filter";
 import { Input } from "@core/components/ui/input";
 import { useDebounce } from "@core/hooks/use-debounce";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@core/components/ui/select";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@core/components/ui/dropdown-menu";
 import { Button } from "@core/components/ui/button";
+
 
 const genreOptions = [
   { value: "4", label: "Action" },
@@ -59,16 +61,17 @@ export default function DiscoverPage() {
   const [ordering, setOrdering] = useState("-added");
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+  const [dateRange, setDateRange] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['games-discover', page, pageSize, debouncedSearchTerm, ordering, selectedGenres, selectedPlatforms], 
-    queryFn: () => gameApi.paginate(page, pageSize, debouncedSearchTerm, ordering, selectedGenres.join(','), selectedPlatforms.join(',')),
+    queryKey: ['games-discover', page, pageSize, debouncedSearchTerm, ordering, selectedGenres, selectedPlatforms, dateRange], 
+    queryFn: () => gameApi.paginate(page, pageSize, debouncedSearchTerm, ordering, selectedGenres.join(','), selectedPlatforms.join(','), dateRange),
   });
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearchTerm, ordering, selectedGenres, selectedPlatforms]);
+  }, [debouncedSearchTerm, ordering, selectedGenres, selectedPlatforms, dateRange]);
 
   const clearFilters = () => {
     setSelectedGenres([]);
@@ -76,6 +79,7 @@ export default function DiscoverPage() {
     setSearchTerm("");
     setOrdering("-added");
     setPage(1);
+    setDateRange("");
   };
 
   if (error) return <div>Bir hata oluştu: {error.message}</div>;
@@ -144,6 +148,8 @@ export default function DiscoverPage() {
                   ))}
               </DropdownMenuContent>
           </DropdownMenu>
+
+          <DateFilter value={dateRange} onValueChange={setDateRange} />
 
           <Select value={ordering} onValueChange={setOrdering}>
             <SelectTrigger className="w-48">
