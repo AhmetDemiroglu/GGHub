@@ -10,9 +10,9 @@ export interface PaginatedResponse<T> {
 }
 
 export const gameApi = {
-  paginate: (page: number, pageSize: number, search?: string, ordering?: string, genres?: string, platforms?: string) => {
+  paginate: (page: number, pageSize: number, search?: string, ordering?: string, genres?: string, platforms?: string, dates?: string) => {
     return axiosInstance.get<PaginatedResponse<Game>>('/api/games', {
-      params: { page, pageSize, search, ordering, genres, platforms }, 
+      params: { page, pageSize, search, ordering, genres, platforms, dates },
     }).then((res) => res.data);
   },
 };

@@ -7,6 +7,7 @@
         public string? Search { get; set; } 
         public string? Genres { get; set; }
         public string? Platforms { get; set; }
-        public string? Ordering { get; set; } 
+        public string? Ordering { get; set; }
+        public string? Dates { get; set; }
     }
 }

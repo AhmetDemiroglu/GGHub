@@ -78,8 +78,8 @@ namespace GGHub.Infrastructure.Services
             if (!string.IsNullOrWhiteSpace(queryParams.Search)) { requestUrl += $"&search={queryParams.Search}"; }
             if (!string.IsNullOrWhiteSpace(queryParams.Genres)) { requestUrl += $"&genres={queryParams.Genres}"; }
             if (!string.IsNullOrWhiteSpace(queryParams.Ordering)) { requestUrl += $"&ordering={queryParams.Ordering}"; }
-            if (!string.IsNullOrWhiteSpace(queryParams.Genres)) { requestUrl += $"&genres={queryParams.Genres}"; }
             if (!string.IsNullOrWhiteSpace(queryParams.Platforms)) {requestUrl += $"&platforms={queryParams.Platforms}";}
+            if (!string.IsNullOrWhiteSpace(queryParams.Dates)) {requestUrl += $"&dates={queryParams.Dates}";}
 
             var response = await _httpClient.GetFromJsonAsync<PaginatedResponseDto<RawgGameDto>>(requestUrl);
 
