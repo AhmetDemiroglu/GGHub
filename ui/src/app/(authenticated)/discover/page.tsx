@@ -5,16 +5,13 @@ import { gameApi } from "@/api/gaming/game.api";
 import { GameCard } from "@core/components/other/game-card";
 import { useQuery } from "@tanstack/react-query";
 import { DataPagination } from "@core/components/other/data-pagination";
+import { DateFilter } from "@core/components/other/date-filter";
 import { Input } from "@core/components/ui/input";
 import { useDebounce } from "@core/hooks/use-debounce";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@core/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@core/components/ui/select";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@core/components/ui/dropdown-menu";
+import { Button } from "@core/components/ui/button";
 
-const orderingOptions = [
-  { value: "-added", label: "Popülerliğe Göre" },
-  { value: "-metacritic", label: "Metacritic Puanı" },
-  { value: "name", label: "İsme Göre" },
-  { value: "-released", label: "Çıkış Tarihine Göre" },
-];
 
 const genreOptions = [
   { value: "4", label: "Action" },
@@ -47,96 +44,133 @@ const platformOptions = [
   { value: "171", label: "Web" },
 ];
 
+const orderingOptions = [
+  { value: "-added", label: "Popülerliğe Göre" },
+  { value: "-rating", label: "Puana Göre (RAWG)" },
+  { value: "-metacritic", label: "Puana Göre (Metacritic)" },
+  { value: "name", label: "Ada Göre (A-Z)" },
+  { value: "-name", label: "Ada Göre (Z-A)" },
+  { value: "-released", label: "Çıkış Tarihi (Yeni)" },
+  { value: "released", label: "Çıkış Tarihi (Eski)" },
+];
+
 export default function DiscoverPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(12);
   const [searchTerm, setSearchTerm] = useState("");
   const [ordering, setOrdering] = useState("-added");
-  
-  // Artık tek bir değer tutacaklar (çoklu seçim iptal)
-  const [selectedGenre, setSelectedGenre] = useState<string>("");
-  const [selectedPlatform, setSelectedPlatform] = useState<string>("");
-
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+  const [dateRange, setDateRange] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['games-discover', page, pageSize, debouncedSearchTerm, ordering, selectedGenres, selectedPlatforms, dateRange], 
+    queryFn: () => gameApi.paginate(page, pageSize, debouncedSearchTerm, ordering, selectedGenres.join(','), selectedPlatforms.join(','), dateRange),
+  });
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearchTerm, ordering, selectedGenre, selectedPlatform]);
+  }, [debouncedSearchTerm, ordering, selectedGenres, selectedPlatforms, dateRange]);
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['games-discover', page, pageSize, debouncedSearchTerm, ordering, selectedGenre, selectedPlatform], 
-    queryFn: () => gameApi.paginate(page, pageSize, debouncedSearchTerm, ordering, selectedGenre, selectedPlatform),
-  });
+  const clearFilters = () => {
+    setSelectedGenres([]);
+    setSelectedPlatforms([]);
+    setSearchTerm("");
+    setOrdering("-added");
+    setPage(1);
+    setDateRange("");
+  };
 
   if (error) return <div>Bir hata oluştu: {error.message}</div>;
 
   return (
     <div className="w-full p-5">
-      {/* Başlık alanı */}
-      <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-8 gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold">Keşfet</h1>
-          <p className="text-muted-foreground mt-2">Popüler ve yeni çıkan oyunları burada keşfet.</p>
+          <p className="text-muted-foreground mt-2">
+            Popüler ve yeni çıkan oyunları burada keşfet.
+          </p>
         </div>
-        <Input 
-          placeholder="Oyun ara..." 
-          className="w-full sm:max-w-xs"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+        <div className="flex items-center gap-4 w-full sm:w-auto">
+          <Input 
+            placeholder="Oyun ara..." 
+            className="w-full sm:max-w-xs"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+
+          <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                  <Button variant="outline">Türler ({selectedGenres.length})</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                  <DropdownMenuLabel>Oyun Türü Seç</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {genreOptions.map(option => (
+                      <DropdownMenuCheckboxItem
+                          key={option.value}
+                          checked={selectedGenres.includes(option.value)}
+                          onCheckedChange={() => {
+                              const newSelection = selectedGenres.includes(option.value)
+                                  ? selectedGenres.filter(g => g !== option.value)
+                                  : [...selectedGenres, option.value];
+                              setSelectedGenres(newSelection);
+                          }}
+                      >
+                          {option.label}
+                      </DropdownMenuCheckboxItem>
+                  ))}
+              </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                  <Button variant="outline">Platformlar ({selectedPlatforms.length})</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                  <DropdownMenuLabel>Platform Seç</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {platformOptions.map(option => (
+                      <DropdownMenuCheckboxItem
+                          key={option.value}
+                          checked={selectedPlatforms.includes(option.value)}
+                          onCheckedChange={() => {
+                              const newSelection = selectedPlatforms.includes(option.value)
+                                  ? selectedPlatforms.filter(p => p !== option.value)
+                                  : [...selectedPlatforms, option.value];
+                              setSelectedPlatforms(newSelection);
+                          }}
+                      >
+                          {option.label}
+                      </DropdownMenuCheckboxItem>
+                  ))}
+              </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DateFilter value={dateRange} onValueChange={setDateRange} />
+
+          <Select value={ordering} onValueChange={setOrdering}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Sırala" />
+            </SelectTrigger>
+            <SelectContent>
+              <DropdownMenuLabel>Sırala</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {orderingOptions.map(option => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="ghost" onClick={clearFilters}>
+            Filtreleri Temizle
+          </Button>
+        </div>
       </div>
 
-      {/* Filtreleme ve Sıralama Barı */}
-      <div className="flex flex-wrap items-center gap-4 mb-8">
-        {/* TÜR FİLTRESİ */}
-        <Select
-          value={selectedGenre}
-          onValueChange={(value) =>
-            setSelectedGenre(value === "all" ? "" : value)
-          }
-        >
-          <SelectTrigger className="w-[180px] cursor-pointer">
-            <SelectValue placeholder="Türe Göre Filtrele" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tümü (Temizle)</SelectItem>
-            {genreOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* PLATFORM FİLTRESİ */}
-        <Select
-          value={selectedPlatform}
-          onValueChange={(value) =>
-            setSelectedPlatform(value === "all" ? "" : value)
-          }
-        >
-          <SelectTrigger className="w-[180px] cursor-pointer">
-            <SelectValue placeholder="Platforma Göre Filtrele" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tümü (Temizle)</SelectItem>
-            {platformOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        
-        {/* SIRALAMA */}
-        <Select value={ordering} onValueChange={setOrdering}>
-          <SelectTrigger className="w-[180px] cursor-pointer">
-            <SelectValue placeholder="Sırala" />
-          </SelectTrigger>
-          <SelectContent>
-            {orderingOptions.map(option => (
-              <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-  
       {isLoading && <div>Yükleniyor...</div>}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
