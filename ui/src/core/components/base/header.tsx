@@ -13,6 +13,7 @@ export function Header() {
               width={35} 
               height={22} 
               priority
+              className="h-8 w-auto"
             />
           </a>
         </div>

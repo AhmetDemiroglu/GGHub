@@ -74,18 +74,36 @@ namespace GGHub.Infrastructure.Services
         public async Task<PaginatedResult<GameDto>> GetGamesAsync(GameQueryParams queryParams)
         {
             var requestUrl = $"{_apiSettings.BaseUrl}games?key={_apiSettings.ApiKey}&page={queryParams.Page}&page_size={queryParams.PageSize}";
+            requestUrl += "&exclude_additions=true";
+
+            if (string.IsNullOrWhiteSpace(queryParams.Search) && string.IsNullOrWhiteSpace(queryParams.Ordering))
+            {
+                requestUrl += "&metacritic=70,100";
+            }
 
             if (!string.IsNullOrWhiteSpace(queryParams.Search)) { requestUrl += $"&search={queryParams.Search}"; }
             if (!string.IsNullOrWhiteSpace(queryParams.Genres)) { requestUrl += $"&genres={queryParams.Genres}"; }
             if (!string.IsNullOrWhiteSpace(queryParams.Ordering)) { requestUrl += $"&ordering={queryParams.Ordering}"; }
             if (!string.IsNullOrWhiteSpace(queryParams.Platforms)) {requestUrl += $"&platforms={queryParams.Platforms}";}
             if (!string.IsNullOrWhiteSpace(queryParams.Dates)) {requestUrl += $"&dates={queryParams.Dates}";}
+            else if (queryParams.Ordering == "-released")
+            {
+                var start = DateTime.UtcNow.AddYears(-10).ToString("yyyy-MM-dd");
+                var end = DateTime.UtcNow.AddMonths(24).ToString("yyyy-MM-dd");
+                requestUrl += $"&dates={start},{end}";
+            }
 
             var response = await _httpClient.GetFromJsonAsync<PaginatedResponseDto<RawgGameDto>>(requestUrl);
 
             if (response == null || !response.Results.Any())
             {
-                return new PaginatedResult<GameDto> {  };
+                return new PaginatedResult<GameDto>
+                {
+                    Items = new List<GameDto>(),
+                    TotalCount = 0,
+                    Page = queryParams.Page,
+                    PageSize = queryParams.PageSize
+                };
             }
 
             var gameDtos = response.Results.Select(dto => new GameDto
