@@ -1,5 +1,3 @@
-// Dosya Yolu: src/core/components/other/game-card/index.tsx
-
 import type { Game } from "@/models/gaming/game.model";
 import { PlatformIcons } from "../platform-icons";
 import { ScoreBadge } from "../score-badge";
@@ -7,7 +5,7 @@ import { Separator } from "@core/components/ui/separator";
 
 export function GameCard({ game }: { game: Game }) {
   return (
-    <div className="bg-muted/20 rounded-lg overflow-hidden h-full flex flex-col group text-white border border-transparent hover:border-primary/50 transition-colors duration-300">
+    <div className="bg-muted/20 rounded-lg cursor-pointer overflow-hidden h-full flex flex-col group text-white border border-transparent hover:border-primary/50 transition-colors duration-300">
       {/* Resim Alanı */}
       <div className="aspect-video relative overflow-hidden">
         <img

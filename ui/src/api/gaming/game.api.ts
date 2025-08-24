@@ -9,10 +9,20 @@ export interface PaginatedResponse<T> {
   pageSize: number;
 }
 
+export type GameApiPaginateParams = {
+  page: number;
+  pageSize: number;
+  search?: string;
+  ordering?: string;
+  genres?: string;
+  platforms?: string;
+  dates?: string;
+  metacritic?: string;
+};
+
 export const gameApi = {
-  paginate: (page: number, pageSize: number, search?: string, ordering?: string, genres?: string, platforms?: string, dates?: string) => {
-    return axiosInstance.get<PaginatedResponse<Game>>('/api/games', {
-      params: { page, pageSize, search, ordering, genres, platforms, dates },
-    }).then((res) => res.data);
+  paginate: (params: GameApiPaginateParams) => {
+    return axiosInstance.get<PaginatedResponse<Game>>('/api/games', { params })
+        .then((res) => res.data);
   },
 };
