@@ -2,6 +2,7 @@
 
 import { Button } from "@core/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from "@core/components/ui/dropdown-menu";
+import { cn } from "@core/lib/utils";
 
 interface DateFilterProps {
   value: string;
@@ -42,7 +43,7 @@ export function DateFilter({ value, onValueChange, className }: DateFilterProps)
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className={className}>{getLabel()}</Button>
+        <Button variant="outline" className={cn("cursor-pointer", className)}>{getLabel()}</Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56">
         <DropdownMenuRadioGroup value={value} onValueChange={onValueChange}>

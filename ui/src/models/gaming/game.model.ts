@@ -19,6 +19,6 @@ export interface Game {
   metacritic: number | null;
   description: string | null;
   coverImage: string | null;
-  platforms: Platform[]; // EKLENDİ
-  genres: Genre[]; // EKLENDİ
+  platforms: Platform[];
+  genres: Genre[]; 
 }

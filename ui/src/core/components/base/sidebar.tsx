@@ -45,7 +45,7 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Link href={link.href}>
-                    <Button variant="ghost" size="icon" className="w-full">
+                    <Button variant="ghost" size="icon" className="w-full cursor-pointer">
                       <Icon />
                     </Button>
                   </Link>
@@ -55,7 +55,7 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
             </TooltipProvider>
           ) : (
             <Link href={link.href} key={link.href}>
-              <Button variant="ghost" className="w-full justify-start gap-2">
+              <Button variant="ghost" className="w-full justify-start gap-2 cursor-pointer">
                 <Icon /> {link.label}
               </Button>
             </Link>
