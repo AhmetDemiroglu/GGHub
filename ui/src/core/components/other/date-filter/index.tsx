@@ -15,16 +15,28 @@ const decades = Array.from({ length: Math.ceil((currentYear - 1980) / 10) + 1 },
   return start;
 });
 
+const fmt = (d: Date) => d.toISOString().slice(0, 10);
+const addMonths = (d: Date, m: number) => { const x = new Date(d); x.setMonth(x.getMonth() + m); return x; };
+
 export function DateFilter({ value, onValueChange, className }: DateFilterProps) {
   const getLabel = () => {
     if (!value) return "Çıkış Yılı";
-    if (value.startsWith(String(currentYear))) return "Gelecek Oyunlar";
-    const year = value.substring(0, 4);
-    if(value.includes(',')) {
-        const endYear = value.substring(9, 13);
-        if(parseInt(endYear) - parseInt(year) === 9) return `${year}'lar`;
+
+    const [startStr = "", endStr = ""] = value.split(",");
+    const startYear = parseInt(startStr.slice(0, 4));
+    const endYear   = parseInt(endStr.slice(0, 4));
+
+    const today = new Date();
+    const futureValue = `${fmt(today)},${fmt(addMonths(today, 24))}`;
+    if (value === futureValue) return "Gelecek Oyunlar";
+
+    if (!Number.isNaN(startYear) && !Number.isNaN(endYear)) {
+      if (endYear - startYear === 9 && startStr.endsWith("-01-01") && endStr.endsWith("-12-31")) {
+        return `${startYear}'lar`;
+      }
     }
-    return year;
+
+    return startStr.slice(0, 4);
   };
 
   return (
@@ -35,9 +47,17 @@ export function DateFilter({ value, onValueChange, className }: DateFilterProps)
       <DropdownMenuContent className="w-56">
         <DropdownMenuRadioGroup value={value} onValueChange={onValueChange}>
           <DropdownMenuRadioItem value="">Tüm Zamanlar</DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value={`${currentYear + 1}-01-01,${currentYear + 10}-12-31`}>
-            Gelecek Oyunlar
-          </DropdownMenuRadioItem>
+            {(() => {
+              const today = new Date();
+              const start = fmt(today);
+              const end = fmt(addMonths(today, 24));
+              const futureValue = `${start},${end}`;
+              return (
+                <DropdownMenuRadioItem value={futureValue}>
+                  Gelecek Oyunlar
+                </DropdownMenuRadioItem>
+              );
+            })()}
           <DropdownMenuSeparator />
 
           {decades.map(decadeStart => {
