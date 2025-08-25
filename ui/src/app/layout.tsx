@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@core/components/base/theme-provider";
 import { Providers } from "@core/components/base/providers";
+import { Toaster } from "@/core/components/ui/sonner";
 
 
 const inter = Inter({ subsets: ["latin"] });
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
           </ThemeProvider>
         </Providers>
+        <Toaster richColors />
       </body>
     </html>
   );
