@@ -21,7 +21,7 @@ interface SidebarProps {
 export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
   return (
     <aside
-      className={`relative flex h-full flex-col bg-background transition-all duration-300 ease-in-out border-r ${
+      className={`relative flex h-full flex-col bg-background transition-all duration-300 ease-in-out ${
         isCollapsed ? "w-20" : "w-60"
       }`}
     >

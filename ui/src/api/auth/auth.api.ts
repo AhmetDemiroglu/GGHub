@@ -1,4 +1,4 @@
-import axiosInstance from "@core/lib/axios";
+import {axiosInstance} from "@core/lib/axios";
 import { UserForLogin, UserForRegister, LoginResponse } from '@/models/auth/auth.model';
 
 export const register = (data: UserForRegister) => {

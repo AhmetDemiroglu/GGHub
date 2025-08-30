@@ -16,7 +16,7 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
             isCollapsed={isSidebarCollapsed}
             setIsCollapsed={setSidebarCollapsed}
           />
-          <main className="flex-1 flex flex-col items-center justify-center">
+          <main className="flex-1 overflow-y-auto p-4 md:p-6 2xl:p-10 border-l">
             {children}
           </main>
         </div>

@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { LogIn, LogOut, Search, UserPlus } from "lucide-react";
 import { Input } from "@/core/components/ui/input";
 import { toast } from "sonner"; 
+import ProfilePage from "@/app/(authenticated)/profile/page";
 
 
 export function Header() {
@@ -19,6 +20,11 @@ export function Header() {
     router.push("/");
     toast.info('Başarıyla çıkış yapıldı.');
   };
+
+  const myProfiePage = () =>{
+    router.push("/profile");
+  } 
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">      
       <div className="flex h-14 items-center px-6">
@@ -55,9 +61,9 @@ export function Header() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end" forceMount>
-                  <DropdownMenuLabel>{user.username}</DropdownMenuLabel>
+                  <DropdownMenuLabel className="cursor-pointer" onClick={myProfiePage}>{user.username}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout}>
+                  <DropdownMenuItem className="cursor-pointer" onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Çıkış Yap</span>
                   </DropdownMenuItem>

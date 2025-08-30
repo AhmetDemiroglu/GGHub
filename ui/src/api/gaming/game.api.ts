@@ -1,4 +1,4 @@
-import axiosInstance from "@core/lib/axios";
+import {axiosInstance} from "@core/lib/axios";
 import type { Game } from "@/models/gaming/game.model";
 import type { AxiosResponse } from "axios";
 
