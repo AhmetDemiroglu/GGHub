@@ -148,6 +148,19 @@ export function ProfileEditForm({ initialData, onSave }: ProfileEditFormProps) {
             />
             <FormField
               control={form.control}
+              name="dateOfBirth"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Doğum Tarihi</FormLabel>
+                  <FormControl>
+                    <DatePicker date={field.value} onDateChange={field.onChange} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="isDateOfBirthPublic"
               render={({ field }) => (
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">

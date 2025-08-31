@@ -19,5 +19,7 @@ namespace GGHub.Application.Dtos
         public bool IsPhoneNumberPublic { get; set; }
         public ProfileVisibilitySetting ProfileVisibility { get; set; }
         public bool IsDateOfBirthPublic { get; set; }
+        public MessagePrivacySetting MessageSetting { get; set; }
+
     }
 }

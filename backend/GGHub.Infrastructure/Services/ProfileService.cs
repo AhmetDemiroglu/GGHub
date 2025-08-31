@@ -42,6 +42,7 @@ namespace GGHub.Infrastructure.Services
                 IsEmailPublic = user.IsEmailPublic,
                 IsPhoneNumberPublic = user.IsPhoneNumberPublic,
                 ProfileVisibility = user.ProfileVisibility,
+                MessageSetting = user.MessageSetting,
                 IsDateOfBirthPublic = user.IsDateOfBirthPublic
             };
         }

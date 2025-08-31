@@ -4,7 +4,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Profile, ProfileVisibilitySetting } from '@/models/profile/profile.model';
 import { updateProfileVisibility } from '@/api/profile/profile.api';
-
+import { MessagePrivacySetting } from '@/models/profile/profile.model';
+import { updateMessageSetting } from '@/api/profile/profile.api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/core/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/core/components/ui/radio-group';
 import { Label } from '@/core/components/ui/label';
@@ -30,6 +31,23 @@ export function PrivacySettingsForm({ initialData }: PrivacySettingsFormProps) {
   const handleVisibilityChange = (value: string) => {
     const newVisibility = Number(value) as ProfileVisibilitySetting;
     updateVisibility({ newVisibility });
+  };
+
+  const { mutate: updateMessage, isPending: isMessagePending } = useMutation({
+    mutationFn: updateMessageSetting,
+    onSuccess: () => {
+      toast.success('Mesaj ayarları güncellendi.');
+      queryClient.invalidateQueries({ queryKey: ['my-profile'] });
+    },
+    onError: (error) => {
+      toast.error('Bir hata oluştu.', { description: error.message });
+    },
+  });
+
+
+  const handleMessageSettingChange = (value: string) => {
+    const newSetting = Number(value) as MessagePrivacySetting;
+    updateMessage({ newSetting });
   };
 
   return (
@@ -62,7 +80,28 @@ export function PrivacySettingsForm({ initialData }: PrivacySettingsFormProps) {
           </RadioGroup>
         </div>
         
-        {/* E-posta ve Telefon Numarası için Switch'ler buraya gelecek */}
+        <div className="border-t pt-6">
+          <Label className="font-semibold">Kimler Mesaj Atabilir?</Label>
+          <RadioGroup
+            defaultValue={String(initialData.messageSetting)}
+            onValueChange={handleMessageSettingChange}
+            disabled={isMessagePending}
+            className="mt-4 ml-2 space-y-2"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value={String(MessagePrivacySetting.Everyone)} id="msg-everyone" />
+              <Label htmlFor="msg-everyone">Herkes</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value={String(MessagePrivacySetting.Following)} id="msg-following" />
+              <Label htmlFor="msg-following">Sadece Takip Ettiklerim</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value={String(MessagePrivacySetting.None)} id="msg-none" />
+              <Label htmlFor="msg-none">Hiç Kimse</Label>
+            </div>
+          </RadioGroup>
+        </div>
         
       </CardContent>
     </Card>
