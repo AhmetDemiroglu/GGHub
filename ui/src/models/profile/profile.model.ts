@@ -6,14 +6,32 @@ export interface Profile {
   lastName: string | null;
   bio: string | null;
   profileImageUrl: string | null;
-  dateOfBirth: string | null;
+  dateOfBirth: Date | null;
   createdAt: string;
   status: string | null;
   phoneNumber: string | null;
+  profileVisibility: number;
+  isEmailPublic: boolean;
+  isPhoneNumberPublic: boolean;
+  isDateOfBirthPublic: boolean;
 }
 
 export interface ProfileForUpdate {
   firstName: string | null;
   lastName: string | null;
   bio: string | null;
+  isEmailPublic: boolean; 
+  isPhoneNumberPublic: boolean;
+  isDateOfBirthPublic: boolean;
+  profileImageUrl: string | null;
+}
+
+export enum ProfileVisibilitySetting {
+  Public = 0,
+  Followers = 1,
+  Private = 2,
+}
+
+export interface UpdateProfileVisibilityDto {
+  newVisibility: ProfileVisibilitySetting;
 }

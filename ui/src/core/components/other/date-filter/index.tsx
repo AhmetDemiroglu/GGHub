@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@core/components/ui/button";
+import { Button } from "@/core/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSubContent } from "@core/components/ui/dropdown-menu";
 import { cn } from "@core/lib/utils";
 

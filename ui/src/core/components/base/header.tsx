@@ -9,11 +9,23 @@ import { useRouter } from "next/navigation";
 import { LogIn, LogOut, Search, UserPlus } from "lucide-react";
 import { Input } from "@/core/components/ui/input";
 import { toast } from "sonner"; 
-import ProfilePage from "@/app/(authenticated)/profile/page";
-
+import type { Profile } from '@/models/profile/profile.model';
+import { getMyProfile } from '@/api/profile/profile.api';
+import { useQuery } from "@tanstack/react-query";
 
 export function Header() {
   const { isAuthenticated, user, logout } = useAuthStore();
+  
+  const enabled = isAuthenticated && !!user;
+  const { data } = useQuery<Profile>({
+    queryKey: ['my-profile'],
+    queryFn: getMyProfile,
+    enabled,                   
+    staleTime: 5 * 60 * 1000,  
+  });
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://localhost:7263';
+  const avatarSrc = data?.profileImageUrl ? `${API_BASE}${data.profileImageUrl}` : undefined;
+
   const router = useRouter();
   const handleLogout = () => {
     logout();
@@ -48,14 +60,15 @@ export function Header() {
               </form>
           </div>
           
-          <div className="pl-3">
+          <div className="pl-5 mt-3">
             {/* Kullanıcı giriş yapmış mı? */}
             {isAuthenticated && user ? (
               // EVET: Profil menüsü
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-9 w-9 cursor-pointer">
+                    <Avatar className="h-10 w-10 cursor-pointer">
+                      <AvatarImage src={avatarSrc} alt={user.username} />
                       <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
                   </Button>

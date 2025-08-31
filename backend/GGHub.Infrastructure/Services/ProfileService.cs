@@ -38,7 +38,11 @@ namespace GGHub.Infrastructure.Services
                 ProfileImageUrl = user.ProfileImageUrl,
                 DateOfBirth = user.DateOfBirth,
                 CreatedAt = user.CreatedAt,
-                Status = user.Status
+                Status = user.Status,
+                IsEmailPublic = user.IsEmailPublic,
+                IsPhoneNumberPublic = user.IsPhoneNumberPublic,
+                ProfileVisibility = user.ProfileVisibility,
+                IsDateOfBirthPublic = user.IsDateOfBirthPublic
             };
         }
 
@@ -54,6 +58,7 @@ namespace GGHub.Infrastructure.Services
             user.PhoneNumber = profileDto.PhoneNumber;
             user.IsEmailPublic = profileDto.IsEmailPublic;
             user.IsPhoneNumberPublic = profileDto.IsPhoneNumberPublic;
+            user.IsDateOfBirthPublic = profileDto.IsDateOfBirthPublic;
             user.DateOfBirth = profileDto.DateOfBirth;
             user.Status = profileDto.Status;
                         user.UpdatedAt = DateTime.UtcNow;
