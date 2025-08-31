@@ -232,12 +232,6 @@ const { data, isLoading, error } = useQuery({
           ))}
         </div>
       )}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {visibleItems.map((game) => (
-          <GameCard key={game.rawgId} game={game} />
-        ))}
-      </div>
       
       {data && data.totalCount > 0 && (
         <div className="mt-8 flex items-center justify-between">

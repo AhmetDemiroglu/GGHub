@@ -1,4 +1,6 @@
-﻿namespace GGHub.Application.Dtos
+﻿using GGHub.Core.Enums;
+
+namespace GGHub.Application.Dtos
 {
     public class ProfileDto
     {
@@ -13,6 +15,9 @@
         public DateTime CreatedAt { get; set; }
         public string? Status { get; set; }
         public string? PhoneNumber { get; set; }
-
+        public bool IsEmailPublic { get; set; }
+        public bool IsPhoneNumberPublic { get; set; }
+        public ProfileVisibilitySetting ProfileVisibility { get; set; }
+        public bool IsDateOfBirthPublic { get; set; }
     }
 }

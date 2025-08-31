@@ -11,5 +11,6 @@
         public string? PhoneNumber { get; set; }
         public bool IsEmailPublic { get; set; }
         public bool IsPhoneNumberPublic { get; set; }
+        public bool IsDateOfBirthPublic { get; set; }
     }
 }

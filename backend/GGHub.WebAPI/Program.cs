@@ -42,6 +42,8 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<ISocialService, SocialService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ISearchService, SearchService>();
+builder.Services.AddScoped<IPhotoService, PhotoService>();
+
 
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -120,6 +122,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseStaticFiles();
 
 app.UseAuthentication();
 

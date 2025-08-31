@@ -22,7 +22,7 @@ export type GameApiPaginateParams = {
 
 export const gameApi = {
   paginate: (params: GameApiPaginateParams) => {
-    return axiosInstance.get<PaginatedResponse<Game>>('/api/games', { params })
+    return axiosInstance.get<PaginatedResponse<Game>>('/games', { params })
         .then((res) => res.data);
   },
 };

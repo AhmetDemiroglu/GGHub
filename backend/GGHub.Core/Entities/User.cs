@@ -33,5 +33,6 @@ namespace GGHub.Core.Entities
         public bool IsPhoneNumberPublic { get; set; } = false;
         public bool IsEmailVerified { get; set; } = false;
         public string? EmailVerificationToken { get; set; }
+        public bool IsDateOfBirthPublic { get; set; } = false;
     }
 }

@@ -7,12 +7,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/cor
 import { Skeleton } from '@/core/components/ui/skeleton';
 import { useState } from 'react';
 import { Button } from '@/core/components/ui/button';
-import { Pencil } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar"; 
+import { Pencil, Eye, EyeOff } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/core/components/ui/tooltip';
 import { ProfileEditForm } from '@/core/components/other/profile-edit-form';
 import { Profile } from '@/models/profile/profile.model';
+import { ProfilePhotoUploader } from '@/core/components/other/profile-photo-uploader';
 
 export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
+  const [isPhotoUploaderOpen, setIsPhotoUploaderOpen] = useState(false);
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['my-profile'],
     queryFn: getMyProfile,
@@ -55,21 +59,83 @@ export default function ProfilePage() {
   if (!data) {
     return null; 
   }
+  const visibilityMap: { [key: number]: string } = {
+    0: 'Herkese Açık',
+    1: 'Sadece Takipçiler',
+    2: 'Sadece Ben',
+  };
   const ProfileReadOnlyView = ({ data }: { data: Profile }) => (
-    <div className="space-y-2">
-        <p><strong>Kullanıcı Adı:</strong> {data.username}</p>
+    <>
+    <div className="space-y-2">      
+      <p><strong>İsim:</strong> {data.firstName || 'Belirtilmemiş'}</p>
+      <p><strong>Soyisim:</strong> {data.lastName || 'Belirtilmemiş'}</p>
+      <p><strong>Bio:</strong> {data.bio || 'Bio eklenmemiş.'}</p>
+
+      {/* Doğum Tarihi */}
+      <div className="flex items-center space-x-2">
+        <p><strong>Doğum Tarihi:</strong> {data.dateOfBirth ? new Date(data.dateOfBirth).toLocaleDateString('tr-TR') : 'Belirtilmemiş'}</p>
+        {data.dateOfBirth && (
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger>
+                {data.isDateOfBirthPublic 
+                  ? <Eye className="h-4 w-4 text-green-500" /> 
+                  : <EyeOff className="h-4 w-4 text-muted-foreground" />}
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{data.isDateOfBirthPublic ? 'Herkese Açık' : 'Gizli'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </div>
+
+      {/* E-posta Satırı */}
+      <div className="flex items-center space-x-2">
         <p><strong>E-posta:</strong> {data.email}</p>
-        <p><strong>İsim:</strong> {data.firstName || 'Belirtilmemiş'}</p>
-        <p><strong>Soyisim:</strong> {data.lastName || 'Belirtilmemiş'}</p>
-        <p><strong>Bio:</strong> {data.bio || 'Bio eklenmemiş.'}</p>
-        <p><strong>Üyelik Tarihi:</strong> {new Date(data.createdAt).toLocaleDateString('tr-TR')}</p>
+        <TooltipProvider delayDuration={100}>
+          <Tooltip>
+            <TooltipTrigger>
+              {data.isEmailPublic 
+                ? <Eye className="h-4 w-4 text-green-500" /> 
+                : <EyeOff className="h-4 w-4 text-muted-foreground" />}
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{data.isEmailPublic ? 'Herkese Açık' : 'Gizli'}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+      
+      {/* Telefon Numarası Satırı */}
+      {data.phoneNumber && (
+        <div className="flex items-center space-x-2">
+          <p><strong>Telefon:</strong> {data.phoneNumber}</p>
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger>
+                {data.isPhoneNumberPublic 
+                  ? <Eye className="h-4 w-4 text-green-500" /> 
+                  : <EyeOff className="h-4 w-4 text-muted-foreground" />}
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{data.isPhoneNumberPublic ? 'Herkese Açık' : 'Gizli'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      )}
     </div>
+      <p className='mt-2'><strong>Profil Görünürlüğü:</strong> {visibilityMap[data.profileVisibility] ?? 'Bilinmiyor'}</p>
+    <div className='flex justify-end-safe text-sm italic'>
+          <p className='mb-0'><strong>Üyelik Tarihi:</strong> <span className='font-light'>{new Date(data.createdAt).toLocaleDateString('tr-TR')}</span></p>
+    </div>
+    </>
   );
   return (
     <AuthProvider>
       <div className="w-full p-5">
         <div className="space-y-4">
-            {/* Başlık */}
             <div>
             <h1 className="text-3xl font-bold">Profil Yönetimi</h1>
             <p className="text-muted-foreground mt-2">
@@ -80,14 +146,31 @@ export default function ProfilePage() {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="relative">
+  <button onClick={() => setIsPhotoUploaderOpen(true)} className="rounded-full">
+    <Avatar className="h-16 w-16 cursor-pointer">
+      <AvatarImage 
+        src={data.profileImageUrl ? `https://localhost:7263${data.profileImageUrl}` : undefined} 
+        alt={data.username} 
+      />
+      <AvatarFallback>{data.username.charAt(0).toUpperCase()}</AvatarFallback>
+    </Avatar>
+  </button>
+  <div className="absolute bottom-0 right-0 rounded-full bg-primary p-1 border-2 border-background cursor-pointer" onClick={() => setIsPhotoUploaderOpen(true)}>
+    <Pencil className="h-3 w-3 text-primary-foreground" />
+  </div>
+</div>
                     <div>
-                        <CardTitle>Kişisel Bilgiler</CardTitle>
-                        <CardDescription>Bu bilgiler herkese açık profilinizde görünebilir.</CardDescription>
+                      <CardTitle className="text-2xl">{data.username}</CardTitle>
+                      <CardDescription>{data.email}</CardDescription>
                     </div>
-                        <Button className="cursor-pointer" variant="ghost" size="icon" onClick={() => setIsEditing(!isEditing)}>
-                            <Pencil className="h-4 w-4" />
-                        </Button>
+                  </div>
+                  <Button className="cursor-pointer" variant="ghost" size="icon" onClick={() => setIsEditing(!isEditing)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
                 </div>
+                  
               </CardHeader>
               <CardContent>
                 {isEditing ? (
@@ -101,10 +184,21 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
             
-            {/* İLERİDE BURAYA YENİ KARTLAR GELECEK (Gizlilik Ayarları, Şifre Değiştirme vb.) */}
+            
+            <Card>
+            {/* ... */}
+            </Card>
+      
+            {/* İLERİDE BURAYA YENİ KARTLAR GELECEK (Şifre Değiştirme vb.) */}
 
         </div>
       </div>
+      <ProfilePhotoUploader
+        isOpen={isPhotoUploaderOpen}
+        onClose={() => setIsPhotoUploaderOpen(false)}
+        currentImageUrl={data.profileImageUrl}
+        username={data.username}
+      />  
     </AuthProvider>
   ); 
 }
