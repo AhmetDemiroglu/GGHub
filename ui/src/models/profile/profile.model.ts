@@ -11,9 +11,11 @@ export interface Profile {
   status: string | null;
   phoneNumber: string | null;
   profileVisibility: number;
+  messageSetting: number;
   isEmailPublic: boolean;
   isPhoneNumberPublic: boolean;
   isDateOfBirthPublic: boolean;
+  
 }
 
 export interface ProfileForUpdate {
@@ -32,6 +34,16 @@ export enum ProfileVisibilitySetting {
   Private = 2,
 }
 
+export enum MessagePrivacySetting {
+  Everyone = 0,
+  Following = 1,
+  None = 2,
+}
+
 export interface UpdateProfileVisibilityDto {
   newVisibility: ProfileVisibilitySetting;
+}
+
+export interface UpdateMessageSettingDto {
+  newSetting: MessagePrivacySetting;
 }

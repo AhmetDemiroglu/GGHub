@@ -8,12 +8,12 @@ import { Skeleton } from '@/core/components/ui/skeleton';
 import { useState } from 'react';
 import { Button } from '@/core/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar"; 
-import { Pencil, Eye, EyeOff } from 'lucide-react';
+import { Pencil, Eye, EyeOff, X} from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/core/components/ui/tooltip';
 import { ProfileEditForm } from '@/core/components/other/profile-edit-form';
 import { Profile } from '@/models/profile/profile.model';
 import { ProfilePhotoUploader } from '@/core/components/other/profile-photo-uploader';
-
+import { DangerZone } from '@/core/components/other/danger-zone';
 export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isPhotoUploaderOpen, setIsPhotoUploaderOpen] = useState(false);
@@ -64,6 +64,13 @@ export default function ProfilePage() {
     1: 'Sadece Takipçiler',
     2: 'Sadece Ben',
   };
+
+  const messageSettingMap: { [key: number]: string } = {
+    0: 'Herkes',
+    1: 'Sadece Takip Ettiklerim',
+    2: 'Hiç Kimse',
+  };
+
   const ProfileReadOnlyView = ({ data }: { data: Profile }) => (
     <>
     <div className="space-y-2">      
@@ -126,7 +133,8 @@ export default function ProfilePage() {
         </div>
       )}
     </div>
-      <p className='mt-2'><strong>Profil Görünürlüğü:</strong> {visibilityMap[data.profileVisibility] ?? 'Bilinmiyor'}</p>
+    <p className='mt-2'><strong>Profil Görünürlüğü:</strong> {visibilityMap[data.profileVisibility] ?? 'Bilinmiyor'}</p>
+    <p><strong>Kimler Mesaj Atabilir:</strong> {messageSettingMap[data.messageSetting] ?? 'Bilinmiyor'}</p>
     <div className='flex justify-end-safe text-sm italic'>
           <p className='mb-0'><strong>Üyelik Tarihi:</strong> <span className='font-light'>{new Date(data.createdAt).toLocaleDateString('tr-TR')}</span></p>
     </div>
@@ -167,7 +175,7 @@ export default function ProfilePage() {
                     </div>
                   </div>
                   <Button className="cursor-pointer" variant="ghost" size="icon" onClick={() => setIsEditing(!isEditing)}>
-                    <Pencil className="h-4 w-4" />
+                      {isEditing ? <X className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
                   </Button>
                 </div>
                   
@@ -184,12 +192,7 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
             
-            
-            <Card>
-            {/* ... */}
-            </Card>
-      
-            {/* İLERİDE BURAYA YENİ KARTLAR GELECEK (Şifre Değiştirme vb.) */}
+            <DangerZone />
 
         </div>
       </div>
