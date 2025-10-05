@@ -134,7 +134,7 @@ export default function ProfilePage() {
       )}
     </div>
     <p className='mt-2'><strong>Profil Görünürlüğü:</strong> {visibilityMap[data.profileVisibility] ?? 'Bilinmiyor'}</p>
-    <p><strong>Kimler Mesaj Atabilir:</strong> {messageSettingMap[data.messageSetting] ?? 'Bilinmiyor'}</p>
+    <p className='mt-2'><strong>Kimler Mesaj Atabilir:</strong> {messageSettingMap[data.messageSetting] ?? 'Bilinmiyor'}</p>
     <div className='flex justify-end-safe text-sm italic'>
           <p className='mb-0'><strong>Üyelik Tarihi:</strong> <span className='font-light'>{new Date(data.createdAt).toLocaleDateString('tr-TR')}</span></p>
     </div>
