@@ -5,9 +5,7 @@ import { Separator } from "@core/components/ui/separator";
 
 export function GameCard({ game }: { game: Game }) {
     return (
-        // Ana div'den text-white kaldırıldı, text-foreground eklendi
         <div className="bg-card rounded-lg cursor-pointer overflow-hidden h-full flex flex-col group text-foreground border border-border hover:border-primary/50 transition-colors duration-300">
-            {/* Resim Alanı */}
             <div className="aspect-video relative overflow-hidden">
                 <img src={game.backgroundImage ?? "/placeholder.png"} alt={game.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
                 <div className="absolute inset-0 bg-gradient-to-t from-card via-card/10 to-transparent" />
@@ -29,7 +27,6 @@ export function GameCard({ game }: { game: Game }) {
                 <Separator className="bg-border" />
 
                 <div className="flex justify-between items-center text-xs text-muted-foreground pt-3 mt-auto">
-                    {" "}
                     <div>
                         <p>Çıkış Tarihi</p>
                         <p className="text-foreground font-semibold">{game.released ? new Date(game.released).toLocaleDateString("tr-TR") : "-"}</p>

@@ -34,7 +34,9 @@ export function Header() {
     };
 
     const myProfiePage = () => {
-        router.push("/profile");
+        if (user) {
+            router.push(`/profiles/${user.username}`);
+        }
     };
 
     return (

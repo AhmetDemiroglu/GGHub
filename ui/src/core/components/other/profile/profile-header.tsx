@@ -7,18 +7,22 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar
 import { Button } from "@/core/components/ui/button";
 import { Badge } from "@/core/components/ui/badge";
 import { Separator } from "@/core/components/ui/separator";
-import { Calendar, Mail, Phone, UserPlus, UserMinus } from "lucide-react";
+import { Calendar, Mail, Phone, UserPlus, UserMinus, Settings } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { followUser, unfollowUser } from "@/api/social/social.api";
 import { toast } from "sonner";
 import Image from "next/image";
 import gameBanner from "@/core/assets/games.png";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/core/components/ui/dropdown-menu";
+import { useRouter } from "next/navigation";
+import { FollowersModal } from "./followers-modal";
 
 dayjs.locale("tr");
 
 interface ProfileHeaderProps {
     profile: PublicProfile;
+    isOwnProfile?: boolean;
 }
 
 const getImageUrl = (path: string | null | undefined) => {
@@ -28,10 +32,11 @@ const getImageUrl = (path: string | null | undefined) => {
     return `${API_BASE}${path}`;
 };
 
-export default function ProfileHeader({ profile }: ProfileHeaderProps) {
+export default function ProfileHeader({ profile, isOwnProfile = false }: ProfileHeaderProps) {
     const [isFollowing, setIsFollowing] = useState(profile.isFollowing || false);
     const [followerCount, setFollowerCount] = useState(profile.followerCount || 0);
     const queryClient = useQueryClient();
+    const router = useRouter();
 
     const avatarSrc = getImageUrl(profile.profileImageUrl);
 
@@ -74,12 +79,21 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
         }
     };
 
+    const canSendMessage = () => {
+        if (profile.messageSetting === 2) return false;
+        if (profile.messageSetting === 1 && !profile.isFollowedBy) return false;
+        return true;
+    };
+
     const displayName = profile.firstName && profile.lastName ? `${profile.firstName} ${profile.lastName}` : profile.username;
+
+    const [followersModalOpen, setFollowersModalOpen] = useState(false);
+    const [defaultModalTab, setDefaultModalTab] = useState<"followers" | "following">("followers");
 
     return (
         <div className="w-full rounded-lg overflow-hidden bg-card text-card-foreground shadow-md">
             <div className="h-48 md:h-64 w-full relative">
-                <Image src={gameBanner} alt="GGHub Banner" layout="fill" objectFit="cover" priority />
+                <Image src={gameBanner} alt="GGHub Banner" fill className="object-cover" priority />
                 <div className="absolute inset-0 bg-background/70" />
             </div>
             <div className="p-4 md:p-6">
@@ -90,22 +104,52 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
                     </Avatar>
 
                     <div className="flex gap-2 pt-4 sm:pt-20 md:pt-24">
-                        <Button onClick={handleFollow} variant={isFollowing ? "outline" : "default"} size="sm" className="gap-2" disabled={followMutation.isPending || unfollowMutation.isPending}>
-                            {isFollowing ? (
-                                <>
-                                    <UserMinus className="h-4 w-4" />
-                                    Takibi Bırak
-                                </>
-                            ) : (
-                                <>
-                                    <UserPlus className="h-4 w-4" />
-                                    Takip Et
-                                </>
-                            )}
-                        </Button>
-                        <Button variant="outline" size="sm">
-                            Mesaj Gönder
-                        </Button>
+                        {isOwnProfile ? (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" size="sm" className="gap-2 cursor-pointer">
+                                        <Settings className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/profile")}>
+                                        Profili Düzenle
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        ) : (
+                            <>
+                                <Button
+                                    onClick={handleFollow}
+                                    variant={isFollowing ? "outline" : "default"}
+                                    size="sm"
+                                    className="gap-2"
+                                    disabled={followMutation.isPending || unfollowMutation.isPending}
+                                >
+                                    {isFollowing ? (
+                                        <>
+                                            <UserMinus className="h-4 w-4" />
+                                            Takibi Bırak
+                                        </>
+                                    ) : (
+                                        <>
+                                            <UserPlus className="h-4 w-4" />
+                                            Takip Et
+                                        </>
+                                    )}
+                                </Button>
+
+                                {canSendMessage() ? (
+                                    <Button variant="outline" size="sm">
+                                        Mesaj Gönder
+                                    </Button>
+                                ) : (
+                                    <Button variant="outline" size="sm" disabled>
+                                        Mesaj Kapalı
+                                    </Button>
+                                )}
+                            </>
+                        )}
                     </div>
                 </div>
 
@@ -127,20 +171,30 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
                     {profile.bio && <p className="text-sm text-foreground/90 pt-2">{profile.bio}</p>}
                 </div>
 
-                {(profile.followerCount !== undefined || profile.followingCount !== undefined) && (
+                {(followerCount !== undefined && followerCount !== null) || (profile.followingCount !== undefined && profile.followingCount !== null) ? (
                     <div className="flex gap-4 text-sm mt-4">
-                        <div>
+                        <div
+                            className="cursor-pointer hover:underline"
+                            onClick={() => {
+                                setDefaultModalTab("followers");
+                                setFollowersModalOpen(true);
+                            }}
+                        >
                             <span className="font-bold">{followerCount}</span>
                             <span className="text-muted-foreground"> Takipçi</span>
                         </div>
-                        {profile.followingCount !== undefined && (
-                            <div>
-                                <span className="font-bold">{profile.followingCount}</span>
-                                <span className="text-muted-foreground"> Takip</span>
-                            </div>
-                        )}
+                        <div
+                            className="cursor-pointer hover:underline"
+                            onClick={() => {
+                                setDefaultModalTab("following");
+                                setFollowersModalOpen(true);
+                            }}
+                        >
+                            <span className="font-bold">{profile.followingCount ?? 0}</span>
+                            <span className="text-muted-foreground"> Takip</span>
+                        </div>
                     </div>
-                )}
+                ) : null}
 
                 <Separator className="my-4" />
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
@@ -179,6 +233,7 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
                     )}
                 </div>
             </div>
+            <FollowersModal isOpen={followersModalOpen} onClose={() => setFollowersModalOpen(false)} username={profile.username} defaultTab={defaultModalTab} />
         </div>
     );
 }
