@@ -20,6 +20,10 @@ namespace GGHub.Application.Dtos
         public ProfileVisibilitySetting ProfileVisibility { get; set; }
         public bool IsDateOfBirthPublic { get; set; }
         public MessagePrivacySetting MessageSetting { get; set; }
+        public bool IsFollowing { get; set; }
+        public bool IsFollowedBy { get; set; }
+        public int FollowerCount { get; set; }
+        public int FollowingCount { get; set; }
 
     }
 }

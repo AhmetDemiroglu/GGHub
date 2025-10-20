@@ -123,11 +123,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseStaticFiles();
-
 app.UseAuthentication();
 
 app.UseCors(MyAllowSpecificOrigins);
+
+app.UseStaticFiles();
 
 app.UseAuthorization();
 

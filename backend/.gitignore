@@ -429,3 +429,7 @@ FodyWeavers.xsd
 
 # SQLite database
 *.db
+
+# Environment variables
+.env.local
+.env*.local

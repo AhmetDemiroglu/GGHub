@@ -11,11 +11,17 @@ namespace GGHub.Infrastructure.Services
     public class SearchService : ISearchService
     {
         private readonly GGHubDbContext _context;
-        public SearchService(GGHubDbContext context) { _context = context; }
+        private readonly IGameService _gameService;
+
+        public SearchService(GGHubDbContext context, IGameService gameService)
+        {
+            _context = context;
+            _gameService = gameService;
+        }
 
         public async Task<IEnumerable<SearchResultDto>> SearchAsync(string query)
         {
-            var games = await _context.Games
+            var localGames = await _context.Games
                 .Where(g => g.Name.ToLower().Contains(query.ToLower()))
                 .Take(5)
                 .Select(g => new SearchResultDto
@@ -26,6 +32,30 @@ namespace GGHub.Infrastructure.Services
                     ImageUrl = g.CoverImage ?? g.BackgroundImage,
                     Link = $"/games/{g.Slug}"
                 }).ToListAsync();
+
+            if (localGames.Count < 5)  // 5'ten 3'e düşürdük
+            {
+                var rawgResults = await _gameService.GetGamesAsync(new GameQueryParams
+                {
+                    Search = query,
+                    Page = 1,
+                    PageSize = 5,
+                });
+
+                var rawgGames = rawgResults.Items
+                    .Where(g => !localGames.Any(lg => lg.Id == g.Slug))
+                    .Take(5 - localGames.Count)  // 5'ten 3'e düşürdük
+                    .Select(g => new SearchResultDto
+                    {
+                        Type = "Oyun",
+                        Id = g.Slug,
+                        Title = g.Name,
+                        ImageUrl = g.BackgroundImage,
+                        Link = $"/games/{g.Slug}"
+                    });
+
+                localGames = localGames.Concat(rawgGames).ToList();
+            }
 
             var users = await _context.Users
                 .Where(u => u.Username.ToLower().Contains(query.ToLower()))
@@ -39,7 +69,7 @@ namespace GGHub.Infrastructure.Services
                     Link = $"/profiles/{u.Username}"
                 }).ToListAsync();
 
-            return games.Concat(users);
+            return localGames.Concat(users);
         }
     }
 }
