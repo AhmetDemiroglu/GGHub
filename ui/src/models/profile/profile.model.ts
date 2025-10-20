@@ -48,20 +48,24 @@ export interface UpdateMessageSettingDto {
 }
 
 export interface PublicProfile {
-  id: number;
-  username: string;
-  email: string | null;
-  firstName: string | null;
-  lastName: string | null;
-  bio: string | null;
-  profileImageUrl: string | null;
-  dateOfBirth: string | null;
-  createdAt: string;
-  status: string | null;
-  phoneNumber: string | null;
-  isEmailPublic: boolean;
-  isPhoneNumberPublic: boolean;
-  profileVisibility: number; 
-  isDateOfBirthPublic: boolean;
-  messageSetting: number;
+    id: number;
+    username: string;
+    email: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    bio: string | null;
+    profileImageUrl: string | null;
+    dateOfBirth: string | null;
+    createdAt: string;
+    status: string | null;
+    phoneNumber: string | null;
+    isEmailPublic: boolean;
+    isPhoneNumberPublic: boolean;
+    profileVisibility: number;
+    isDateOfBirthPublic: boolean;
+    messageSetting: number;
+    isFollowing?: boolean;
+    isFollowedBy?: boolean;
+    followerCount?: number;
+    followingCount?: number;
 }

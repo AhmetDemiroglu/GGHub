@@ -105,6 +105,15 @@ namespace GGHub.Infrastructure.Services
                     return null;
                 }
             }
+            var isFollowing = currentUserId.HasValue &&
+                                await _context.Follows.AnyAsync(f => f.FollowerId == currentUserId.Value && f.FolloweeId == profileUser.Id);
+
+            var isFollowedBy = currentUserId.HasValue &&
+                                await _context.Follows.AnyAsync(f => f.FollowerId == profileUser.Id && f.FolloweeId == currentUserId.Value);
+
+            var followerCount = await _context.Follows.CountAsync(f => f.FolloweeId == profileUser.Id);
+            var followingCount = await _context.Follows.CountAsync(f => f.FollowerId == profileUser.Id);
+
             return new ProfileDto
             {
                 Id = profileUser.Id,
@@ -117,7 +126,16 @@ namespace GGHub.Infrastructure.Services
                 DateOfBirth = profileUser.DateOfBirth,
                 CreatedAt = profileUser.CreatedAt,
                 PhoneNumber = (profileUser.IsPhoneNumberPublic || profileUser.Id == currentUserId) ? profileUser.PhoneNumber : null,
-                Status = profileUser.Status
+                Status = profileUser.Status,
+                IsEmailPublic = profileUser.IsEmailPublic,
+                IsPhoneNumberPublic = profileUser.IsPhoneNumberPublic,
+                IsDateOfBirthPublic = profileUser.IsDateOfBirthPublic,
+                ProfileVisibility = profileUser.ProfileVisibility,
+                MessageSetting = profileUser.MessageSetting,
+                IsFollowing = isFollowing,
+                IsFollowedBy = isFollowedBy,
+                FollowerCount = followerCount,
+                FollowingCount = followingCount
             };
         }
         public async Task AnonymizeUserAsync(int userId)
