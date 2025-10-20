@@ -27,7 +27,7 @@ export function ScoreBadge({ type, score }: ScoreBadgeProps) {
 
   return (
     <div>
-      <p className="text-xs text-muted-foreground capitalize">{type}</p>
+      <p className="text-xs text-muted-foreground capitalize mb-2">{type}</p>
       <Badge variant="outline" className={cn("text-lg font-bold", getScoreStyling(type, typeof score === 'number' ? score : null))}>
         {scoreValue ?? '-'}
       </Badge>

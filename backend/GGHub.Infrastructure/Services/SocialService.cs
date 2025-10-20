@@ -87,36 +87,68 @@ namespace GGHub.Infrastructure.Services
             _context.UserListFollows.Remove(follow);
             return await _context.SaveChangesAsync() > 0;
         }
-        public async Task<IEnumerable<UserDto>> GetFollowersAsync(string username)
+        public async Task<IEnumerable<UserDto>> GetFollowersAsync(string username, int? currentUserId = null)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
             if (user == null) return Enumerable.Empty<UserDto>();
 
-            return await _context.Follows
+            var followers = await _context.Follows
                 .Where(f => f.FolloweeId == user.Id)
-                .Include(f => f.Follower) 
-                .Select(f => new UserDto
-                {
-                    Id = f.Follower.Id,
-                    Username = f.Follower.Username
-                })
+                .Include(f => f.Follower)
                 .ToListAsync();
+
+            var result = new List<UserDto>();
+            foreach (var follow in followers)
+            {
+                var isFollowing = currentUserId.HasValue &&
+                                 await _context.Follows.AnyAsync(f =>
+                                     f.FollowerId == currentUserId.Value &&
+                                     f.FolloweeId == follow.Follower.Id);
+
+                result.Add(new UserDto
+                {
+                    Id = follow.Follower.Id,
+                    Username = follow.Follower.Username,
+                    ProfileImageUrl = follow.Follower.ProfileImageUrl,
+                    FirstName = follow.Follower.FirstName,
+                    LastName = follow.Follower.LastName,
+                    IsFollowing = isFollowing
+                });
+            }
+
+            return result;
         }
 
-        public async Task<IEnumerable<UserDto>> GetFollowingAsync(string username)
+        public async Task<IEnumerable<UserDto>> GetFollowingAsync(string username, int? currentUserId = null)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
             if (user == null) return Enumerable.Empty<UserDto>();
 
-            return await _context.Follows
+            var following = await _context.Follows
                 .Where(f => f.FollowerId == user.Id)
-                .Include(f => f.Followee) 
-                .Select(f => new UserDto
-                {
-                    Id = f.Followee.Id,
-                    Username = f.Followee.Username
-                })
+                .Include(f => f.Followee)
                 .ToListAsync();
+
+            var result = new List<UserDto>();
+            foreach (var follow in following)
+            {
+                var isFollowing = currentUserId.HasValue &&
+                                 await _context.Follows.AnyAsync(f =>
+                                     f.FollowerId == currentUserId.Value &&
+                                     f.FolloweeId == follow.Followee.Id);
+
+                result.Add(new UserDto
+                {
+                    Id = follow.Followee.Id,
+                    Username = follow.Followee.Username,
+                    ProfileImageUrl = follow.Followee.ProfileImageUrl,
+                    FirstName = follow.Followee.FirstName,
+                    LastName = follow.Followee.LastName,
+                    IsFollowing = isFollowing
+                });
+            }
+
+            return result;
         }
         public async Task<MessageDto?> SendMessageAsync(int senderId, MessageForCreationDto messageDto)
         {

@@ -6,8 +6,8 @@ namespace GGHub.Application.Interfaces
     {
         Task<bool> FollowUserAsync(int followerId, string followeeUsername);
         Task<bool> UnfollowUserAsync(int followerId, string followeeUsername);
-        Task<IEnumerable<UserDto>> GetFollowersAsync(string username);
-        Task<IEnumerable<UserDto>> GetFollowingAsync(string username);
+        Task<IEnumerable<UserDto>> GetFollowersAsync(string username, int? currentUserId = null);
+        Task<IEnumerable<UserDto>> GetFollowingAsync(string username, int? currentUserId = null);
         Task<bool> FollowListAsync(int userId, int listId);
         Task<bool> UnfollowListAsync(int userId, int listId);
         Task<MessageDto?> SendMessageAsync(int senderId, MessageForCreationDto messageDto);

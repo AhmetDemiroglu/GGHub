@@ -1,5 +1,6 @@
 ﻿using GGHub.Application.Dtos;
 using GGHub.Application.Interfaces;
+using GGHub.Core.Enums;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
@@ -19,7 +20,7 @@ namespace GGHub.Infrastructure.Services
             _gameService = gameService;
         }
 
-        public async Task<IEnumerable<SearchResultDto>> SearchAsync(string query)
+        public async Task<IEnumerable<SearchResultDto>> SearchAsync(string query, int? currentUserId = null)
         {
             var localGames = await _context.Games
                 .Where(g => g.Name.ToLower().Contains(query.ToLower()))
@@ -33,7 +34,7 @@ namespace GGHub.Infrastructure.Services
                     Link = $"/games/{g.Slug}"
                 }).ToListAsync();
 
-            if (localGames.Count < 5)  // 5'ten 3'e düşürdük
+            if (localGames.Count < 5) 
             {
                 var rawgResults = await _gameService.GetGamesAsync(new GameQueryParams
                 {
@@ -44,7 +45,7 @@ namespace GGHub.Infrastructure.Services
 
                 var rawgGames = rawgResults.Items
                     .Where(g => !localGames.Any(lg => lg.Id == g.Slug))
-                    .Take(5 - localGames.Count)  // 5'ten 3'e düşürdük
+                    .Take(5 - localGames.Count)  
                     .Select(g => new SearchResultDto
                     {
                         Type = "Oyun",
@@ -57,19 +58,31 @@ namespace GGHub.Infrastructure.Services
                 localGames = localGames.Concat(rawgGames).ToList();
             }
 
-            var users = await _context.Users
-                .Where(u => u.Username.ToLower().Contains(query.ToLower()))
-                .Take(5)
-                .Select(u => new SearchResultDto
-                {
-                    Type = "Kullanıcı",
-                    Id = u.Username,
-                    Title = u.Username,
-                    ImageUrl = u.ProfileImageUrl,
-                    Link = $"/profiles/{u.Username}"
-                }).ToListAsync();
+            var allMatchingUsers = await _context.Users
+                .Where(u => u.Username.ToLower().Contains(query.ToLower()) && !u.IsDeleted)
+                .Include(u => u.Followers)  
+                .ToListAsync();
 
-            return localGames.Concat(users);
+                    var accessibleUsers = allMatchingUsers
+                        .Where(u =>
+                            u.ProfileVisibility == ProfileVisibilitySetting.Public ||
+                            u.Id == currentUserId ||
+                            (u.ProfileVisibility == ProfileVisibilitySetting.Followers &&
+                             currentUserId != null &&
+                             u.Followers.Any(f => f.FollowerId == currentUserId))
+                        )
+                        .Take(5)
+                        .Select(u => new SearchResultDto
+                        {
+                            Type = "Kullanıcı",
+                            Id = u.Username,
+                            Title = u.Username,
+                            ImageUrl = u.ProfileImageUrl,
+                            Link = $"/profiles/{u.Username}"
+                        })
+                        .ToList();
+
+                    return localGames.Concat(accessibleUsers);
         }
     }
 }

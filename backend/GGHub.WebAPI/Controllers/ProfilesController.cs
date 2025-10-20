@@ -46,14 +46,22 @@ public class ProfilesController : ControllerBase
     [HttpGet("{username}/followers")]
     public async Task<IActionResult> GetFollowers(string username)
     {
-        var followers = await _socialService.GetFollowersAsync(username);
+        var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier) != null
+            ? int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value)
+            : (int?)null;
+
+        var followers = await _socialService.GetFollowersAsync(username, currentUserId);
         return Ok(followers);
     }
 
     [HttpGet("{username}/following")]
     public async Task<IActionResult> GetFollowing(string username)
     {
-        var following = await _socialService.GetFollowingAsync(username);
+        var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier) != null
+            ? int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value)
+            : (int?)null;
+
+        var following = await _socialService.GetFollowingAsync(username, currentUserId);
         return Ok(following);
     }
     [HttpPost("{username}/block")]

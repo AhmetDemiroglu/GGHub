@@ -6,6 +6,6 @@ namespace GGHub.Application.Interfaces
 {
     public interface ISearchService
     {
-        Task<IEnumerable<SearchResultDto>> SearchAsync(string query);
+        Task<IEnumerable<SearchResultDto>> SearchAsync(string query, int? currentUserId = null);
     }
 }
