@@ -59,5 +59,12 @@ namespace GGHub.WebAPI.Controllers
                 return NotFound(ex.Message);
             }
         }
+        [HttpGet("unread-count")]
+        public async Task<IActionResult> GetUnreadMessageCount()
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var count = await _socialService.GetUnreadMessageCountAsync(userId);
+            return Ok(new { count });
+        }
     }
 }

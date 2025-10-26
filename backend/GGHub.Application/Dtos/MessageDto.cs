@@ -10,5 +10,7 @@
         public string Content { get; set; }
         public DateTime? ReadAt { get; set; }
         public DateTime SentAt { get; set; }
+        public string? SenderProfileImageUrl { get; set; }
+        public string? RecipientProfileImageUrl { get; set; }
     }
 }

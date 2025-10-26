@@ -1,4 +1,5 @@
-﻿using System;
+﻿using GGHub.Core.Enums;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -15,5 +16,6 @@ namespace GGHub.Core.Entities
         public DateTime? RevokedAt { get; set; }
         public int UserId { get; set; }
         public User User { get; set; }
+        public NotificationType Type { get; set; }
     }
 }

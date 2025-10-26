@@ -1,6 +1,7 @@
 ﻿using GGHub.Application.Dtos;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
+using GGHub.Core.Enums;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -171,7 +172,7 @@ namespace GGHub.Infrastructure.Services
             if (voter != null && review.UserId != userId) 
             {
                 var message = $"{voter.Username}, yorumuna {(value == 1 ? "olumlu" : "olumsuz")} oy verdi.";
-                await _notificationService.CreateNotificationAsync(review.UserId, message, $"/reviews/{review.Id}");
+                await _notificationService.CreateNotificationAsync(review.UserId, message, NotificationType.Review, $"/reviews/{review.Id}");
             }
         }
 

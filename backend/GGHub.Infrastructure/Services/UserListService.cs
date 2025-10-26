@@ -1,6 +1,7 @@
 ﻿using GGHub.Application.Dtos;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
+using GGHub.Core.Enums;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -87,7 +88,7 @@ namespace GGHub.Infrastructure.Services
                 {
                     if (follower.FollowerUserId != list.UserId)
                     {
-                        await _notificationService.CreateNotificationAsync(follower.FollowerUserId, notificationMessage, $"/lists/{list.Id}");
+                        await _notificationService.CreateNotificationAsync(follower.FollowerUserId, notificationMessage, NotificationType.ListFollow, $"/lists/{list.Id}");
                     }
                 }
             }

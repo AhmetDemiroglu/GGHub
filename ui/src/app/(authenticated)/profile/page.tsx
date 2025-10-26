@@ -150,7 +150,7 @@ export default function ProfilePage() {
     );
     return (
         <AuthGuard>
-            <div className="w-full p-5">
+            <div className="w-full h-full overflow-y-auto p-5">
                 <div className="space-y-4">
                     <div>
                         <h1 className="text-3xl font-bold">Profil Yönetimi</h1>

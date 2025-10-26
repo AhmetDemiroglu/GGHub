@@ -1,6 +1,7 @@
 ﻿using GGHub.Application.Dtos;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
+using GGHub.Core.Enums;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -39,7 +40,7 @@ namespace GGHub.Infrastructure.Services
                 if (follower != null)
                 {
                     var message = $"{follower.Username} sizi takip etmeye başladı.";
-                    await _notificationService.CreateNotificationAsync(followee.Id, message, $"/profiles/{follower.Username}");
+                    await _notificationService.CreateNotificationAsync(followee.Id, message, NotificationType.Follow, $"/profiles/{follower.Username}");
                 }
             }
             return success;
@@ -73,7 +74,7 @@ namespace GGHub.Infrastructure.Services
                 if (follower != null)
                 {
                     var message = $"{follower.Username}, '{listToFollow.Name}' adlı listenizi takip etmeye başladı.";
-                    await _notificationService.CreateNotificationAsync(listToFollow.UserId, message, $"/lists/{listToFollow.Id}");
+                    await _notificationService.CreateNotificationAsync(listToFollow.UserId, message, NotificationType.ListFollow, $"/lists/{listToFollow.Id}");
                 }
             }
             return success;
@@ -251,8 +252,10 @@ namespace GGHub.Infrastructure.Services
                     Id = m.Id,
                     SenderId = m.SenderId,
                     SenderUsername = m.Sender.Username,
+                    SenderProfileImageUrl = m.Sender.ProfileImageUrl,
                     RecipientId = m.RecipientId,
                     RecipientUsername = m.Recipient.Username,
+                    RecipientProfileImageUrl = m.Recipient.ProfileImageUrl,
                     Content = m.Content,
                     ReadAt = m.ReadAt,
                     SentAt = m.SentAt
@@ -305,6 +308,12 @@ namespace GGHub.Infrastructure.Services
 
             _context.UserBlocks.Remove(block);
             return await _context.SaveChangesAsync() > 0;
+        }
+        public async Task<int> GetUnreadMessageCountAsync(int userId)
+        {
+            return await _context.Messages
+                .Where(m => m.RecipientId == userId && m.ReadAt == null && !m.RecipientDeleted)
+                .CountAsync();
         }
     }
 }

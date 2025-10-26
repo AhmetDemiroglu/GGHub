@@ -2,8 +2,10 @@ export interface MessageDto {
     id: number;
     senderId: number;
     senderUsername: string;
+    senderProfileImageUrl?: string | null;
     recipientId: number;
     recipientUsername: string;
+    recipientProfileImageUrl?: string | null;
     content: string;
     readAt: string | null;
     sentAt: string;

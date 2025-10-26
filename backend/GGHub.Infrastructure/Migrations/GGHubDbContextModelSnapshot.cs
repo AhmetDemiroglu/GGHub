@@ -201,6 +201,9 @@ namespace GGHub.Infrastructure.Migrations
                     b.Property<int>("RecipientUserId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.HasIndex("RecipientUserId");
@@ -226,6 +229,9 @@ namespace GGHub.Infrastructure.Migrations
                     b.Property<string>("Token")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("UserId")
                         .HasColumnType("INTEGER");

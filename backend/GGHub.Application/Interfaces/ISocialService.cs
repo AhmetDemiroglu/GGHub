@@ -15,5 +15,6 @@ namespace GGHub.Application.Interfaces
         Task<IEnumerable<MessageDto>> GetMessageThreadAsync(int userId, string partnerUsername);
         Task<bool> BlockUserAsync(int blockerId, string blockedUsername);
         Task<bool> UnblockUserAsync(int blockerId, string blockedUsername);
+        Task<int> GetUnreadMessageCountAsync(int userId);
     }
 }

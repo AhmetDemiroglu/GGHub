@@ -84,5 +84,50 @@ namespace GGHub.Infrastructure.Services
 
                     return localGames.Concat(accessibleUsers);
         }
+        public async Task<IEnumerable<SearchResultDto>> SearchMessageableUsersAsync(string query, int currentUserId)
+        {
+            var currentUser = await _context.Users.FindAsync(currentUserId);
+            if (currentUser == null) return Enumerable.Empty<SearchResultDto>();
+
+            var allMatchingUsers = await _context.Users
+                .Where(u => u.Username.ToLower().Contains(query.ToLower())
+                            && !u.IsDeleted
+                            && u.Id != currentUserId)
+                .Include(u => u.Followers)
+                .ToListAsync();
+
+            var blockedUserIds = await _context.UserBlocks
+                .Where(b => b.BlockerId == currentUserId || b.BlockedId == currentUserId)
+                .Select(b => b.BlockerId == currentUserId ? b.BlockedId : b.BlockerId)
+                .ToListAsync();
+
+            var messageableUsers = allMatchingUsers
+                .Where(u =>
+                {
+                    if (blockedUserIds.Contains(u.Id)) return false;
+
+                    if (u.MessageSetting == MessagePrivacySetting.None) return false;
+
+                    if (u.MessageSetting == MessagePrivacySetting.Following)
+                    {
+                        var isFollowedByRecipient = u.Followers.Any(f => f.FollowerId == u.Id && f.FolloweeId == currentUserId);
+                        if (!isFollowedByRecipient) return false;
+                    }
+
+                    return true;
+                })
+                .Take(10) 
+                .Select(u => new SearchResultDto
+                {
+                    Type = "Kullanıcı",
+                    Id = u.Username,
+                    Title = u.Username,
+                    ImageUrl = u.ProfileImageUrl,
+                    Link = $"/messages/{u.Username}"
+                })
+                .ToList();
+
+            return messageableUsers;
+        }
     }
 }

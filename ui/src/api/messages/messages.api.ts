@@ -27,3 +27,12 @@ export const sendMessage = (data: MessageForCreationDto): Promise<MessageDto> =>
             throw error;
         });
 };
+
+export const getUnreadMessageCount = (): Promise<{ count: number }> => {
+    return axiosInstance
+        .get("/messages/unread-count")
+        .then((response) => response.data)
+        .catch((error) => {
+            throw error;
+        });
+};

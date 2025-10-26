@@ -25,5 +25,23 @@ namespace GGHub.WebAPI.Controllers
             var results = await _searchService.SearchAsync(query, currentUserId);
             return Ok(results);
         }
+        [HttpGet("messageable-users")]
+        public async Task<IActionResult> SearchMessageableUsers([FromQuery] string query)
+        {
+            if (string.IsNullOrWhiteSpace(query) || query.Length < 3)
+            {
+                return BadRequest("Arama sorgusu en az 3 karakter olmalıdır.");
+            }
+
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+            {
+                return Unauthorized();
+            }
+
+            var userId = int.Parse(userIdClaim.Value);
+            var results = await _searchService.SearchMessageableUsersAsync(query, userId);
+            return Ok(results);
+        }
     }
 }
