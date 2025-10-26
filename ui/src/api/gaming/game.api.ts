@@ -1,28 +1,9 @@
-import {axiosInstance} from "@core/lib/axios";
-import type { Game } from "@/models/gaming/game.model";
-import type { AxiosResponse } from "axios";
-
-export interface PaginatedResponse<T> {
-  items: T[];
-  totalCount: number;
-  page: number;
-  pageSize: number;
-}
-
-export type GameApiPaginateParams = {
-  page: number;
-  pageSize: number;
-  search?: string;
-  ordering?: string;
-  genres?: string;
-  platforms?: string;
-  dates?: string;
-  metacritic?: string;
-};
+import { axiosInstance } from "@core/lib/axios";
+import type { Game, GameApiPaginateParams } from "@/models/gaming/game.model";
+import type { PaginatedResponse } from "@/models/system/api.model";
 
 export const gameApi = {
-  paginate: (params: GameApiPaginateParams) => {
-    return axiosInstance.get<PaginatedResponse<Game>>('/games', { params })
-        .then((res) => res.data);
-  },
+    paginate: (params: GameApiPaginateParams) => {
+        return axiosInstance.get<PaginatedResponse<Game>>("/games", { params }).then((res) => res.data);
+    },
 };
