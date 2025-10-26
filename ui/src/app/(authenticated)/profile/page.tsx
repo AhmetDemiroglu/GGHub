@@ -1,7 +1,7 @@
 "use client";
 
 import { getMyProfile } from "@/api/profile/profile.api";
-import { AuthProvider } from "@/core/components/base/auth-provider";
+import { AuthGuard } from "@/core/components/base/auth-guard";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/core/components/ui/card";
 import { Skeleton } from "@/core/components/ui/skeleton";
@@ -26,7 +26,7 @@ export default function ProfilePage() {
 
     if (isLoading) {
         return (
-            <AuthProvider>
+            <AuthGuard>
                 <Card className="w-full max-w-2xl">
                     <CardHeader>
                         <Skeleton className="h-8 w-48" />
@@ -38,13 +38,13 @@ export default function ProfilePage() {
                         <Skeleton className="h-10 w-full" />
                     </CardContent>
                 </Card>
-            </AuthProvider>
+            </AuthGuard>
         );
     }
 
     if (isError) {
         return (
-            <AuthProvider>
+            <AuthGuard>
                 <Card className="w-full max-w-2xl">
                     <CardHeader>
                         <CardTitle>Hata</CardTitle>
@@ -54,7 +54,7 @@ export default function ProfilePage() {
                         <p className="text-red-500">{error.message}</p>
                     </CardContent>
                 </Card>
-            </AuthProvider>
+            </AuthGuard>
         );
     }
 
@@ -149,7 +149,7 @@ export default function ProfilePage() {
         </>
     );
     return (
-        <AuthProvider>
+        <AuthGuard>
             <div className="w-full p-5">
                 <div className="space-y-4">
                     <div>
@@ -189,6 +189,6 @@ export default function ProfilePage() {
                 </div>
             </div>
             <ProfilePhotoUploader isOpen={isPhotoUploaderOpen} onClose={() => setIsPhotoUploaderOpen(false)} currentImageUrl={data.profileImageUrl} username={data.username} />
-        </AuthProvider>
+        </AuthGuard>
     );
 }

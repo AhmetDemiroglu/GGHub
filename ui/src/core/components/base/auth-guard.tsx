@@ -1,11 +1,11 @@
 'use client';
 
-import { useAuthStore } from '@/core/stores/auth.store';
+import { useAuth } from '@core/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+export function AuthGuard({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth();
   const router = useRouter();
 
   const [isMounted, setIsMounted] = useState(false);

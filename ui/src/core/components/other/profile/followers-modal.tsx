@@ -9,7 +9,7 @@ import { getFollowers, getFollowing, followUser, unfollowUser } from "@/api/soci
 import { useRouter } from "next/navigation";
 import { Button } from "@/core/components/ui/button";
 import { toast } from "sonner";
-import { useAuthStore } from "@/core/stores/auth.store";
+import { useAuth } from "@core/hooks/use-auth";
 
 interface User {
     id: number;
@@ -31,7 +31,7 @@ export function FollowersModal({ isOpen, onClose, username, defaultTab = "follow
     const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState(defaultTab);
     const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-    const { user: currentUser } = useAuthStore();
+    const { user: currentUser } = useAuth();
 
     useEffect(() => {
         setActiveTab(defaultTab);
@@ -112,6 +112,7 @@ export function FollowersModal({ isOpen, onClose, username, defaultTab = "follow
                                     {currentUser && user.username !== currentUser.username && (
                                         <Button
                                             size="sm"
+                                            className="cursor-pointer"
                                             variant={user.isFollowing ? "outline" : "default"}
                                             onClick={(e) => {
                                                 e.stopPropagation();

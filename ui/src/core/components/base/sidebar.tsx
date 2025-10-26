@@ -30,7 +30,7 @@ export function Sidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
         <Button
           size="icon"
           variant="outline"
-          className="w-full"
+          className="w-full cursor-pointer"
           onClick={() => setIsCollapsed(!isCollapsed)}
         >
           {isCollapsed ? <ChevronRight /> : <ChevronLeft />}

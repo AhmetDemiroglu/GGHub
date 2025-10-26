@@ -123,7 +123,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                                     onClick={handleFollow}
                                     variant={isFollowing ? "outline" : "default"}
                                     size="sm"
-                                    className="gap-2"
+                                    className="gap-2 cursor-pointer"
                                     disabled={followMutation.isPending || unfollowMutation.isPending}
                                 >
                                     {isFollowing ? (
@@ -140,7 +140,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                                 </Button>
 
                                 {canSendMessage() ? (
-                                    <Button variant="outline" size="sm">
+                                    <Button variant="outline" size="sm" className="cursor-pointer">
                                         Mesaj Gönder
                                     </Button>
                                 ) : (

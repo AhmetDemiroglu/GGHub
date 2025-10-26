@@ -1,7 +1,7 @@
 import Image from "next/image";
 import logoSrc from "@core/assets/logo.png";
 import Link from "next/link";
-import { useAuthStore } from "@/core/stores/auth.store";
+import { useAuth } from "@core/hooks/use-auth";
 import { Button } from "@/core/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/core/components/ui/dropdown-menu";
@@ -14,7 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { SearchBar } from "@/core/components/other/search/search-bar";
 
 export function Header() {
-    const { isAuthenticated, user, logout } = useAuthStore();
+    const { isAuthenticated, user, logout } = useAuth();
 
     const enabled = isAuthenticated && !!user;
     const { data } = useQuery<Profile>({

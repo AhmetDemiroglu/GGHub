@@ -4,12 +4,12 @@ import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getProfileByUsername } from "@/api/profile/profile.api";
 import ProfileHeader from "@core/components/other/profile/profile-header";
-import { useAuthStore } from "@/core/stores/auth.store";
+import { useAuth } from "@core/hooks/use-auth";
 
 export default function ProfilePage() {
     const params = useParams();
     const username = params.username as string;
-    const { user } = useAuthStore();
+    const { user } = useAuth();
 
     const {
         data: profile,
