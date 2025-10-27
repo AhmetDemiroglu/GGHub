@@ -208,7 +208,9 @@ namespace GGHub.Infrastructure.Services
                         {
                             Id = l.User.Id,
                             Username = l.User.Username,
-                            ProfileImageUrl = l.User.ProfileImageUrl
+                            ProfileImageUrl = l.User.ProfileImageUrl,
+                            FirstName = l.User.FirstName,
+                            LastName = l.User.LastName,
                         },
                         UpdatedAt = l.UpdatedAt,
                         FollowerCount = l.Followers.Count(),

@@ -138,7 +138,9 @@ namespace GGHub.Infrastructure.Services
                         Id = l.User.Id,
                         Username = l.User.Username,
                         ProfileImageUrl = l.User.ProfileImageUrl,
-                    },
+                        FirstName = l.User.FirstName,
+                        LastName = l.User.LastName,
+                    },  
                     UpdatedAt = l.UpdatedAt,
                     FollowerCount = l.Followers.Count(),
                     Games = l.UserListGames.Select(ulg => new GameSummaryDto
@@ -160,10 +162,10 @@ namespace GGHub.Infrastructure.Services
         public async Task<UserListDetailDto> GetListDetailAsync(int listId, int currentUserId)
         {
             var list = await _context.UserLists
-                .Include(l => l.User) // Owner bilgisi için
-                .Include(l => l.UserListGames)
+                .Include(l => l.User)
+                .Include(l => l.UserListGames) 
                     .ThenInclude(ulg => ulg.Game)
-                .AsNoTracking() // Sadece okuma yapıyoruz
+                .AsNoTracking()
                 .FirstOrDefaultAsync(l => l.Id == listId);
 
             if (list == null)
@@ -171,19 +173,15 @@ namespace GGHub.Infrastructure.Services
                 throw new KeyNotFoundException("Liste bulunamadı.");
             }
 
-            // GİZLİLİK KONTROLLERİ
-            if (list.UserId != currentUserId) // Listenin sahibi değilse
+            if (list.UserId != currentUserId) 
             {
                 if (list.Visibility == ListVisibilitySetting.Private)
                 {
-                    // Liste gizli ve sahibi değil
                     throw new UnauthorizedAccessException("Bu listeyi görme yetkiniz yok.");
                 }
 
                 if (list.Visibility == ListVisibilitySetting.Followers)
                 {
-                    // Liste sadece takipçilere açık. Sahibi değil, peki takip ediyor mu?
-                    // (Kural 2: Liste sahibini takip edenler)
                     var isFollowingOwner = await _context.Follows
                         .AnyAsync(f => f.FollowerId == currentUserId && f.FolloweeId == list.UserId);
 
@@ -194,7 +192,19 @@ namespace GGHub.Infrastructure.Services
                 }
             }
 
-            // Eğer buraya geldiyse (listeyi görebiliyorsa), DTO'ya map'le
+            var gameSummaries = list.UserListGames.Select(ulg => new GameSummaryDto
+            {
+                Id = ulg.Game.Id,
+                RawgId = ulg.Game.RawgId,
+                Name = ulg.Game.Name,
+                Slug = ulg.Game.Slug,
+                CoverImage = ulg.Game.CoverImage,
+                BackgroundImage = ulg.Game.BackgroundImage,
+                Released = ulg.Game.Released,
+                Rating = ulg.Game.Rating, 
+                Metacritic = ulg.Game.Metacritic, 
+            }).ToList();
+
             return new UserListDetailDto
             {
                 Id = list.Id,
@@ -202,25 +212,20 @@ namespace GGHub.Infrastructure.Services
                 Description = list.Description,
                 Visibility = list.Visibility,
                 Category = list.Category,
-                AverageRating = list.AverageRating,
-                RatingCount = list.RatingCount,
                 UpdatedAt = list.UpdatedAt,
-                FollowerCount = await _context.UserListFollows.CountAsync(f => f.FollowedListId == listId),
-                Owner = new UserDto
+                GameCount = list.UserListGames.Count, // Bu hala doğru
+                FollowerCount = await _context.UserListFollows.CountAsync(f => f.FollowedListId == listId), // Bu da
+                RatingCount = list.RatingCount, // Denormalize
+                AverageRating = list.AverageRating, // Denormalize
+                Owner = new UserDto 
                 {
                     Id = list.User.Id,
-                    Username = list.User.Username
+                    Username = list.User.Username,
+                    ProfileImageUrl = list.User.ProfileImageUrl,
+                    FirstName = list.User.FirstName,
+                    LastName = list.User.LastName,
                 },
-                Games = list.UserListGames.Select(ulg => new GameSummaryDto
-                {
-                    Id = ulg.Game.Id,
-                    RawgId = ulg.Game.RawgId,
-                    Name = ulg.Game.Name,
-                    Slug = ulg.Game.Slug,
-                    CoverImage = ulg.Game.CoverImage,
-                    BackgroundImage = ulg.Game.BackgroundImage,
-                    Released = ulg.Game.Released
-                }).ToList()
+                Games = gameSummaries
             };
         }
 
@@ -264,7 +269,10 @@ namespace GGHub.Infrastructure.Services
                     Owner = new UserDto
                     {
                         Id = l.User.Id,
-                        Username = l.User.Username
+                        Username = l.User.Username,
+                        ProfileImageUrl = l.User.ProfileImageUrl,
+                        FirstName = l.User.FirstName,
+                        LastName = l.User.LastName,
                     }
                 })
                 .ToListAsync();

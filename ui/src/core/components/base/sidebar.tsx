@@ -2,13 +2,14 @@
 
 import { Button } from "@/core/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@core/components/ui/tooltip";
-import { ChevronLeft, ChevronRight, Home, List, MessageSquare, Binoculars } from "lucide-react";
+import { ChevronLeft, ChevronRight, Home, List, MessageSquare, Gamepad2, Library } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 
 const navLinks = [
   { href: "/", label: "Ana Sayfa", icon: Home },
-  { href: "/discover", label: "Keşfet", icon: Binoculars },
+  { href: "/discover", label: "Oyunları Keşfet", icon: Gamepad2 },
+  { href: "/lists", label: "Listeleri Keşfet", icon: Library },
   { href: "/my-lists", label: "Listelerim", icon: List },
   { href: "/messages", label: "Mesajlar", icon: MessageSquare },
 ];

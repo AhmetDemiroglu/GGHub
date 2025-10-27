@@ -4,6 +4,13 @@ import { ScoreBadge } from "../score-badge";
 import { Separator } from "@core/components/ui/separator";
 
 export function GameCard({ game }: { game: Game }) {
+    if (!game) {
+        return null;
+    }
+
+    const hasPlatforms = game.platforms && Array.isArray(game.platforms) && game.platforms.length > 0;
+    const hasGenres = game.genres && Array.isArray(game.genres) && game.genres.length > 0;
+
     return (
         <div className="bg-card rounded-lg cursor-pointer overflow-hidden h-full flex flex-col group text-foreground border border-border hover:border-primary/50 transition-colors duration-300">
             <div className="aspect-video relative overflow-hidden">
@@ -12,9 +19,13 @@ export function GameCard({ game }: { game: Game }) {
             </div>
 
             <div className="p-4 flex flex-col flex-1">
-                <div className="mb-2 h-4">
-                    <PlatformIcons platforms={game.platforms} />
-                </div>
+                {hasPlatforms ? (
+                    <div className="mb-2 h-4">
+                        <PlatformIcons platforms={game.platforms} />
+                    </div>
+                ) : (
+                    <div className="mb-2 h-0" />
+                )}
 
                 <h3 className="text-xl font-bold line-clamp-2 mb-4 flex-1">{game.name}</h3>
 
@@ -31,10 +42,12 @@ export function GameCard({ game }: { game: Game }) {
                         <p>Çıkış Tarihi</p>
                         <p className="text-foreground font-semibold">{game.released ? new Date(game.released).toLocaleDateString("tr-TR") : "-"}</p>
                     </div>
-                    <div className="text-right">
-                        <p>Türler</p>
-                        <p className="text-foreground font-semibold line-clamp-1">{game.genres.length > 0 ? game.genres.map((g) => g.name).join(", ") : "-"}</p>
-                    </div>
+                    {hasGenres ? (
+                        <div className="text-right">
+                            <p>Türler</p>
+                            <p className="text-foreground font-semibold line-clamp-1">{game.genres.map((g) => g.name).join(", ")}</p>
+                        </div>
+                    ) : null}
                 </div>
             </div>
         </div>

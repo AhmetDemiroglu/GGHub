@@ -194,7 +194,10 @@ namespace GGHub.Infrastructure.Services
                 Owner = new UserDto
                 {
                     Id = user.Id,
-                    Username = user.Username
+                    Username = user.Username,
+                    ProfileImageUrl = user.ProfileImageUrl,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
                 },
                 Upvotes = up,
                 Downvotes = down,

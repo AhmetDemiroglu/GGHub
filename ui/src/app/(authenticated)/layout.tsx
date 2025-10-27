@@ -12,7 +12,7 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
             <Header />
             <div className="flex flex-1 overflow-hidden">
                 <Sidebar isCollapsed={isSidebarCollapsed} setIsCollapsed={setSidebarCollapsed} />
-                <main className="flex-1 overflow-hidden p-4 md:p-6 2xl:p-10 border-l">{children}</main>
+                <main className="flex-1 overflow-hidden p-2 md:p-4 2xl:p-6 border-l">{children}</main>
             </div>
         </div>
     );
