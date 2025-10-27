@@ -30,7 +30,6 @@ namespace GGHub.WebAPI.Controllers
         }
         [HttpGet("test-auth")] 
         [Authorize]
-        // [ApiExplorerSettings(IgnoreApi = true)]
         public IActionResult TestAuth()
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

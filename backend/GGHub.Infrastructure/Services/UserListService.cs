@@ -1,4 +1,5 @@
 ﻿using GGHub.Application.Dtos;
+using GGHub.Application.DTOs.Common;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
 using GGHub.Core.Enums;
@@ -98,16 +99,16 @@ namespace GGHub.Infrastructure.Services
         {
             var lists = await _context.UserLists
                 .Where(l => l.UserId == userId)
-                .OrderByDescending(l => l.UpdatedAt) 
-                .Select(l => new UserListDto 
+                .OrderByDescending(l => l.UpdatedAt)
+                .Select(l => new UserListDto
                 {
                     Id = l.Id,
                     Name = l.Name,
                     Description = l.Description,
-                    Visibility = l.Visibility,  
-                    Category = l.Category, 
-                    AverageRating = l.AverageRating, 
-                    RatingCount = l.RatingCount, 
+                    Visibility = l.Visibility,
+                    Category = l.Category,
+                    AverageRating = l.AverageRating,
+                    RatingCount = l.RatingCount,
                     CreatedAt = l.CreatedAt,
                     UpdatedAt = l.UpdatedAt,
                     GameCount = l.UserListGames.Count(),
@@ -117,7 +118,7 @@ namespace GGHub.Infrastructure.Services
 
             return lists;
         }
-        public async Task<UserListDetailDto?> GetListByIdAsync(int listId, int userId)
+        public async Task<UserListDetailDto?> GetMyListDetailAsync(int listId, int userId)
         {
             var list = await _context.UserLists
                 .Include(l => l.UserListGames)
@@ -155,6 +156,127 @@ namespace GGHub.Infrastructure.Services
 
             return list;
         }
+
+        public async Task<UserListDetailDto> GetListDetailAsync(int listId, int currentUserId)
+        {
+            var list = await _context.UserLists
+                .Include(l => l.User) // Owner bilgisi için
+                .Include(l => l.UserListGames)
+                    .ThenInclude(ulg => ulg.Game)
+                .AsNoTracking() // Sadece okuma yapıyoruz
+                .FirstOrDefaultAsync(l => l.Id == listId);
+
+            if (list == null)
+            {
+                throw new KeyNotFoundException("Liste bulunamadı.");
+            }
+
+            // GİZLİLİK KONTROLLERİ
+            if (list.UserId != currentUserId) // Listenin sahibi değilse
+            {
+                if (list.Visibility == ListVisibilitySetting.Private)
+                {
+                    // Liste gizli ve sahibi değil
+                    throw new UnauthorizedAccessException("Bu listeyi görme yetkiniz yok.");
+                }
+
+                if (list.Visibility == ListVisibilitySetting.Followers)
+                {
+                    // Liste sadece takipçilere açık. Sahibi değil, peki takip ediyor mu?
+                    // (Kural 2: Liste sahibini takip edenler)
+                    var isFollowingOwner = await _context.Follows
+                        .AnyAsync(f => f.FollowerId == currentUserId && f.FolloweeId == list.UserId);
+
+                    if (!isFollowingOwner)
+                    {
+                        throw new UnauthorizedAccessException("Bu listeyi sadece sahibinin takipçileri görebilir.");
+                    }
+                }
+            }
+
+            // Eğer buraya geldiyse (listeyi görebiliyorsa), DTO'ya map'le
+            return new UserListDetailDto
+            {
+                Id = list.Id,
+                Name = list.Name,
+                Description = list.Description,
+                Visibility = list.Visibility,
+                Category = list.Category,
+                AverageRating = list.AverageRating,
+                RatingCount = list.RatingCount,
+                UpdatedAt = list.UpdatedAt,
+                FollowerCount = await _context.UserListFollows.CountAsync(f => f.FollowedListId == listId),
+                Owner = new UserDto
+                {
+                    Id = list.User.Id,
+                    Username = list.User.Username
+                },
+                Games = list.UserListGames.Select(ulg => new GameSummaryDto
+                {
+                    Id = ulg.Game.Id,
+                    RawgId = ulg.Game.RawgId,
+                    Name = ulg.Game.Name,
+                    Slug = ulg.Game.Slug,
+                    CoverImage = ulg.Game.CoverImage,
+                    BackgroundImage = ulg.Game.BackgroundImage,
+                    Released = ulg.Game.Released
+                }).ToList()
+            };
+        }
+
+        public async Task<PaginatedResult<UserListPublicDto>> GetPublicListsAsync(ListQueryParams query)
+        {
+            var queryable = _context.UserLists
+                .Include(l => l.User)
+                .Where(l => l.Visibility == ListVisibilitySetting.Public)
+                .AsNoTracking();
+
+            if (!string.IsNullOrWhiteSpace(query.SearchTerm))
+            {
+                var searchTermLower = query.SearchTerm.ToLower();
+                queryable = queryable.Where(l => l.Name.ToLower().Contains(searchTermLower) ||
+                                                 (l.Description != null && l.Description.ToLower().Contains(searchTermLower)));
+            }
+
+            if (query.Category.HasValue && query.Category.Value != ListCategory.Other)
+            {
+                queryable = queryable.Where(l => l.Category == query.Category.Value);
+            }
+
+            var totalCount = await queryable.CountAsync();
+
+            var items = await queryable
+                .OrderByDescending(l => l.AverageRating)
+                .ThenByDescending(l => l.RatingCount)
+                .Skip((query.Page - 1) * query.PageSize)
+                .Take(query.PageSize)
+                .Select(l => new UserListPublicDto 
+                {
+                    Id = l.Id,
+                    Name = l.Name,
+                    Description = l.Description,
+                    Category = l.Category,
+                    UpdatedAt = l.UpdatedAt,
+                    GameCount = l.UserListGames.Count(), 
+                    FollowerCount = l.Followers.Count(), 
+                    AverageRating = l.AverageRating,
+                    RatingCount = l.RatingCount,
+                    Owner = new UserDto
+                    {
+                        Id = l.User.Id,
+                        Username = l.User.Username
+                    }
+                })
+                .ToListAsync();
+
+            return new PaginatedResult<UserListPublicDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = query.Page,
+                PageSize = query.PageSize
+            };
+        }
         public async Task<bool> RemoveGameFromListAsync(int listId, int rawgGameId, int userId)
         {
             var list = await _context.UserLists.FirstOrDefaultAsync(l => l.Id == listId);
@@ -181,6 +303,56 @@ namespace GGHub.Infrastructure.Services
             await _context.SaveChangesAsync();
 
             return true;
+        }
+        public async Task<bool> UpdateListAsync(int listId, UserListForUpdateDto dto, int userId)
+        {
+            var list = await _context.UserLists.FirstOrDefaultAsync(l => l.Id == listId);
+
+            if (list == null)
+            {
+                throw new KeyNotFoundException("Liste bulunamadı.");
+            }
+
+            if (list.UserId != userId)
+            {
+                throw new UnauthorizedAccessException("Bu liste üzerinde işlem yapma yetkiniz yok.");
+            }
+
+            var nameExists = await _context.UserLists
+                .AnyAsync(l => l.UserId == userId &&
+                               l.Name.ToLower() == dto.Name.ToLower() &&
+                               l.Id != listId);
+
+            if (nameExists)
+            {
+                throw new InvalidOperationException("Bu isimde başka bir listeniz zaten mevcut.");
+            }
+
+            list.Name = dto.Name;
+            list.Description = dto.Description;
+            list.Visibility = dto.Visibility;
+            list.Category = dto.Category;
+            list.UpdatedAt = DateTime.UtcNow;
+
+            return await _context.SaveChangesAsync() > 0;
+        }
+        public async Task<bool> DeleteListAsync(int listId, int userId)
+        {
+            var list = await _context.UserLists.FirstOrDefaultAsync(l => l.Id == listId);
+
+            if (list == null)
+            {
+                throw new KeyNotFoundException("Silinecek liste bulunamadı.");
+            }
+
+            if (list.UserId != userId)
+            {
+                throw new UnauthorizedAccessException("Bu liste üzerinde işlem yapma yetkiniz yok.");
+            }
+
+            _context.UserLists.Remove(list);
+
+            return await _context.SaveChangesAsync() > 0;
         }
     }
 }

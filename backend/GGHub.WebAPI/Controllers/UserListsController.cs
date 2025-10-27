@@ -70,11 +70,11 @@ namespace GGHub.WebAPI.Controllers
             var lists = await _userListService.GetListsForUserAsync(userId);
             return Ok(lists);
         }
-        [HttpGet("{listId}")]
-        public async Task<IActionResult> GetListById(int listId)
+        [HttpGet("{listId}/my-detail")]
+        public async Task<IActionResult> GetMyListDetail(int listId)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var list = await _userListService.GetListByIdAsync(listId, userId);
+            var list = await _userListService.GetMyListDetailAsync(listId, userId);
 
             if (list == null)
             {
@@ -82,6 +82,33 @@ namespace GGHub.WebAPI.Controllers
             }
 
             return Ok(list);
+        }
+
+        [HttpGet("{listId}")]
+        public async Task<IActionResult> GetListDetail(int listId)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            try
+            {
+                var listDetail = await _userListService.GetListDetailAsync(listId, userId);
+                return Ok(listDetail);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
+        }
+
+        [HttpGet("public")]
+        public async Task<IActionResult> GetPublicLists([FromQuery] ListQueryParams query)
+        {
+            var result = await _userListService.GetPublicListsAsync(query);
+            return Ok(result);
         }
         [HttpDelete("{listId}/games/{gameId}")]
         public async Task<IActionResult> RemoveGameFromList(int listId, int gameId)
@@ -113,6 +140,58 @@ namespace GGHub.WebAPI.Controllers
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             var success = await _socialService.UnfollowListAsync(userId, listId);
             return success ? NoContent() : BadRequest("Geçersiz işlem.");
+
+        }
+        [HttpPut("{listId}")]
+        public async Task<IActionResult> UpdateList(int listId, [FromBody] UserListForUpdateDto listDto)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            try
+            {
+                var success = await _userListService.UpdateListAsync(listId, listDto, userId);
+                if (success)
+                {
+                    return NoContent();
+                }
+                return BadRequest("Liste güncellenemedi.");
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpDelete("{listId}")]
+        public async Task<IActionResult> DeleteList(int listId)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            try
+            {
+                var success = await _userListService.DeleteListAsync(listId, userId);
+                if (success)
+                {
+                    return NoContent();
+                }
+                return BadRequest("Liste silinemedi.");
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
         }
     }
 

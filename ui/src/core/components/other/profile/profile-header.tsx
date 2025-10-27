@@ -191,7 +191,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                         >
                             <span className="font-bold">{followerCount}</span>
                             <span className="text-muted-foreground"> Takipçi</span>
-                        </div>
+                        </div>  
                         <div
                             className="cursor-pointer hover:underline"
                             onClick={() => {
