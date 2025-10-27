@@ -16,6 +16,7 @@ import { useState, useEffect } from "react";
 import { searchMessageableUsers } from "@/api/search/search.api";
 import { SearchResult } from "@/models/search/search.model";
 import { useDebounce } from "@core/hooks/use-debounce";
+import Link from "next/link";
 
 dayjs.extend(relativeTime);
 dayjs.locale("tr");
@@ -62,10 +63,6 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
         }
     }, [debouncedSearch]);
 
-    const handleConversationClick = (username: string) => {
-        router.push(`/messages/${username}`);
-    };
-
     const isActive = (username: string) => {
         return pathname === `/messages/${username}`;
     };
@@ -96,11 +93,11 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
                                 const active = isActive(conversation.partnerUsername);
 
                                 return (
-                                    <div
+                                    <Link
                                         key={conversation.partnerId}
-                                        onClick={() => handleConversationClick(conversation.partnerUsername)}
-                                        className={`flex items-center gap-3 p-4 cursor-pointer transition-colors ${active ? "bg-accent" : "hover:bg-accent/50"}`}
-                                        title={conversation.partnerUsername}
+                                        href={`/messages/${conversation.partnerUsername}`}
+                                        className="flex items-center gap-3 p-4 cursor-pointer transition-colors hover:bg-accent/50"
+                                        style={{ backgroundColor: active ? "hsl(var(--accent))" : undefined }}
                                     >
                                         <Avatar className="h-10 w-10 flex-shrink-0">
                                             <AvatarImage src={avatarSrc} alt={conversation.partnerUsername} />
@@ -126,7 +123,7 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
                                         )}
 
                                         {!sidebarExpanded && conversation.unreadCount > 0 && <div className="absolute top-2 right-2 h-2 w-2 bg-primary rounded-full" />}
-                                    </div>
+                                    </Link>
                                 );
                             })}
                         </div>
@@ -170,14 +167,14 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
                                             {searchResults.map((result) => {
                                                 const avatarSrc = getImageUrl(result.imageUrl);
                                                 return (
-                                                    <div
+                                                    <Link
                                                         key={result.id}
+                                                        href={`/messages/${result.id}`}
+                                                        className="flex items-center gap-2 p-3 hover:bg-accent cursor-pointer"
                                                         onClick={() => {
-                                                            router.push(`/messages/${result.id}`);
                                                             setSearchQuery("");
                                                             setSearchResults([]);
                                                         }}
-                                                        className="flex items-center gap-2 p-3 hover:bg-accent cursor-pointer"
                                                     >
                                                         <Avatar className="h-8 w-8 flex-shrink-0">
                                                             <AvatarImage src={avatarSrc} alt={result.title} />
@@ -187,7 +184,7 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
                                                             <p className="text-sm font-medium truncate">{result.title}</p>
                                                             <p className="text-xs text-muted-foreground">Mesaj gönder</p>
                                                         </div>
-                                                    </div>
+                                                    </Link>
                                                 );
                                             })}
                                         </div>

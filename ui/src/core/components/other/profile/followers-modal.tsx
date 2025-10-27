@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/core/components/ui/button";
 import { toast } from "sonner";
 import { useAuth } from "@core/hooks/use-auth";
+import Link from "next/link";
 
 interface User {
     id: number;
@@ -48,12 +49,6 @@ export function FollowersModal({ isOpen, onClose, username, defaultTab = "follow
         queryFn: () => getFollowing(username),
         enabled: isOpen && activeTab === "following",
     });
-
-    const handleUserClick = (username: string) => {
-        router.push(`/profiles/${username}`);
-        onClose();
-    };
-
     const handleFollowToggle = (targetUsername: string, currentlyFollowing: boolean) => {
         if (currentlyFollowing) {
             unfollowUser(targetUsername)
@@ -98,7 +93,7 @@ export function FollowersModal({ isOpen, onClose, username, defaultTab = "follow
                         ) : followers && followers.length > 0 ? (
                             followers.map((user: User) => (
                                 <div key={user.id} className="flex items-center justify-between p-3 hover:bg-accent rounded-lg">
-                                    <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => handleUserClick(user.username)}>
+                                    <Link href={`/profiles/${user.username}`} className="flex items-center gap-3 p-3 hover:bg-accent cursor-pointer" onClick={onClose}>
                                         <Avatar className="h-10 w-10">
                                             <AvatarImage src={user.profileImageUrl ? `${API_BASE}${user.profileImageUrl}` : undefined} alt={user.username} />
                                             <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
@@ -107,7 +102,7 @@ export function FollowersModal({ isOpen, onClose, username, defaultTab = "follow
                                             <p className="font-medium">{user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username}</p>
                                             <p className="text-xs text-muted-foreground">@{user.username}</p>
                                         </div>
-                                    </div>
+                                    </Link>
 
                                     {currentUser && user.username !== currentUser.username && (
                                         <Button
@@ -135,7 +130,7 @@ export function FollowersModal({ isOpen, onClose, username, defaultTab = "follow
                         ) : following && following.length > 0 ? (
                             following.map((user: User) => (
                                 <div key={user.id} className="flex items-center justify-between p-3 hover:bg-accent rounded-lg">
-                                    <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => handleUserClick(user.username)}>
+                                    <Link href={`/profiles/${user.username}`} className="flex items-center gap-3 p-3 hover:bg-accent cursor-pointer" onClick={onClose}>
                                         <Avatar className="h-10 w-10">
                                             <AvatarImage src={user.profileImageUrl ? `${API_BASE}${user.profileImageUrl}` : undefined} alt={user.username} />
                                             <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
@@ -144,7 +139,7 @@ export function FollowersModal({ isOpen, onClose, username, defaultTab = "follow
                                             <p className="font-medium">{user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username}</p>
                                             <p className="text-xs text-muted-foreground">@{user.username}</p>
                                         </div>
-                                    </div>
+                                    </Link>
 
                                     {currentUser && user.username !== currentUser.username && (
                                         <Button

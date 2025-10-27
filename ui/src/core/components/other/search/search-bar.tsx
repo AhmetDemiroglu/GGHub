@@ -5,8 +5,9 @@ import { Search, Loader2 } from "lucide-react";
 import { Input } from "@/core/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
 import { useRouter } from "next/navigation";
-import { searchAll, SearchResult } from "@/api/search/search.api";
+import { searchAll } from "@/api/search/search.api";
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 
 export function SearchBar() {
     const [query, setQuery] = useState("");
@@ -30,12 +31,6 @@ export function SearchBar() {
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
-
-    const handleResultClick = (link: string) => {
-        router.push(link);
-        setIsOpen(false);
-        setQuery("");
-    };
 
     const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -68,10 +63,14 @@ export function SearchBar() {
                                     {results
                                         .filter((r) => r.type === "Kullanıcı")
                                         .map((result) => (
-                                            <div
+                                            <Link
                                                 key={`${result.type}-${result.id}`}
+                                                href={result.link}
                                                 className="flex items-center gap-3 p-3 hover:bg-accent cursor-pointer border-b"
-                                                onClick={() => handleResultClick(result.link)}
+                                                onClick={() => {
+                                                    setIsOpen(false);
+                                                    setQuery("");
+                                                }}
                                             >
                                                 {result.imageUrl && (
                                                     <Avatar className="h-10 w-10">
@@ -83,7 +82,7 @@ export function SearchBar() {
                                                     <p className="text-sm font-medium">{result.title}</p>
                                                     <p className="text-xs text-muted-foreground">@{result.id}</p>
                                                 </div>
-                                            </div>
+                                            </Link>
                                         ))}
                                 </>
                             )}
@@ -95,10 +94,14 @@ export function SearchBar() {
                                         .filter((r) => r.type === "Oyun")
                                         .slice(0, 5)
                                         .map((result) => (
-                                            <div
+                                            <Link
                                                 key={`${result.type}-${result.id}`}
+                                                href={result.link}
                                                 className="flex items-center gap-3 p-3 hover:bg-accent cursor-pointer border-b last:border-b-0"
-                                                onClick={() => handleResultClick(result.link)}
+                                                onClick={() => {
+                                                    setIsOpen(false);
+                                                    setQuery("");
+                                                }}
                                             >
                                                 <Avatar className="h-10 w-10 rounded-md">
                                                     {result.imageUrl ? <AvatarImage src={result.imageUrl} alt={result.title} /> : null}
@@ -108,7 +111,7 @@ export function SearchBar() {
                                                     <p className="text-sm font-medium truncate">{result.title}</p>
                                                     <p className="text-xs text-muted-foreground">Oyun</p>
                                                 </div>
-                                            </div>
+                                            </Link>
                                         ))}
                                 </>
                             )}

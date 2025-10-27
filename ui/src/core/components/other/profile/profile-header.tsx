@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar
 import { Button } from "@/core/components/ui/button";
 import { Badge } from "@/core/components/ui/badge";
 import { Separator } from "@/core/components/ui/separator";
-import { Calendar, Mail, Phone, UserPlus, UserMinus, Settings } from "lucide-react";
+import { Calendar, Mail, Phone, UserPlus, UserMinus, Settings, MessageSquare } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { followUser, unfollowUser } from "@/api/social/social.api";
@@ -17,6 +17,8 @@ import gameBanner from "@/core/assets/games 7.png";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/core/components/ui/dropdown-menu";
 import { useRouter } from "next/navigation";
 import { FollowersModal } from "./followers-modal";
+import { MessageDialog } from "@core/components/other/message-dialog";
+import Link from "next/link";
 
 dayjs.locale("tr");
 
@@ -37,6 +39,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
     const [followerCount, setFollowerCount] = useState(profile.followerCount || 0);
     const queryClient = useQueryClient();
     const router = useRouter();
+    const [messageDialogOpen, setMessageDialogOpen] = useState(false);
 
     const avatarSrc = getImageUrl(profile.profileImageUrl);
 
@@ -112,8 +115,10 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                    <DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/profile")}>
-                                        Profili Düzenle
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/profile" className="cursor-pointer">
+                                            Profili Düzenle
+                                        </Link>
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -140,7 +145,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                                 </Button>
 
                                 {canSendMessage() ? (
-                                    <Button variant="outline" size="sm" className="cursor-pointer" onClick={() => router.push(`/messages/${profile.username}`)}>
+                                    <Button variant="outline" size="sm" className="cursor-pointer" onClick={() => setMessageDialogOpen(true)}>
                                         Mesaj Gönder
                                     </Button>
                                 ) : (
@@ -234,6 +239,9 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                 </div>
             </div>
             <FollowersModal isOpen={followersModalOpen} onClose={() => setFollowersModalOpen(false)} username={profile.username} defaultTab={defaultModalTab} />
+            {!isOwnProfile && canSendMessage() && (
+                <MessageDialog open={messageDialogOpen} onOpenChange={setMessageDialogOpen} recipientUsername={profile.username} recipientProfileImageUrl={profile.profileImageUrl} />
+            )}
         </div>
     );
 }

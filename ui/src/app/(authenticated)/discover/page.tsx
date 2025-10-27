@@ -92,28 +92,19 @@ export default function DiscoverPage() {
     }, [data]);
 
     useEffect(() => {
-        const params = new URLSearchParams(searchParams);
-        params.set("page", String(page));
-        params.set("pageSize", String(pageSize));
+        const params = new URLSearchParams();
 
-        if (searchTerm) params.set("search", searchTerm);
-        else params.delete("search");
-
+        if (page !== 1) params.set("page", String(page));
+        if (pageSize !== 12) params.set("pageSize", String(pageSize));
+        if (debouncedSearchTerm) params.set("search", debouncedSearchTerm);
         if (selectedGenre) params.set("genres", selectedGenre);
-        else params.delete("genres");
-
         if (selectedPlatform) params.set("platforms", selectedPlatform);
-        else params.delete("platforms");
-
         if (dateRange) params.set("dates", dateRange);
-        else params.delete("dates");
+        if (ordering !== "-added") params.set("ordering", ordering);
 
-        if (ordering) params.set("ordering", ordering);
-        else params.delete("ordering");
-
-        if (page === 1) params.delete("page");
-        router.replace(`${pathname}?${params.toString()}`);
-    }, [page, pageSize, searchTerm, ordering, selectedGenre, selectedPlatform, dateRange, pathname, router, searchParams]);
+        const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+        router.replace(newUrl, { scroll: false });
+    }, [page, pageSize, debouncedSearchTerm, ordering, selectedGenre, selectedPlatform, dateRange, pathname, router]);
 
     const normalizeName = (s: string) => s?.trim() ?? "";
     const startsWithLetterOrDigit = (s: string) => /^[\p{L}\p{N}]/u.test(s);

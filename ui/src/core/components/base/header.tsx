@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import type { Profile } from "@/models/profile/profile.model";
 import { getMyProfile } from "@/api/profile/profile.api";
 import { SearchBar } from "@/core/components/other/search/search-bar";
-import { Bell, Mail, LogIn, LogOut, UserPlus, List, Star } from "lucide-react";
+import { Bell, Mail, LogIn, LogOut, UserPlus, List, Star, Settings } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getNotifications, getUnreadNotificationCount, markAllNotificationsAsRead } from "@/api/notifications/notifications.api";
 import { NotificationDto, NotificationType } from "@/models/notifications/notification.model";
@@ -110,12 +110,6 @@ export function Header() {
         toast.info("Başarıyla çıkış yapıldı.");
     };
 
-    const myProfiePage = () => {
-        if (user) {
-            router.push(`/profiles/${user.username}`);
-        }
-    };
-
     return (
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="flex h-14 items-center px-6">
@@ -152,24 +146,28 @@ export function Header() {
                                                     const timeAgo = dayjs(notification.createdAt).fromNow();
                                                     const icon = getNotificationIcon(notification.type);
 
-                                                    return (
-                                                        <div
-                                                            key={notification.id}
-                                                            className={`p-3 border-b hover:bg-accent cursor-pointer ${!notification.isRead ? "bg-accent/50" : ""}`}
-                                                            onClick={() => {
-                                                                if (notification.link) {
-                                                                    router.push(notification.link);
-                                                                    setNotificationOpen(false);
-                                                                }
-                                                            }}
-                                                        >
-                                                            <div className="flex items-start gap-3">
-                                                                {icon}
-                                                                <div className="flex-1 min-w-0">
-                                                                    <p className="text-sm">{notification.message}</p>
-                                                                    <p className="text-xs text-muted-foreground mt-1">{timeAgo}</p>
-                                                                </div>
+                                                    const content = (
+                                                        <div className="flex items-start gap-3">
+                                                            {icon}
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm">{notification.message}</p>
+                                                                <p className="text-xs text-muted-foreground mt-1">{timeAgo}</p>
                                                             </div>
+                                                        </div>
+                                                    );
+
+                                                    return notification.link ? (
+                                                        <Link
+                                                            key={notification.id}
+                                                            href={notification.link}
+                                                            className={`block p-3 border-b hover:bg-accent cursor-pointer ${!notification.isRead ? "bg-accent/50" : ""}`}
+                                                            onClick={() => setNotificationOpen(false)}
+                                                        >
+                                                            {content}
+                                                        </Link>
+                                                    ) : (
+                                                        <div key={notification.id} className={`p-3 border-b ${!notification.isRead ? "bg-accent/50" : ""}`}>
+                                                            {content}
                                                         </div>
                                                     );
                                                 })
@@ -203,13 +201,11 @@ export function Header() {
                                                 const timeAgo = dayjs(conversation.lastMessageSentAt).fromNow();
 
                                                 return (
-                                                    <div
+                                                    <Link
                                                         key={conversation.partnerId}
-                                                        className="p-3 border-b hover:bg-accent cursor-pointer"
-                                                        onClick={() => {
-                                                            router.push(`/messages/${conversation.partnerUsername}`);
-                                                            setMessagesOpen(false);
-                                                        }}
+                                                        href={`/messages/${conversation.partnerUsername}`}
+                                                        className="block p-3 border-b hover:bg-accent cursor-pointer"
+                                                        onClick={() => setMessagesOpen(false)}
                                                     >
                                                         <div className="flex items-center gap-3">
                                                             <Avatar className="h-10 w-10 flex-shrink-0">
@@ -229,7 +225,7 @@ export function Header() {
                                                                 <p className="text-xs text-muted-foreground mt-1">{timeAgo}</p>
                                                             </div>
                                                         </div>
-                                                    </div>
+                                                    </Link>
                                                 );
                                             })
                                         ) : (
@@ -237,15 +233,10 @@ export function Header() {
                                         )}
                                     </div>
                                     <div className="border-t p-2">
-                                        <Button
-                                            variant="ghost"
-                                            className="w-full text-sm"
-                                            onClick={() => {
-                                                router.push("/messages");
-                                                setMessagesOpen(false);
-                                            }}
-                                        >
-                                            Tüm Mesajları Gör
+                                        <Button variant="ghost" className="w-full text-sm" asChild>
+                                            <Link href="/messages" onClick={() => setMessagesOpen(false)}>
+                                                Tüm Mesajları Gör
+                                            </Link>
                                         </Button>
                                     </div>
                                 </PopoverContent>
@@ -262,10 +253,18 @@ export function Header() {
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent className="w-56" align="end" forceMount>
-                                    <DropdownMenuLabel className="cursor-pointer" onClick={myProfiePage}>
-                                        {user.username}
+                                    <DropdownMenuLabel asChild>
+                                        <Link href={`/profiles/${user.username}`} className="cursor-pointer">
+                                            {user.username}
+                                        </Link>
                                     </DropdownMenuLabel>
                                     <DropdownMenuSeparator />
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/profile" className="cursor-pointer flex items-center">
+                                            <Settings className="mr-2 h-4 w-4" />
+                                            <span>Profil Yönetimi</span>
+                                        </Link>
+                                    </DropdownMenuItem>
                                     <DropdownMenuItem className="cursor-pointer" onClick={handleLogout}>
                                         <LogOut className="mr-2 h-4 w-4" />
                                         <span>Çıkış Yap</span>
