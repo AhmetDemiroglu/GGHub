@@ -69,7 +69,7 @@ export function AddGameToListModal({ isOpen, onClose, onAddGame, isPending, exis
                             }
                         }}
                     />
-                    <Button onClick={handleSearch} disabled={!searchTerm.trim() || showLoading}>
+                    <Button onClick={handleSearch} disabled={!searchTerm.trim() || showLoading} className="cursor-pointer">
                         {showLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                     </Button>
                 </div>
