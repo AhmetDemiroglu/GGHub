@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@core/hooks/use-auth";
 import { useParams } from "next/navigation";
@@ -31,6 +31,7 @@ export default function ListDetailPage() {
         queryFn: () => listApi.getListDetail(listId),
         enabled: !isNaN(listId) && listId > 0,
         placeholderData: (previousData) => previousData,
+        staleTime: 30 * 1000,
     });
 
     const isOwner = useMemo(() => {
@@ -40,8 +41,37 @@ export default function ListDetailPage() {
 
     const addGameMutation = useMutation({
         mutationFn: (gameId: number) => listApi.addGameToList(listId, gameId),
+        onMutate: async (gameId) => {
+            await queryClient.cancelQueries({ queryKey: ["list-detail", listId] });
+
+            const previousData = queryClient.getQueryData(["list-detail", listId]);
+
+            queryClient.setQueryData(["list-detail", listId], (old: any) => {
+                if (!old) return old;
+                return old;
+            });
+
+            return { previousData };
+        },
         onSuccess: () => {
             toast.success("Oyun listeye eklendi.");
+            queryClient.refetchQueries({ queryKey: ["list-detail", listId] });
+        },
+        onError: (error, gameId, context) => {
+            if (context?.previousData) {
+                queryClient.setQueryData(["list-detail", listId], context.previousData);
+            }
+            toast.error(`Hata: ${error.message}`);
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ["my-lists"] });
+        },
+    });
+
+    const removeGameMutation = useMutation({
+        mutationFn: (gameId: number) => listApi.removeGameFromList(listId, gameId),
+        onSuccess: () => {
+            toast.success("Oyun listeden çıkarıldı.");
             queryClient.invalidateQueries({ queryKey: ["list-detail", listId] });
             queryClient.invalidateQueries({ queryKey: ["my-lists"] });
         },
@@ -50,17 +80,12 @@ export default function ListDetailPage() {
         },
     });
 
-        const removeGameMutation = useMutation({
-            mutationFn: (gameId: number) => listApi.removeGameFromList(listId, gameId),
-            onSuccess: () => {
-                toast.success("Oyun listeden çıkarıldı.");
-                queryClient.invalidateQueries({ queryKey: ["list-detail", listId] });
-                queryClient.invalidateQueries({ queryKey: ["my-lists"] });
-            },
-            onError: (error) => {
-                toast.error(`Hata: ${error.message}`);
-            },
-        });
+    const handleRemoveGame = useCallback(
+        (gameId: number) => {
+            removeGameMutation.mutate(gameId);
+        },
+        [removeGameMutation.mutate]
+    );
 
     if (isLoading) {
         return (
@@ -106,7 +131,7 @@ export default function ListDetailPage() {
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {listDetail.games.map((game) => (
-                        <ListGameCard key={game.rawgId} game={game} showRemoveButton={isOwner} onRemove={() => removeGameMutation.mutate(game.rawgId)} isRemoving={removeGameMutation.isPending} />
+                        <ListGameCard key={game.rawgId} game={game} showRemoveButton={isOwner} onRemove={handleRemoveGame} />
                     ))}
                 </div>
             )}

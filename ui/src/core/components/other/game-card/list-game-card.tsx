@@ -1,14 +1,13 @@
 import type { Game } from "@/models/gaming/game.model";
 import { Star, Trash2 } from "lucide-react";
-
+import { memo } from "react";
 interface ListGameCardProps {
     game: Game;
     showRemoveButton?: boolean;
-    onRemove?: () => void;
-    isRemoving?: boolean;
+    onRemove?: (gameId: number) => void;
 }
 
-export function ListGameCard({ game, showRemoveButton, onRemove, isRemoving }: ListGameCardProps) {
+export const ListGameCard = memo(function ListGameCard({ game, showRemoveButton, onRemove }: ListGameCardProps) {
     return (
         <div className="flex gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
             {/* Sol: Küçük Thumbnail */}
@@ -43,8 +42,7 @@ export function ListGameCard({ game, showRemoveButton, onRemove, isRemoving }: L
             {/* Sağ: Trash Button */}
             {showRemoveButton && onRemove && (
                 <button
-                    onClick={onRemove}
-                    disabled={isRemoving}
+                    onClick={() => onRemove?.(game.rawgId)}
                     className="cursor-pointer flex-shrink-0 self-start p-2 rounded-md hover:bg-destructive/10 text-destructive transition-colors disabled:opacity-50"
                     aria-label="Listeden çıkar"
                 >
@@ -53,4 +51,4 @@ export function ListGameCard({ game, showRemoveButton, onRemove, isRemoving }: L
             )}
         </div>
     );
-}
+});

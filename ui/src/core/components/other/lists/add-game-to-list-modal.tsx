@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@core/components/ui/input";
 import { Loader2, Check, Search } from "lucide-react";
 import type { Game } from "@/models/gaming/game.model";
+import { useDebounce } from "@core/hooks/use-debounce";
 
 interface AddGameToListModalProps {
     isOpen: boolean;
@@ -19,39 +20,35 @@ interface AddGameToListModalProps {
 
 export function AddGameToListModal({ isOpen, onClose, onAddGame, isPending, existingGameIds }: AddGameToListModalProps) {
     const [searchTerm, setSearchTerm] = useState("");
+    const debouncedSearchTerm = useDebounce(searchTerm, 500);
     const [submittedSearchTerm, setSubmittedSearchTerm] = useState("");
 
     const {
         data: searchResults,
         isLoading: isSearchLoading,
         error: searchError,
-        refetch,
-        isFetching,
     } = useQuery({
-        queryKey: ["game-search-for-list"],
-        queryFn: async () => {
-            const currentSearchTerm = searchTerm.trim();
-            if (!currentSearchTerm) {
-                return Promise.resolve(null);
-            }
-            return gameApi.paginate({
-                page: 1,
-                pageSize: 10,
-                search: currentSearchTerm,
-            });
-        },
-        enabled: false,
-        refetchOnWindowFocus: false,
+        queryKey: ["game-search-for-list", submittedSearchTerm],
+        queryFn: () =>
+            submittedSearchTerm
+                ? gameApi.paginate({
+                      page: 1,
+                      pageSize: 10,
+                      search: submittedSearchTerm,
+                  })
+                : Promise.resolve(null),
+        staleTime: 5 * 60 * 1000,
+        gcTime: 10 * 60 * 1000,
     });
 
-    const handleSearch = useCallback(() => {
-        if (searchTerm.trim()) {
-            refetch();
+    const handleSearch = () => {
+        if (debouncedSearchTerm.trim()) {
+            setSubmittedSearchTerm(debouncedSearchTerm.trim());
         }
-    }, [searchTerm, refetch]);
+    };
 
     const games = searchResults?.items ?? [];
-    const showLoading = isSearchLoading || isFetching;
+    const showLoading = isSearchLoading;
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose} modal={true}>

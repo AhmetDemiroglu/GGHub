@@ -2,8 +2,9 @@ import type { Game } from "@/models/gaming/game.model";
 import { PlatformIcons } from "../platform-icons";
 import { ScoreBadge } from "../score-badge";
 import { Separator } from "@core/components/ui/separator";
+import { memo } from "react";
 
-export function GameCard({ game }: { game: Game }) {
+export const GameCard = memo(function GameCard({ game }: { game: Game }) {
     if (!game) {
         return null;
     }
@@ -52,4 +53,4 @@ export function GameCard({ game }: { game: Game }) {
             </div>
         </div>
     );
-}
+});
