@@ -5,4 +5,5 @@ export interface SocialProfile {
     firstName: string | null;
     lastName: string | null;
     isFollowing: boolean;
+    isProfileAccessible: boolean;
 }

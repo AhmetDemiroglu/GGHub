@@ -59,8 +59,17 @@ namespace GGHub.Infrastructure.Services
         public async Task<bool> FollowListAsync(int userId, int listId)
         {
             var listToFollow = await _context.UserLists.FirstOrDefaultAsync(l => l.Id == listId);
-            if (listToFollow == null || !listToFollow.IsPublic || listToFollow.UserId == userId) return false;
+            if (listToFollow == null || listToFollow.UserId == userId) return false;
 
+            if (listToFollow.Visibility == ListVisibilitySetting.Private) return false;
+
+            if (listToFollow.Visibility == ListVisibilitySetting.Followers)
+            {
+                var isFollowingOwner = await _context.Follows
+                    .AnyAsync(f => f.FollowerId == userId && f.FolloweeId == listToFollow.UserId);
+
+                if (!isFollowingOwner) return false;
+            }
             var alreadyFollowing = await _context.UserListFollows.AnyAsync(f => f.FollowerUserId == userId && f.FollowedListId == listId);
             if (alreadyFollowing) return true;
 
@@ -106,6 +115,14 @@ namespace GGHub.Infrastructure.Services
                                      f.FollowerId == currentUserId.Value &&
                                      f.FolloweeId == follow.Follower.Id);
 
+                var canAccessProfile = follow.Follower.ProfileVisibility == ProfileVisibilitySetting.Public ||
+                      follow.Follower.Id == currentUserId ||
+                      (follow.Follower.ProfileVisibility == ProfileVisibilitySetting.Followers &&
+                       currentUserId.HasValue &&
+                       await _context.Follows.AnyAsync(f =>
+                           f.FollowerId == currentUserId.Value &&
+                           f.FolloweeId == follow.Follower.Id));
+
                 result.Add(new UserDto
                 {
                     Id = follow.Follower.Id,
@@ -113,7 +130,8 @@ namespace GGHub.Infrastructure.Services
                     ProfileImageUrl = follow.Follower.ProfileImageUrl,
                     FirstName = follow.Follower.FirstName,
                     LastName = follow.Follower.LastName,
-                    IsFollowing = isFollowing
+                    IsFollowing = isFollowing,
+                    IsProfileAccessible = canAccessProfile
                 });
             }
 
@@ -138,6 +156,14 @@ namespace GGHub.Infrastructure.Services
                                      f.FollowerId == currentUserId.Value &&
                                      f.FolloweeId == follow.Followee.Id);
 
+                var canAccessProfile = follow.Followee.ProfileVisibility == ProfileVisibilitySetting.Public ||
+                      follow.Followee.Id == currentUserId ||
+                      (follow.Followee.ProfileVisibility == ProfileVisibilitySetting.Followers &&
+                       currentUserId.HasValue &&
+                       await _context.Follows.AnyAsync(f =>
+                           f.FollowerId == currentUserId.Value &&
+                           f.FolloweeId == follow.Followee.Id));
+
                 result.Add(new UserDto
                 {
                     Id = follow.Followee.Id,
@@ -145,7 +171,8 @@ namespace GGHub.Infrastructure.Services
                     ProfileImageUrl = follow.Followee.ProfileImageUrl,
                     FirstName = follow.Followee.FirstName,
                     LastName = follow.Followee.LastName,
-                    IsFollowing = isFollowing
+                    IsFollowing = isFollowing,
+                    IsProfileAccessible = canAccessProfile
                 });
             }
 

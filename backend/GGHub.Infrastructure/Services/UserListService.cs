@@ -34,7 +34,8 @@ namespace GGHub.Infrastructure.Services
             {
                 Name = listDto.Name,
                 Description = listDto.Description,
-                IsPublic = listDto.IsPublic,
+                Visibility = listDto.Visibility,
+                Category = listDto.Category,
                 UserId = userId,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -103,7 +104,10 @@ namespace GGHub.Infrastructure.Services
                     Id = l.Id,
                     Name = l.Name,
                     Description = l.Description,
-                    IsPublic = l.IsPublic,
+                    Visibility = l.Visibility,  
+                    Category = l.Category, 
+                    AverageRating = l.AverageRating, 
+                    RatingCount = l.RatingCount, 
                     CreatedAt = l.CreatedAt,
                     UpdatedAt = l.UpdatedAt,
                     GameCount = l.UserListGames.Count(),
@@ -124,7 +128,16 @@ namespace GGHub.Infrastructure.Services
                     Id = l.Id,
                     Name = l.Name,
                     Description = l.Description,
-                    IsPublic = l.IsPublic,
+                    Visibility = l.Visibility,
+                    Category = l.Category,
+                    AverageRating = l.AverageRating,
+                    RatingCount = l.RatingCount,
+                    Owner = new UserDto
+                    {
+                        Id = l.User.Id,
+                        Username = l.User.Username,
+                        ProfileImageUrl = l.User.ProfileImageUrl,
+                    },
                     UpdatedAt = l.UpdatedAt,
                     FollowerCount = l.Followers.Count(),
                     Games = l.UserListGames.Select(ulg => new GameSummaryDto

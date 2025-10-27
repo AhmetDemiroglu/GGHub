@@ -7,6 +7,7 @@ using System.Security.Claims;
 
 namespace GGHub.WebAPI.Controllers
 {
+    [Route("api/[controller]")]
     [ApiController]
     [Authorize]
     public class UserListsController : ControllerBase

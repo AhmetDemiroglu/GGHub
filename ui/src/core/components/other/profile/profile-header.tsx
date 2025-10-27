@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar
 import { Button } from "@/core/components/ui/button";
 import { Badge } from "@/core/components/ui/badge";
 import { Separator } from "@/core/components/ui/separator";
-import { Calendar, Mail, Phone, UserPlus, UserMinus, Settings, MessageSquare } from "lucide-react";
+import { Calendar, Mail, Phone, UserPlus, UserMinus, Settings, MessageSquareMore, MessageSquareLock } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { followUser, unfollowUser } from "@/api/social/social.api";
@@ -144,15 +144,19 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                                     )}
                                 </Button>
 
-                                {canSendMessage() ? (
-                                    <Button variant="outline" size="sm" className="cursor-pointer" onClick={() => setMessageDialogOpen(true)}>
-                                        Mesaj Gönder
-                                    </Button>
-                                ) : (
-                                    <Button variant="outline" size="sm" disabled>
-                                        Mesaj Kapalı
-                                    </Button>
-                                )}
+                                <Button variant="outline" size="sm" className="cursor-pointer" onClick={() => setMessageDialogOpen(true)}>
+                                    {canSendMessage() ? (
+                                        <>
+                                            <MessageSquareMore className="h-4 w-4" />
+                                            Mesaj Gönder
+                                        </>
+                                    ) : (
+                                        <>
+                                            <MessageSquareLock className="h-4 w-4" />
+                                            Mesaj Kapalı
+                                        </>
+                                    )}
+                                </Button>
                             </>
                         )}
                     </div>

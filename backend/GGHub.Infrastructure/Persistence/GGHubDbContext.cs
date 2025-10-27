@@ -27,9 +27,24 @@ namespace GGHub.Infrastructure.Persistence
         public DbSet<UserListFollow> UserListFollows { get; set; }
         public DbSet<Message> Messages { get; set; }
         public DbSet<UserBlock> UserBlocks { get; set; }
+        public DbSet<UserListRating> UserListRatings { get; set; }
+        public DbSet<UserListComment> UserListComments { get; set; }
+        public DbSet<UserListCommentVote> UserListCommentVotes { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<UserListRating>()
+                .HasKey(r => new { r.UserId, r.UserListId });
+
+            modelBuilder.Entity<UserListCommentVote>()
+                .HasKey(v => new { v.UserId, v.UserListCommentId });
+
+            modelBuilder.Entity<UserListComment>()
+                .HasOne(c => c.ParentComment)
+                .WithMany(c => c.Replies)
+                .HasForeignKey(c => c.ParentCommentId)
+                .OnDelete(DeleteBehavior.ClientSetNull);
 
             modelBuilder.Entity<UserListGame>()
                 .HasKey(ulg => new { ulg.UserListId, ulg.GameId });

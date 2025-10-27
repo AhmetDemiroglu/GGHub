@@ -19,6 +19,7 @@ interface User {
     firstName?: string | null;
     lastName?: string | null;
     isFollowing: boolean;
+    isProfileAccessible: boolean;
 }
 interface FollowersModalProps {
     isOpen: boolean;
@@ -93,18 +94,32 @@ export function FollowersModal({ isOpen, onClose, username, defaultTab = "follow
                         ) : followers && followers.length > 0 ? (
                             followers.map((user: User) => (
                                 <div key={user.id} className="flex items-center justify-between p-3 hover:bg-accent rounded-lg">
-                                    <Link href={`/profiles/${user.username}`} className="flex items-center gap-3 p-3 hover:bg-accent cursor-pointer" onClick={onClose}>
-                                        <Avatar className="h-10 w-10">
-                                            <AvatarImage src={user.profileImageUrl ? `${API_BASE}${user.profileImageUrl}` : undefined} alt={user.username} />
-                                            <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
-                                        </Avatar>
-                                        <div>
-                                            <p className="font-medium">{user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username}</p>
-                                            <p className="text-xs text-muted-foreground">@{user.username}</p>
+                                    {user.isProfileAccessible ? (
+                                        <Link href={`/profiles/${user.username}`} className="flex items-center gap-3 cursor-pointer" onClick={onClose}>
+                                            <Avatar className="h-10 w-10">
+                                                <AvatarImage src={user.profileImageUrl ? `${API_BASE}${user.profileImageUrl}` : undefined} alt={user.username} />
+                                                <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <p className="font-medium">{user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username}</p>
+                                                <p className="text-xs text-muted-foreground">@{user.username}</p>
+                                            </div>
+                                        </Link>
+                                    ) : (
+                                        <div className="flex items-center gap-3">
+                                            <Avatar className="h-10 w-10">
+                                                <AvatarImage src={user.profileImageUrl ? `${API_BASE}${user.profileImageUrl}` : undefined} alt={user.username} />
+                                                <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <p className="font-medium">{user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username}</p>
+                                                <p className="text-xs text-muted-foreground">@{user.username}</p>
+                                                <p className="text-xs text-indigo-600 mt-0.5">Gizli Profil</p>
+                                            </div>
                                         </div>
-                                    </Link>
+                                    )}
 
-                                    {currentUser && user.username !== currentUser.username && (
+                                    {currentUser && user.username !== currentUser.username && user.isProfileAccessible && (
                                         <Button
                                             size="sm"
                                             className="cursor-pointer"
@@ -130,18 +145,32 @@ export function FollowersModal({ isOpen, onClose, username, defaultTab = "follow
                         ) : following && following.length > 0 ? (
                             following.map((user: User) => (
                                 <div key={user.id} className="flex items-center justify-between p-3 hover:bg-accent rounded-lg">
-                                    <Link href={`/profiles/${user.username}`} className="flex items-center gap-3 p-3 hover:bg-accent cursor-pointer" onClick={onClose}>
-                                        <Avatar className="h-10 w-10">
-                                            <AvatarImage src={user.profileImageUrl ? `${API_BASE}${user.profileImageUrl}` : undefined} alt={user.username} />
-                                            <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
-                                        </Avatar>
-                                        <div>
-                                            <p className="font-medium">{user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username}</p>
-                                            <p className="text-xs text-muted-foreground">@{user.username}</p>
+                                    {user.isProfileAccessible ? (
+                                        <Link href={`/profiles/${user.username}`} className="flex items-center gap-3 cursor-pointer" onClick={onClose}>
+                                            <Avatar className="h-10 w-10">
+                                                <AvatarImage src={user.profileImageUrl ? `${API_BASE}${user.profileImageUrl}` : undefined} alt={user.username} />
+                                                <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <p className="font-medium">{user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username}</p>
+                                                <p className="text-xs text-muted-foreground">@{user.username}</p>
+                                            </div>
+                                        </Link>
+                                    ) : (
+                                        <div className="flex items-center gap-3">
+                                            <Avatar className="h-10 w-10">
+                                                <AvatarImage src={user.profileImageUrl ? `${API_BASE}${user.profileImageUrl}` : undefined} alt={user.username} />
+                                                <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <p className="font-medium">{user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username}</p>
+                                                <p className="text-xs text-muted-foreground">@{user.username}</p>
+                                                <p className="text-xs text-indigo-600 mt-0.5">Gizli Profil</p>
+                                            </div>
                                         </div>
-                                    </Link>
+                                    )}
 
-                                    {currentUser && user.username !== currentUser.username && (
+                                    {currentUser && user.username !== currentUser.username && user.isProfileAccessible && (
                                         <Button
                                             size="sm"
                                             variant={user.isFollowing ? "outline" : "default"}

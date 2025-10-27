@@ -166,81 +166,90 @@ namespace GGHub.Infrastructure.Services
 
             await _context.SaveChangesAsync();
         }
-        public async Task<UserDataExportDto> GetUserDataForExportAsync(int userId)
-        {
-            var userProfile = await GetProfileAsync(userId);
-            if (userProfile == null)
+            public async Task<UserDataExportDto> GetUserDataForExportAsync(int userId)
             {
-                throw new KeyNotFoundException("Kullanıcı bulunamadı.");
+                var userProfile = await GetProfileAsync(userId);
+                if (userProfile == null)
+                {
+                    throw new KeyNotFoundException("Kullanıcı bulunamadı.");
+                }
+
+                var userReviews = await _context.Reviews
+                    .Where(r => r.UserId == userId)
+                    .Include(r => r.User) 
+                    .Select(r => new ReviewDto
+                    {
+                        Id = r.Id,
+                        Content = r.Content,
+                        Rating = r.Rating,
+                        CreatedAt = r.CreatedAt,
+                        User = new UserDto
+                        {
+                            Id = r.User.Id,
+                            Username = r.User.Username
+                        }
+                    })
+                    .ToListAsync();
+
+                var userLists = await _context.UserLists
+                    .Where(l => l.UserId == userId)
+                    .Include(l => l.UserListGames)
+                        .ThenInclude(ulg => ulg.Game)
+                    .Select(l => new UserListDetailDto
+                    {
+                        Id = l.Id,
+                        Name = l.Name,
+                        Description = l.Description,
+                        Visibility = l.Visibility,
+                        Category = l.Category,
+                        AverageRating = l.AverageRating,
+                        RatingCount = l.RatingCount,
+                        Owner = new UserDto
+                        {
+                            Id = l.User.Id,
+                            Username = l.User.Username,
+                            ProfileImageUrl = l.User.ProfileImageUrl
+                        },
+                        UpdatedAt = l.UpdatedAt,
+                        FollowerCount = l.Followers.Count(),
+                        Games = l.UserListGames.Select(ulg => new GameSummaryDto
+                        {
+                            Id = ulg.Game.Id,
+                            RawgId = ulg.Game.RawgId,
+                            Name = ulg.Game.Name,
+                            Slug = ulg.Game.Slug,
+                            CoverImage = ulg.Game.CoverImage,
+                            BackgroundImage = ulg.Game.BackgroundImage,
+                            Released = ulg.Game.Released
+                        }).ToList()
+                    })
+                    .ToListAsync();
+
+                var userMessages = await _context.Messages
+                    .Where(m => m.SenderId == userId || m.RecipientId == userId)
+                    .Include(m => m.Sender)
+                    .Include(m => m.Recipient)
+                    .OrderByDescending(m => m.SentAt)
+                    .Select(m => new MessageDto
+                    {
+                        Id = m.Id,
+                        SenderId = m.SenderId,
+                        SenderUsername = m.Sender.Username,
+                        RecipientId = m.RecipientId,
+                        RecipientUsername = m.Recipient.Username,
+                        Content = m.Content,
+                        ReadAt = m.ReadAt,
+                        SentAt = m.SentAt
+                    })
+                    .ToListAsync();
+
+                return new UserDataExportDto
+                {
+                    Profile = userProfile,
+                    Reviews = userReviews,
+                    Lists = userLists,
+                    Messages = userMessages
+                };
             }
-
-            var userReviews = await _context.Reviews
-                .Where(r => r.UserId == userId)
-                .Include(r => r.User) 
-                .Select(r => new ReviewDto
-                {
-                    Id = r.Id,
-                    Content = r.Content,
-                    Rating = r.Rating,
-                    CreatedAt = r.CreatedAt,
-                    User = new UserDto
-                    {
-                        Id = r.User.Id,
-                        Username = r.User.Username
-                    }
-                })
-                .ToListAsync();
-
-            var userLists = await _context.UserLists
-                .Where(l => l.UserId == userId)
-                .Include(l => l.UserListGames)
-                    .ThenInclude(ulg => ulg.Game) 
-                .Select(l => new UserListDetailDto
-                {
-                    Id = l.Id,
-                    Name = l.Name,
-                    Description = l.Description,
-                    IsPublic = l.IsPublic,
-                    UpdatedAt = l.UpdatedAt,
-                    FollowerCount = l.Followers.Count(),
-                    Games = l.UserListGames.Select(ulg => new GameSummaryDto
-                    {
-                        Id = ulg.Game.Id,
-                        RawgId = ulg.Game.RawgId,
-                        Name = ulg.Game.Name,
-                        Slug = ulg.Game.Slug,
-                        CoverImage = ulg.Game.CoverImage,
-                        BackgroundImage = ulg.Game.BackgroundImage,
-                        Released = ulg.Game.Released
-                    }).ToList()
-                })
-                .ToListAsync();
-
-            var userMessages = await _context.Messages
-                .Where(m => m.SenderId == userId || m.RecipientId == userId)
-                .Include(m => m.Sender)
-                .Include(m => m.Recipient)
-                .OrderByDescending(m => m.SentAt)
-                .Select(m => new MessageDto
-                {
-                    Id = m.Id,
-                    SenderId = m.SenderId,
-                    SenderUsername = m.Sender.Username,
-                    RecipientId = m.RecipientId,
-                    RecipientUsername = m.Recipient.Username,
-                    Content = m.Content,
-                    ReadAt = m.ReadAt,
-                    SentAt = m.SentAt
-                })
-                .ToListAsync();
-
-            return new UserDataExportDto
-            {
-                Profile = userProfile,
-                Reviews = userReviews,
-                Lists = userLists,
-                Messages = userMessages
-            };
-        }
     }
 }
