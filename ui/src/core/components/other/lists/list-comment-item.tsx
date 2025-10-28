@@ -8,7 +8,7 @@ import { cn } from "@core/lib/utils";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/tr";
-import { ArrowBigDown, ArrowBigUp, MessageSquare, Trash2 } from "lucide-react";
+import { ThumbsUp, ThumbsDown, MessageSquare, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 dayjs.extend(relativeTime);
@@ -82,19 +82,26 @@ export function ListCommentItem({ comment, listId, onVote, isVoting, onDelete, i
                             disabled={isVoting || isOwner}
                             aria-label="Yukarı oy ver"
                         >
-                            <ArrowBigUp className="h-4 w-4" />
+                            <ThumbsUp className="h-4 w-4" />
                         </Button>
-                        <span>{voteScore}</span>
+                        <span
+                            className={cn(
+                                "text-sm font-semibold tabular-nums min-w-[2ch] text-center",
+                                voteScore > 0 && "text-emerald-600",
+                                voteScore < 0 && "text-red-600",
+                                voteScore === 0 && "text-muted-foreground"
+                            )}
+                        >
+                            {voteScore > 0 ? `+${voteScore}` : voteScore}
+                        </span>
                         <Button
                             variant="ghost"
                             size="icon"
                             className={cn(
                                 "h-7 w-7 text-xs hover:bg-red-500/10 hover:text-red-500",
                                 currentUserVote === -1 && "text-red-500 bg-red-500/10",
-                                // DÜZELTME: isDisabled koşulu sadeleştirildi ve cursor eklendi
                                 isVoting || isOwner ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
                             )}
-                            // onClick doğrudan çağrılıyor
                             onClick={() => {
                                 if (!isVoting && !isOwner) {
                                     onVote(comment.id, -1);
@@ -103,7 +110,7 @@ export function ListCommentItem({ comment, listId, onVote, isVoting, onDelete, i
                             disabled={isVoting || isOwner}
                             aria-label="Aşağı oy ver"
                         >
-                            <ArrowBigDown className="h-4 w-4" />
+                            <ThumbsDown className="h-4 w-4" />
                         </Button>
                     </div>
 
@@ -111,7 +118,7 @@ export function ListCommentItem({ comment, listId, onVote, isVoting, onDelete, i
                     <Button
                         variant="ghost"
                         size="sm"
-                        className="h-auto px-2 py-1 text-xs hover:bg-primary/10 hover:text-primary"
+                        className="h-auto px-2 py-1 text-xs hover:bg-primary/10 hover:text-primary cursor-pointer"
                         // onClick={() => onReply(comment.id)}
                     >
                         <MessageSquare className="mr-1 h-3 w-3" /> Yanıtla

@@ -11,6 +11,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@core/components/ui/avatar"
 import { useForm, UseFormReturn } from "react-hook-form";
 import { forwardRef, useImperativeHandle } from "react";
 import { useAuth } from "@core/hooks/use-auth";
+import { useQueryClient } from "@tanstack/react-query";
+import type { Profile } from "@/models/profile/profile.model";
 
 const commentFormSchema = z.object({
     content: z.string().min(1, { message: "Yorum boş olamaz." }).max(1000, { message: "Yorum en fazla 1000 karakter olabilir." }),
@@ -28,6 +30,9 @@ interface ListCommentFormProps {
 
 export const ListCommentForm = forwardRef<{ reset: () => void }, ListCommentFormProps>(({ onSubmit, isPending, parentCommentId, onCancelReply, placeholder = "Yorumunuzu yazın..." }, ref) => {
     const { user } = useAuth();
+    const queryClient = useQueryClient();
+    const myProfile = queryClient.getQueryData<Profile>(["my-profile"]);
+
     const form = useForm<CommentFormSchemaType>({
         resolver: zodResolver(commentFormSchema),
         defaultValues: {
@@ -50,7 +55,8 @@ export const ListCommentForm = forwardRef<{ reset: () => void }, ListCommentForm
         const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
         return `${API_BASE}${path}`;
     };
-    const avatarSrc = getImageUrl(null);
+
+    const avatarSrc = getImageUrl(myProfile?.profileImageUrl);
 
     return (
         <Form {...form}>

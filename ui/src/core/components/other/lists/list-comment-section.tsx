@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { ListCommentForm } from "./list-comment-form";
 import { ListCommentItem } from "./list-comment-item";
 import { useRef } from "react";
+import { useMemo } from "react";
 
 import type { PaginatedResponse } from "@/models/system/api.model";
 import type { UserListComment, UserListCommentForCreation } from "@/models/list/list.model";
@@ -24,8 +25,6 @@ export function ListCommentSection({ listId }: ListCommentSectionProps) {
     const queryClient = useQueryClient();
     const { user } = useAuth();
     const [currentPage, setCurrentPage] = useState(1);
-    const [totalComments, setTotalComments] = useState(0);
-    const [displayedComments, setDisplayedComments] = useState<UserListComment[]>([]);
 
     const {
         data: commentsResult,
@@ -42,12 +41,22 @@ export function ListCommentSection({ listId }: ListCommentSectionProps) {
         staleTime: 1000 * 30,
     });
 
-    useEffect(() => {
-        if (commentsResult && !commentsError) {
-            setTotalComments(commentsResult.totalCount);
-            setDisplayedComments((prev) => (currentPage === 1 || prev.length === 0 ? commentsResult.items : [...prev, ...commentsResult.items]));
+    const totalComments = commentsResult?.totalCount ?? 0;
+
+    // Cache'teki tüm sayfaları birleştir
+    const displayedComments = useMemo(() => {
+        const allComments: UserListComment[] = [];
+
+        // Sayfa 1'den currentPage'e kadar tüm cache'leri topla
+        for (let page = 1; page <= currentPage; page++) {
+            const cachedPage = queryClient.getQueryData<PaginatedResponse<UserListComment>>(["list-comments", listId, page]);
+            if (cachedPage?.items) {
+                allComments.push(...cachedPage.items);
+            }
         }
-    }, [commentsResult, commentsError, currentPage]);
+
+        return allComments;
+    }, [currentPage, listId, queryClient, commentsResult]);
 
     const formRef = useRef<{ reset: () => void }>(null);
 
@@ -55,9 +64,8 @@ export function ListCommentSection({ listId }: ListCommentSectionProps) {
         mutationFn: (newComment: UserListCommentForCreation) => listCommentApi.createListComment(listId, newComment),
         onSuccess: (newlyCreatedComment) => {
             toast.success("Yorumunuz eklendi.");
-            setDisplayedComments((prev) => [newlyCreatedComment, ...prev]);
-            setTotalComments((prev) => prev + 1);
             formRef.current?.reset();
+
             queryClient.setQueryData<PaginatedResponse<UserListComment>>(["list-comments", listId, 1], (oldData) => {
                 if (!oldData) return undefined;
                 return {
@@ -89,17 +97,17 @@ export function ListCommentSection({ listId }: ListCommentSectionProps) {
         mutationFn: (commentId: number) => listCommentApi.deleteListComment(commentId),
         onSuccess: (_, commentId) => {
             toast.success("Yorum silindi.");
-            setDisplayedComments((prev) => prev.filter((c) => c.id !== commentId));
-            setTotalComments((prev) => Math.max(0, prev - 1));
-            queryClient.setQueryData<PaginatedResponse<UserListComment>>(["list-comments", listId, 1], (oldData) => {
-                if (!oldData) return undefined;
-                return {
-                    ...oldData,
-                    items: oldData.items.filter((c) => c.id !== commentId),
-                    totalCount: Math.max(0, oldData.totalCount - 1),
-                };
-            });
-            // TODO: Diğer sayfaların cache'ini de güncellemek gerekebilir
+
+            for (let page = 1; page <= currentPage; page++) {
+                queryClient.setQueryData<PaginatedResponse<UserListComment>>(["list-comments", listId, page], (oldData) => {
+                    if (!oldData) return undefined;
+                    return {
+                        ...oldData,
+                        items: oldData.items.filter((c) => c.id !== commentId),
+                        totalCount: Math.max(0, oldData.totalCount - 1),
+                    };
+                });
+            }
         },
         onError: (error) => {
             toast.error(`Yorum silinemedi: ${error.message}`);
