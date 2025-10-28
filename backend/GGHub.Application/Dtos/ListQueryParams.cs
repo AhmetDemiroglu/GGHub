@@ -19,7 +19,7 @@ namespace GGHub.Application.Dtos
             set => _pageSize = (value > MaxPageSize) ? MaxPageSize : value;
         }
         public string? SearchTerm { get; set; }
-
         public ListCategory? Category { get; set; }
+        public bool? FollowedByMe { get; set; }
     }
 }

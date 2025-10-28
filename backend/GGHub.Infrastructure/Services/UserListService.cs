@@ -173,7 +173,7 @@ namespace GGHub.Infrastructure.Services
         {
             var list = await _context.UserLists
                 .Include(l => l.User)
-                .Include(l => l.UserListGames) 
+                .Include(l => l.UserListGames)
                     .ThenInclude(ulg => ulg.Game)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(l => l.Id == listId);
@@ -183,7 +183,7 @@ namespace GGHub.Infrastructure.Services
                 throw new KeyNotFoundException("Liste bulunamadı.");
             }
 
-            if (list.UserId != currentUserId) 
+            if (list.UserId != currentUserId)
             {
                 if (list.Visibility == ListVisibilitySetting.Private)
                 {
@@ -202,6 +202,13 @@ namespace GGHub.Infrastructure.Services
                 }
             }
 
+            bool isFollowingThisList = false;
+            if (list.UserId != currentUserId)
+            {
+                isFollowingThisList = await _context.UserListFollows
+                    .AnyAsync(f => f.FollowedListId == listId && f.FollowerUserId == currentUserId);
+            }
+
             var gameSummaries = list.UserListGames.Select(ulg => new GameSummaryDto
             {
                 Id = ulg.Game.Id,
@@ -211,8 +218,8 @@ namespace GGHub.Infrastructure.Services
                 CoverImage = ulg.Game.CoverImage,
                 BackgroundImage = ulg.Game.BackgroundImage,
                 Released = ulg.Game.Released,
-                Rating = ulg.Game.Rating, 
-                Metacritic = ulg.Game.Metacritic, 
+                Rating = ulg.Game.Rating,
+                Metacritic = ulg.Game.Metacritic,
             }).ToList();
 
             return new UserListDetailDto
@@ -223,30 +230,35 @@ namespace GGHub.Infrastructure.Services
                 Visibility = list.Visibility,
                 Category = list.Category,
                 UpdatedAt = list.UpdatedAt,
-                GameCount = list.UserListGames.Count, // Bu hala doğru
-                FollowerCount = await _context.UserListFollows.CountAsync(f => f.FollowedListId == listId), // Bu da
-                RatingCount = list.RatingCount, // Denormalize
-                AverageRating = list.AverageRating, // Denormalize
-                Owner = new UserDto 
+                GameCount = list.UserListGames.Count,
+                FollowerCount = await _context.UserListFollows.CountAsync(f => f.FollowedListId == listId),
+                RatingCount = list.RatingCount,
+                AverageRating = list.AverageRating,
+                Owner = new UserDto
                 {
                     Id = list.User.Id,
                     Username = list.User.Username,
                     ProfileImageUrl = list.User.ProfileImageUrl,
                     FirstName = list.User.FirstName,
-                    LastName = list.User.LastName,
+                    LastName = list.User.LastName,   
                 },
-                Games = gameSummaries
+                Games = gameSummaries,
+                IsFollowing = isFollowingThisList
             };
         }
 
-        public async Task<PaginatedResult<UserListPublicDto>> GetPublicListsAsync(ListQueryParams query)
+        public async Task<PaginatedResult<UserListPublicDto>> GetPublicListsAsync(ListQueryParams query, int currentUserId)
         {
             var queryable = _context.UserLists
                 .Include(l => l.User)
                 .Include(l => l.UserListGames)
                     .ThenInclude(ulg => ulg.Game)
                     .Include(l => l.Followers)
-                .Where(l => l.Visibility == ListVisibilitySetting.Public)
+                .Where(l =>
+                    l.Visibility == ListVisibilitySetting.Public ||
+                    (l.Visibility == ListVisibilitySetting.Followers &&
+                     _context.Follows.Any(f => f.FollowerId == currentUserId && f.FolloweeId == l.UserId))
+                )
                 .AsNoTracking();
 
             if (!string.IsNullOrWhiteSpace(query.SearchTerm))
@@ -261,13 +273,25 @@ namespace GGHub.Infrastructure.Services
                 queryable = queryable.Where(l => l.Category == query.Category.Value);
             }
 
+            if (query.FollowedByMe == true)
+            {
+                queryable = queryable.Where(l =>
+                    _context.Follows.Any(f => f.FollowerId == currentUserId && f.FolloweeId == l.UserId)
+                );
+            }
+
             var totalCount = await queryable.CountAsync();
 
             var itemsFromDb = await queryable
-                .OrderByDescending(l => l.AverageRating)
-                .ThenByDescending(l => l.RatingCount)
+                .OrderByDescending(l => l.UpdatedAt)                                                 
                 .Skip((query.Page - 1) * query.PageSize)
                 .Take(query.PageSize)
+                .ToListAsync();
+
+            var ownerIds = itemsFromDb.Select(l => l.UserId).Distinct().ToList();
+            var followedOwnerIds = await _context.Follows
+                .Where(f => f.FollowerId == currentUserId && ownerIds.Contains(f.FolloweeId))
+                .Select(f => f.FolloweeId)
                 .ToListAsync();
 
             var itemDtos = itemsFromDb.Select(l => new UserListPublicDto
@@ -278,28 +302,116 @@ namespace GGHub.Infrastructure.Services
                 Category = l.Category,
                 UpdatedAt = l.UpdatedAt,
                 GameCount = l.UserListGames.Count(),
-                FollowerCount = l.Followers?.Count() ?? 0, 
+                FollowerCount = l.Followers?.Count() ?? 0,
                 AverageRating = l.AverageRating,
                 RatingCount = l.RatingCount,
                 Owner = new UserDto
                 {
                     Id = l.User.Id,
                     Username = l.User.Username,
-                    ProfileImageUrl = l.User.ProfileImageUrl
+                    ProfileImageUrl = l.User.ProfileImageUrl,
+                    IsFollowing = followedOwnerIds.Contains(l.UserId)
                 },
+                Visibility = l.Visibility,
                 FirstGameImageUrls = l.UserListGames
                                      .OrderBy(ulg => ulg.AddedAt)
                                      .Select(ulg => ulg.Game.BackgroundImage)
                                      .Take(4)
                                      .ToList()
-            }).ToList(); 
+            }).ToList();
 
             return new PaginatedResult<UserListPublicDto>
             {
-                Items = itemDtos, 
+                Items = itemDtos,
                 TotalCount = totalCount,
                 Page = query.Page,
                 PageSize = query.PageSize
+            };
+        }
+        public async Task<PaginatedResult<UserListPublicDto>> GetFollowedListsByUserAsync(int targetUserId, int currentUserId, ListQueryParams queryParams)
+        {
+            var followedListIdsQuery = _context.UserListFollows
+                .Where(f => f.FollowerUserId == targetUserId)
+                .Select(f => f.FollowedListId);
+
+            var queryable = _context.UserLists
+                .Include(l => l.User) 
+                .Include(l => l.UserListGames)
+                .ThenInclude(ulg => ulg.Game)
+                .Include(l => l.Followers)
+                .Where(l => followedListIdsQuery.Contains(l.Id)) 
+                .Where(l =>
+                    l.Visibility == ListVisibilitySetting.Public ||
+                    l.UserId == currentUserId || 
+                    (l.Visibility == ListVisibilitySetting.Followers &&
+                        _context.Follows.Any(f => f.FollowerId == currentUserId && f.FolloweeId == l.UserId))
+                 )
+                .AsNoTracking();
+
+            if (!string.IsNullOrWhiteSpace(queryParams.SearchTerm))
+            {
+                var searchTermLower = queryParams.SearchTerm.ToLower();
+                queryable = queryable.Where(l => l.Name.ToLower().Contains(searchTermLower) ||
+                                                 (l.Description != null && l.Description.ToLower().Contains(searchTermLower)));
+            }
+            if (queryParams.Category.HasValue && queryParams.Category.Value != ListCategory.Other)
+            {
+                queryable = queryable.Where(l => l.Category == queryParams.Category.Value);
+            }
+
+            var totalCount = await queryable.CountAsync();
+
+            var itemsFromDb = await queryable
+                .OrderByDescending(l => l.UpdatedAt)
+                .Skip((queryParams.Page - 1) * queryParams.PageSize)
+                .Take(queryParams.PageSize)
+                .ToListAsync();
+
+            var ownerIds = itemsFromDb.Select(l => l.UserId).Distinct().ToList();
+            var followedOwnerIds = await _context.Follows
+                .Where(f => f.FollowerId == currentUserId && ownerIds.Contains(f.FolloweeId))
+                .Select(f => f.FolloweeId)
+                .ToListAsync();
+
+            var listIds = itemsFromDb.Select(l => l.Id).ToList();
+            var followedListIdsByCurrentUser = await _context.UserListFollows
+                .Where(f => f.FollowerUserId == currentUserId && listIds.Contains(f.FollowedListId))
+                .Select(f => f.FollowedListId)
+                .ToListAsync();
+
+            var itemDtos = itemsFromDb.Select(l => new UserListPublicDto
+            {
+                Id = l.Id,
+                Name = l.Name,
+                Description = l.Description,
+                Category = l.Category,
+                UpdatedAt = l.UpdatedAt,
+                GameCount = l.UserListGames.Count(),
+                FollowerCount = l.Followers?.Count() ?? 0,
+                AverageRating = l.AverageRating,
+                RatingCount = l.RatingCount,
+                Owner = new UserDto
+                {
+                    Id = l.User.Id,
+                    Username = l.User.Username,
+                    ProfileImageUrl = l.User.ProfileImageUrl,
+                    IsFollowing = followedOwnerIds.Contains(l.UserId)
+                },
+                Visibility = l.Visibility,
+                FirstGameImageUrls = l.UserListGames
+                                    .OrderBy(ulg => ulg.AddedAt)
+                                    .Select(ulg => ulg.Game.BackgroundImage)
+                                    .Take(4)
+                                    .ToList(),
+                IsFollowing = followedListIdsByCurrentUser.Contains(l.Id)
+            }).ToList();
+
+            return new PaginatedResult<UserListPublicDto>
+            {
+                Items = itemDtos,
+                TotalCount = totalCount,
+                Page = queryParams.Page,
+                PageSize = queryParams.PageSize
             };
         }
         public async Task<bool> RemoveGameFromListAsync(int listId, int rawgGameId, int userId)

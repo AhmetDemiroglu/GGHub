@@ -16,5 +16,6 @@ namespace GGHub.Application.Dtos
         public int RatingCount { get; set; }
         public double AverageRating { get; set; }
         public UserDto Owner { get; set; }
+        public bool IsFollowing { get; set; }
     }
 }

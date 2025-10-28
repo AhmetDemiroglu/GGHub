@@ -24,7 +24,7 @@ export function ProfilePhotoUploader({ isOpen, onClose, currentImageUrl, usernam
     const queryClient = useQueryClient();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const [imageSrc, setImageSrc] = useState<string | null>(null); // Kırpılacak orijinal resim
+    const [imageSrc, setImageSrc] = useState<string | null>(null);
     const [crop, setCrop] = useState({ x: 0, y: 0 });
     const [zoom, setZoom] = useState(1);
     const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);

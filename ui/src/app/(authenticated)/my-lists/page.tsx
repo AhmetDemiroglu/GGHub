@@ -6,24 +6,28 @@ import { Input } from "@/core/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/core/components/ui/select";
 import { useDebounce } from "@/core/hooks/use-debounce";
 import * as listApi from "@/api/list/list.api";
-import { ListCategory, ListVisibilitySetting, UserList, UserListForCreation } from "@/models/list/list.model";
+import { ListCategory, ListVisibilitySetting, UserList, UserListForCreation, UserListForUpdate } from "@/models/list/list.model";
 import { ListCard } from "@/core/components/other/list-card/";
 import { ListCardSkeleton } from "@/core/components/other/list-card/skeleton";
 import { Button } from "@/core/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Edit, Trash2 } from "lucide-react";
+import { DeleteListDialog } from "@core/components/other/lists/delete-list-dialog";
 import { Separator } from "@/core/components/ui/separator";
 import { ListFormModal } from "@core/components/other/lists/list-form-modal";
 import { toast } from "sonner";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const categoryOptions = [
     { value: "all", label: "Tüm Kategoriler" },
     ...Object.keys(ListCategory)
         .filter((v) => !isNaN(Number(v)))
-        .map((key) => ({
-            value: key,
-            label: ListCategory[key as any],
-        })),
+        .map((key) => {
+            const label = ListCategory[key as any];
+            return {
+                value: key,
+                label: label === "Other" ? "Diğer" : label,
+            };
+        }),
 ];
 
 const visibilityOptions = [
@@ -34,10 +38,13 @@ const visibilityOptions = [
 ];
 
 export default function MyListsPage() {
+    const router = useRouter();
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("all");
     const [selectedVisibility, setSelectedVisibility] = useState("all");
-
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [listToDelete, setListToDelete] = useState<UserList | null>(null);
+    const [listToEdit, setListToEdit] = useState<UserList | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const debouncedSearchTerm = useDebounce(searchTerm, 300);
@@ -68,6 +75,63 @@ export default function MyListsPage() {
         createListMutation.mutate(values);
     };
 
+    const updateListMutation = useMutation({
+        mutationFn: ({ listId, data }: { listId: number; data: UserListForUpdate }) => listApi.updateList(listId, data),
+        onSuccess: (_, variables) => {
+            toast.success(`'${variables.data.name}' listesi başarıyla güncellendi.`);
+            queryClient.invalidateQueries({ queryKey: ["my-lists"] });
+            queryClient.invalidateQueries({ queryKey: ["list-detail", variables.listId] });
+            setIsModalOpen(false);
+            setListToEdit(null);
+        },
+        onError: (error) => {
+            toast.error(`Liste güncellenemedi: ${error.message}`);
+        },
+    });
+
+    const handleFormSubmit = (values: UserListForCreation | UserListForUpdate) => {
+        if (listToEdit) {
+            updateListMutation.mutate({ listId: listToEdit.id, data: values });
+        } else {
+            createListMutation.mutate(values);
+        }
+    };
+
+    const handleEditClick = (list: UserList) => {
+        setListToEdit(list);
+        setIsModalOpen(true);
+    };
+
+    const deleteListMutation = useMutation({
+        mutationFn: (listId: number) => listApi.deleteList(listId),
+        onSuccess: (data, deletedListId) => {
+            toast.success(`'${listToDelete?.name || "Liste"}' başarıyla silindi.`);
+            queryClient.setQueryData<UserList[]>(["my-lists"], (oldData) => {
+                if (!oldData) {
+                    return oldData;
+                }
+                return oldData.filter((list) => list.id !== deletedListId);
+            });
+
+            setIsDeleteDialogOpen(false);
+            setListToDelete(null);
+        },
+        onError: (error) => {
+            toast.error(`Liste silinemedi: ${error.message}`);
+        },
+    });
+
+    const handleDeleteClick = (list: UserList) => {
+        setListToDelete(list);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const handleConfirmDelete = () => {
+        if (listToDelete) {
+            deleteListMutation.mutate(listToDelete.id);
+        }
+    };
+
     const filteredLists = useMemo(() => {
         if (!lists) return [];
 
@@ -86,6 +150,8 @@ export default function MyListsPage() {
     if (error) {
         return <div className="p-5 text-red-500">Listeler yüklenirken bir hata oluştu: {error.message}</div>;
     }
+
+    const isFormPending = createListMutation.isPending || updateListMutation.isPending;
 
     return (
         <div className="w-full h-full overflow-y-auto p-5">
@@ -150,15 +216,72 @@ export default function MyListsPage() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {filteredLists.map((list) => (
-                            <Link href={`/lists/${list.id}`} key={list.id}>
-                                <ListCard list={list} />
-                            </Link>
-                        ))}
+                        {filteredLists.map((list) => {
+                            const cardFooter = (
+                                <div className="flex justify-end gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-7 w-7 cursor-pointer"
+                                        aria-label="Listeyi düzenle"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            handleEditClick(list);
+                                        }}
+                                        disabled={updateListMutation.isPending && listToEdit?.id === list.id}
+                                    >
+                                        <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-7 w-7 cursor-pointer text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive"
+                                        aria-label="Listeyi sil"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            handleDeleteClick(list);
+                                        }}
+                                        disabled={deleteListMutation.isPending && listToDelete?.id === list.id}
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            );
+                            return (
+                                <div key={list.id} className="block cursor-pointer" onClick={() => router.push(`/lists/${list.id}`)}>
+                                    <ListCard list={list} footer={cardFooter} />
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
             </div>
-            <ListFormModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSubmit={handleCreateList} isPending={createListMutation.isPending} />
+            <ListFormModal
+                isOpen={isModalOpen}
+                onClose={() => {
+                    setIsModalOpen(false);
+                    if (!isFormPending) {
+                        setListToEdit(null);
+                    }
+                }}
+                onSubmit={handleFormSubmit}
+                isPending={isFormPending}
+                defaultValues={listToEdit}
+            />
+            <DeleteListDialog
+                isOpen={isDeleteDialogOpen}
+                onClose={() => {
+                    setIsDeleteDialogOpen(false);
+                    if (!deleteListMutation.isPending) {
+                        setListToDelete(null);
+                    }
+                }}
+                onConfirm={handleConfirmDelete}
+                isPending={deleteListMutation.isPending}
+                listName={listToDelete?.name}
+            />
         </div>
     );
 }

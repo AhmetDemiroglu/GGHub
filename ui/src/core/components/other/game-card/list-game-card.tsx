@@ -9,12 +9,12 @@ interface ListGameCardProps {
 
 export const ListGameCard = memo(function ListGameCard({ game, showRemoveButton, onRemove }: ListGameCardProps) {
     return (
-        <div className="flex gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
+        <div className="flex gap-3 p-3 rounded-lg border bg-card cursor-pointer hover:bg-accent/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-200">
             {/* Sol: Küçük Thumbnail */}
             <img
                 src={game.backgroundImage ?? "/placeholder.png"}
                 alt={game.name}
-                className="w-20 h-28 object-cover rounded flex-shrink-0"
+                className="w-20 h-20 object-cover rounded flex-shrink-0"
                 loading="lazy"
                 onError={(e) => {
                     const target = e.target as HTMLImageElement;
@@ -30,13 +30,11 @@ export const ListGameCard = memo(function ListGameCard({ game, showRemoveButton,
                     <p className="text-xs text-muted-foreground">{game.released ? new Date(game.released).getFullYear() : "-"}</p>
                 </div>
 
-                {/* Alt: RAWG Puanı */}
-                {game.rating && (
-                    <div className="flex items-center gap-1 text-sm">
-                        <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
-                        <span className="font-medium">{game.rating.toFixed(1)}</span>
-                    </div>
-                )}
+                {/* RAWG / Metacritic Puanı */}
+                <div className="flex items-center gap-2 flex-wrap">
+                    {game.rating && <div className="px-2 py-1 rounded-md bg-blue-500/20 text-blue-400 font-semibold text-xs border border-blue-500/30">{game.rating.toFixed(1)}</div>}
+                    {game.metacritic && <div className="px-2 py-1 rounded-md bg-green-500/20 text-green-400 font-semibold text-xs border border-green-500/30">{game.metacritic}</div>}
+                </div>
             </div>
 
             {/* Sağ: Trash Button */}

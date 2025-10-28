@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { ListCategory, ListVisibilitySetting, UserList, UserListForCreation } from "@/models/list/list.model";
+import { ListCategory, ListVisibilitySetting, UserList, UserListDetail, UserListForCreation, UserListForUpdate } from "@/models/list/list.model";
 import { Button } from "@core/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@core/components/ui/dialog";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@core/components/ui/form";
@@ -15,23 +15,24 @@ import { Textarea } from "@core/components/ui/textarea";
 import { Globe, Lock, Users } from "lucide-react";
 import { Loader2 } from "lucide-react";
 
-// Backend Enum'larına dayalı Zod şeması
 const formSchema = z.object({
     name: z.string().min(3, { message: "Liste adı en az 3 karakter olmalıdır." }).max(100, { message: "Liste adı en fazla 100 karakter olabilir." }),
     description: z.string().max(500, { message: "Açıklama en fazla 500 karakter olabilir." }).optional(),
-    visibility: z.nativeEnum(ListVisibilitySetting).transform((val) => Number(val)), // Gelen string'i sayıya çevir
-    category: z.nativeEnum(ListCategory).transform((val) => Number(val)), // Gelen string'i sayıya çevir
+    visibility: z.nativeEnum(ListVisibilitySetting).transform((val) => Number(val)),
+    category: z.nativeEnum(ListCategory).transform((val) => Number(val)),
 });
 
 type FormSchemaType = z.infer<typeof formSchema>;
 
-// Enum'ları Select/Radio için seçeneklere dönüştürme
 const categoryOptions = Object.keys(ListCategory)
     .filter((v) => !isNaN(Number(v)))
-    .map((key: any) => ({
-        value: key,
-        label: ListCategory[key as any],
-    }));
+    .map((key: any) => {
+        const label = ListCategory[key as any];
+        return {
+            value: key,
+            label: label === "Other" ? "Diğer" : label,
+        };
+    });
 
 const visibilityOptions = [
     {
@@ -57,12 +58,9 @@ const visibilityOptions = [
 interface ListFormModalProps {
     isOpen: boolean;
     onClose: () => void;
-    // Hem Create (UserListForCreation) hem de Update (UserListForUpdate)
-    // aynı DTO'yu kullandığı için UserListForCreation alıyoruz
-    onSubmit: (values: UserListForCreation) => void;
+    onSubmit: (values: UserListForCreation | UserListForUpdate) => void;
     isPending: boolean;
-    // Düzenleme modu için
-    defaultValues?: UserList | null;
+    defaultValues?: UserList | UserListDetail | null;
 }
 
 export function ListFormModal({ isOpen, onClose, onSubmit, isPending, defaultValues }: ListFormModalProps) {
@@ -81,7 +79,6 @@ export function ListFormModal({ isOpen, onClose, onSubmit, isPending, defaultVal
         },
     });
 
-    // Modal her açıldığında (veya düzenleme verisi değiştiğinde) formu resetle
     useEffect(() => {
         if (isOpen) {
             form.reset({
@@ -93,125 +90,119 @@ export function ListFormModal({ isOpen, onClose, onSubmit, isPending, defaultVal
         }
     }, [isOpen, defaultValues, form]);
 
-    const handleFormSubmit = (values: FormSchemaType) => {
-        onSubmit(values);
-    };
-
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[600px]">
+            <DialogContent className="sm:max-w-[600px] max-h-[100vh] flex flex-col overflow-hidden">
                 <DialogHeader>
                     <DialogTitle>{title}</DialogTitle>
                     <DialogDescription>{description}</DialogDescription>
                 </DialogHeader>
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
-                        {/* Liste Adı */}
-                        <FormField
-                            control={form.control}
-                            name="name"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Liste Adı</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Örn: Favori RPG'lerim" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        {/* Açıklama */}
-                        <FormField
-                            control={form.control}
-                            name="description"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Açıklama (Opsiyonel)</FormLabel>
-                                    <FormControl>
-                                        <Textarea placeholder="Bu liste hakkında kısa bir açıklama..." className="resize-none" {...field} value={field.value || ""} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        {/* Kategori */}
-                        <FormField
-                            control={form.control}
-                            name="category"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Kategori</FormLabel>
-                                    <Select onValueChange={(value) => field.onChange(Number(value))} value={String(field.value)}>
+                <div className="flex-1 overflow-y-auto pr-6 pl-1 py-4">
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                            {/* Liste Adı */}
+                            <FormField
+                                control={form.control}
+                                name="name"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Liste Adı</FormLabel>
                                         <FormControl>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Bir kategori seçin..." />
-                                            </SelectTrigger>
+                                            <Input placeholder="Örn: Favori RPG'lerim" {...field} />
                                         </FormControl>
-                                        <SelectContent>
-                                            {categoryOptions.map((opt) => (
-                                                <SelectItem key={opt.value} value={opt.value}>
-                                                    {opt.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        {/* Görünürlük */}
-                        <FormField
-                            control={form.control}
-                            name="visibility"
-                            render={({ field }) => (
-                                <FormItem className="space-y-3">
-                                    <FormLabel>Görünürlük</FormLabel>
-                                    <FormControl>
-                                        <RadioGroup onValueChange={(value) => field.onChange(Number(value))} value={String(field.value)} className="gap-4 grid grid-cols-1 sm:grid-cols-3">
-                                            {visibilityOptions.map((opt) => {
-                                                const Icon = opt.icon;
-                                                const isChecked = String(field.value) === opt.value;
-                                                return (
-                                                    <FormItem key={opt.value}>
-                                                        <FormLabel
-                                                            className={`
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            {/* Açıklama */}
+                            <FormField
+                                control={form.control}
+                                name="description"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Açıklama (Opsiyonel)</FormLabel>
+                                        <FormControl>
+                                            <Textarea placeholder="Bu liste hakkında kısa bir açıklama..." className="resize-none" {...field} value={field.value || ""} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            {/* Kategori */}
+                            <FormField
+                                control={form.control}
+                                name="category"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Kategori</FormLabel>
+                                        <Select onValueChange={(value) => field.onChange(Number(value))} value={String(field.value)}>
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Bir kategori seçin..." />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                {categoryOptions.map((opt) => (
+                                                    <SelectItem key={opt.value} value={opt.value}>
+                                                        {opt.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            {/* Görünürlük */}
+                            <FormField
+                                control={form.control}
+                                name="visibility"
+                                render={({ field }) => (
+                                    <FormItem className="space-y-3">
+                                        <FormLabel>Görünürlük</FormLabel>
+                                        <FormControl>
+                                            <RadioGroup onValueChange={(value) => field.onChange(Number(value))} value={String(field.value)} className="gap-4 grid grid-cols-1 sm:grid-cols-3">
+                                                {visibilityOptions.map((opt) => {
+                                                    const Icon = opt.icon;
+                                                    const isChecked = String(field.value) === opt.value;
+                                                    return (
+                                                        <FormItem key={opt.value}>
+                                                            <FormLabel
+                                                                className={`
                                 flex flex-col items-center justify-center rounded-md border p-4
                                 cursor-pointer transition-colors
                                 hover:border-primary
                                 ${isChecked ? "border-transparent ring-2 ring-primary" : ""}
                               `}
-                                                        >
-                                                            <FormControl>
-                                                                <RadioGroupItem value={opt.value} className="sr-only" />
-                                                            </FormControl>
-                                                            <Icon className="h-6 w-6 mb-2" />
-                                                            <span>{opt.label}</span>
-                                                            <FormDescription className="text-xs text-center mt-1">{opt.description}</FormDescription>
-                                                        </FormLabel>
-                                                    </FormItem>
-                                                );
-                                            })}
-                                        </RadioGroup>
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <div className="flex justify-end gap-2">
-                            <Button type="button" variant="outline" onClick={onClose} disabled={isPending}>
-                                İptal
-                            </Button>
-                            <Button type="submit" disabled={isPending}>
-                                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                {actionLabel}
-                            </Button>
-                        </div>
-                    </form>
-                </Form>
+                                                            >
+                                                                <FormControl>
+                                                                    <RadioGroupItem value={opt.value} className="sr-only" />
+                                                                </FormControl>
+                                                                <Icon className="h-6 w-6 mb-2" />
+                                                                <span>{opt.label}</span>
+                                                                <FormDescription className="text-xs text-center mt-1">{opt.description}</FormDescription>
+                                                            </FormLabel>
+                                                        </FormItem>
+                                                    );
+                                                })}
+                                            </RadioGroup>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <div className="flex justify-end gap-2">
+                                <Button type="button" variant="outline" onClick={onClose} disabled={isPending} className="cursor-pointer">
+                                    İptal
+                                </Button>
+                                <Button type="submit" disabled={isPending} className="cursor-pointer">
+                                    {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    {actionLabel}
+                                </Button>
+                            </div>
+                        </form>
+                    </Form>
+                </div>
             </DialogContent>
         </Dialog>
     );

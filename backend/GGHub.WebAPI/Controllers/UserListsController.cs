@@ -16,13 +16,14 @@ namespace GGHub.WebAPI.Controllers
         private readonly INotificationService _notificationService;
         private readonly IGameService _gameService;
         private readonly ISocialService _socialService;
-
-        public UserListsController(IUserListService userListService, INotificationService notificationService, IGameService gameService, ISocialService socialService)
+        private readonly IProfileService _profileService;
+        public UserListsController(IUserListService userListService, INotificationService notificationService, IGameService gameService, ISocialService socialService, IProfileService profileService)
         {
             _userListService = userListService;
             _notificationService = notificationService;
             _gameService = gameService;
             _socialService = socialService;
+            _profileService = profileService;
         }
 
         [HttpPost("/api/user-lists")]
@@ -107,9 +108,32 @@ namespace GGHub.WebAPI.Controllers
         [HttpGet("public")]
         public async Task<IActionResult> GetPublicLists([FromQuery] ListQueryParams query)
         {
-            var result = await _userListService.GetPublicListsAsync(query);
+            var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var result = await _userListService.GetPublicListsAsync(query, currentUserId);
             return Ok(result);
         }
+
+        [HttpGet("followed-by/{username}")]
+        public async Task<IActionResult> GetFollowedLists(string username, [FromQuery] ListQueryParams queryParams)
+        {
+            var targetUserProfile = await _profileService.GetProfileByUsernameAsync(username);
+            if (targetUserProfile == null)
+            {
+                return NotFound("Kullanıcı bulunamadı.");
+            }
+            int targetUserId = targetUserProfile.Id;
+
+            var currentUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (currentUserIdClaim == null)
+            {
+                return Unauthorized();
+            }
+            int currentUserId = int.Parse(currentUserIdClaim.Value);
+
+            var result = await _userListService.GetFollowedListsByUserAsync(targetUserId, currentUserId, queryParams);
+            return Ok(result);
+        }
+
         [HttpDelete("{listId}/games/{gameId}")]
         public async Task<IActionResult> RemoveGameFromList(int listId, int gameId)
         {
@@ -125,7 +149,6 @@ namespace GGHub.WebAPI.Controllers
             return NoContent();
         }
         [HttpPost("{listId}/follow")]
-        [Authorize]
         public async Task<IActionResult> FollowList(int listId)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
@@ -134,7 +157,6 @@ namespace GGHub.WebAPI.Controllers
         }
 
         [HttpDelete("{listId}/follow")]
-        [Authorize]
         public async Task<IActionResult> UnfollowList(int listId)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);

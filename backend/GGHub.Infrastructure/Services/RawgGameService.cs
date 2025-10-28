@@ -114,17 +114,6 @@ namespace GGHub.Infrastructure.Services
             }
 
             var gameDtos = response.Results
-                .Where(dto =>
-                {
-                    if (!string.IsNullOrWhiteSpace(dto.Released) &&
-                        DateTime.TryParse(dto.Released, out var releaseDate) &&
-                        releaseDate.Year <= 2025)
-                    {
-                        return (dto.Metacritic.HasValue && dto.Metacritic > 0) ||
-                               (dto.Rating.HasValue && dto.Rating > 0);
-                    }
-                    return true;
-                })
                 .Select(dto => new GameDto
                 {
                     Id = 0,

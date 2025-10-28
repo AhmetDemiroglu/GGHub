@@ -68,10 +68,9 @@ export function ListDetailHeader({ list, actions }: ListDetailHeaderProps) {
                 </div>
 
                 {/* Açıklama */}
-                {list.description && <p className="text-muted-foreground mt-4 max-w-2xl">{list.description}</p>}
+                {list.description && <p className="text-muted-foreground mt-4">{list.description}</p>}
             </div>
 
-            {/* Sağ Taraf: Aksiyon Butonları (Adım 8'de gelecek) */}
             <div className="flex-shrink-0 flex sm:flex-col items-center gap-2">{actions}</div>
         </div>
     );

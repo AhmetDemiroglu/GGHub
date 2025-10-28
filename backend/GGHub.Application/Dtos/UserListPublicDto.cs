@@ -15,6 +15,8 @@ namespace GGHub.Application.Dtos
         public double AverageRating { get; set; }
         public int RatingCount { get; set; }
         public UserDto Owner { get; set; }
-        public List<string?> FirstGameImageUrls { get; set; } = new List<string?>();
+        public ListVisibilitySetting Visibility { get; set; } 
+        public List<string?> FirstGameImageUrls { get; set; } = new List<string?>(); 
+        public bool IsFollowing { get; set; }
     }
 }

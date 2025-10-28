@@ -89,7 +89,7 @@ export function ProfileEditForm({ initialData, onSave }: ProfileEditFormProps) {
     let correctedValues = { ...values };
 
     if (dateOfBirth) {
-      const userTimezoneOffset = dateOfBirth.getTimezoneOffset() * 60000; // milisaniyeye çevir
+      const userTimezoneOffset = dateOfBirth.getTimezoneOffset() * 60000;
       const correctedDate = new Date(dateOfBirth.getTime() - userTimezoneOffset);
       
       correctedValues.dateOfBirth = correctedDate;

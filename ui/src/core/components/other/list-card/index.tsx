@@ -1,11 +1,23 @@
 "use client";
 
-import type { UserList } from "@/models/list/list.model";
 import { ListCategory, ListVisibilitySetting } from "@/models/list/list.model";
 import { Badge } from "@core/components/ui/badge";
 import { Separator } from "@core/components/ui/separator";
 import { Globe, Lock, Users, Tag, Star, List as ListIcon, Users as FollowersIcon } from "lucide-react";
 import React from "react";
+
+interface ListCardData {
+    id: number;
+    name: string;
+    description?: string;
+    visibility: ListVisibilitySetting;
+    category: ListCategory;
+    averageRating: number;
+    ratingCount: number;
+    gameCount: number;
+    followerCount: number;
+    firstGameImageUrls: (string | null)[];
+}
 
 const VisibilityInfo: React.FC<{
     visibility: ListVisibilitySetting;
@@ -38,11 +50,12 @@ const VisibilityInfo: React.FC<{
 };
 
 const getCategoryLabel = (category: ListCategory): string => {
-    return ListCategory[category] || "Diğer";
+    const label = ListCategory[category];
+    return label === "Other" ? "Diğer" : label || "Diğer";
 };
 
 interface ListCardProps {
-    list: UserList;
+    list: ListCardData;
     footer?: React.ReactNode;
 }
 
@@ -84,7 +97,7 @@ export function ListCard({ list, footer }: ListCardProps) {
             <div className="p-4 flex flex-col flex-1">
                 {/* Başlık */}
                 <h3 className="text-xl font-bold line-clamp-2 mb-4 flex-1">{list.name}</h3>
-
+                {list.description && <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{list.description}</p>}
                 {/* Rozetler (Görünürlük, Kategori, Puan) */}
                 <div className="flex flex-col items-start gap-2 mb-4">
                     <VisibilityInfo visibility={list.visibility} isCollapsed={false} />
@@ -102,28 +115,23 @@ export function ListCard({ list, footer }: ListCardProps) {
 
                 <Separator className="bg-border" />
 
-                {/* İstatistikler (Oyun Sayısı, Takipçi) */}
-                <div className="flex justify-between items-center text-sm text-muted-foreground pt-3 mt-auto">
-                    <div className="flex items-center gap-1">
-                        <ListIcon className="h-4 w-4" />
-                        <span className="text-foreground font-semibold">{list.gameCount}</span>
-                        <span className="hidden sm:inline">Oyun</span>
+                <div className="flex justify-between items-center text-sm text-muted-foreground pt-3">
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-1">
+                            <ListIcon className="h-4 w-4" />
+                            <span className="text-foreground font-semibold">{list.gameCount}</span>
+                            <span className="hidden sm:inline">Oyun</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <FollowersIcon className="h-4 w-4" />
+                            <span className="text-foreground font-semibold">{list.followerCount}</span>
+                            <span className="hidden sm:inline">Takipçi</span>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                        <FollowersIcon className="h-4 w-4" />
-                        <span className="text-foreground font-semibold">{list.followerCount}</span>
-                        <span className="hidden sm:inline">Takipçi</span>
-                    </div>
-                </div>
 
-                {/* Footer (Aksiyon Butonları) */}
-                {footer && (
-                    <>
-                        <Separator className="bg-border my-3" />
-                        <div className="flex w-full gap-2">{footer}</div>
-                    </>
-                )}
+                    {footer}
+                </div>
             </div>
-        </div>
+        </div> // Ana div'in kapanışı
     );
 }

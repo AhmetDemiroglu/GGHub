@@ -28,22 +28,22 @@ export function AddGameToListModal({ isOpen, onClose, onAddGame, isPending, exis
         isLoading: isSearchLoading,
         error: searchError,
     } = useQuery({
-        queryKey: ["game-search-for-list", submittedSearchTerm, page], // ✅ ordering SİLİNDİ
+        queryKey: ["game-search-for-list", submittedSearchTerm, page],
         queryFn: () =>
             submittedSearchTerm
                 ? gameApi.paginate({
                       page: page,
-                      pageSize: 20, // ✅ 10 → 20 yaptık
+                      pageSize: 20,
                       search: submittedSearchTerm,
                   })
                 : Promise.resolve(null),
-        placeholderData: (previousData) => previousData, // ✅ Smooth page transition
+        placeholderData: (previousData) => previousData, 
     });
 
     const handleSearch = () => {
         if (searchTerm.trim()) {
             setSubmittedSearchTerm(searchTerm.trim());
-            setPage(1); // ✅ Yeni arama yapınca 1. sayfaya dön
+            setPage(1); 
         }
     };
 
