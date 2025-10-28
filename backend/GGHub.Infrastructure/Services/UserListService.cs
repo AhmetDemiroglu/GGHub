@@ -85,7 +85,7 @@ namespace GGHub.Infrastructure.Services
 
             if (followers.Any())
             {
-                var notificationMessage = $"Takip ettiğiniz '{list.Name}' listesine yeni bir oyun eklendi.";
+                var notificationMessage = $"Takip ettiğin '{list.Name}' listesine yeni bir oyun eklendi.";
                 foreach (var follower in followers)
                 {
                     if (follower.FollowerUserId != list.UserId)

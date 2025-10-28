@@ -46,8 +46,6 @@ export const removeGameFromList = (listId: number, gameId: number): Promise<void
     return axiosInstance.delete(`/user-lists/${listId}/games/${gameId}`).then((response) => response.data);
 };
 
-export const getFollowedListsByMe = (
-    params: ListQueryParameters
-): Promise<PaginatedResponse<UserListPublic>> => {
+export const getFollowedListsByMe = (params: ListQueryParameters): Promise<PaginatedResponse<UserListPublic>> => {
     return axiosInstance.get<PaginatedResponse<UserListPublic>>("/user-lists/followed-by-me", { params }).then((response) => response.data);
 };

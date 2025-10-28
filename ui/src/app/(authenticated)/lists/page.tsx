@@ -102,7 +102,7 @@ export default function ListDiscoverPage() {
     const totalCount = data?.totalCount ?? 0;
 
     return (
-        <div className="w-full p-5">
+        <div className="w-full h-full overflow-y-auto p-5">
             <div className="space-y-4">
                 {/* Başlık */}
                 <div>

@@ -44,6 +44,7 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ISearchService, SearchService>();
 builder.Services.AddScoped<IPhotoService, PhotoService>();
 builder.Services.AddScoped<IUserListRatingService, UserListRatingService>();
+builder.Services.AddScoped<IUserListCommentService, UserListCommentService>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<GGHubDbContext>(options => options.UseSqlite(connectionString));

@@ -39,7 +39,7 @@ namespace GGHub.Infrastructure.Services
                 var follower = await _context.Users.FindAsync(followerId);
                 if (follower != null)
                 {
-                    var message = $"{follower.Username} sizi takip etmeye başladı.";
+                    var message = $"{follower.Username} seni takip etmeye başladı.";
                     await _notificationService.CreateNotificationAsync(followee.Id, message, NotificationType.Follow, $"/profiles/{follower.Username}");
                 }
             }
@@ -82,7 +82,7 @@ namespace GGHub.Infrastructure.Services
                 var follower = await _context.Users.FindAsync(userId);
                 if (follower != null)
                 {
-                    var message = $"{follower.Username}, '{listToFollow.Name}' adlı listenizi takip etmeye başladı.";
+                    var message = $"{follower.Username}, '{listToFollow.Name}' adlı listen takip etmeye başladı.";
                     await _notificationService.CreateNotificationAsync(listToFollow.UserId, message, NotificationType.ListFollow, $"/lists/{listToFollow.Id}");
                 }
             }

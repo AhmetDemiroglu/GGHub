@@ -6,14 +6,16 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@core/hooks/use-auth";
 import { useParams } from "next/navigation";
 import * as listApi from "@/api/list/list.api";
+import * as listRatingApi from "@/api/list-rating/list-rating.api";
 import { ListGameCard } from "@core/components/other/game-card/list-game-card";
 import { ListGameCardSkeleton } from "@core/components/other/game-card/list-game-card-skeleton";
 import { Separator } from "@core/components/ui/separator";
 import { ListDetailHeader } from "@core/components/other/lists/list-detail-header";
 import { toast } from "sonner";
 import { Button } from "@core/components/ui/button";
-import { ListPlus, UserPlus, UserMinus, Edit } from "lucide-react";
+import { ListPlus, UserPlus, UserMinus, Edit, Loader } from "lucide-react";
 import { AddGameToListModal } from "@core/components/other/lists/add-game-to-list-modal";
+import { ListCommentSection } from "@/core/components/other/lists/list-comment-section";
 
 export default function ListDetailPage() {
     const params = useParams();
@@ -37,10 +39,39 @@ export default function ListDetailPage() {
         enabled: !isNaN(listId) && listId > 0,
     });
 
+    const { data: myRatingData } = useQuery({
+        queryKey: ["my-list-rating", listId, user?.id],
+        queryFn: () => listRatingApi.getMyListRating(listId),
+        enabled: !!listDetail && !!user,
+        staleTime: 1000 * 60 * 5,
+    });
+
+    const myRating = myRatingData?.value;
+
     const isOwner = useMemo(() => {
         if (!user || !listDetail) return false;
         return Number(user.id) === listDetail.owner.id;
     }, [user, listDetail]);
+
+    const submitRatingMutation = useMutation({
+        mutationFn: (rating: number) => listRatingApi.submitListRating(listId, { value: rating }),
+        onSuccess: (_, newRating) => {
+            toast.success(`Puanınız (${newRating}) kaydedildi.`);
+            queryClient.invalidateQueries({ queryKey: ["my-list-rating", listId, user?.id] });
+            queryClient.invalidateQueries({ queryKey: ["list-detail", listId] });
+            queryClient.invalidateQueries({ queryKey: ["my-lists"] });
+        },
+        onError: (error) => {
+            toast.error(`Puan kaydedilemedi: ${error.message}`);
+        },
+    });
+
+    const handleRatingSubmit = useCallback(
+        (rating: number) => {
+            submitRatingMutation.mutate(rating);
+        },
+        [submitRatingMutation]
+    );
 
     const updateListMutation = useMutation({
         mutationFn: ({ listId, data }: { listId: number; data: UserListForUpdate }) => listApi.updateList(listId, data),
@@ -157,7 +188,12 @@ export default function ListDetailPage() {
                     <div className="h-20 w-3/4 bg-muted rounded mb-6"></div>
                 </div>
                 <Separator className="my-6" />
-                <h2 className="text-2xl font-bold mb-4">Listedeki Oyunlar (...)</h2>
+                <div className="flex items-center gap-2">
+                    <h2 className="text-2xl font-bold">Listedeki Oyunlar</h2>
+                    <span>(</span>
+                    <Loader className="h-6 w-6" />
+                    <span>)</span>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3">
                     {Array.from({ length: 12 }).map((_, index) => (
                         <ListGameCardSkeleton key={index} />
@@ -172,6 +208,7 @@ export default function ListDetailPage() {
     }
 
     const isFormPending = updateListMutation.isPending;
+    const currentUserId = user ? Number(user.id) : undefined;
 
     const headerActions = (
         <div className="flex items-center gap-2">
@@ -201,7 +238,14 @@ export default function ListDetailPage() {
 
     return (
         <div className="w-full h-full overflow-y-auto p-5">
-            <ListDetailHeader list={listDetail} actions={headerActions} />
+            <ListDetailHeader
+                list={listDetail}
+                actions={headerActions}
+                myRating={myRating}
+                onSubmitRating={handleRatingSubmit}
+                isRatingPending={submitRatingMutation.isPending}
+                currentUserId={currentUserId}
+            />
             <Separator className="my-6" />
 
             <h2 className="text-2xl font-bold mb-4">Listedeki Oyunlar ({listDetail.games.length})</h2>
@@ -215,6 +259,8 @@ export default function ListDetailPage() {
                     ))}
                 </div>
             )}
+            <ListCommentSection listId={listId} />
+
             <AddGameToListModal
                 isOpen={isAddGameModalOpen}
                 onClose={() => setIsAddGameModalOpen(false)}

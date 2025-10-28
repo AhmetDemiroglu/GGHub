@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRefreshToken(null);
         setUser(null);
         localStorage.removeItem(AUTH_STORAGE_KEY);
-        queryClient.removeQueries({ queryKey: ["my-profile"] });
+        queryClient.clear();
     };
 
     const getAuthState = () => ({
