@@ -4,7 +4,6 @@ import { Separator } from "@/core/components/ui/separator";
 export function ListCardSkeleton() {
     return (
         <div className="bg-card rounded-lg overflow-hidden h-full flex flex-col border border-border">
-            {/* Resim Alanı Skeleton */}
             <Skeleton className="w-full aspect-video" />
             <div className="p-4 flex flex-col flex-1">
                 {/* Başlık Skeleton */}
@@ -12,10 +11,7 @@ export function ListCardSkeleton() {
 
                 {/* Rozetler Skeleton */}
                 <div className="flex flex-col items-start gap-2 mb-4">
-                    {/* 1. Satır Skeleton */}
                     <Skeleton className="h-6 w-24" />
-
-                    {/* 2. Satır Skeleton */}
                     <div className="flex items-center gap-2">
                         <Skeleton className="h-6 w-20" />
                         <Skeleton className="h-6 w-16" />

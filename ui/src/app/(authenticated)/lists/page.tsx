@@ -135,7 +135,7 @@ export default function ListDiscoverPage() {
                                 ))}
                             </SelectContent>
                         </Select>
-                        {/* TODO: Sıralama (Ordering) */}
+                        {/* TODO: Sıralama (Ordering) Sonra*/}
                     </div>
                 </div>
             </div>

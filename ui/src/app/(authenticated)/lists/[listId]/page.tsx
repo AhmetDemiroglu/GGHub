@@ -7,7 +7,7 @@ import { useAuth } from "@core/hooks/use-auth";
 import { useParams } from "next/navigation";
 import * as listApi from "@/api/list/list.api";
 import { ListGameCard } from "@core/components/other/game-card/list-game-card";
-import { GameCardSkeleton } from "@core/components/other/game-card/skeleton";
+import { ListGameCardSkeleton } from "@core/components/other/game-card/list-game-card-skeleton";
 import { Separator } from "@core/components/ui/separator";
 import { ListDetailHeader } from "@core/components/other/lists/list-detail-header";
 import { toast } from "sonner";
@@ -109,6 +109,7 @@ export default function ListDetailPage() {
         onSuccess: () => {
             toast.success(`'${listDetail?.name || "Liste"}' takip edildi.`);
             queryClient.invalidateQueries({ queryKey: ["list-detail", listId] });
+            queryClient.invalidateQueries({ queryKey: ["followed-lists-by-me"] });
         },
         onError: (error) => {
             toast.error(`Takip etme başarısız: ${error.message}`);
@@ -120,6 +121,7 @@ export default function ListDetailPage() {
         onSuccess: () => {
             toast.success(`'${listDetail?.name || "Liste"}' takipten çıkıldı.`);
             queryClient.invalidateQueries({ queryKey: ["list-detail", listId] });
+            queryClient.invalidateQueries({ queryKey: ["followed-lists-by-me"] });
         },
         onError: (error) => {
             toast.error(`Takipten çıkma başarısız: ${error.message}`);
@@ -156,9 +158,9 @@ export default function ListDetailPage() {
                 </div>
                 <Separator className="my-6" />
                 <h2 className="text-2xl font-bold mb-4">Listedeki Oyunlar (...)</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3">
                     {Array.from({ length: 12 }).map((_, index) => (
-                        <GameCardSkeleton key={index} />
+                        <ListGameCardSkeleton key={index} />
                     ))}
                 </div>
             </div>

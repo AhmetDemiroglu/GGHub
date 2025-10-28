@@ -17,6 +17,14 @@ interface ListCardData {
     gameCount: number;
     followerCount: number;
     firstGameImageUrls: (string | null)[];
+    owner?: {
+        id: number;
+        username: string;
+        profileImageUrl?: string | null; 
+        firstName?: string | null; 
+        lastName?: string | null; 
+        isFollowing?: boolean; 
+    };
 }
 
 const VisibilityInfo: React.FC<{
@@ -96,7 +104,8 @@ export function ListCard({ list, footer }: ListCardProps) {
             </div>
             <div className="p-4 flex flex-col flex-1">
                 {/* Başlık */}
-                <h3 className="text-xl font-bold line-clamp-2 mb-4 flex-1">{list.name}</h3>
+                <h3 className="text-xl font-bold line-clamp-2 mb-2">{list.name}</h3>
+                {list.owner && <p className="text-xs text-muted-foreground mb-3">@{list.owner.username} tarafından</p>}
                 {list.description && <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{list.description}</p>}
                 {/* Rozetler (Görünürlük, Kategori, Puan) */}
                 <div className="flex flex-col items-start gap-2 mb-4">

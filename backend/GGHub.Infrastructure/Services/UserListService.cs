@@ -99,6 +99,7 @@ namespace GGHub.Infrastructure.Services
         {
             var listsFromDb = await _context.UserLists
                 .Where(l => l.UserId == userId)
+                .Include(l => l.User)
                 .Include(l => l.UserListGames) 
                     .ThenInclude(ulg => ulg.Game) 
                 .Include(l => l.Followers)
@@ -117,8 +118,15 @@ namespace GGHub.Infrastructure.Services
                 CreatedAt = listEntity.CreatedAt, 
                 UpdatedAt = listEntity.UpdatedAt, 
                 GameCount = listEntity.UserListGames.Count(), 
-                FollowerCount = listEntity.Followers.Count(), 
-
+                FollowerCount = listEntity.Followers.Count(),
+                Owner = new UserDto
+                {
+                    Id = listEntity.User.Id,
+                    Username = listEntity.User.Username,
+                    ProfileImageUrl = listEntity.User.ProfileImageUrl,
+                    FirstName = listEntity.User.FirstName,
+                    LastName = listEntity.User.LastName
+                },
                 FirstGameImageUrls = listEntity.UserListGames 
                                       .OrderBy(ulg => ulg.AddedAt)
                                       .Select(ulg => ulg.Game.BackgroundImage)
@@ -414,6 +422,8 @@ namespace GGHub.Infrastructure.Services
                 PageSize = queryParams.PageSize
             };
         }
+
+
         public async Task<bool> RemoveGameFromListAsync(int listId, int rawgGameId, int userId)
         {
             var list = await _context.UserLists.FirstOrDefaultAsync(l => l.Id == listId);

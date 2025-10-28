@@ -134,6 +134,20 @@ namespace GGHub.WebAPI.Controllers
             return Ok(result);
         }
 
+        [HttpGet("followed-by-me")]
+        public async Task<IActionResult> GetMyFollowedLists([FromQuery] ListQueryParams queryParams)
+        {
+            var currentUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (currentUserIdClaim == null)
+            {
+                return Unauthorized();
+            }
+            int currentUserId = int.Parse(currentUserIdClaim.Value);
+
+            var result = await _userListService.GetFollowedListsByUserAsync(currentUserId, currentUserId, queryParams);
+            return Ok(result);
+        }
+
         [HttpDelete("{listId}/games/{gameId}")]
         public async Task<IActionResult> RemoveGameFromList(int listId, int gameId)
         {
