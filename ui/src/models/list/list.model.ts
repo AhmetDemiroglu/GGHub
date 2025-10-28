@@ -53,6 +53,7 @@ export interface UserList {
   followerCount: number;
   averageRating: number;
   ratingCount: number;
+  firstGameImageUrls: (string | null)[]; // EKLENDİ
 }
 export interface UserListPublic {
   id: number;

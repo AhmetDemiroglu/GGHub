@@ -47,13 +47,38 @@ interface ListCardProps {
 }
 
 export function ListCard({ list, footer }: ListCardProps) {
+    const imageUrls = (list.firstGameImageUrls?.filter((url) => url) as string[]) || [];
+    const imageCount = imageUrls.length;
+    const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+        const target = e.target as HTMLImageElement;
+        target.onerror = null;
+        target.src = "https://placehold.co/160x90/27272a/71717a?text=?";
+    };
+
     return (
-        <div className="bg-card rounded-lg cursor-pointer overflow-hidden h-full flex flex-col group text-foreground border border-border hover:border-primary/50 transition-colors duration-300">
-            {/* Dekoratif Başlık */}
-            <div className="aspect-video relative overflow-hidden bg-muted/30">
-                <div className="absolute inset-0 flex items-center justify-center">
-                    <ListIcon className="h-16 w-16 text-muted-foreground/20 transition-transform duration-300 group-hover:scale-110" strokeWidth={1} />
-                </div>
+        <div className="bg-card rounded-lg cursor-pointer overflow-hidden h-full flex flex-col text-foreground border border-border hover:border-primary/50 transition-colors duration-300">
+            {/* Kolaj */}
+            <div className="aspect-video relative overflow-hidden bg-muted/50">
+                {imageCount === 0 && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <ListIcon className="h-16 w-16 text-muted-foreground/20" strokeWidth={1} />
+                    </div>
+                )}
+                {imageCount === 1 && <img src={imageUrls[0]} alt={`${list.name} listesi için kapak resmi`} className="w-full h-full object-cover" loading="lazy" onError={handleImageError} />}
+                {imageCount >= 2 && imageCount < 4 && (
+                    <div className="grid grid-cols-2 h-full">
+                        {imageUrls.slice(0, 2).map((url, index) => (
+                            <img key={index} src={url} alt={`${list.name} listesi için resim ${index + 1}`} className="w-full h-full object-cover" loading="lazy" onError={handleImageError} />
+                        ))}
+                    </div>
+                )}
+                {imageCount >= 4 && (
+                    <div className="grid grid-cols-2 grid-rows-2 h-full">
+                        {imageUrls.slice(0, 4).map((url, index) => (
+                            <img key={index} src={url} alt={`${list.name} listesi için resim ${index + 1}`} className="w-full h-full object-cover" loading="lazy" onError={handleImageError} />
+                        ))}
+                    </div>
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-card via-card/10 to-transparent" />
             </div>
             <div className="p-4 flex flex-col flex-1">

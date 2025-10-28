@@ -97,26 +97,36 @@ namespace GGHub.Infrastructure.Services
         }
         public async Task<IEnumerable<UserListDto>> GetListsForUserAsync(int userId)
         {
-            var lists = await _context.UserLists
+            var listsFromDb = await _context.UserLists
                 .Where(l => l.UserId == userId)
+                .Include(l => l.UserListGames) 
+                    .ThenInclude(ulg => ulg.Game) 
+                .Include(l => l.Followers)
                 .OrderByDescending(l => l.UpdatedAt)
-                .Select(l => new UserListDto
-                {
-                    Id = l.Id,
-                    Name = l.Name,
-                    Description = l.Description,
-                    Visibility = l.Visibility,
-                    Category = l.Category,
-                    AverageRating = l.AverageRating,
-                    RatingCount = l.RatingCount,
-                    CreatedAt = l.CreatedAt,
-                    UpdatedAt = l.UpdatedAt,
-                    GameCount = l.UserListGames.Count(),
-                    FollowerCount = l.Followers.Count()
-                })
                 .ToListAsync();
 
-            return lists;
+            var listDtos = listsFromDb.Select(listEntity => new UserListDto 
+            {
+                Id = listEntity.Id, 
+                Name = listEntity.Name, 
+                Description = listEntity.Description, 
+                Visibility = listEntity.Visibility, 
+                Category = listEntity.Category, 
+                AverageRating = listEntity.AverageRating,
+                RatingCount = listEntity.RatingCount, 
+                CreatedAt = listEntity.CreatedAt, 
+                UpdatedAt = listEntity.UpdatedAt, 
+                GameCount = listEntity.UserListGames.Count(), 
+                FollowerCount = listEntity.Followers.Count(), 
+
+                FirstGameImageUrls = listEntity.UserListGames 
+                                      .OrderBy(ulg => ulg.AddedAt)
+                                      .Select(ulg => ulg.Game.BackgroundImage)
+                                      .Take(4)
+                                      .ToList()
+            }).ToList();
+
+            return listDtos;
         }
         public async Task<UserListDetailDto?> GetMyListDetailAsync(int listId, int userId)
         {
@@ -233,6 +243,9 @@ namespace GGHub.Infrastructure.Services
         {
             var queryable = _context.UserLists
                 .Include(l => l.User)
+                .Include(l => l.UserListGames)
+                    .ThenInclude(ulg => ulg.Game)
+                    .Include(l => l.Followers)
                 .Where(l => l.Visibility == ListVisibilitySetting.Public)
                 .AsNoTracking();
 
@@ -250,36 +263,40 @@ namespace GGHub.Infrastructure.Services
 
             var totalCount = await queryable.CountAsync();
 
-            var items = await queryable
+            var itemsFromDb = await queryable
                 .OrderByDescending(l => l.AverageRating)
                 .ThenByDescending(l => l.RatingCount)
                 .Skip((query.Page - 1) * query.PageSize)
                 .Take(query.PageSize)
-                .Select(l => new UserListPublicDto 
-                {
-                    Id = l.Id,
-                    Name = l.Name,
-                    Description = l.Description,
-                    Category = l.Category,
-                    UpdatedAt = l.UpdatedAt,
-                    GameCount = l.UserListGames.Count(), 
-                    FollowerCount = l.Followers.Count(), 
-                    AverageRating = l.AverageRating,
-                    RatingCount = l.RatingCount,
-                    Owner = new UserDto
-                    {
-                        Id = l.User.Id,
-                        Username = l.User.Username,
-                        ProfileImageUrl = l.User.ProfileImageUrl,
-                        FirstName = l.User.FirstName,
-                        LastName = l.User.LastName,
-                    }
-                })
                 .ToListAsync();
+
+            var itemDtos = itemsFromDb.Select(l => new UserListPublicDto
+            {
+                Id = l.Id,
+                Name = l.Name,
+                Description = l.Description,
+                Category = l.Category,
+                UpdatedAt = l.UpdatedAt,
+                GameCount = l.UserListGames.Count(),
+                FollowerCount = l.Followers?.Count() ?? 0, 
+                AverageRating = l.AverageRating,
+                RatingCount = l.RatingCount,
+                Owner = new UserDto
+                {
+                    Id = l.User.Id,
+                    Username = l.User.Username,
+                    ProfileImageUrl = l.User.ProfileImageUrl
+                },
+                FirstGameImageUrls = l.UserListGames
+                                     .OrderBy(ulg => ulg.AddedAt)
+                                     .Select(ulg => ulg.Game.BackgroundImage)
+                                     .Take(4)
+                                     .ToList()
+            }).ToList(); 
 
             return new PaginatedResult<UserListPublicDto>
             {
-                Items = items,
+                Items = itemDtos, 
                 TotalCount = totalCount,
                 Page = query.Page,
                 PageSize = query.PageSize

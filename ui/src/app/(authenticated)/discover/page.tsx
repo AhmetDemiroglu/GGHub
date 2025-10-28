@@ -44,6 +44,7 @@ const platformOptions = [
 ];
 
 const orderingOptions = [
+    { value: "relevance", label: "Alaka Düzeyi" },
     { value: "-added", label: "Popülerlik" },
     { value: "-metacritic", label: "Metacritic Puanı" },
     { value: "-released", label: "Çıkış Tarihi" },
@@ -57,7 +58,15 @@ export default function DiscoverPage() {
     const [page, setPage] = useState(Number(searchParams.get("page")) || 1);
     const [pageSize, setPageSize] = useState(Number(searchParams.get("pageSize")) || 12);
     const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
-    const [ordering, setOrdering] = useState(searchParams.get("ordering") || "-added");
+    const [ordering, setOrdering] = useState(() => {
+        const orderingParam = searchParams.get("ordering");
+        const searchParam = searchParams.get("search");
+
+        if (searchParam) {
+            return "relevance";
+        }
+        return orderingParam || "-added";
+    });
     const [selectedGenre, setSelectedGenre] = useState(searchParams.get("genres") || "");
     const [selectedPlatform, setSelectedPlatform] = useState(searchParams.get("platforms") || "");
     const [dateRange, setDateRange] = useState(searchParams.get("dates") || "");
@@ -72,7 +81,7 @@ export default function DiscoverPage() {
                 page: Number(searchParams.get("page")) || 1,
                 pageSize: Number(searchParams.get("pageSize")) || 12,
                 search: searchParams.get("search") || undefined,
-                ordering: searchParams.get("ordering") || "-added",
+                ordering: ordering === "relevance" ? undefined : ordering,
                 genres: searchParams.get("genres") || undefined,
                 platforms: searchParams.get("platforms") || undefined,
                 dates: searchParams.get("dates") || undefined,
@@ -85,11 +94,23 @@ export default function DiscoverPage() {
     }, [debouncedSearchTerm, ordering, selectedGenre, selectedPlatform, dateRange]);
 
     useEffect(() => {
+        if (debouncedSearchTerm) {
+            setOrdering("relevance");
+        }
+    }, [debouncedSearchTerm]);
+
+    useEffect(() => {
         window.scrollTo({
             top: 0,
             behavior: "smooth",
         });
     }, [data]);
+
+    useEffect(() => {
+        if (!debouncedSearchTerm && ordering === "relevance") {
+            setOrdering("-added");
+        }
+    }, [debouncedSearchTerm, ordering]);
 
     useEffect(() => {
         const params = new URLSearchParams();
@@ -100,7 +121,7 @@ export default function DiscoverPage() {
         if (selectedGenre) params.set("genres", selectedGenre);
         if (selectedPlatform) params.set("platforms", selectedPlatform);
         if (dateRange) params.set("dates", dateRange);
-        if (ordering !== "-added") params.set("ordering", ordering);
+        if (ordering && ordering !== "relevance") params.set("ordering", ordering);
 
         const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
         router.replace(newUrl, { scroll: false });
@@ -192,7 +213,7 @@ export default function DiscoverPage() {
 
                         <Select value={ordering} onValueChange={setOrdering}>
                             <SelectTrigger className="w-full sm:w-auto cursor-pointer">
-                                <SelectValue />
+                                <span className="text-sm">{orderingOptions.find((o) => o.value === ordering)?.label || "Sıralama"}</span>
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectGroup>

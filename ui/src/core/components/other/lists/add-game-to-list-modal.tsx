@@ -20,7 +20,7 @@ interface AddGameToListModalProps {
 
 export function AddGameToListModal({ isOpen, onClose, onAddGame, isPending, existingGameIds }: AddGameToListModalProps) {
     const [searchTerm, setSearchTerm] = useState("");
-    const debouncedSearchTerm = useDebounce(searchTerm, 500);
+    const [page, setPage] = useState(1);
     const [submittedSearchTerm, setSubmittedSearchTerm] = useState("");
 
     const {
@@ -28,22 +28,22 @@ export function AddGameToListModal({ isOpen, onClose, onAddGame, isPending, exis
         isLoading: isSearchLoading,
         error: searchError,
     } = useQuery({
-        queryKey: ["game-search-for-list", submittedSearchTerm],
+        queryKey: ["game-search-for-list", submittedSearchTerm, page], // ✅ ordering SİLİNDİ
         queryFn: () =>
             submittedSearchTerm
                 ? gameApi.paginate({
-                      page: 1,
-                      pageSize: 10,
+                      page: page,
+                      pageSize: 20, // ✅ 10 → 20 yaptık
                       search: submittedSearchTerm,
                   })
                 : Promise.resolve(null),
-        staleTime: 5 * 60 * 1000,
-        gcTime: 10 * 60 * 1000,
+        placeholderData: (previousData) => previousData, // ✅ Smooth page transition
     });
 
     const handleSearch = () => {
-        if (debouncedSearchTerm.trim()) {
-            setSubmittedSearchTerm(debouncedSearchTerm.trim());
+        if (searchTerm.trim()) {
+            setSubmittedSearchTerm(searchTerm.trim());
+            setPage(1); // ✅ Yeni arama yapınca 1. sayfaya dön
         }
     };
 
@@ -58,20 +58,22 @@ export function AddGameToListModal({ isOpen, onClose, onAddGame, isPending, exis
                     <DialogDescription>Eklemek istediğin oyunu ara ve seç.</DialogDescription>
                 </DialogHeader>
 
-                <div className="py-4 flex gap-2">
-                    <Input
-                        placeholder="Oyun adı ara..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                                handleSearch();
-                            }
-                        }}
-                    />
-                    <Button onClick={handleSearch} disabled={!searchTerm.trim() || showLoading} className="cursor-pointer">
-                        {showLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                    </Button>
+                <div className="py-4">
+                    <div className="flex gap-2">
+                        <Input
+                            placeholder="Oyun adı ara..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                    handleSearch();
+                                }
+                            }}
+                        />
+                        <Button onClick={handleSearch} disabled={!searchTerm.trim() || isSearchLoading}>
+                            {isSearchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="max-h-[400px] border rounded-md overflow-y-auto p-4">
@@ -117,12 +119,22 @@ export function AddGameToListModal({ isOpen, onClose, onAddGame, isPending, exis
                             );
                         })}
                     </div>
-                </div>
+                    {/* Pagination Butonları */}
+                    {searchResults && searchResults.totalCount > 20 && (
+                        <div className="flex items-center justify-between px-4 py-3 border-t">
+                            <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1 || isSearchLoading}>
+                                Önceki
+                            </Button>
 
-                <div className="flex justify-end mt-4">
-                    <Button type="button" variant="outline" onClick={onClose}>
-                        Kapat
-                    </Button>
+                            <span className="text-sm text-muted-foreground">
+                                Sayfa {page} / {Math.ceil(searchResults.totalCount / 20)}
+                            </span>
+
+                            <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={page >= Math.ceil(searchResults.totalCount / 20) || isSearchLoading}>
+                                Sonraki
+                            </Button>
+                        </div>
+                    )}
                 </div>
             </DialogContent>
         </Dialog>
