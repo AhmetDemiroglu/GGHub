@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import * as listCommentApi from "@/api/list-comment/list-comment.api";
 import { Button } from "@core/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import type { UserListCommentForUpdate } from "@/models/list/list.model";
 import { ListCommentForm } from "./list-comment-form";
 import { ListCommentItem } from "./list-comment-item";
 import { useRef } from "react";
@@ -62,18 +63,11 @@ export function ListCommentSection({ listId }: ListCommentSectionProps) {
 
     const createCommentMutation = useMutation({
         mutationFn: (newComment: UserListCommentForCreation) => listCommentApi.createListComment(listId, newComment),
-        onSuccess: (newlyCreatedComment) => {
+        onSuccess: () => {
             toast.success("Yorumunuz eklendi.");
             formRef.current?.reset();
 
-            queryClient.setQueryData<PaginatedResponse<UserListComment>>(["list-comments", listId, 1], (oldData) => {
-                if (!oldData) return undefined;
-                return {
-                    ...oldData,
-                    items: [newlyCreatedComment, ...oldData.items],
-                    totalCount: oldData.totalCount + 1,
-                };
-            });
+            queryClient.invalidateQueries({ queryKey: ["list-comments", listId] });
         },
         onError: (error) => {
             toast.error(`Yorum eklenemedi: ${error.message}`);
@@ -90,6 +84,17 @@ export function ListCommentSection({ listId }: ListCommentSectionProps) {
         },
         onError: (error) => {
             toast.error(`Oylama hatası: ${error.message}`);
+        },
+    });
+
+    const updateCommentMutation = useMutation({
+        mutationFn: ({ commentId, data }: { commentId: number; data: UserListCommentForUpdate }) => listCommentApi.updateListComment(commentId, data),
+        onSuccess: () => {
+            toast.success("Yorum güncellendi.");
+            queryClient.invalidateQueries({ queryKey: ["list-comments", listId] });
+        },
+        onError: (error) => {
+            toast.error(`Yorum güncellenemedi: ${error.message}`);
         },
     });
 
@@ -127,6 +132,13 @@ export function ListCommentSection({ listId }: ListCommentSectionProps) {
         [voteCommentMutation.mutate]
     );
 
+    const handleUpdateComment = useCallback(
+        (commentId: number, content: string) => {
+            updateCommentMutation.mutate({ commentId, data: { content } });
+        },
+        [updateCommentMutation.mutate]
+    );
+
     const handleDelete = useCallback((commentId: number) => {
         deleteCommentMutation.mutate(commentId);
     }, []);
@@ -151,7 +163,7 @@ export function ListCommentSection({ listId }: ListCommentSectionProps) {
                 )}
             </div>
             {/* Yorum Listesi */}
-            <div className="space-y-4">
+            <div className="space-y-3">
                 {isLoadingComments && currentPage === 1 && (
                     <div className="flex justify-center items-center py-8">
                         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -169,6 +181,10 @@ export function ListCommentSection({ listId }: ListCommentSectionProps) {
                         isVoting={voteCommentMutation.isPending && voteCommentMutation.variables?.commentId === comment.id}
                         onDelete={handleDelete}
                         isDeleting={deleteCommentMutation.isPending && deleteCommentMutation.variables === comment.id}
+                        onSubmitComment={createCommentMutation.mutate}
+                        isSubmittingComment={createCommentMutation.isPending}
+                        onUpdateComment={handleUpdateComment}
+                        isUpdatingComment={updateCommentMutation.isPending && updateCommentMutation.variables?.commentId === comment.id}
                     />
                 ))}
 

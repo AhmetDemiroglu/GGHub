@@ -59,7 +59,7 @@ namespace GGHub.Infrastructure.Services
             await _context.UserListComments.AddAsync(comment);
             await _context.SaveChangesAsync();
 
-            return MapToCommentDto(comment, user, 0, 0, 0);
+            return MapToCommentDto(comment, user, 0, 0, 0, userId);
         }
 
         public async Task<bool> UpdateCommentAsync(int commentId, int userId, UserListCommentForUpdateDto dto)
@@ -89,8 +89,26 @@ namespace GGHub.Infrastructure.Services
 
             var queryable = _context.UserListComments
                 .Where(c => c.UserListId == listId && c.ParentCommentId == null)
-                .Include(c => c.User) 
-                .Include(c => c.Votes) 
+                .Include(c => c.User)
+                .Include(c => c.Votes)
+                .Include(c => c.Replies)
+                    .ThenInclude(r => r.User)
+                .Include(c => c.Replies)
+                    .ThenInclude(r => r.Votes)
+                .Include(c => c.Replies)
+                    .ThenInclude(r => r.Replies)
+                        .ThenInclude(r2 => r2.User)
+                .Include(c => c.Replies)
+                    .ThenInclude(r => r.Replies)
+                        .ThenInclude(r2 => r2.Votes)
+                .Include(c => c.Replies)
+                    .ThenInclude(r => r.Replies)
+                        .ThenInclude(r2 => r2.Replies)
+                            .ThenInclude(r3 => r3.User)
+                .Include(c => c.Replies)
+                    .ThenInclude(r => r.Replies)
+                        .ThenInclude(r2 => r2.Replies)
+                            .ThenInclude(r3 => r3.Votes)
                 .AsNoTracking();
 
             var totalCount = await queryable.CountAsync();
@@ -107,7 +125,7 @@ namespace GGHub.Infrastructure.Services
                 var downvotes = comment.Votes.Count(v => v.Value == -1);
                 var currentUserVote = comment.Votes.FirstOrDefault(v => v.UserId == currentUserId)?.Value ?? 0;
 
-                return MapToCommentDto(comment, comment.User, upvotes, downvotes, currentUserVote);
+                return MapToCommentDto(comment, comment.User, upvotes, downvotes, currentUserVote, currentUserId);
 
             }).ToList();
 
@@ -179,11 +197,11 @@ namespace GGHub.Infrastructure.Services
             var downvotes = comment.Votes.Count(v => v.Value == -1);
             var currentUserVote = comment.Votes.FirstOrDefault(v => v.UserId == currentUserId)?.Value ?? 0;
 
-            return MapToCommentDto(comment, comment.User, upvotes, downvotes, currentUserVote);
+            return MapToCommentDto(comment, comment.User, upvotes, downvotes, currentUserVote, currentUserId);
         }
-        private UserListCommentDto MapToCommentDto(UserListComment comment, User user, int up, int down, int vote)
+        private UserListCommentDto MapToCommentDto(UserListComment comment, User user, int up, int down, int vote, int currentUserId)
         {
-            return new UserListCommentDto
+            var dto = new UserListCommentDto
             {
                 Id = comment.Id,
                 Content = comment.Content,
@@ -201,8 +219,26 @@ namespace GGHub.Infrastructure.Services
                 },
                 Upvotes = up,
                 Downvotes = down,
-                CurrentUserVote = vote
+                CurrentUserVote = vote,
+                Replies = new List<UserListCommentDto>()
             };
+
+            if (comment.Replies != null && comment.Replies.Any())
+            {
+                dto.Replies = comment.Replies
+                    .OrderByDescending(r => r.CreatedAt)
+                    .Select(reply =>
+                    {
+                        var replyUpvotes = reply.Votes?.Count(v => v.Value == 1) ?? 0;
+                        var replyDownvotes = reply.Votes?.Count(v => v.Value == -1) ?? 0;
+                        var replyUserVote = reply.Votes?.FirstOrDefault(v => v.UserId == currentUserId)?.Value ?? 0;
+
+                        return MapToCommentDto(reply, reply.User, replyUpvotes, replyDownvotes, replyUserVote, currentUserId);
+                    })
+                    .ToList();
+            }
+
+            return dto;
         }
     }
 }

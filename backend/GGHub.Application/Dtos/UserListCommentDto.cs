@@ -14,5 +14,7 @@ namespace GGHub.Application.Dtos
         public int Upvotes { get; set; }
         public int Downvotes { get; set; }
         public int CurrentUserVote { get; set; }
+        public List<UserListCommentDto> Replies { get; set; } = new List<UserListCommentDto>();
+
     }
 }

@@ -13,7 +13,7 @@ import { Separator } from "@core/components/ui/separator";
 import { ListDetailHeader } from "@core/components/other/lists/list-detail-header";
 import { toast } from "sonner";
 import { Button } from "@core/components/ui/button";
-import { ListPlus, UserPlus, UserMinus, Edit, Loader } from "lucide-react";
+import { ListPlus, UserPlus, UserMinus, Edit, Loader, ArrowDown } from "lucide-react";
 import { AddGameToListModal } from "@core/components/other/lists/add-game-to-list-modal";
 import { ListCommentSection } from "@/core/components/other/lists/list-comment-section";
 
@@ -28,6 +28,7 @@ export default function ListDetailPage() {
     const [listToEdit, setListToEdit] = useState<UserListDetail | null>(null);
 
     const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false);
+    const [visibleGameRows, setVisibleGameRows] = useState(2);
 
     const {
         data: listDetail,
@@ -52,6 +53,15 @@ export default function ListDetailPage() {
         if (!user || !listDetail) return false;
         return Number(user.id) === listDetail.owner.id;
     }, [user, listDetail]);
+
+    const GAMES_PER_ROW = 3;
+    const ROWS_PER_LOAD = 5;
+    const visibleGamesCount = visibleGameRows * GAMES_PER_ROW;
+    const displayedGames = useMemo(() => {
+        if (!listDetail) return [];
+        return listDetail.games.slice(0, visibleGamesCount);
+    }, [listDetail, visibleGamesCount]);
+    const hasMoreGames = listDetail ? listDetail.games.length > visibleGamesCount : false;
 
     const submitRatingMutation = useMutation({
         mutationFn: (rating: number) => listRatingApi.submitListRating(listId, { value: rating }),
@@ -253,10 +263,28 @@ export default function ListDetailPage() {
             {listDetail.games.length === 0 ? (
                 <div className="text-center text-muted-foreground py-12">Bu listede henüz hiç oyun yok.</div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3">
-                    {listDetail.games.map((game) => (
-                        <ListGameCard key={game.rawgId} game={game} showRemoveButton={isOwner} onRemove={handleRemoveGame} />
-                    ))}
+                <div className="relative">
+                    {/* Oyun Grid'i */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3">
+                        {displayedGames.map((game) => (
+                            <ListGameCard key={game.rawgId} game={game} showRemoveButton={isOwner} onRemove={handleRemoveGame} />
+                        ))}
+                    </div>
+
+                    {hasMoreGames && (
+                        <>
+                            <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none" />
+                            <div className="relative flex flex-col items-center gap-3 mt-6">
+                                <span className="text-sm text-muted-foreground font-medium">Daha Fazla Oyun Göster ({listDetail.games.length - visibleGamesCount} adet)</span>
+                                <button onClick={() => setVisibleGameRows((prev) => prev + ROWS_PER_LOAD)} className="group relative cursor-pointer" aria-label="Daha fazla oyun göster">
+                                    <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse" />
+                                    <div className="relative w-5 h-5 rounded-full border-2 border-primary/40 hover:border-primary bg-background/50 backdrop-blur-sm flex items-center justify-center transition-all duration-300 animate-bounce hover:animate-none group-hover:shadow-lg group-hover:shadow-primary/25">
+                                        <ArrowDown className="h-3 w-3 text-primary" />
+                                    </div>
+                                </button>
+                            </div>
+                        </>
+                    )}
                 </div>
             )}
             <ListCommentSection listId={listId} />
