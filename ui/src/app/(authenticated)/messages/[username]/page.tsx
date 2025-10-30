@@ -11,7 +11,7 @@ import { useAuth } from "@core/hooks/use-auth";
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import dayjs from "dayjs";
-import { Send } from "lucide-react";
+import { Send, AlertTriangle } from "lucide-react";
 
 const getImageUrl = (path: string | null | undefined) => {
     if (!path) return undefined;
@@ -137,6 +137,13 @@ export default function MessageThreadPage() {
                     </div>
                 )}
                 <div ref={messagesEndRef} />
+            </div>
+
+            <div className="flex justify-center p-2 flex-shrink-0">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <AlertTriangle className="h-3 w-3 flex-shrink-0" />
+                    <p> Güvenliğiniz için bu sohbette kredi kartı, şifre veya kimlik numarası gibi hassas bilgileri paylaşmayın.</p>
+                </div>
             </div>
 
             {/* Input */}
