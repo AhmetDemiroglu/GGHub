@@ -1,5 +1,6 @@
 import { axiosInstance } from "@core/lib/axios";
-import type { SocialProfile } from "@/models/social/social.model";
+import type { SocialProfile, BlockedUser, BlockStatus } from "@/models/social/social.model";
+
 
 export const followUser = (username: string): Promise<void> => {
     return axiosInstance.post(`/profiles/${username}/follow`).then((response) => response.data);
@@ -23,4 +24,12 @@ export const blockUser = (username: string): Promise<void> => {
 
 export const unblockUser = (username: string): Promise<void> => {
     return axiosInstance.delete(`/profiles/${username}/block`).then((response) => response.data);
+};
+
+export const getBlockedUsers = (): Promise<BlockedUser[]> => {
+    return axiosInstance.get<BlockedUser[]>(`/profiles/blocked-users`).then((response) => response.data);
+};
+
+export const checkBlockStatus = (username: string): Promise<BlockStatus> => {
+    return axiosInstance.get<BlockStatus>(`/profiles/check-block/${username}`).then((response) => response.data);
 };

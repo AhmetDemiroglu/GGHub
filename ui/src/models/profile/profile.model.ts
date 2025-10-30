@@ -68,4 +68,6 @@ export interface PublicProfile {
     isFollowedBy?: boolean;
     followerCount?: number;
     followingCount?: number;
+    isBlockedByMe?: boolean;
+    isBlockingMe?: boolean;
 }
