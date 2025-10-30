@@ -94,6 +94,47 @@ namespace GGHub.Infrastructure.Services
             var profileUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
             if (profileUser == null || profileUser.IsDeleted) return null;
 
+            bool isBlockedByMe = false;
+            bool isBlockingMe = false;
+
+            if (currentUserId.HasValue)
+            {
+                isBlockedByMe = await _context.UserBlocks
+                    .AnyAsync(b => b.BlockerId == currentUserId.Value && b.BlockedId == profileUser.Id);
+
+                isBlockingMe = await _context.UserBlocks
+                    .AnyAsync(b => b.BlockerId == profileUser.Id && b.BlockedId == currentUserId.Value);
+            }
+
+            if (isBlockedByMe || isBlockingMe)
+            {
+                return new ProfileDto
+                {
+                    Id = profileUser.Id,
+                    Username = profileUser.Username,
+                    FirstName = profileUser.FirstName,
+                    LastName = profileUser.LastName,
+                    ProfileImageUrl = profileUser.ProfileImageUrl,
+                    CreatedAt = profileUser.CreatedAt,
+                    IsBlockedByMe = isBlockedByMe,
+                    IsBlockingMe = isBlockingMe,
+                    Email = null,
+                    Bio = null,
+                    DateOfBirth = null,
+                    Status = null,
+                    PhoneNumber = null,
+                    IsEmailPublic = false,
+                    IsPhoneNumberPublic = false,
+                    IsDateOfBirthPublic = false,
+                    ProfileVisibility = ProfileVisibilitySetting.Private,
+                    MessageSetting = MessagePrivacySetting.None,
+                    IsFollowing = false,
+                    IsFollowedBy = false,
+                    FollowerCount = 0,
+                    FollowingCount = 0
+                };
+            }
+
             if (profileUser.ProfileVisibility == ProfileVisibilitySetting.Private && profileUser.Id != currentUserId)
             {
                 return null;

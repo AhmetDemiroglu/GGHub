@@ -16,5 +16,8 @@ namespace GGHub.Application.Interfaces
         Task<bool> BlockUserAsync(int blockerId, string blockedUsername);
         Task<bool> UnblockUserAsync(int blockerId, string blockedUsername);
         Task<int> GetUnreadMessageCountAsync(int userId);
+        Task<IEnumerable<BlockedUserDto>> GetBlockedUsersAsync(int userId);
+        Task<bool> IsBlockedByMeAsync(int userId, int targetUserId);
+        Task<bool> IsBlockingMeAsync(int userId, int targetUserId);
     }
 }

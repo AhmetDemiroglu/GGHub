@@ -1,6 +1,8 @@
 ﻿using GGHub.Application.Interfaces;
+using GGHub.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 [Route("api/profiles")]
@@ -9,10 +11,13 @@ public class ProfilesController : ControllerBase
 {
     private readonly ISocialService _socialService;
     private readonly IProfileService _profileService;
-    public ProfilesController(ISocialService socialService, IProfileService profileService)
+    private readonly GGHubDbContext _context;
+
+    public ProfilesController(ISocialService socialService, IProfileService profileService, GGHubDbContext context)
     {
         _socialService = socialService;
         _profileService = profileService;
+        _context = context;
     }
     [HttpGet("{username}")]
     [AllowAnonymous]
@@ -80,5 +85,39 @@ public class ProfilesController : ControllerBase
         var blockerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var success = await _socialService.UnblockUserAsync(blockerId, username);
         return success ? NoContent() : BadRequest("Geçersiz işlem.");
+    }
+    [HttpGet("blocked-users")]
+    public async Task<IActionResult> GetBlockedUsers()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+            return Unauthorized();
+
+        var blockedUsers = await _socialService.GetBlockedUsersAsync(userId);
+        return Ok(blockedUsers);
+    }
+
+    [HttpGet("check-block/{username}")]
+    public async Task<IActionResult> CheckBlockStatus(string username)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+            return Unauthorized();
+
+        // Target user'ı bul
+        var targetUser = await _context.Users
+            .FirstOrDefaultAsync(u => u.Username == username && !u.IsDeleted);
+
+        if (targetUser == null)
+            return NotFound("Kullanıcı bulunamadı.");
+
+        var isBlockedByMe = await _socialService.IsBlockedByMeAsync(userId, targetUser.Id);
+        var isBlockingMe = await _socialService.IsBlockingMeAsync(userId, targetUser.Id);
+
+        return Ok(new
+        {
+            isBlockedByMe,
+            isBlockingMe
+        });
     }
 }

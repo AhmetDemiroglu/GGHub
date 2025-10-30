@@ -336,6 +336,38 @@ namespace GGHub.Infrastructure.Services
             _context.UserBlocks.Remove(block);
             return await _context.SaveChangesAsync() > 0;
         }
+
+        public async Task<IEnumerable<BlockedUserDto>> GetBlockedUsersAsync(int userId)
+        {
+            var blockedUsers = await _context.UserBlocks
+                .Where(b => b.BlockerId == userId)
+                .Include(b => b.Blocked)
+                .OrderByDescending(b => b.BlockedAt)
+                .Select(b => new BlockedUserDto
+                {
+                    Id = b.Blocked.Id,
+                    Username = b.Blocked.Username,
+                    ProfileImageUrl = b.Blocked.ProfileImageUrl,
+                    FirstName = b.Blocked.FirstName,
+                    LastName = b.Blocked.LastName,
+                    BlockedAt = b.BlockedAt
+                })
+                .ToListAsync();
+
+            return blockedUsers;
+        }
+
+        public async Task<bool> IsBlockedByMeAsync(int userId, int targetUserId)
+        {
+            return await _context.UserBlocks
+                .AnyAsync(b => b.BlockerId == userId && b.BlockedId == targetUserId);
+        }
+
+        public async Task<bool> IsBlockingMeAsync(int userId, int targetUserId)
+        {
+            return await _context.UserBlocks
+                .AnyAsync(b => b.BlockerId == targetUserId && b.BlockedId == userId);
+        }
         public async Task<int> GetUnreadMessageCountAsync(int userId)
         {
             return await _context.Messages

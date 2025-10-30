@@ -17,7 +17,8 @@ export function ListCardSkeleton() {
                         <Skeleton className="h-6 w-16" />
                     </div>
                 </div>
-
+                
+                <div className="flex-1" />
                 <Separator className="bg-border" />
 
                 {/* İstatistikler Skeleton */}

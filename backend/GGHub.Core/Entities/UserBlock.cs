@@ -7,5 +7,7 @@
 
         public int BlockedId { get; set; }
         public User Blocked { get; set; }
+
+        public DateTime BlockedAt { get; set; } = DateTime.UtcNow;
     }
 }

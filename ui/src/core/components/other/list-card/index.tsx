@@ -20,10 +20,10 @@ interface ListCardData {
     owner?: {
         id: number;
         username: string;
-        profileImageUrl?: string | null; 
-        firstName?: string | null; 
-        lastName?: string | null; 
-        isFollowing?: boolean; 
+        profileImageUrl?: string | null;
+        firstName?: string | null;
+        lastName?: string | null;
+        isFollowing?: boolean;
     };
 }
 
@@ -121,7 +121,8 @@ export function ListCard({ list, footer }: ListCardProps) {
                         </Badge>
                     </div>
                 </div>
-
+                
+                <div className="flex-1" />
                 <Separator className="bg-border" />
 
                 <div className="flex justify-between items-center text-sm text-muted-foreground pt-3">
