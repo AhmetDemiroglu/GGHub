@@ -45,7 +45,8 @@ builder.Services.AddSingleton<IAmazonS3>(sp =>
     var s3Config = new Amazon.S3.AmazonS3Config
     {
         ServiceURL = $"https://{config["R2:AccountId"]}.r2.cloudflarestorage.com",
-        ForcePathStyle = true
+        ForcePathStyle = true,
+        AuthenticationRegion = "auto",
     };
 
     return new Amazon.S3.AmazonS3Client(
@@ -72,16 +73,20 @@ builder.Services.AddScoped<IUserListRatingService, UserListRatingService>();
 builder.Services.AddScoped<IUserListCommentService, UserListCommentService>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-if (builder.Environment.IsProduction())
-{
-    builder.Services.AddDbContext<GGHubDbContext>(options =>
-        options.UseNpgsql(connectionString));
-}
-else
-{
-    builder.Services.AddDbContext<GGHubDbContext>(options =>
-        options.UseSqlite(connectionString));
-}
+
+//if (builder.Environment.IsProduction())
+//{
+//    builder.Services.AddDbContext<GGHubDbContext>(options =>
+//        options.UseNpgsql(connectionString));
+//}
+//else
+//{
+//    builder.Services.AddDbContext<GGHubDbContext>(options =>
+//        options.UseSqlite(connectionString));
+//}
+
+builder.Services.AddDbContext<GGHubDbContext>(options =>
+    options.UseNpgsql(connectionString));
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

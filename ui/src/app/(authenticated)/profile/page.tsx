@@ -17,7 +17,16 @@ import { DangerZone } from "@/core/components/other/danger-zone";
 export default function ProfilePage() {
     const [isEditing, setIsEditing] = useState(false);
     const [isPhotoUploaderOpen, setIsPhotoUploaderOpen] = useState(false);
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+    const getImageUrl = (path: string | null | undefined): string | undefined => {
+        if (!path) {
+            return undefined;
+        }
+        if (path.startsWith("http://") || path.startsWith("https://")) {
+            return path;
+        }
+        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+        return `${API_BASE}${path}`;
+    };
 
     const { data, isLoading, isError, error } = useQuery({
         queryKey: ["my-profile"],
@@ -164,7 +173,7 @@ export default function ProfilePage() {
                                     <div className="relative">
                                         <button onClick={() => setIsPhotoUploaderOpen(true)} className="rounded-full">
                                             <Avatar className="h-16 w-16 cursor-pointer">
-                                                <AvatarImage src={data.profileImageUrl ? `${API_BASE}${data.profileImageUrl}` : undefined} alt={data.username} />
+                                                <AvatarImage src={getImageUrl(data?.profileImageUrl)} alt={data.username} />
                                                 <AvatarFallback>{data.username.charAt(0).toUpperCase()}</AvatarFallback>
                                             </Avatar>
                                         </button>

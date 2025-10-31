@@ -50,12 +50,17 @@ export const ListCommentForm = forwardRef<{ reset: () => void }, ListCommentForm
             parentCommentId: parentCommentId,
         });
     };
-    const getImageUrl = (path: string | null | undefined) => {
-        if (!path) return undefined;
+    const getImageUrl = (path: string | null | undefined): string | undefined => {
+        if (!path) {
+            return undefined;
+        }
+        if (path.startsWith("http://") || path.startsWith("https://")) {
+            return path;
+        }
         const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
         return `${API_BASE}${path}`;
-    };
-
+    }; 
+    
     const avatarSrc = getImageUrl(myProfile?.profileImageUrl);
 
     return (

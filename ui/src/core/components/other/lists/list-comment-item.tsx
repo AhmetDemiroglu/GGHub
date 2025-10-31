@@ -54,11 +54,17 @@ export function ListCommentItem({
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(comment.content);
 
-    const getImageUrl = (path: string | null | undefined) => {
-        if (!path) return undefined;
+    const getImageUrl = (path: string | null | undefined): string | undefined => {
+        if (!path) {
+            return undefined;
+        }
+        if (path.startsWith("http://") || path.startsWith("https://")) {
+            return path;
+        }
         const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
         return `${API_BASE}${path}`;
-    };
+    }; 
+    
     const avatarSrc = getImageUrl(comment.owner.profileImageUrl);
 
     const voteScore = comment.upvotes - comment.downvotes;

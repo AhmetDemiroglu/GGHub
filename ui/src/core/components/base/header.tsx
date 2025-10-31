@@ -74,8 +74,13 @@ export function Header() {
         enabled: isAuthenticated && !!user && messagesOpen,
     });
 
-    const getImageUrl = (path: string | null | undefined) => {
-        if (!path) return undefined;
+    const getImageUrl = (path: string | null | undefined): string | undefined => {
+        if (!path) {
+            return undefined;
+        }
+        if (path.startsWith("http://") || path.startsWith("https://")) {
+            return path;
+        }
         const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
         return `${API_BASE}${path}`;
     };
@@ -100,8 +105,6 @@ export function Header() {
         enabled,
         staleTime: 5 * 60 * 1000,
     });
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-    const avatarSrc = data?.profileImageUrl ? `${API_BASE}${data.profileImageUrl}` : undefined;
 
     const router = useRouter();
     const handleLogout = () => {
@@ -247,7 +250,7 @@ export function Header() {
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" className="relative h-8 w-8 ml-3 rounded-full">
                                         <Avatar className="h-10 w-10 cursor-pointer">
-                                            <AvatarImage src={avatarSrc} alt={user.username} />
+                                            <AvatarImage src={getImageUrl(data?.profileImageUrl)} alt={user.username} />
                                             <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
                                         </Avatar>
                                     </Button>

@@ -112,7 +112,7 @@ export function ProfilePhotoUploader({ isOpen, onClose, currentImageUrl, usernam
                     <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
 
                     {!imageSrc && (
-                        <Button variant="outline" onClick={handleFileSelectClick}>
+                        <Button variant="outline" onClick={handleFileSelectClick} className="cursor-pointer">
                             <Upload className="mr-2 h-4 w-4 cursor-poin" />
                             {croppedFile ? "Değiştir" : "Yeni Fotoğraf Seç"}
                         </Button>
@@ -122,10 +122,10 @@ export function ProfilePhotoUploader({ isOpen, onClose, currentImageUrl, usernam
                 </div>
 
                 <DialogFooter>
-                    <Button variant="ghost" onClick={resetAndClose}>
+                    <Button variant="ghost" onClick={resetAndClose} className="cursor-pointer">
                         İptal
                     </Button>
-                    <Button onClick={handleUpload} disabled={!croppedFile || isPending}>
+                    <Button onClick={handleUpload} disabled={!croppedFile || isPending} className="cursor-pointer">
                         {isPending ? "Yükleniyor..." : "Kaydet"}
                     </Button>
                 </DialogFooter>

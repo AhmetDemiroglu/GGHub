@@ -14,6 +14,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Çözüm Öğeleri", "Çözüm Öğeleri", "{AC80F682-3D55-C8F8-4895-A4A9EDD49434}"
 	ProjectSection(SolutionItems) = preProject
 		GGHub.WebAPI\appsettings.Production.json = GGHub.WebAPI\appsettings.Production.json
+		create-tables-postgres.sql = create-tables-postgres.sql
 	EndProjectSection
 EndProject
 Global

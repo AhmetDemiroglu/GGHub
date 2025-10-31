@@ -32,7 +32,16 @@ export function SearchBar() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+    const getImageUrl = (path: string | null | undefined): string | undefined => {
+        if (!path) {
+            return undefined;
+        }
+        if (path.startsWith("http://") || path.startsWith("https://")) {
+            return path;
+        }
+        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+        return `${API_BASE}${path}`;
+    };
 
     return (
         <div ref={searchRef} className="relative w-full max-w-lg lg:max-w-2xl">
@@ -74,7 +83,7 @@ export function SearchBar() {
                                             >
                                                 {result.imageUrl && (
                                                     <Avatar className="h-10 w-10">
-                                                        <AvatarImage src={`${API_BASE}${result.imageUrl}`} alt={result.title} />
+                                                        <AvatarImage src={getImageUrl(result.imageUrl)} alt={result.title} />
                                                         <AvatarFallback>{result.title.charAt(0).toUpperCase()}</AvatarFallback>
                                                     </Avatar>
                                                 )}

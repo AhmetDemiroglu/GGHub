@@ -21,7 +21,16 @@ interface BlockedUsersDialogProps {
 
 export function BlockedUsersDialog({ isOpen, onClose }: BlockedUsersDialogProps) {
     const queryClient = useQueryClient();
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+    const getImageUrl = (path: string | null | undefined): string | undefined => {
+        if (!path) {
+            return undefined;
+        }
+        if (path.startsWith("http://") || path.startsWith("https://")) {
+            return path;
+        }
+        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+        return `${API_BASE}${path}`;
+    };
 
     const { data: blockedUsers, isLoading } = useQuery({
         queryKey: ["blocked-users"],
@@ -56,8 +65,7 @@ export function BlockedUsersDialog({ isOpen, onClose }: BlockedUsersDialogProps)
                     {isLoading ? (
                         <div className="text-center py-8 text-muted-foreground">Yükleniyor...</div>
                     ) : blockedUsers && blockedUsers.length > 0 ? (
-                        blockedUsers.map((user) => {
-                            const avatarSrc = user.profileImageUrl ? `${API_BASE}${user.profileImageUrl}` : undefined;
+                        blockedUsers.map((user) => {                            
                             const displayName = user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username;
                             const timeAgo = dayjs(user.blockedAt).fromNow();
 
@@ -65,7 +73,7 @@ export function BlockedUsersDialog({ isOpen, onClose }: BlockedUsersDialogProps)
                                 <div key={user.id} className="flex items-center justify-between p-3 hover:bg-accent rounded-lg">
                                     <div className="flex items-center gap-3">
                                         <Avatar className="h-10 w-10">
-                                            <AvatarImage src={avatarSrc} alt={user.username} />
+                                            <AvatarImage src={getImageUrl(user?.profileImageUrl)} alt={user.username} />
                                             <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
                                         </Avatar>
                                         <div>

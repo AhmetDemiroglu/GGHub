@@ -32,7 +32,18 @@ export function FollowersModal({ isOpen, onClose, username, defaultTab = "follow
     const router = useRouter();
     const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState(defaultTab);
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+    const getImageUrl = (path: string | null | undefined): string | undefined => {
+        if (!path) {
+            return undefined;
+        }
+        if (path.startsWith("http://") || path.startsWith("https://")) {
+            return path;
+        }
+        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+        return `${API_BASE}${path}`;
+    };
+
     const { user: currentUser } = useAuth();
 
     useEffect(() => {
@@ -97,7 +108,7 @@ export function FollowersModal({ isOpen, onClose, username, defaultTab = "follow
                                     {user.isProfileAccessible ? (
                                         <Link href={`/profiles/${user.username}`} className="flex items-center gap-3 cursor-pointer" onClick={onClose}>
                                             <Avatar className="h-10 w-10">
-                                                <AvatarImage src={user.profileImageUrl ? `${API_BASE}${user.profileImageUrl}` : undefined} alt={user.username} />
+                                                <AvatarImage src={getImageUrl(user?.profileImageUrl)} alt={user.username} />
                                                 <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
                                             </Avatar>
                                             <div>
@@ -108,7 +119,7 @@ export function FollowersModal({ isOpen, onClose, username, defaultTab = "follow
                                     ) : (
                                         <div className="flex items-center gap-3">
                                             <Avatar className="h-10 w-10">
-                                                <AvatarImage src={user.profileImageUrl ? `${API_BASE}${user.profileImageUrl}` : undefined} alt={user.username} />
+                                                <AvatarImage src={getImageUrl(user?.profileImageUrl)} alt={user.username} />
                                                 <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
                                             </Avatar>
                                             <div>
@@ -148,7 +159,7 @@ export function FollowersModal({ isOpen, onClose, username, defaultTab = "follow
                                     {user.isProfileAccessible ? (
                                         <Link href={`/profiles/${user.username}`} className="flex items-center gap-3 cursor-pointer" onClick={onClose}>
                                             <Avatar className="h-10 w-10">
-                                                <AvatarImage src={user.profileImageUrl ? `${API_BASE}${user.profileImageUrl}` : undefined} alt={user.username} />
+                                                <AvatarImage src={getImageUrl(user?.profileImageUrl)} alt={user.username} />
                                                 <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
                                             </Avatar>
                                             <div>
@@ -159,7 +170,7 @@ export function FollowersModal({ isOpen, onClose, username, defaultTab = "follow
                                     ) : (
                                         <div className="flex items-center gap-3">
                                             <Avatar className="h-10 w-10">
-                                                <AvatarImage src={user.profileImageUrl ? `${API_BASE}${user.profileImageUrl}` : undefined} alt={user.username} />
+                                                <AvatarImage src={getImageUrl(user?.profileImageUrl)} alt={user.username} />
                                                 <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
                                             </Avatar>
                                             <div>
