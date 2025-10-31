@@ -149,6 +149,30 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var app = builder.Build();
+
+if (app.Environment.IsProduction())
+{
+    app.Logger.LogInformation("Production environment detected. Applying database migrations...");
+    try
+    {
+        using (var scope = app.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<GGHubDbContext>();
+
+            dbContext.Database.Migrate();
+        }
+        app.Logger.LogInformation("Database migration completed successfully.");
+    }
+    catch (Exception ex)
+    {
+        // Bir hata olursa (baðlantý hatasý vb.) bunu mutlaka log'la ki görebilelim.
+        app.Logger.LogError(ex, "An error occurred during database migration.");
+        // Önemli: Migration baþarýsýz olursa uygulamanýn çökmesine izin ver,
+        // çünkü hatalý bir þema ile çalýþmasýný istemeyiz.
+        throw;
+    }
+}
+
 app.UseSerilogRequestLogging();
 app.UseRateLimiter();
 
