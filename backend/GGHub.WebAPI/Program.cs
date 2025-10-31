@@ -148,12 +148,17 @@ app.UseSerilogRequestLogging();
 app.UseRateLimiter();
 
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+//if (app.Environment.IsDevelopment())
+//{
+//    app.UseSwagger();
+//    app.UseSwaggerUI();
+//}
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "GGHub API v1");
+    c.RoutePrefix = string.Empty;
+});
 
 if (app.Environment.IsProduction())
 {
@@ -181,5 +186,8 @@ app.UseStaticFiles();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapGet("/", () => "GGHub API is running!").AllowAnonymous();
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow })).AllowAnonymous();
 
 app.Run();
