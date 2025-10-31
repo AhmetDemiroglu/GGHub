@@ -1,3 +1,4 @@
+using Amazon.S3;
 using GGHub.Application.Interfaces;
 using GGHub.Infrastructure.Persistence;
 using GGHub.Infrastructure.Services;
@@ -6,10 +7,12 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models; 
+using Microsoft.OpenApi.Models;
 using Serilog;
 using System.Text;
 using System.Threading.RateLimiting;
+using Npgsql.EntityFrameworkCore.PostgreSQL;
+
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog((context, configuration) =>
@@ -22,13 +25,35 @@ builder.Services.AddCors(options =>
     options.AddPolicy(name: MyAllowSpecificOrigins,
                       policy =>
                       {
-                          policy.WithOrigins("http://localhost:3000")
+                          var allowedOrigins = builder.Configuration
+                              .GetSection("CorsOrigins")
+                              .Get<string[]>() ?? new[] { "http://localhost:3000" };
+
+                          policy.WithOrigins(allowedOrigins)
                                 .AllowAnyHeader()
-                                .AllowAnyMethod();
+                                .AllowAnyMethod()
+                                .AllowCredentials();
                       });
 });
 builder.Services.Configure<RawgApiSettings>(builder.Configuration.GetSection("RawgApiSettings"));
 builder.Services.AddHttpClient();
+
+builder.Services.AddSingleton<IAmazonS3>(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+
+    var s3Config = new Amazon.S3.AmazonS3Config
+    {
+        ServiceURL = $"https://{config["R2:AccountId"]}.r2.cloudflarestorage.com",
+        ForcePathStyle = true
+    };
+
+    return new Amazon.S3.AmazonS3Client(
+        config["R2:AccessKeyId"],
+        config["R2:SecretAccessKey"],
+        s3Config
+    );
+});
 
 builder.Services.AddScoped<IGameService, RawgGameService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -47,7 +72,16 @@ builder.Services.AddScoped<IUserListRatingService, UserListRatingService>();
 builder.Services.AddScoped<IUserListCommentService, UserListCommentService>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<GGHubDbContext>(options => options.UseSqlite(connectionString));
+if (builder.Environment.IsProduction())
+{
+    builder.Services.AddDbContext<GGHubDbContext>(options =>
+        options.UseNpgsql(connectionString));
+}
+else
+{
+    builder.Services.AddDbContext<GGHubDbContext>(options =>
+        options.UseSqlite(connectionString));
+}
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -119,6 +153,21 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+}
+
+if (app.Environment.IsProduction())
+{
+    app.UseHsts();
+
+    app.Use(async (context, next) =>
+    {
+        context.Response.Headers.Add("X-Content-Type-Options", "nosniff");
+        context.Response.Headers.Add("X-Frame-Options", "DENY");
+        context.Response.Headers.Add("X-XSS-Protection", "1; mode=block");
+        context.Response.Headers.Add("Referrer-Policy", "strict-origin-when-cross-origin");
+
+        await next();
+    });
 }
 
 app.UseHttpsRedirection();
