@@ -26,9 +26,9 @@ RUN dotnet publish "GGHub.WebAPI.csproj" -c Release -o /app/publish /p:UseAppHos
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
-COPY --from=publish /app/publish .
 
-# Railway $PORT değişkenini otomatik olarak sağlar.
-# Program.cs'deki Kestrel de bunu otomatik dinler.
-# Bu yüzden EXPOSE komutuna gerek yoktur.
+# YENİ SATIR: Kestrel'e Railway'in verdiği $PORT'u dinlemesini söylüyoruz
+ENV ASPNETCORE_URLS=http://*:$PORT
+
+COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "GGHub.WebAPI.dll"]
