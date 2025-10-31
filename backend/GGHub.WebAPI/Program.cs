@@ -165,10 +165,7 @@ if (app.Environment.IsProduction())
     }
     catch (Exception ex)
     {
-        // Bir hata olursa (baðlantý hatasý vb.) bunu mutlaka log'la ki görebilelim.
         app.Logger.LogError(ex, "An error occurred during database migration.");
-        // Önemli: Migration baþarýsýz olursa uygulamanýn çökmesine izin ver,
-        // çünkü hatalý bir þema ile çalýþmasýný istemeyiz.
         throw;
     }
 }
