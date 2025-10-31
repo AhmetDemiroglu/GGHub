@@ -26,9 +26,8 @@ RUN dotnet publish "GGHub.WebAPI.csproj" -c Release -o /app/publish /p:UseAppHos
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
-
-# YENİ SATIR: Kestrel'e Railway'in verdiği $PORT'u dinlemesini söylüyoruz
-ENV ASPNETCORE_URLS=http://*:$PORT
+EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:${PORT:-8080}
 
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "GGHub.WebAPI.dll"]
+ENTRYPOINT ["sh", "-c", "dotnet GGHub.WebAPI.dll --urls http://0.0.0.0:${PORT:-8080}"]
