@@ -1,14 +1,16 @@
-﻿using GGHub.Application.Dtos;
+﻿using Amazon.Runtime.Internal.Util;
+using GGHub.Application.Dtos;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
 using System.Security.Cryptography;
+using System.Text;
 
 namespace GGHub.Infrastructure.Services
 {
@@ -17,12 +19,14 @@ namespace GGHub.Infrastructure.Services
         private readonly GGHubDbContext _context;
         private readonly IConfiguration _config;
         private readonly IEmailService _emailService;
+        private readonly ILogger<AuthService> _logger;
 
-        public AuthService(GGHubDbContext context, IConfiguration config, IEmailService emailService)
+        public AuthService(GGHubDbContext context, IConfiguration config, IEmailService emailService, ILogger<AuthService> logger)
         {
             _context = context;
             _config = config;
             _emailService = emailService;
+            _logger = logger;
         }
 
         public async Task<LoginResponseDto?> Login(UserForLoginDto userForLoginDto)
@@ -125,7 +129,18 @@ namespace GGHub.Infrastructure.Services
             var emailBody = $"Merhaba {user.Username},<br>GGHub hesabınızı doğrulamak için lütfen <a href='{verificationLink}'>bu linke</a> tıklayın.";
 
 #pragma warning disable CS4014
-            Task.Run(() => _emailService.SendEmailAsync(user.Email, "GGHub Hesap Doğrulama", emailBody));
+            Task.Run(async () => {
+                try
+                {
+                    await _emailService.SendEmailAsync(user.Email, "GGHub Hesap Doğrulama", emailBody);
+
+                    _logger.LogInformation("Successfully sent verification email to {Email}", user.Email);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send verification email to {Email}. Error: {ErrorMessage}", user.Email, ex.Message);
+                }
+            });
 #pragma warning restore CS4014
             return user;
         }
