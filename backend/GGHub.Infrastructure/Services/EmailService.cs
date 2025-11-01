@@ -1,6 +1,4 @@
-﻿// Konum: src/GGHub.Infrastructure/Services/EmailService.cs
-
-using GGHub.Application.Interfaces;
+﻿using GGHub.Application.Interfaces;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Configuration;
