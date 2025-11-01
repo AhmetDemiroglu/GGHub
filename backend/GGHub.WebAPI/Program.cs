@@ -26,20 +26,31 @@ builder.Services.AddCors(options =>
                       policy =>
                       {
                           var allowedOrigins = builder.Configuration
-                              .GetSection("CorsOrigins")
-                              .Get<string[]>() ?? new[] { "http://localhost:3000" };
+                            .GetSection("CorsOrigins")
+                            .Get<string[]>() ?? new[] { "http://localhost:3000" };
 
                           if (builder.Environment.IsProduction())
                           {
                               var vercelUrl = "https://gg-hub-kappa.vercel.app";
+                              var gghubUrl = "https://gghub.social";
+                              var wwwGghubUrl = "https://www.gghub.social";
+
                               if (!allowedOrigins.Contains(vercelUrl))
                               {
                                   allowedOrigins = allowedOrigins.Append(vercelUrl).ToArray();
                               }
+                              if (!allowedOrigins.Contains(gghubUrl))
+                              {
+                                  allowedOrigins = allowedOrigins.Append(gghubUrl).ToArray();
+                              }
+                              if (!allowedOrigins.Contains(wwwGghubUrl))
+                              {
+                                  allowedOrigins = allowedOrigins.Append(wwwGghubUrl).ToArray();
+                              }
                           }
 
                           policy.WithOrigins(allowedOrigins)
-                                .AllowAnyHeader()
+                                                          .AllowAnyHeader()
                                 .AllowAnyMethod()
                                 .AllowCredentials();
                       });
