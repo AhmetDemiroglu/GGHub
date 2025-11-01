@@ -132,13 +132,38 @@ namespace GGHub.Infrastructure.Services
             Task.Run(async () => {
                 try
                 {
-                    await _emailService.SendEmailAsync(user.Email, "GGHub Hesap Doğrulama", emailBody);
+                    // _emailService'i ve config'i (Titan) GEÇİCİ OLARAK BYPASS EDİYORUZ.
+                    // Eski development.json'daki GMAIL ayarlarını elle (hardcode) giriyoruz.
 
-                    _logger.LogInformation("Successfully sent verification email to {Email}", user.Email);
+                    using var smtp = new MailKit.Net.Smtp.SmtpClient();
+                    smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
+
+                    var host = "smtp.gmail.com";
+                    var port = 587; // Gmail için 587 ve StartTls
+                    var fromAddress = "gghub.mailer@gmail.com"; // development.json'daki mailer adresin
+                    var appPassword = "ogdntffewujckffl"; // development.json'daki app şifren
+                    var fromName = "GGHub DUMAN TESTİ";
+
+                    // Gmail'e bağlan
+                    await smtp.ConnectAsync(host, port, MailKit.Security.SecureSocketOptions.StartTls);
+                    await smtp.AuthenticateAsync(fromAddress, appPassword);
+
+                    // Maili oluştur
+                    var email = new MimeKit.MimeMessage();
+                    email.From.Add(new MimeKit.MailboxAddress(fromName, fromAddress));
+                    email.To.Add(MimeKit.MailboxAddress.Parse(user.Email)); // Kayıt olan kullanıcının adresi
+                    email.Subject = "GGHub GMAIL DUMAN TESTİ";
+                    email.Body = new MimeKit.Text.TextPart(MimeKit.Text.TextFormat.Html) { Text = $"Bu mail Gmail'den geliyorsa, sorun GoDaddy/Titan'dadır.<br><br>Test Linki (hala çalışmayacak): {emailBody}" };
+
+                    await smtp.SendAsync(email);
+                    await smtp.DisconnectAsync(true);
+
+                    _logger.LogInformation("GMAIL DUMAN TESTİ: Başarıyla gönderildi {Email}", user.Email);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to send verification email to {Email}. Error: {ErrorMessage}", user.Email, ex.Message);
+                    // Eğer GMAIL BİLE başarısız olursa, sorun Railway'in ağındadır.
+                    _logger.LogError(ex, "GMAIL DUMAN TESTİ: BAŞARISIZ OLDU. Hata: {ErrorMessage}", ex.Message);
                 }
             });
 #pragma warning restore CS4014
