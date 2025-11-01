@@ -86,7 +86,7 @@ export function ProfileEditForm({ initialData, onSave }: ProfileEditFormProps) {
 
   function onSubmit(values: FormData) {
     const { dateOfBirth } = values;
-    let correctedValues = { ...values };
+    const correctedValues = { ...values };
 
     if (dateOfBirth) {
       const userTimezoneOffset = dateOfBirth.getTimezoneOffset() * 60000;

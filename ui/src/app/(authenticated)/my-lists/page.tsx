@@ -6,7 +6,7 @@ import { Input } from "@/core/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/core/components/ui/select";
 import { useDebounce } from "@/core/hooks/use-debounce";
 import * as listApi from "@/api/list/list.api";
-import { ListCategory, ListVisibilitySetting, UserList, UserListForCreation, UserListForUpdate, UserListPublic } from "@/models/list/list.model";
+import { ListCategory, UserList, UserListForCreation, UserListForUpdate } from "@/models/list/list.model";
 import { ListCard } from "@/core/components/other/list-card/";
 import { ListCardSkeleton } from "@/core/components/other/list-card/skeleton";
 import { Button } from "@/core/components/ui/button";

@@ -46,7 +46,6 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
     const [blockedUsersDialogOpen, setBlockedUsersDialogOpen] = useState(false);
     const [followerCount, setFollowerCount] = useState(profile.followerCount || 0);
     const queryClient = useQueryClient();
-    const router = useRouter();
     const [messageDialogOpen, setMessageDialogOpen] = useState(false);
 
     const avatarSrc = getImageUrl(profile.profileImageUrl);
@@ -197,7 +196,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
 
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Calendar className="h-4 w-4" />
-                        <span>GGHub'a {dayjs(profile.createdAt).format("MMMM YYYY")} tarihinde katıldı</span>
+                        <span>GGHub&apos;a {dayjs(profile.createdAt).format("MMMM YYYY")} tarihinde katıldı</span>
                     </div>
                 </div>
             </div>

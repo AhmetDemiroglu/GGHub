@@ -27,7 +27,8 @@ type FormSchemaType = z.infer<typeof formSchema>;
 const categoryOptions = Object.keys(ListCategory)
     .filter((v) => !isNaN(Number(v)))
     .map((key: any) => {
-        const label = ListCategory[key as any];
+        const numKey = Number(key) as ListCategory;
+        const label = ListCategory[numKey];
         return {
             value: key,
             label: label === "Other" ? "Diğer" : label,

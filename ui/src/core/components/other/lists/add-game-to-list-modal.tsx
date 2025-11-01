@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { gameApi } from "@/api/gaming/game.api";
 import { Button } from "@core/components/ui/button";
@@ -8,7 +8,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@core/components/ui/input";
 import { Loader2, Check, Search } from "lucide-react";
 import type { Game } from "@/models/gaming/game.model";
-import { useDebounce } from "@core/hooks/use-debounce";
 
 interface AddGameToListModalProps {
     isOpen: boolean;
@@ -37,18 +36,17 @@ export function AddGameToListModal({ isOpen, onClose, onAddGame, isPending, exis
                       search: submittedSearchTerm,
                   })
                 : Promise.resolve(null),
-        placeholderData: (previousData) => previousData, 
+        placeholderData: (previousData) => previousData,
     });
 
     const handleSearch = () => {
         if (searchTerm.trim()) {
             setSubmittedSearchTerm(searchTerm.trim());
-            setPage(1); 
+            setPage(1);
         }
     };
 
     const games = searchResults?.items ?? [];
-    const showLoading = isSearchLoading;
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose} modal={true}>
@@ -83,7 +81,9 @@ export function AddGameToListModal({ isOpen, onClose, onAddGame, isPending, exis
                         </div>
                     )}
                     {searchError && <p className="text-red-500 text-sm text-center">Arama sırasında hata: {searchError.message}</p>}
-                    {!isSearchLoading && submittedSearchTerm && games.length === 0 && <p className="text-muted-foreground text-sm text-center">"{submittedSearchTerm}" için sonuç bulunamadı.</p>}
+                    {!isSearchLoading && submittedSearchTerm && games.length === 0 && (
+                        <p className="text-muted-foreground text-sm text-center">&quot;{submittedSearchTerm}&quot; için sonuç bulunamadı.</p>
+                    )}
                     {!submittedSearchTerm && !isSearchLoading && <p className="text-muted-foreground text-sm text-center">Eklemek için bir oyun arayın ve 'Ara' butonuna basın.</p>}
                     <div className="space-y-3">
                         {games.map((game: Game) => {

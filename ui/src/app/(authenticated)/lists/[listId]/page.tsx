@@ -1,5 +1,5 @@
 "use client";
-import type { UserListDetail, UserListForCreation, UserListForUpdate } from "@/models/list/list.model";
+import type { UserListDetail, UserListForUpdate } from "@/models/list/list.model";
 import { ListFormModal } from "@core/components/other/lists/list-form-modal";
 import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -33,7 +33,6 @@ export default function ListDetailPage() {
     const {
         data: listDetail,
         isLoading,
-        error,
     } = useQuery<UserListDetail>({
         queryKey: ["list-detail", listId],
         queryFn: () => listApi.getListDetail(listId),
@@ -99,7 +98,7 @@ export default function ListDetailPage() {
 
     const addGameMutation = useMutation({
         mutationFn: (gameId: number) => listApi.addGameToList(listId, gameId),
-        onMutate: async (gameId) => {
+        onMutate: async () => {
             await queryClient.cancelQueries({ queryKey: ["list-detail", listId] });
 
             const previousData = queryClient.getQueryData(["list-detail", listId]);
