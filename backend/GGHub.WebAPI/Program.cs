@@ -29,6 +29,15 @@ builder.Services.AddCors(options =>
                               .GetSection("CorsOrigins")
                               .Get<string[]>() ?? new[] { "http://localhost:3000" };
 
+                          if (builder.Environment.IsProduction())
+                          {
+                              var vercelUrl = "https://gg-hub-kappa.vercel.app";
+                              if (!allowedOrigins.Contains(vercelUrl))
+                              {
+                                  allowedOrigins = allowedOrigins.Append(vercelUrl).ToArray();
+                              }
+                          }
+
                           policy.WithOrigins(allowedOrigins)
                                 .AllowAnyHeader()
                                 .AllowAnyMethod()
@@ -180,22 +189,22 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-//if (app.Environment.IsProduction())
-//{
-//    app.UseHsts();
-
-//    app.Use(async (context, next) =>
-//    {
-//        context.Response.Headers.Add("X-Content-Type-Options", "nosniff");
-//        context.Response.Headers.Add("X-Frame-Options", "DENY");
-//        context.Response.Headers.Add("X-XSS-Protection", "1; mode=block");
-//        context.Response.Headers.Add("Referrer-Policy", "strict-origin-when-cross-origin");
-
-//        await next();
-//    });
-//}
-
 if (app.Environment.IsProduction())
+{
+    app.UseHsts();
+
+    app.Use(async (context, next) =>
+    {
+        context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+        context.Response.Headers.Append("X-Frame-Options", "DENY");
+        context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
+        context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
+
+        await next();
+    });
+}
+
+if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI(c =>
