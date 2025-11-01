@@ -8,17 +8,14 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Resend;
 using Serilog;
 using System.Text;
-using System.Threading.RateLimiting;
-using Npgsql.EntityFrameworkCore.PostgreSQL;
 
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog((context, configuration) =>
-    configuration
-        .ReadFrom.Configuration(context.Configuration) 
-        .WriteTo.Console() 
+    configuration.ReadFrom.Configuration(context.Configuration)
 );
 
 var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
@@ -79,6 +76,12 @@ builder.Services.AddSingleton<IAmazonS3>(sp =>
     );
 });
 
+builder.Services.AddOptions<ResendClientOptions>().Configure(options =>
+{
+    options.ApiToken = builder.Configuration["ResendSettings:ApiKey"];
+});
+builder.Services.AddHttpClient<IResend, ResendClient>();
+
 builder.Services.AddScoped<IGameService, RawgGameService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
@@ -89,7 +92,7 @@ builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<ISocialService, SocialService>();
-builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IEmailService, ResendEmailService>();
 builder.Services.AddScoped<ISearchService, SearchService>();
 builder.Services.AddScoped<IPhotoService, PhotoService>();
 builder.Services.AddScoped<IUserListRatingService, UserListRatingService>();
