@@ -25,7 +25,7 @@ namespace GGHub.Infrastructure.Services
             using var smtp = new SmtpClient();
             //smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
 
-            //await smtp.ConnectAsync(_config["EmailSettings:Host"], int.Parse(_config["EmailSettings:Port"]!), SecureSocketOptions.StartTls);
+            smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
 
             var port = int.Parse(_config["EmailSettings:Port"]!);
             var secureOption = SecureSocketOptions.StartTls;
