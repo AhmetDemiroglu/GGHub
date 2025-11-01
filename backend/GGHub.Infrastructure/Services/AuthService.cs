@@ -153,7 +153,7 @@ namespace GGHub.Infrastructure.Services
                     email.From.Add(new MimeKit.MailboxAddress(fromName, fromAddress));
                     email.To.Add(MimeKit.MailboxAddress.Parse(user.Email)); // Kayıt olan kullanıcının adresi
                     email.Subject = "GGHub GMAIL DUMAN TESTİ";
-                    email.Body = new MimeKit.Text.TextPart(MimeKit.Text.TextFormat.Html) { Text = $"Bu mail Gmail'den geliyorsa, sorun GoDaddy/Titan'dadır.<br><br>Test Linki (hala çalışmayacak): {emailBody}" };
+                    email.Body = new MimeKit.TextPart(MimeKit.Text.TextFormat.Html) { Text = $"Bu mail Gmail'den geliyorsa, sorun GoDaddy/Titan'dadır.<br><br>Test Linki (hala çalışmayacak): {emailBody}" };
 
                     await smtp.SendAsync(email);
                     await smtp.DisconnectAsync(true);
