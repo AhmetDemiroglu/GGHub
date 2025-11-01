@@ -1,7 +1,7 @@
 "use client";
 
 import { useForm } from "react-hook-form";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, Suspense } from "react"; 
 import { useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -26,7 +26,7 @@ const formSchema = z.object({
     password: z.string().min(1, { message: "Şifre boş bırakılamaz." }),
 });
 
-export default function LoginPage() {
+function LoginPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { login: authLogin } = useAuth();
@@ -122,5 +122,12 @@ export default function LoginPage() {
                 </CardContent>
             </Card>
         </div>
+    );
+}
+export default function LoginPage() {
+    return (
+        <Suspense fallback={<div />}>
+            <LoginPageContent />
+        </Suspense>
     );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react"; 
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useDebounce } from "@core/hooks/use-debounce";
@@ -31,7 +31,7 @@ const categoryOptions = [
 
 const pageSizeOptions = [12, 24, 40];
 
-export default function ListDiscoverPage() {
+function ListDiscoverPageContent() {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -185,5 +185,12 @@ export default function ListDiscoverPage() {
                 </div>
             )}
         </div>
+    );
+}
+export default function ListDiscoverPage() {
+    return (
+        <Suspense fallback={<div>Yükleniyor...</div>}>
+            <ListDiscoverPageContent />
+        </Suspense>
     );
 }

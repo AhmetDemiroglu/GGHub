@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { gameApi } from "@/api/gaming/game.api";
 import { GameCard } from "@core/components/other/game-card";
 import { useQuery } from "@tanstack/react-query";
@@ -51,7 +51,7 @@ const orderingOptions = [
     { value: "name", label: "Oyun Adı" },
 ];
 
-export default function DiscoverPage() {
+function DiscoverPageContent() {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -273,5 +273,12 @@ export default function DiscoverPage() {
                 </div>
             )}
         </div>
+    );
+}
+export default function DiscoverPage() {
+    return (
+        <Suspense fallback={<div>Yükleniyor...</div>}>
+            <DiscoverPageContent />
+        </Suspense>
     );
 }
