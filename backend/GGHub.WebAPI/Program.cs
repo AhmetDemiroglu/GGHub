@@ -91,6 +91,8 @@ builder.Services.AddScoped<ISearchService, SearchService>();
 builder.Services.AddScoped<IPhotoService, PhotoService>();
 builder.Services.AddScoped<IUserListRatingService, UserListRatingService>();
 builder.Services.AddScoped<IUserListCommentService, UserListCommentService>();
+builder.Services.AddSingleton<IEmailQueue, EmailQueue>();
+builder.Services.AddHostedService<BackgroundEmailService>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 

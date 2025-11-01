@@ -20,13 +20,14 @@ namespace GGHub.Infrastructure.Services
         private readonly IConfiguration _config;
         private readonly IEmailService _emailService;
         private readonly ILogger<AuthService> _logger;
-
-        public AuthService(GGHubDbContext context, IConfiguration config, IEmailService emailService, ILogger<AuthService> logger)
+        private readonly IEmailQueue _emailQueue;
+        public AuthService(GGHubDbContext context, IConfiguration config, IEmailService emailService, ILogger<AuthService> logger, IEmailQueue emailQueue)
         {
             _context = context;
             _config = config;
             _emailService = emailService;
             _logger = logger;
+            _emailQueue = emailQueue;
         }
 
         public async Task<LoginResponseDto?> Login(UserForLoginDto userForLoginDto)
@@ -123,50 +124,20 @@ namespace GGHub.Infrastructure.Services
             await _context.SaveChangesAsync();
 
             //var verificationLink = $"https://localhost:7263/api/auth/verify-email?token={user.EmailVerificationToken}";
-            var baseUrl = _config["App:BaseUrl"];
-            var verificationLink = $"{baseUrl}/api/auth/verify-email?token={user.EmailVerificationToken}";
 
+            var baseUrl = _config["App:BaseUrl"] ?? "https://localhost:7263";
+            var verificationLink = $"{baseUrl}/api/auth/verify-email?token={user.EmailVerificationToken}"; 
             var emailBody = $"Merhaba {user.Username},<br>GGHub hesabınızı doğrulamak için lütfen <a href='{verificationLink}'>bu linke</a> tıklayın.";
 
-#pragma warning disable CS4014
-            Task.Run(async () => {
-                try
-                {
-                    // _emailService'i ve config'i (Titan) GEÇİCİ OLARAK BYPASS EDİYORUZ.
-                    // Eski development.json'daki GMAIL ayarlarını elle (hardcode) giriyoruz.
-
-                    using var smtp = new MailKit.Net.Smtp.SmtpClient();
-                    smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
-
-                    var host = "smtp.gmail.com";
-                    var port = 587; // Gmail için 587 ve StartTls
-                    var fromAddress = "gghub.mailer@gmail.com"; // development.json'daki mailer adresin
-                    var appPassword = "ogdntffewujckffl"; // development.json'daki app şifren
-                    var fromName = "GGHub DUMAN TESTİ";
-
-                    // Gmail'e bağlan
-                    await smtp.ConnectAsync(host, port, MailKit.Security.SecureSocketOptions.StartTls);
-                    await smtp.AuthenticateAsync(fromAddress, appPassword);
-
-                    // Maili oluştur
-                    var email = new MimeKit.MimeMessage();
-                    email.From.Add(new MimeKit.MailboxAddress(fromName, fromAddress));
-                    email.To.Add(MimeKit.MailboxAddress.Parse(user.Email)); // Kayıt olan kullanıcının adresi
-                    email.Subject = "GGHub GMAIL DUMAN TESTİ";
-                    email.Body = new MimeKit.TextPart(MimeKit.Text.TextFormat.Html) { Text = $"Bu mail Gmail'den geliyorsa, sorun GoDaddy/Titan'dadır.<br><br>Test Linki (hala çalışmayacak): {emailBody}" };
-
-                    await smtp.SendAsync(email);
-                    await smtp.DisconnectAsync(true);
-
-                    _logger.LogInformation("GMAIL DUMAN TESTİ: Başarıyla gönderildi {Email}", user.Email);
-                }
-                catch (Exception ex)
-                {
-                    // Eğer GMAIL BİLE başarısız olursa, sorun Railway'in ağındadır.
-                    _logger.LogError(ex, "GMAIL DUMAN TESTİ: BAŞARISIZ OLDU. Hata: {ErrorMessage}", ex.Message);
-                }
+            _emailQueue.EnqueueEmail(new EmailJob
+            {
+                ToAddress = user.Email,
+                Subject = "GGHub Hesap Doğrulama",
+                Body = emailBody
             });
-#pragma warning restore CS4014
+
+            _logger.LogInformation("Email job for {Email} enqueued.", user.Email); // Log ekleyelim
+
             return user;
         }
         private bool VerifyPasswordHash(string password, byte[] passwordHash, byte[] passwordSalt)
