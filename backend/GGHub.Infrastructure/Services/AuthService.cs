@@ -116,12 +116,14 @@ namespace GGHub.Infrastructure.Services
                                             .Replace("/", "-").Replace("+", "_")
             };
             await _context.Users.AddAsync(user);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(); // Kayıt tamamlandı
 
             var verificationLink = $"https://localhost:7263/api/auth/verify-email?token={user.EmailVerificationToken}";
             var emailBody = $"Merhaba {user.Username},<br>GGHub hesabınızı doğrulamak için lütfen <a href='{verificationLink}'>bu linke</a> tıklayın.";
-            await _emailService.SendEmailAsync(user.Email, "GGHub Hesap Doğrulama", emailBody);
 
+#pragma warning disable CS4014
+            Task.Run(() => _emailService.SendEmailAsync(user.Email, "GGHub Hesap Doğrulama", emailBody));
+#pragma warning restore CS4014
             return user;
         }
         private bool VerifyPasswordHash(string password, byte[] passwordHash, byte[] passwordSalt)
