@@ -5,6 +5,7 @@ import { Badge } from "@core/components/ui/badge";
 import { Separator } from "@core/components/ui/separator";
 import { Globe, Lock, Users, Tag, Star, List as ListIcon, Users as FollowersIcon } from "lucide-react";
 import React from "react";
+import placeHolder2 from "@core/assets/placeholder2.png"
 
 interface ListCardData {
     id: number;
@@ -72,8 +73,9 @@ export function ListCard({ list, footer }: ListCardProps) {
     const imageCount = imageUrls.length;
     const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
         const target = e.target as HTMLImageElement;
-        target.onerror = null;
-        target.src = "https://placehold.co/160x90/27272a/71717a?text=?";
+        if (target.dataset.fallbackApplied) return;
+        target.dataset.fallbackApplied = "true";
+        target.src = placeHolder2.src;
     };
 
     return (
@@ -121,7 +123,7 @@ export function ListCard({ list, footer }: ListCardProps) {
                         </Badge>
                     </div>
                 </div>
-                
+
                 <div className="flex-1" />
                 <Separator className="bg-border" />
 

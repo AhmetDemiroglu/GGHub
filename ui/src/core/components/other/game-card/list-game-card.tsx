@@ -1,6 +1,8 @@
 import type { Game } from "@/models/gaming/game.model";
 import { Star, Trash2 } from "lucide-react";
 import { memo } from "react";
+import placeHolder3 from "@core/assets/placeholder3.png";
+
 interface ListGameCardProps {
     game: Game;
     showRemoveButton?: boolean;
@@ -12,14 +14,15 @@ export const ListGameCard = memo(function ListGameCard({ game, showRemoveButton,
         <div className="flex gap-3 p-3 rounded-lg border bg-card cursor-pointer hover:bg-accent/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-200">
             {/* Sol: Küçük Thumbnail */}
             <img
-                src={game.backgroundImage ?? "/placeholder.png"}
+                src={game.backgroundImage ?? placeHolder3.src}
                 alt={game.name}
                 className="w-20 h-20 object-cover rounded flex-shrink-0"
                 loading="lazy"
                 onError={(e) => {
                     const target = e.target as HTMLImageElement;
-                    target.onerror = null;
-                    target.src = "https://placehold.co/80x112/27272a/71717a?text=?";
+                    if (target.dataset.fallbackApplied) return;
+                    target.dataset.fallbackApplied = "true";
+                    target.src = placeHolder3.src;
                 }}
             />
 

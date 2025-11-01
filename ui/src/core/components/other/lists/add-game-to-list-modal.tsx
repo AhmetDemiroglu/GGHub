@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@core/components/ui/input";
 import { Loader2, Check, Search } from "lucide-react";
 import type { Game } from "@/models/gaming/game.model";
+import placeHolder from "@core/assets/placeholder.png";
 
 interface AddGameToListModalProps {
     isOpen: boolean;
@@ -25,6 +26,7 @@ export function AddGameToListModal({ isOpen, onClose, onAddGame, isPending, exis
     const {
         data: searchResults,
         isLoading: isSearchLoading,
+        isFetching: isSearchFetching,
         error: searchError,
     } = useQuery({
         queryKey: ["game-search-for-list", submittedSearchTerm, page],
@@ -68,23 +70,23 @@ export function AddGameToListModal({ isOpen, onClose, onAddGame, isPending, exis
                                 }
                             }}
                         />
-                        <Button onClick={handleSearch} disabled={!searchTerm.trim() || isSearchLoading}>
-                            {isSearchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                        <Button onClick={handleSearch} disabled={!searchTerm.trim() || isSearchFetching}>
+                            {isSearchFetching ? <Loader2 className="h-4 w-4 animate-spin cursor-pointer" /> : <Search className="h-4 w-4" />}
                         </Button>
                     </div>
                 </div>
 
                 <div className="max-h-[400px] border rounded-md overflow-y-auto p-4">
-                    {isSearchLoading && submittedSearchTerm && (
+                    {isSearchFetching && submittedSearchTerm && (
                         <div className="flex justify-center items-center h-full">
                             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                         </div>
                     )}
                     {searchError && <p className="text-red-500 text-sm text-center">Arama sırasında hata: {searchError.message}</p>}
-                    {!isSearchLoading && submittedSearchTerm && games.length === 0 && (
+                    {!isSearchFetching && submittedSearchTerm && games.length === 0 && (
                         <p className="text-muted-foreground text-sm text-center">&quot;{submittedSearchTerm}&quot; için sonuç bulunamadı.</p>
                     )}
-                    {!submittedSearchTerm && !isSearchLoading && <p className="text-muted-foreground text-sm text-center">Eklemek için bir oyun arayın ve 'Ara' butonuna basın.</p>}
+                    {!submittedSearchTerm && !isSearchFetching && <p className="text-muted-foreground text-sm text-center">Eklemek için bir oyun arayın ve 'Ara' butonuna basın.</p>}
                     <div className="space-y-3">
                         {games.map((game: Game) => {
                             const isAlreadyInList = existingGameIds.includes(game.rawgId);
@@ -92,13 +94,14 @@ export function AddGameToListModal({ isOpen, onClose, onAddGame, isPending, exis
                                 <div key={game.rawgId} className="flex items-center justify-between gap-3 p-2 rounded-md hover:bg-accent">
                                     <div className="flex items-center gap-3 overflow-hidden">
                                         <img
-                                            src={game.backgroundImage || "/placeholder.png"}
+                                            src={game.backgroundImage || placeHolder.src}
                                             alt={game.name}
                                             className="h-12 w-10 object-cover rounded flex-shrink-0"
                                             onError={(e) => {
                                                 const target = e.target as HTMLImageElement;
-                                                target.onerror = null;
-                                                target.src = "https://placehold.co/40x48/27272a/71717a?text=?";
+                                                if (target.dataset.fallbackApplied) return;
+                                                target.dataset.fallbackApplied = "true";
+                                                target.src = placeHolder.src;
                                             }}
                                         />
                                         <div className="flex-1 overflow-hidden">

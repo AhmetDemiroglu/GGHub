@@ -3,6 +3,8 @@ import { PlatformIcons } from "../platform-icons";
 import { ScoreBadge } from "../score-badge";
 import { Separator } from "@core/components/ui/separator";
 import { memo } from "react";
+import placeHolder2 from "@core/assets/placeholder2.png"
+
 
 export const GameCard = memo(function GameCard({ game }: { game: Game }) {
     if (!game) {
@@ -15,7 +17,7 @@ export const GameCard = memo(function GameCard({ game }: { game: Game }) {
     return (
         <div className="bg-card rounded-lg cursor-pointer overflow-hidden h-full flex flex-col group text-foreground border border-border hover:border-primary/50 transition-colors duration-300">
             <div className="aspect-video relative overflow-hidden">
-                <img src={game.backgroundImage ?? "/placeholder.png"} alt={game.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
+                <img src={game.backgroundImage ?? placeHolder2.src} alt={game.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
                 <div className="absolute inset-0 bg-gradient-to-t from-card via-card/10 to-transparent" />
             </div>
 

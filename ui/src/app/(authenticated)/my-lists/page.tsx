@@ -301,9 +301,9 @@ export default function MyListsPage() {
                                     </div>
                                 );
                                 return (
-                                    <div key={list.id} className="block cursor-pointer" onClick={() => router.push(`/lists/${list.id}`)}>
+                                    <Link key={list.id} href={`/lists/${list.id}`} className="block cursor-pointer">
                                         <ListCard list={list} footer={cardFooter} />
-                                    </div>
+                                    </Link>
                                 );
                             })}
                         </div>
