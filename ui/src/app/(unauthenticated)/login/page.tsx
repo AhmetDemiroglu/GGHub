@@ -1,7 +1,7 @@
 "use client";
 
 import { useForm } from "react-hook-form";
-import { useEffect, useRef, Suspense } from "react"; 
+import { useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -30,19 +30,32 @@ function LoginPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { login: authLogin } = useAuth();
-    const toastShownRef = useRef(false);
 
     useEffect(() => {
-        if (toastShownRef.current === false) {
-            const isRegistered = searchParams.get("registered");
-            if (isRegistered) {
-                toast.success("Kayıt başarılı!", {
-                    description: "Doğrulama linki e-posta adresinize gönderildi.",
-                });
-                toastShownRef.current = true;
-            }
+        const isRegistered = searchParams.get("registered");
+        const isVerified = searchParams.get("verified");
+        
+        let toastId: string | number | undefined = undefined;
+
+        if (isVerified === "true") {
+            toastId = toast.success("Hesap Doğrulandı!", {
+                description: "E-posta adresiniz başarıyla doğrulandı. Lütfen giriş yapın.",
+            });
+        } else if (isVerified === "false") {
+            toastId = toast.error("Doğrulama Başarısız", {
+                description: "Doğrulama linki geçersiz veya süresi dolmuş.",
+            });
+        } else if (isRegistered === "true") {
+            toastId = toast.success("Kayıt başarılı!", {
+                description: "Doğrulama linki e-posta adresinize gönderildi.",
+            });
         }
-    }, [searchParams]);
+
+        if (toastId !== undefined) {
+            router.replace('/login', { scroll: false });
+        }
+
+    }, [searchParams, router]);
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),

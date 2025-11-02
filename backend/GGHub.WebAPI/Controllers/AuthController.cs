@@ -3,6 +3,7 @@ using GGHub.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using static Org.BouncyCastle.Math.EC.ECCurve;
 
 namespace GGHub.WebAPI.Controllers
 {
@@ -12,10 +13,11 @@ namespace GGHub.WebAPI.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
-
-        public AuthController(IAuthService authService)
+        private readonly IConfiguration _config;
+        public AuthController(IAuthService authService, IConfiguration config)
         {
             _authService = authService;
+            _config = config;
         }
 
         [HttpPost("register")] 
@@ -54,15 +56,18 @@ namespace GGHub.WebAPI.Controllers
             return Ok(result);
         }
         [HttpGet("verify-email")]
-        [AllowAnonymous] 
+        [AllowAnonymous]
         public async Task<IActionResult> VerifyEmail([FromQuery] string token)
         {
+            var frontendBaseUrl = _config["App:FrontendBaseUrl"] ?? "http://localhost:3000";
+
             var success = await _authService.VerifyEmailAsync(token);
             if (!success)
             {
-                return BadRequest("Geçersiz doğrulama linki.");
+                return Redirect($"{frontendBaseUrl}/login?verified=false");
             }
-            return Ok("E-posta adresiniz başarıyla doğrulandı! Artık giriş yapabilirsiniz.");
+
+            return Redirect($"{frontendBaseUrl}/login?verified=true");
         }
     }
 }
