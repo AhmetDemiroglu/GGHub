@@ -17,6 +17,8 @@ import {
     Rocket,
     Smartphone,
 } from "lucide-react";
+import logoSrc from "@core/assets/logo.png";
+import Image from "next/image";
 
 export default function HomePage() {
     return (
@@ -33,7 +35,10 @@ export default function HomePage() {
 
                     <div className="mt-4 flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
                         <div>
-                            <h1 className="text-3xl font-bold tracking-tight md:text-4xl">GGHub</h1>
+                            <div className="flex flex-wrap items-center gap-3">
+                                <Image src={logoSrc} alt="GGHub Logo" width={35} height={35} priority className="h-8 w-auto" />
+                                <h1 className="text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-[#00eaff] via-[#4b7bff] to-[#c93aff] bg-clip-text text-transparent">Hub</h1>{" "}
+                            </div>
                             <p className="mt-1 text-zinc-300">Türkiye&apos;nin oyuncu sosyal platformu.</p>
                             <p className="mt-4 max-w-2xl text-zinc-400 text-sm">
                                 Şu an temel özelliklerle yayındayız; gerçek ana sayfa ve büyük arayüz güncellemeleri yolda. Geliştirme sürecini şeffaf biçimde paylaşıyoruz.
