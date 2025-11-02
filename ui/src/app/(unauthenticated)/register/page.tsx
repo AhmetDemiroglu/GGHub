@@ -100,7 +100,7 @@ export default function RegisterPage() {
                 {isPending ? 'Hesap Oluşturuluyor...' : 'Hesap Oluştur'}
               </Button>
               <p className="text-left text-sm text-muted-foreground">
-                Zaten bir hesabın var mı?{" "}
+                Zaten bir hesabın var mı?
                 <Link
                   href="/login"
                   className="underline font-bold underline-offset-4 hover:text-primary"

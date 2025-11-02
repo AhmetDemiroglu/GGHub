@@ -125,7 +125,7 @@ function LoginPageContent() {
                                 {isPending ? "Giriş Yapılıyor..." : "Giriş Yap"}
                             </Button>
                             <p className="text-left text-sm text-muted-foreground">
-                                Hesabın yok mu?{" "}
+                                Hesabın yok mu?
                                 <Link href="/register" className="underline font-bold underline-offset-4 hover:text-primary">
                                     Kayıt Ol
                                 </Link>

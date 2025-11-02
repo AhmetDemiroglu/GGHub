@@ -35,9 +35,9 @@ export default function HomePage() {
 
                     <div className="mt-4 flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
                         <div>
-                            <div className="flex flex-wrap items-center gap-3">
-                                <Image src={logoSrc} alt="GGHub Logo" width={35} height={35} priority className="h-8 w-auto" />
-                                <h1 className="text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-[#00eaff] via-[#4b7bff] to-[#c93aff] bg-clip-text text-transparent">Hub</h1>{" "}
+                            <div className="flex items-center gap-2.5 w-fit cursor-pointer group">
+                                <Image src={logoSrc} alt="GGHub Logo" width={38} height={38} className="rounded-md transition-transform group-hover:scale-105" />
+                                <span className="text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-br from-[#00eaff] via-[#4b7bff] to-[#c93aff] bg-clip-text text-transparent">Hub</span>
                             </div>
                             <p className="mt-1 text-zinc-300">Türkiye&apos;nin oyuncu sosyal platformu.</p>
                             <p className="mt-4 max-w-2xl text-zinc-400 text-sm">

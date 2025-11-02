@@ -207,7 +207,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
     return (
         <div className="w-full rounded-lg overflow-hidden bg-card text-card-foreground shadow-md">
             <div className="h-48 md:h-56 w-full relative">
-                <Image src={gameBanner} alt="GGHub Banner" fill className="object-cover object-[center_15%] sm:object-[center_25%] md:object-[center_35%]" priority />{" "}
+                <Image src={gameBanner} alt="GGHub Banner" fill className="object-cover object-[center_15%] sm:object-[center_25%] md:object-[center_35%]" priority />
                 <div className="absolute inset-0 bg-background/70" />
             </div>
             <div className="p-4 md:p-6">
