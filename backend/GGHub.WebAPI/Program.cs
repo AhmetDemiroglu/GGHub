@@ -11,6 +11,7 @@ using Microsoft.OpenApi.Models;
 using Resend;
 using Serilog;
 using System.Text;
+using System.Threading.RateLimiting;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -133,14 +134,18 @@ builder.Services.AddRateLimiter(options =>
 {
     options.AddFixedWindowLimiter(policyName: "LoginPolicy", opt =>
     {
-        opt.PermitLimit = 5; 
-        opt.Window = TimeSpan.FromMinutes(1); 
+        opt.PermitLimit = 10;
+        opt.Window = TimeSpan.FromMinutes(5);
     });
 
-    options.AddFixedWindowLimiter(policyName: "DefaultPolicy", opt =>
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
     {
-        opt.PermitLimit = 100;
-        opt.Window = TimeSpan.FromMinutes(1);
+        var ipAddress = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(ipAddress, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 20,
+            Window = TimeSpan.FromMinutes(1)
+        });
     });
 
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -199,14 +204,6 @@ if (app.Environment.IsProduction())
 }
 
 app.UseSerilogRequestLogging();
-app.UseRateLimiter();
-
-
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
 
 if (app.Environment.IsProduction())
 {
@@ -233,17 +230,17 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseHttpsRedirection();
+app.UseCors(MyAllowSpecificOrigins); 
 
-app.UseAuthentication();
+app.UseHttpsRedirection();        
 
-app.UseCors(MyAllowSpecificOrigins);
+app.UseRateLimiter();
 
-app.UseStaticFiles();
+app.UseAuthentication();    
+
+app.UseStaticFiles();    
 
 app.UseAuthorization();
-
-app.MapControllers();
 
 app.MapGet("/", () => "GGHub API is running!").AllowAnonymous();
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow })).AllowAnonymous();

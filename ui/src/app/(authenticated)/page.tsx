@@ -22,7 +22,7 @@ import Image from "next/image";
 
 export default function HomePage() {
     return (
-        <div className="w-full h-full p-5 bg-slate-50 dark:bg-zinc-950">
+        <div className="w-full h-full p-5 bg-slate-50 dark:bg-background">
             <div className="space-y-4">
                 <section
                     className="relative overflow-hidden rounded-2xl 
