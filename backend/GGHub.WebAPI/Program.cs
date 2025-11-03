@@ -199,7 +199,6 @@ if (app.Environment.IsProduction())
     catch (Exception ex)
     {
         app.Logger.LogError(ex, "An error occurred during database migration.");
-        throw;
     }
 }
 
@@ -241,6 +240,8 @@ app.UseAuthentication();
 app.UseStaticFiles();    
 
 app.UseAuthorization();
+
+app.MapControllers();
 
 app.MapGet("/", () => "GGHub API is running!").AllowAnonymous();
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow })).AllowAnonymous();
