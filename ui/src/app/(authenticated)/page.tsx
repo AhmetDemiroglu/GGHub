@@ -96,7 +96,7 @@ export default function HomePage() {
                 <section className="grid gap-4 md:grid-cols-2">
                     <div
                         className="rounded-2xl border border-slate-200 bg-white/70 backdrop-blur-sm p-5
-                        dark:border-zinc-800 dark:bg-zinc-900/60"
+                        dark:border-zinc-800 dark:bg-background"
                     >
                         <div className="mb-3 flex items-center gap-2">
                             <Gamepad2 className="h-5 w-5 text-cyan-500 dark:text-cyan-400" />
@@ -179,7 +179,7 @@ export default function HomePage() {
 
                     <div
                         className="rounded-2xl border border-slate-200 bg-white/70 backdrop-blur-sm p-5
-                        dark:border-zinc-800 dark:bg-zinc-900/60"
+                        dark:border-zinc-800 dark:bg-background"
                     >
                         <div className="mb-3 flex items-center gap-2">
                             <Wrench className="h-5 w-5 text-amber-500 dark:text-amber-400" />
