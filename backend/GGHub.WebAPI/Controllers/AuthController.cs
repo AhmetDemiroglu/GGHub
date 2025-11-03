@@ -20,29 +20,44 @@ namespace GGHub.WebAPI.Controllers
             _config = config;
         }
 
-        [HttpPost("register")] 
+        [HttpPost("register")]
         public async Task<IActionResult> Register(UserForRegisterDto userForRegisterDto)
         {
-
-            var createdUser = await _authService.Register(userForRegisterDto);
-            return StatusCode(201);
+            try
+            {
+                var user = await _authService.Register(userForRegisterDto);
+                return Ok(new { message = "Kayıt başarılı. Lütfen e-posta adresinizi doğrulayın." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Kayıt sırasında bir hata oluştu." });
+            }
         }
         [HttpPost("login")]
         public async Task<IActionResult> Login(UserForLoginDto userForLoginDto)
         {
             try
             {
-                var loginResponse = await _authService.Login(userForLoginDto);
+                var response = await _authService.Login(userForLoginDto);
 
-                if (loginResponse == null)
+                if (response == null)
                 {
-                    return Unauthorized("Kullanıcı adı veya şifre hatalı.");
+                    return Unauthorized(new { message = "E-posta veya şifre hatalı." });
                 }
-                return Ok(loginResponse);
+
+                return Ok(response);
             }
             catch (InvalidOperationException ex)
             {
-                return Unauthorized(ex.Message);
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Giriş sırasında bir hata oluştu." });
             }
         }
         [HttpPost("refresh")]

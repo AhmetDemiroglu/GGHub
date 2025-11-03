@@ -110,6 +110,21 @@ namespace GGHub.Infrastructure.Services
         }
         public async Task<User> Register(UserForRegisterDto userForRegisterDto)
         {
+            var existingUserByEmail = await _context.Users
+                .FirstOrDefaultAsync(u => u.Email == userForRegisterDto.Email.ToLower());
+
+                    if (existingUserByEmail != null)
+                    {
+                        throw new InvalidOperationException("Bu e-posta adresi zaten kullanılıyor.");
+                    }
+
+                    var existingUserByUsername = await _context.Users
+                        .FirstOrDefaultAsync(u => u.Username == userForRegisterDto.Username);
+
+                    if (existingUserByUsername != null)
+                    {
+                        throw new InvalidOperationException("Bu kullanıcı adı zaten kullanılıyor.");
+                    }
             CreatePasswordHash(userForRegisterDto.Password, out byte[] passwordHash, out byte[] passwordSalt);
             var user = new User
             {

@@ -5,6 +5,8 @@ export const axiosInstance = axios.create({
     baseURL: `${process.env.NEXT_PUBLIC_API_BASE_URL}/api`,
 });
 
+const SKIP_REFRESH_PATHS = ["/auth/login", "/auth/register", "/auth/verify-email"];
+
 let authContextRef: React.ContextType<typeof AuthContext> | null = null;
 
 export function setAuthContextRef(context: React.ContextType<typeof AuthContext>) {
@@ -47,7 +49,9 @@ axiosInstance.interceptors.response.use(
     async (error: AxiosError) => {
         const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        const isSkipRefreshPath = SKIP_REFRESH_PATHS.some((path) => originalRequest.url?.includes(path));
+
+        if (error.response?.status === 401 && !originalRequest._retry && !isSkipRefreshPath) {
             if (isRefreshing) {
                 return new Promise((resolve, reject) => {
                     failedQueue.push({ resolve, reject });

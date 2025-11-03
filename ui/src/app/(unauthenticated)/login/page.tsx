@@ -34,7 +34,7 @@ function LoginPageContent() {
     useEffect(() => {
         const isRegistered = searchParams.get("registered");
         const isVerified = searchParams.get("verified");
-        
+
         let toastId: string | number | undefined = undefined;
 
         if (isVerified === "true") {
@@ -52,9 +52,8 @@ function LoginPageContent() {
         }
 
         if (toastId !== undefined) {
-            router.replace('/login', { scroll: false });
+            router.replace("/login", { scroll: false });
         }
-
     }, [searchParams, router]);
 
     const form = useForm<z.infer<typeof formSchema>>({
@@ -62,7 +61,7 @@ function LoginPageContent() {
         defaultValues: { email: "", password: "" },
     });
 
-    const { mutate, isPending, error } = useMutation({
+    const { mutate, isPending } = useMutation({
         mutationFn: (data: UserForLogin) => loginApi(data),
         onSuccess: (response) => {
             toast.success("Başarıyla giriş yapıldı!");
@@ -70,7 +69,7 @@ function LoginPageContent() {
             router.push("/");
         },
         onError: (error: any) => {
-            const errorMessage = error?.response?.data || "Bir hata oluştu. Lütfen tekrar deneyin.";
+            const errorMessage = error?.response?.data?.message || "Bir hata oluştu. Lütfen tekrar deneyin.";
             toast.error("Giriş Başarısız", {
                 description: errorMessage,
             });
@@ -126,7 +125,7 @@ function LoginPageContent() {
                             </Button>
                             <p className="text-left text-sm text-muted-foreground">
                                 Hesabın yok mu?
-                                <Link href="/register" className="underline font-bold underline-offset-4 hover:text-primary">
+                                <Link href="/register" className="underline font-bold underline-offset-4 hover:text-primary ml-1">
                                     Kayıt Ol
                                 </Link>
                             </p>
