@@ -245,7 +245,7 @@ export default function HomePage() {
 
                 <section
                     className="rounded-2xl border border-slate-200 bg-white/70 backdrop-blur-sm p-5
-                    dark:border-zinc-800 dark:bg-zinc-900/60"
+                    dark:border-zinc-800 dark:bg-background"
                 >
                     <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-zinc-100">Geri Bildirim</h3>
                     <p className="text-sm text-slate-600 dark:text-zinc-300">info@gghub.social adresi üzerinden bizimle iletişime geçebilirsiniz.</p>
