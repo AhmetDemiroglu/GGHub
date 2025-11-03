@@ -28,7 +28,7 @@ export default function HomePage() {
                     className="relative overflow-hidden rounded-2xl 
                     border border-slate-200 bg-gradient-to-br from-slate-50 via-white to-slate-100 
                     p-6 md:p-10
-                    dark:border-zinc-800 dark:bg-background"
+                    dark:border-zinc-800 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-950"
                 >
                     <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-indigo-300/30 blur-3xl dark:bg-indigo-600/20" />
                     <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-cyan-200/25 blur-3xl dark:bg-cyan-500/10" />
