@@ -177,7 +177,7 @@ namespace GGHub.Infrastructure.Services
             return list;
         }
 
-        public async Task<UserListDetailDto> GetListDetailAsync(int listId, int currentUserId)
+        public async Task<UserListDetailDto> GetListDetailAsync(int listId, int? currentUserId)
         {
             var list = await _context.UserLists
                 .Include(l => l.User)
@@ -191,30 +191,43 @@ namespace GGHub.Infrastructure.Services
                 throw new KeyNotFoundException("Liste bulunamadı.");
             }
 
-            if (list.UserId != currentUserId)
+            // Giriş yapmayan kullanıcı kontrolü
+            if (!currentUserId.HasValue)
             {
-                if (list.Visibility == ListVisibilitySetting.Private)
+                // Giriş yapmayan kullanıcı sadece Public listeleri görebilir
+                if (list.Visibility != ListVisibilitySetting.Public)
                 {
-                    throw new UnauthorizedAccessException("Bu listeyi görme yetkiniz yok.");
+                    throw new UnauthorizedAccessException("Bu listeyi görüntülemek için giriş yapmalısınız.");
                 }
-
-                if (list.Visibility == ListVisibilitySetting.Followers)
+            }
+            else
+            {
+                // Giriş yapmış kullanıcı için mevcut kontroller
+                if (list.UserId != currentUserId.Value)
                 {
-                    var isFollowingOwner = await _context.Follows
-                        .AnyAsync(f => f.FollowerId == currentUserId && f.FolloweeId == list.UserId);
-
-                    if (!isFollowingOwner)
+                    if (list.Visibility == ListVisibilitySetting.Private)
                     {
-                        throw new UnauthorizedAccessException("Bu listeyi sadece sahibinin takipçileri görebilir.");
+                        throw new UnauthorizedAccessException("Bu listeyi görme yetkiniz yok.");
+                    }
+
+                    if (list.Visibility == ListVisibilitySetting.Followers)
+                    {
+                        var isFollowingOwner = await _context.Follows
+                            .AnyAsync(f => f.FollowerId == currentUserId.Value && f.FolloweeId == list.UserId);
+
+                        if (!isFollowingOwner)
+                        {
+                            throw new UnauthorizedAccessException("Bu listeyi sadece sahibinin takipçileri görebilir.");
+                        }
                     }
                 }
             }
 
             bool isFollowingThisList = false;
-            if (list.UserId != currentUserId)
+            if (currentUserId.HasValue && list.UserId != currentUserId.Value)
             {
                 isFollowingThisList = await _context.UserListFollows
-                    .AnyAsync(f => f.FollowedListId == listId && f.FollowerUserId == currentUserId);
+                    .AnyAsync(f => f.FollowedListId == listId && f.FollowerUserId == currentUserId.Value);
             }
 
             var gameSummaries = list.UserListGames.Select(ulg => new GameSummaryDto
@@ -248,14 +261,14 @@ namespace GGHub.Infrastructure.Services
                     Username = list.User.Username,
                     ProfileImageUrl = list.User.ProfileImageUrl,
                     FirstName = list.User.FirstName,
-                    LastName = list.User.LastName,   
+                    LastName = list.User.LastName,
                 },
                 Games = gameSummaries,
                 IsFollowing = isFollowingThisList
             };
         }
 
-        public async Task<PaginatedResult<UserListPublicDto>> GetPublicListsAsync(ListQueryParams query, int currentUserId)
+        public async Task<PaginatedResult<UserListPublicDto>> GetPublicListsAsync(ListQueryParams query, int? currentUserId)
         {
             var queryable = _context.UserLists
                 .Include(l => l.User)
@@ -264,8 +277,9 @@ namespace GGHub.Infrastructure.Services
                     .Include(l => l.Followers)
                 .Where(l =>
                     l.Visibility == ListVisibilitySetting.Public ||
-                    (l.Visibility == ListVisibilitySetting.Followers &&
-                     _context.Follows.Any(f => f.FollowerId == currentUserId && f.FolloweeId == l.UserId))
+                    (currentUserId.HasValue &&
+                     l.Visibility == ListVisibilitySetting.Followers &&
+                     _context.Follows.Any(f => f.FollowerId == currentUserId.Value && f.FolloweeId == l.UserId))
                 )
                 .AsNoTracking();
 
@@ -281,10 +295,10 @@ namespace GGHub.Infrastructure.Services
                 queryable = queryable.Where(l => l.Category == query.Category.Value);
             }
 
-            if (query.FollowedByMe == true)
+            if (query.FollowedByMe == true && currentUserId.HasValue)
             {
                 queryable = queryable.Where(l =>
-                    _context.Follows.Any(f => f.FollowerId == currentUserId && f.FolloweeId == l.UserId)
+                    _context.Follows.Any(f => f.FollowerId == currentUserId.Value && f.FolloweeId == l.UserId)
                 );
             }
 
@@ -297,10 +311,12 @@ namespace GGHub.Infrastructure.Services
                 .ToListAsync();
 
             var ownerIds = itemsFromDb.Select(l => l.UserId).Distinct().ToList();
-            var followedOwnerIds = await _context.Follows
-                .Where(f => f.FollowerId == currentUserId && ownerIds.Contains(f.FolloweeId))
-                .Select(f => f.FolloweeId)
-                .ToListAsync();
+            var followedOwnerIds = currentUserId.HasValue
+                ? await _context.Follows
+                    .Where(f => f.FollowerId == currentUserId.Value && ownerIds.Contains(f.FolloweeId))
+                    .Select(f => f.FolloweeId)
+                    .ToListAsync()
+                : new List<int>();
 
             var itemDtos = itemsFromDb.Select(l => new UserListPublicDto
             {

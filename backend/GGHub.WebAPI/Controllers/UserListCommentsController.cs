@@ -35,12 +35,19 @@ namespace GGHub.WebAPI.Controllers
         }
 
         [HttpGet("list/{listId}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetComments(int listId, [FromQuery] ListQueryParams query)
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            int? currentUserId = null;
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim != null)
+            {
+                currentUserId = int.Parse(userIdClaim.Value);
+            }
+
             try
             {
-                var comments = await _commentService.GetCommentsForListAsync(listId, userId, query);
+                var comments = await _commentService.GetCommentsForListAsync(listId, currentUserId, query);
                 return Ok(comments);
             }
             catch (KeyNotFoundException ex) { return NotFound(ex.Message); }

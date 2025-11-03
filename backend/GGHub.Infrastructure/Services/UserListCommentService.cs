@@ -16,12 +16,19 @@ namespace GGHub.Infrastructure.Services
         {
             _context = context;
         }
-        private async Task CheckListVisibility(int listId, int userId)
+        private async Task CheckListVisibility(int listId, int? userId)
         {
             var list = await _context.UserLists.AsNoTracking().FirstOrDefaultAsync(l => l.Id == listId);
             if (list == null) throw new KeyNotFoundException("Liste bulunamadı.");
 
-            if (list.UserId == userId) return;
+            if (!userId.HasValue)
+            {
+                if (list.Visibility != ListVisibilitySetting.Public)
+                    throw new UnauthorizedAccessException("Bu listeyi görüntülemek için giriş yapmalısınız.");
+                return;
+            }
+
+            if (list.UserId == userId.Value) return;
 
             if (list.Visibility == ListVisibilitySetting.Private)
                 throw new UnauthorizedAccessException("Bu listeyi görme (ve yorum yapma) yetkiniz yok.");
@@ -29,7 +36,7 @@ namespace GGHub.Infrastructure.Services
             if (list.Visibility == ListVisibilitySetting.Followers)
             {
                 var isFollowingOwner = await _context.Follows
-                    .AnyAsync(f => f.FollowerId == userId && f.FolloweeId == list.UserId);
+                    .AnyAsync(f => f.FollowerId == userId.Value && f.FolloweeId == list.UserId);
                 if (!isFollowingOwner)
                     throw new UnauthorizedAccessException("Bu listeyi sadece sahibinin takipçileri görebilir.");
             }
@@ -83,7 +90,7 @@ namespace GGHub.Infrastructure.Services
             return await _context.SaveChangesAsync() > 0;
         }
 
-        public async Task<PaginatedResult<UserListCommentDto>> GetCommentsForListAsync(int listId, int currentUserId, ListQueryParams query)
+        public async Task<PaginatedResult<UserListCommentDto>> GetCommentsForListAsync(int listId, int? currentUserId,ListQueryParams query)
         {
             await CheckListVisibility(listId, currentUserId);
 
@@ -114,7 +121,7 @@ namespace GGHub.Infrastructure.Services
             var totalCount = await queryable.CountAsync();
 
             var items = await queryable
-                .OrderByDescending(c => c.CreatedAt) 
+                .OrderByDescending(c => c.CreatedAt)
                 .Skip((query.Page - 1) * query.PageSize)
                 .Take(query.PageSize)
                 .ToListAsync();
@@ -123,10 +130,12 @@ namespace GGHub.Infrastructure.Services
             {
                 var upvotes = comment.Votes.Count(v => v.Value == 1);
                 var downvotes = comment.Votes.Count(v => v.Value == -1);
-                var currentUserVote = comment.Votes.FirstOrDefault(v => v.UserId == currentUserId)?.Value ?? 0;
+
+                var currentUserVote = currentUserId.HasValue
+                    ? comment.Votes.FirstOrDefault(v => v.UserId == currentUserId.Value)?.Value ?? 0
+                    : 0;
 
                 return MapToCommentDto(comment, comment.User, upvotes, downvotes, currentUserVote, currentUserId);
-
             }).ToList();
 
             return new PaginatedResult<UserListCommentDto>
@@ -137,7 +146,6 @@ namespace GGHub.Infrastructure.Services
                 PageSize = query.PageSize
             };
         }
-
         public async Task<bool> VoteOnCommentAsync(int commentId, int userId, UserListCommentVoteDto dto)
         {
             var comment = await _context.UserListComments.FindAsync(commentId);
@@ -199,7 +207,7 @@ namespace GGHub.Infrastructure.Services
 
             return MapToCommentDto(comment, comment.User, upvotes, downvotes, currentUserVote, currentUserId);
         }
-        private UserListCommentDto MapToCommentDto(UserListComment comment, User user, int up, int down, int vote, int currentUserId)
+        private UserListCommentDto MapToCommentDto(UserListComment comment, User user, int up, int down, int vote, int? currentUserId)
         {
             var dto = new UserListCommentDto
             {
@@ -222,7 +230,6 @@ namespace GGHub.Infrastructure.Services
                 CurrentUserVote = vote,
                 Replies = new List<UserListCommentDto>()
             };
-
             if (comment.Replies != null && comment.Replies.Any())
             {
                 dto.Replies = comment.Replies
@@ -231,13 +238,13 @@ namespace GGHub.Infrastructure.Services
                     {
                         var replyUpvotes = reply.Votes?.Count(v => v.Value == 1) ?? 0;
                         var replyDownvotes = reply.Votes?.Count(v => v.Value == -1) ?? 0;
-                        var replyUserVote = reply.Votes?.FirstOrDefault(v => v.UserId == currentUserId)?.Value ?? 0;
-
+                        var replyUserVote = currentUserId.HasValue
+                            ? reply.Votes?.FirstOrDefault(v => v.UserId == currentUserId.Value)?.Value ?? 0
+                            : 0;
                         return MapToCommentDto(reply, reply.User, replyUpvotes, replyDownvotes, replyUserVote, currentUserId);
                     })
                     .ToList();
             }
-
             return dto;
         }
     }

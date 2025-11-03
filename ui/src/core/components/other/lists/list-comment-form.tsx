@@ -5,7 +5,7 @@ import * as z from "zod";
 import { Button } from "@core/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@core/components/ui/form";
 import { Textarea } from "@core/components/ui/textarea";
-import { Loader2, Send } from "lucide-react";
+import { Loader, Send } from "lucide-react";
 import type { UserListCommentForCreation } from "@/models/list/list.model";
 import { Avatar, AvatarFallback, AvatarImage } from "@core/components/ui/avatar";
 import { useForm, UseFormReturn } from "react-hook-form";
@@ -93,7 +93,7 @@ export const ListCommentForm = forwardRef<{ reset: () => void }, ListCommentForm
                             </Button>
                         )}
                         <Button type="submit" size="sm" disabled={isPending} className="cursor-pointer mt-1">
-                            {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                            {isPending ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                             {parentCommentId ? "Yanıtla" : "Gönder"}
                         </Button>
                     </div>

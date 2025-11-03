@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@core/components/ui/radio-group";
 import { Textarea } from "@core/components/ui/textarea";
 import { Globe, Lock, Users } from "lucide-react";
-import { Loader2 } from "lucide-react";
+import { Loader } from "lucide-react";
 
 const formSchema = z.object({
     name: z.string().min(3, { message: "Liste adı en az 3 karakter olmalıdır." }).max(100, { message: "Liste adı en fazla 100 karakter olabilir." }),
@@ -197,7 +197,7 @@ export function ListFormModal({ isOpen, onClose, onSubmit, isPending, defaultVal
                                     İptal
                                 </Button>
                                 <Button type="submit" disabled={isPending} className="cursor-pointer">
-                                    {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    {isPending && <Loader className="mr-2 h-4 w-4 animate-spin" />}
                                     {actionLabel}
                                 </Button>
                             </div>

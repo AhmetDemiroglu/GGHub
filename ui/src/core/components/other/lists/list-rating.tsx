@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Star, Sparkles } from "lucide-react";
 import { cn } from "@core/lib/utils";
 import { Button } from "@core/components/ui/button";
+import { toast } from "sonner";
 
 interface ListRatingProps {
     myRating: number | null | undefined;
@@ -91,6 +92,10 @@ export function ListRating({ myRating, onSubmitRating, isPending, listOwnerId, c
                                 )}
                                 onMouseEnter={() => !isPending && setHoverRating(starValue)}
                                 onClick={() => {
+                                    if (!currentUserId) {
+                                        toast.error("Puan vermek için giriş yapmalısınız.");
+                                        return;
+                                    }
                                     if (!isPending) {
                                         onSubmitRating(starValue);
                                     }

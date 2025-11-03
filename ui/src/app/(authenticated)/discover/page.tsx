@@ -148,7 +148,7 @@ function DiscoverPageContent() {
     if (error) return <div>Bir hata oluştu: {error.message}</div>;
 
     return (
-        <div className="w-full h-full overflow-y-auto p-5">
+        <div className="w-full h-full p-5">
             <div className="space-y-4">
                 {/* Başlık */}
                 <div>

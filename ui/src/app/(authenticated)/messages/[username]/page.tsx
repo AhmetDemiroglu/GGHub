@@ -12,6 +12,7 @@ import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import dayjs from "dayjs";
 import { Send, AlertTriangle } from "lucide-react";
+import { UnauthorizedAccess } from "@core/components/other/unauthorized-access";
 
 const getImageUrl = (path: string | null | undefined): string | undefined => {
     if (!path) {
@@ -28,6 +29,7 @@ export default function MessageThreadPage() {
     const params = useParams();
     const username = params.username as string;
     const { user } = useAuth();
+
     const queryClient = useQueryClient();
 
     const [messageContent, setMessageContent] = useState("");
@@ -76,6 +78,10 @@ export default function MessageThreadPage() {
                 <p className="text-muted-foreground">Yükleniyor...</p>
             </div>
         );
+    }
+
+    if (!user) {
+        return <UnauthorizedAccess title="Mesajları görüntülemek için giriş yapın" description="Bu konuşmayı görüntülemek için giriş yapmalısınız." />;
     }
 
     return (

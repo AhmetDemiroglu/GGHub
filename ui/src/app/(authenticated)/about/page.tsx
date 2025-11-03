@@ -16,7 +16,7 @@ export const metadata = {
 
 export default function AboutPage() {
     return (
-        <div className="w-full h-full overflow-y-auto p-5">
+        <div className="w-full h-full p-5">
             <div className="space-y-6">
                 <div className="flex flex-col items-center gap-4 text-center pt-2">
                     <div className="inline-flex items-center gap-2 bg-muted/10 border border-border/40 rounded-full px-4 py-1.5 text-xs font-medium text-muted-foreground">

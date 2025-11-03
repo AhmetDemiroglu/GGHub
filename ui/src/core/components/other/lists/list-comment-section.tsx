@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import * as listCommentApi from "@/api/list-comment/list-comment.api";
 import { Button } from "@core/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader } from "lucide-react";
 import { toast } from "sonner";
 import type { UserListCommentForUpdate } from "@/models/list/list.model";
 import { ListCommentForm } from "./list-comment-form";
@@ -155,7 +155,7 @@ export function ListCommentSection({ listId }: ListCommentSectionProps) {
                 ) : (
                     <p className="text-sm text-muted-foreground">
                         Yorum yapmak için
-                        <a href="/login" className="underline hover:text-primary">
+                        <a href="/login" className="underline hover:text-primary ml-1">
                             giriş yapmalısınız
                         </a>
                         .
@@ -166,7 +166,7 @@ export function ListCommentSection({ listId }: ListCommentSectionProps) {
             <div className="space-y-3">
                 {isLoadingComments && currentPage === 1 && (
                     <div className="flex justify-center items-center py-8">
-                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        <Loader className="h-6 w-6 animate-spin text-muted-foreground" />
                     </div>
                 )}
                 {commentsError && <p className="text-red-500 text-sm text-center">Yorumlar yüklenirken hata oluştu.</p>}
@@ -191,7 +191,7 @@ export function ListCommentSection({ listId }: ListCommentSectionProps) {
                 {hasMoreComments && (
                     <div className="flex justify-center pt-4">
                         <Button variant="outline" onClick={handleLoadMore} disabled={isLoadingOrFetching}>
-                            {isLoadingOrFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            {isLoadingOrFetching ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Daha Fazla Yorum Yükle ({commentsResult?.totalCount ? displayedComments.length : "..."} / {commentsResult?.totalCount ?? "..."}) {/* Geri bildirim */}
                         </Button>
                     </div>

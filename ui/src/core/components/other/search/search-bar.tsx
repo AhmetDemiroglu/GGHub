@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader } from "lucide-react";
 import { Input } from "@/core/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
 import { useRouter } from "next/navigation";
@@ -57,7 +57,7 @@ export function SearchBar() {
                     }}
                     onFocus={() => query.length >= 3 && setIsOpen(true)}
                 />
-                {isLoading && <Loader2 className="absolute right-2 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />}
+                {isLoading && <Loader className="absolute right-2 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />}
             </div>
 
             {isOpen && query.length >= 3 && (

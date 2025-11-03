@@ -10,8 +10,8 @@ namespace GGHub.Application.Interfaces
         Task AddGameToListAsync(int listId, int rawgGameId, int userId);
         Task<IEnumerable<UserListDto>> GetListsForUserAsync(int userId);
         Task<UserListDetailDto?> GetMyListDetailAsync(int listId, int userId);
-        Task<UserListDetailDto> GetListDetailAsync(int listId, int currentUserId);
-        Task<PaginatedResult<UserListPublicDto>> GetPublicListsAsync(ListQueryParams query, int currentUserId);
+        Task<UserListDetailDto> GetListDetailAsync(int listId, int? currentUserId);
+        Task<PaginatedResult<UserListPublicDto>> GetPublicListsAsync(ListQueryParams query, int? currentUserId);
         Task<PaginatedResult<UserListPublicDto>> GetFollowedListsByUserAsync(int targetUserId, int currentUserId, ListQueryParams queryParams);
         Task<bool> RemoveGameFromListAsync(int listId, int rawgGameId, int userId);
         Task<bool> UpdateListAsync(int listId, UserListForUpdateDto dto, int userId);

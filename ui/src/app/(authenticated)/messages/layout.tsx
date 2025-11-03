@@ -7,16 +7,18 @@ import { Avatar, AvatarFallback, AvatarImage } from "@core/components/ui/avatar"
 import { Badge } from "@core/components/ui/badge";
 import { Button } from "@core/components/ui/button";
 import { Input } from "@core/components/ui/input";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/tr";
-import { MessageSquare, ChevronRight, ChevronLeft, Search, X } from "lucide-react";
+import { MessageSquare, ChevronRight, ChevronLeft, Search, X, Loader } from "lucide-react";
 import { useState, useEffect } from "react";
 import { searchMessageableUsers } from "@/api/search/search.api";
 import { SearchResult } from "@/models/search/search.model";
 import { useDebounce } from "@core/hooks/use-debounce";
 import Link from "next/link";
+import { useAuth } from "@core/hooks/use-auth";
+import { UnauthorizedAccess } from "@core/components/other/unauthorized-access";
 
 dayjs.extend(relativeTime);
 dayjs.locale("tr");
@@ -33,20 +35,19 @@ const getImageUrl = (path: string | null | undefined): string | undefined => {
 };
 
 export default function MessagesLayout({ children }: { children: React.ReactNode }) {
-    const router = useRouter();
+    const { user, isLoading: isAuthLoading } = useAuth();
     const pathname = usePathname();
     const [sidebarExpanded, setSidebarExpanded] = useState(true);
-
-    // Search states
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const debouncedSearch = useDebounce(searchQuery, 500);
 
-    const { data: conversations, isLoading } = useQuery<ConversationDto[]>({
+    const { data: conversations, isLoading: isConversationsLoading } = useQuery<ConversationDto[]>({
         queryKey: ["conversations"],
         queryFn: getConversations,
         refetchInterval: 10000,
+        enabled: !!user,
     });
 
     // Search effect
@@ -72,8 +73,19 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
         return pathname === `/messages/${username}`;
     };
 
+    if (isAuthLoading) {
+        return (
+            <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden -m-4 md:-m-6 2xl:-m-10 items-center justify-center">
+                <Loader className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
+    if (!user) {
+        return <UnauthorizedAccess title="Mesajlara erişim için giriş yapın" description="Mesajlaşma özelliğini kullanabilmek için bir hesaba sahip olmalısınız." />;
+    }
+
     return (
-        <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden -m-4 md:-m-6 2xl:-m-10">
+        <div className="flex h-[calc(100vh-3rem)] -m-4 md:-m-6 2xl:-m-10">
             {/* Sol Sidebar - Conversations */}
             <div className={`${sidebarExpanded ? "w-80" : "w-20"} border-r bg-card flex flex-col transition-all duration-300`}>
                 {/* Header */}
@@ -86,7 +98,7 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
 
                 {/* Conversations List */}
                 <div className="flex-1 overflow-y-auto">
-                    {isLoading ? (
+                    {isConversationsLoading ? (
                         <div className="flex items-center justify-center p-8">
                             <p className="text-sm text-muted-foreground">{sidebarExpanded ? "Yükleniyor..." : "..."}</p>
                         </div>

@@ -86,13 +86,19 @@ namespace GGHub.WebAPI.Controllers
         }
 
         [HttpGet("{listId}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetListDetail(int listId)
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            int? currentUserId = null;
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim != null)
+            {
+                currentUserId = int.Parse(userIdClaim.Value);
+            }
 
             try
             {
-                var listDetail = await _userListService.GetListDetailAsync(listId, userId);
+                var listDetail = await _userListService.GetListDetailAsync(listId, currentUserId);
                 return Ok(listDetail);
             }
             catch (KeyNotFoundException ex)
@@ -106,9 +112,16 @@ namespace GGHub.WebAPI.Controllers
         }
 
         [HttpGet("public")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetPublicLists([FromQuery] ListQueryParams query)
         {
-            var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            int? currentUserId = null;
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim != null)
+            {
+                currentUserId = int.Parse(userIdClaim.Value);
+            }
+
             var result = await _userListService.GetPublicListsAsync(query, currentUserId);
             return Ok(result);
         }

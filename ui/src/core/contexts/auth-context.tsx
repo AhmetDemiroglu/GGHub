@@ -17,6 +17,7 @@ interface AuthContextValue {
     refreshToken: string | null;
     isAuthenticated: boolean;
     user: AuthenticatedUser | null;
+    isLoading: boolean;
     login: (tokens: { accessToken: string; refreshToken: string }) => void;
     logout: () => void;
     getAuthState: () => { accessToken: string | null; refreshToken: string | null };
@@ -30,6 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [accessToken, setAccessToken] = useState<string | null>(null);
     const [refreshToken, setRefreshToken] = useState<string | null>(null);
     const [user, setUser] = useState<AuthenticatedUser | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         const stored = localStorage.getItem(AUTH_STORAGE_KEY);
@@ -39,6 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setRefreshToken(parsed.refreshToken);
             setUser(parsed.user);
         }
+        setIsLoading(false);
     }, []);
 
     useEffect(() => {
@@ -79,6 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         refreshToken,
         isAuthenticated: !!accessToken && !!user,
         user,
+        isLoading,
         login,
         logout,
         getAuthState,

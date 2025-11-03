@@ -21,6 +21,7 @@ import { MessageDialog } from "@core/components/other/message-dialog";
 import Link from "next/link";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@core/components/ui/tooltip";
 import { BlockedUsersDialog } from "@core/components/other/blocked-users-dialog";
+import { useAuth } from "@core/hooks/use-auth";
 
 dayjs.locale("tr");
 
@@ -41,6 +42,7 @@ const getImageUrl = (path: string | null | undefined): string | undefined => {
 };
 
 export default function ProfileHeader({ profile, isOwnProfile = false }: ProfileHeaderProps) {
+    const { user } = useAuth();
     const [isFollowing, setIsFollowing] = useState(profile.isFollowing || false);
     const [isBlocked, setIsBlocked] = useState(profile.isBlockedByMe || false);
     const [blockedUsersDialogOpen, setBlockedUsersDialogOpen] = useState(false);
@@ -86,6 +88,10 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
     });
 
     const handleFollow = () => {
+        if (!user) {
+            toast.error("Takip etmek için giriş yapmalısınız.");
+            return;
+        }
         if (isFollowing) {
             unfollowMutation.mutate();
         } else {
@@ -245,7 +251,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                                     variant={isFollowing ? "outline" : "default"}
                                     size="sm"
                                     className="gap-2 cursor-pointer"
-                                    disabled={followMutation.isPending || unfollowMutation.isPending}
+                                    disabled={followMutation.isPending || unfollowMutation.isPending || !user}
                                 >
                                     {isFollowing ? (
                                         <>
@@ -260,7 +266,19 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                                     )}
                                 </Button>
 
-                                <Button variant="outline" size="sm" className="cursor-pointer" onClick={() => setMessageDialogOpen(true)}>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="cursor-pointer"
+                                    onClick={() => {
+                                        if (!user) {
+                                            toast.error("Mesaj göndermek için giriş yapmalısınız.");
+                                            return;
+                                        }
+                                        setMessageDialogOpen(true);
+                                    }}
+                                    disabled={!user}
+                                >
                                     {canSendMessage() ? (
                                         <>
                                             <MessageSquareMore className="h-4 w-4" />
@@ -277,7 +295,19 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                                 <TooltipProvider>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
-                                            <Button onClick={handleBlock} variant="outline" size="sm" className="cursor-pointer" disabled={blockMutation.isPending || unblockMutation.isPending}>
+                                            <Button
+                                                onClick={() => {
+                                                    if (!user) {
+                                                        toast.error("Bu işlem için giriş yapmalısınız.");
+                                                        return;
+                                                    }
+                                                    handleBlock();
+                                                }}
+                                                variant="outline"
+                                                size="sm"
+                                                className="cursor-pointer"
+                                                disabled={blockMutation.isPending || unblockMutation.isPending || !user}
+                                            >
                                                 {isBlocked ? <ShieldOff className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
                                             </Button>
                                         </TooltipTrigger>

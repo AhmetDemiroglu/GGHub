@@ -10,15 +10,16 @@ import { ListCategory, UserList, UserListForCreation, UserListForUpdate } from "
 import { ListCard } from "@/core/components/other/list-card/";
 import { ListCardSkeleton } from "@/core/components/other/list-card/skeleton";
 import { Button } from "@/core/components/ui/button";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Edit, Trash2, Loader } from "lucide-react";
 import { DeleteListDialog } from "@core/components/other/lists/delete-list-dialog";
 import { Separator } from "@/core/components/ui/separator";
 import { ListFormModal } from "@core/components/other/lists/list-form-modal";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { UnauthorizedAccess } from "@core/components/other/unauthorized-access";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@core/components/ui/tabs";
 import { DataPagination } from "@core/components/other/data-pagination";
 import Link from "next/link";
+import { useAuth } from "@core/hooks/use-auth";
 
 const pageSizeOptions = [12, 24, 40];
 
@@ -46,9 +47,8 @@ const visibilityOptions = [
 ];
 
 export default function MyListsPage() {
-    const router = useRouter();
-
     const [activeTab, setActiveTab] = useState<string>(MY_LISTS_TAB);
+    const { user, isLoading } = useAuth();
 
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("all");
@@ -189,8 +189,22 @@ export default function MyListsPage() {
 
     const isFormPending = createListMutation.isPending || updateListMutation.isPending;
 
+    if (isLoading) {
+        return (
+            <div className="w-full h-full overflow-y-auto p-5 flex items-center justify-center">
+                <div className="flex flex-col items-center gap-3">
+                    <Loader className="h-8 w-8 animate-spin text-primary" />
+                    <p className="text-sm text-muted-foreground">Yükleniyor...</p>
+                </div>
+            </div>
+        );
+    }
+    if (!user) {
+        return <UnauthorizedAccess title="Listelerinizi görüntülemek için giriş yapın" description="Oyun listelerinizi yönetmek için bir hesaba sahip olmalısınız." />;
+    }
+
     return (
-        <div className="w-full h-full overflow-y-auto p-5">
+        <div className="w-full h-full p-5">
             {/* Üst Kısım: Başlık ve Yeni Liste Butonu */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
                 <div>

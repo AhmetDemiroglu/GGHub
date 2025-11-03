@@ -13,7 +13,7 @@ namespace GGHub.Application.Interfaces
         Task<UserListCommentDto> CreateCommentAsync(int listId, int userId, UserListCommentForCreationDto dto);
         Task<bool> UpdateCommentAsync(int commentId, int userId, UserListCommentForUpdateDto dto);
         Task<bool> DeleteCommentAsync(int commentId, int userId);
-        Task<PaginatedResult<UserListCommentDto>> GetCommentsForListAsync(int listId, int currentUserId, ListQueryParams query);
+        Task<PaginatedResult<UserListCommentDto>> GetCommentsForListAsync(int listId, int? currentUserId, ListQueryParams query);
         Task<bool> VoteOnCommentAsync(int commentId, int userId, UserListCommentVoteDto dto);
         Task<UserListCommentDto> GetCommentByIdAsync(int commentId, int currentUserId); 
     }

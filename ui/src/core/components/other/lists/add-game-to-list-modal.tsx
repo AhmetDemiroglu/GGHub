@@ -6,7 +6,7 @@ import { gameApi } from "@/api/gaming/game.api";
 import { Button } from "@core/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@core/components/ui/dialog";
 import { Input } from "@core/components/ui/input";
-import { Loader2, Check, Search } from "lucide-react";
+import { Loader, Check, Search } from "lucide-react";
 import type { Game } from "@/models/gaming/game.model";
 import placeHolder from "@core/assets/placeholder.png";
 
@@ -71,7 +71,7 @@ export function AddGameToListModal({ isOpen, onClose, onAddGame, isPending, exis
                             }}
                         />
                         <Button onClick={handleSearch} disabled={!searchTerm.trim() || isSearchFetching}>
-                            {isSearchFetching ? <Loader2 className="h-4 w-4 animate-spin cursor-pointer" /> : <Search className="h-4 w-4" />}
+                            {isSearchFetching ? <Loader className="h-4 w-4 animate-spin cursor-pointer" /> : <Search className="h-4 w-4" />}
                         </Button>
                     </div>
                 </div>
@@ -79,7 +79,7 @@ export function AddGameToListModal({ isOpen, onClose, onAddGame, isPending, exis
                 <div className="max-h-[400px] border rounded-md overflow-y-auto p-4">
                     {isSearchFetching && submittedSearchTerm && (
                         <div className="flex justify-center items-center h-full">
-                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                            <Loader className="h-6 w-6 animate-spin text-muted-foreground" />
                         </div>
                     )}
                     {searchError && <p className="text-red-500 text-sm text-center">Arama sırasında hata: {searchError.message}</p>}
@@ -115,7 +115,7 @@ export function AddGameToListModal({ isOpen, onClose, onAddGame, isPending, exis
                                         </span>
                                     ) : (
                                         <Button size="sm" onClick={() => onAddGame(game.rawgId)} disabled={isPending} className="flex-shrink-0 cursor-pointer">
-                                            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ekle"}
+                                            {isPending ? <Loader className="h-4 w-4 animate-spin" /> : "Ekle"}
                                         </Button>
                                     )}
                                 </div>

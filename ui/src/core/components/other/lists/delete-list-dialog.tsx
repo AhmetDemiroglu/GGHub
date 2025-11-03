@@ -11,7 +11,7 @@ import {
     AlertDialogTitle,
 } from "@core/components/ui/alert-dialog";
 import { Button } from "@core/components/ui/button";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader, Trash2 } from "lucide-react";
 
 interface DeleteListDialogProps {
     isOpen: boolean;
@@ -43,7 +43,7 @@ export function DeleteListDialog({ isOpen, onClose, onConfirm, isPending, listNa
                         İptal
                     </AlertDialogCancel>
                     <AlertDialogAction onClick={onConfirm} disabled={isPending} className="cursor-pointer bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                        {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                        {isPending ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
                         Sil
                     </AlertDialogAction>
                 </AlertDialogFooter>

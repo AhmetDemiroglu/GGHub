@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function PrivacyPage() {
     return (
-        <div className="w-full h-full overflow-y-auto p-5">
+        <div className="w-full h-full p-5">
             <div className="space-y-6">
                 <div className="flex flex-col items-center gap-4 text-center pt-2">
                     <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">

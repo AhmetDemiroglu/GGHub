@@ -13,6 +13,7 @@ import { ThumbsUp, ThumbsDown, MessageSquare, Trash2, Pencil, X, Check } from "l
 import Link from "next/link";
 import { useState } from "react";
 import { Textarea } from "@core/components/ui/textarea";
+import { toast } from "sonner";
 
 dayjs.extend(relativeTime);
 dayjs.locale("tr");
@@ -63,8 +64,8 @@ export function ListCommentItem({
         }
         const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
         return `${API_BASE}${path}`;
-    }; 
-    
+    };
+
     const avatarSrc = getImageUrl(comment.owner.profileImageUrl);
 
     const voteScore = comment.upvotes - comment.downvotes;
@@ -135,14 +136,18 @@ export function ListCommentItem({
                             className={cn(
                                 "h-7 w-7 text-xs hover:bg-emerald-500/10 hover:text-emerald-500",
                                 currentUserVote === 1 && "text-emerald-500 bg-emerald-500/10",
-                                isVoting || isOwner ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                                isVoting || isOwner || !user ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
                             )}
                             onClick={() => {
+                                if (!user) {
+                                    toast.error("Oy vermek için giriş yapmalısınız.");
+                                    return;
+                                }
                                 if (!isVoting && !isOwner) {
                                     onVote(comment.id, 1);
                                 }
                             }}
-                            disabled={isVoting || isOwner}
+                            disabled={isVoting || isOwner || !user}
                             aria-label="Yukarı oy ver"
                         >
                             <ThumbsUp className="h-4 w-4" />
@@ -163,14 +168,18 @@ export function ListCommentItem({
                             className={cn(
                                 "h-7 w-7 text-xs hover:bg-red-500/10 hover:text-red-500",
                                 currentUserVote === -1 && "text-red-500 bg-red-500/10",
-                                isVoting || isOwner ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                                isVoting || isOwner || !user ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
                             )}
                             onClick={() => {
+                                if (!user) {
+                                    toast.error("Oy vermek için giriş yapmalısınız.");
+                                    return;
+                                }
                                 if (!isVoting && !isOwner) {
                                     onVote(comment.id, -1);
                                 }
                             }}
-                            disabled={isVoting || isOwner}
+                            disabled={isVoting || isOwner || !user}
                             aria-label="Aşağı oy ver"
                         >
                             <ThumbsDown className="h-4 w-4" />
@@ -178,7 +187,7 @@ export function ListCommentItem({
                     </div>
 
                     {/* Yanıtla Butonu */}
-                    {depth < 2 && (
+                    {user && depth < 2 && (
                         <Button variant="ghost" size="sm" className="h-auto px-2 py-1 text-xs hover:bg-primary/10 hover:text-primary cursor-pointer" onClick={() => setIsReplying(!isReplying)}>
                             <MessageSquare className="mr-1 h-3 w-3" /> {isReplying ? "İptal" : "Yanıtla"}
                         </Button>

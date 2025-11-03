@@ -13,7 +13,7 @@ import { Separator } from "@core/components/ui/separator";
 import { ListDetailHeader } from "@core/components/other/lists/list-detail-header";
 import { toast } from "sonner";
 import { Button } from "@core/components/ui/button";
-import { ListPlus, UserPlus, UserMinus, Edit, Loader, ArrowDown } from "lucide-react";
+import { ListPlus, Edit, Loader, ArrowDown, BookmarkPlus, BookmarkMinus } from "lucide-react";
 import { AddGameToListModal } from "@core/components/other/lists/add-game-to-list-modal";
 import { ListCommentSection } from "@/core/components/other/lists/list-comment-section";
 
@@ -30,10 +30,7 @@ export default function ListDetailPage() {
     const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false);
     const [visibleGameRows, setVisibleGameRows] = useState(2);
 
-    const {
-        data: listDetail,
-        isLoading,
-    } = useQuery<UserListDetail>({
+    const { data: listDetail, isLoading } = useQuery<UserListDetail>({
         queryKey: ["list-detail", listId],
         queryFn: () => listApi.getListDetail(listId),
         enabled: !isNaN(listId) && listId > 0,
@@ -183,16 +180,24 @@ export default function ListDetailPage() {
     };
 
     const handleFollow = useCallback(() => {
+        if (!user) {
+            toast.error("Liste takip etmek için giriş yapmalısınız.");
+            return;
+        }
         followMutation.mutate();
-    }, [followMutation]);
+    }, [followMutation, user]);
 
     const handleUnfollow = useCallback(() => {
+        if (!user) {
+            toast.error("Bu işlem için giriş yapmalısınız.");
+            return;
+        }
         unfollowMutation.mutate();
-    }, [unfollowMutation]);
+    }, [unfollowMutation, user]);
 
     if (isLoading) {
         return (
-            <div className="w-full h-full overflow-y-auto p-5">
+            <div className="w-full h-full p-5">
                 <div className="animate-pulse">
                     <div className="h-20 w-3/4 bg-muted rounded mb-6"></div>
                 </div>
@@ -200,7 +205,7 @@ export default function ListDetailPage() {
                 <div className="flex items-center gap-2">
                     <h2 className="text-2xl font-bold">Listedeki Oyunlar</h2>
                     <span>(</span>
-                    <Loader className="h-6 w-6" />
+                    <Loader className="h-6 w-6 animate-spin" />
                     <span>)</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3">
@@ -234,19 +239,19 @@ export default function ListDetailPage() {
             )}
             {!isOwner &&
                 (listDetail.isFollowing ? (
-                    <Button variant="outline" onClick={handleUnfollow} disabled={unfollowMutation.isPending} title="Takipten Çık" className="cursor-pointer">
-                        <UserMinus className="mr-2 h-4 w-4" /> Takipten Çık
+                    <Button variant="outline" onClick={handleUnfollow} disabled={unfollowMutation.isPending || !user} title="Takipten Çık" className="cursor-pointer">
+                        <BookmarkMinus className="mr-0 h-4 w-4" /> Takipten Çık
                     </Button>
                 ) : (
-                    <Button variant="default" className="cursor-pointer" onClick={handleFollow} disabled={followMutation.isPending} title="Takip Et">
-                        <UserPlus className="mr-2 h-4 w-4" /> Takip Et
+                    <Button variant="default" className="cursor-pointer" onClick={handleFollow} disabled={followMutation.isPending || !user} title="Takip Et">
+                        <BookmarkPlus className="mr-0 h-4 w-4" /> Takip Et
                     </Button>
                 ))}
         </div>
     );
 
     return (
-        <div className="w-full h-full overflow-y-auto p-5">
+        <div className="w-full h-full p-5">
             <ListDetailHeader
                 list={listDetail}
                 actions={headerActions}
