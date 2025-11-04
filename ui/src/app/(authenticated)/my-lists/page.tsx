@@ -69,6 +69,7 @@ export default function MyListsPage() {
     } = useQuery<UserList[]>({
         queryKey: ["my-lists"],
         queryFn: listApi.getMyLists,
+        enabled: !!user,
         staleTime: Infinity,
         refetchOnWindowFocus: false,
         refetchOnMount: false,
@@ -93,6 +94,7 @@ export default function MyListsPage() {
                 searchTerm: debouncedSearchTerm || undefined,
                 category: selectedCategory !== "all" ? Number(selectedCategory) : undefined,
             }),
+        enabled: !!user && activeTab === FOLLOWED_LISTS_TAB,
         placeholderData: (previousData) => previousData,
         staleTime: 1000 * 60,
     });

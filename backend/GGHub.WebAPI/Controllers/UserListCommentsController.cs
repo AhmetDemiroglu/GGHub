@@ -30,7 +30,10 @@ namespace GGHub.WebAPI.Controllers
                 return CreatedAtAction(nameof(GetCommentById), new { commentId = commentDto.Id }, commentDto);
             }
             catch (KeyNotFoundException ex) { return NotFound(ex.Message); }
-            catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
             catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
         }
 
@@ -51,7 +54,14 @@ namespace GGHub.WebAPI.Controllers
                 return Ok(comments);
             }
             catch (KeyNotFoundException ex) { return NotFound(ex.Message); }
-            catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+            catch (UnauthorizedAccessException ex)
+            {
+                if (currentUserId == null)
+                {
+                    return Unauthorized(new { message = ex.Message });
+                }
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
         }
 
         [HttpGet("{commentId}")]
@@ -83,7 +93,10 @@ namespace GGHub.WebAPI.Controllers
                 return BadRequest("Yorum güncellenemedi.");
             }
             catch (KeyNotFoundException ex) { return NotFound(ex.Message); }
-            catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
         }
         [HttpDelete("{commentId}")]
         public async Task<IActionResult> DeleteComment(int commentId)
@@ -96,7 +109,10 @@ namespace GGHub.WebAPI.Controllers
                 return BadRequest("Yorum silinemedi.");
             }
             catch (KeyNotFoundException ex) { return NotFound(ex.Message); }
-            catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
         }
         [HttpPost("{commentId}/vote")]
         public async Task<IActionResult> VoteOnComment(int commentId, [FromBody] UserListCommentVoteDto dto)
@@ -109,7 +125,10 @@ namespace GGHub.WebAPI.Controllers
                 return BadRequest("Oylama işlemi başarısız.");
             }
             catch (KeyNotFoundException ex) { return NotFound(ex.Message); }
-            catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
             catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
         }
     }
