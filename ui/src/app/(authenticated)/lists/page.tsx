@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react"; 
+import { useState, useEffect, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useDebounce } from "@core/hooks/use-debounce";
@@ -113,13 +113,13 @@ function ListDiscoverPageContent() {
                 <Separator />
 
                 {/* Arama ve Kategori Filtre Barı */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-5">
-                    <Input placeholder="Listelerde ara..." className="w-full sm:max-w-xs" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                    <Input placeholder="Listelerde ara..." className="w-full md:max-w-xs" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
 
-                    <div className="flex w-full sm:w-auto items-center gap-4">
-                        <div className="flex items-center space-x-2">
-                            <Switch id="followedByMe-filter" checked={followedByMe} onCheckedChange={setFollowedByMe} className="cursorPointer" />
-                            <Label htmlFor="followedByMe-filter" className="text-sm text-muted-foreground whitespace-nowrap">
+                    <div className="flex flex-col sm:flex-row w-full md:w-auto items-stretch sm:items-center gap-3">
+                        <div className="flex items-center space-x-2 justify-between sm:justify-start">
+                            <Switch id="followedByMe-filter" checked={followedByMe} onCheckedChange={setFollowedByMe} className="cursor-pointer" />
+                            <Label htmlFor="followedByMe-filter" className="text-sm text-muted-foreground">
                                 Yalnızca Takip Edilen Kişiler
                             </Label>
                         </div>
@@ -135,14 +135,13 @@ function ListDiscoverPageContent() {
                                 ))}
                             </SelectContent>
                         </Select>
-                        {/* TODO: Sıralama (Ordering) Sonra*/}
                     </div>
                 </div>
             </div>
 
             {/* Liste Grid'i */}
             {isLoading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-8">
                     {Array.from({ length: pageSize }).map((_, index) => (
                         <ListCardSkeleton key={index} />
                     ))}
@@ -150,7 +149,7 @@ function ListDiscoverPageContent() {
             ) : lists.length === 0 ? (
                 <div className="text-center text-muted-foreground py-12">Bu kriterlere uygun liste bulunamadı.</div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-8">
                     {lists.map((list) => (
                         <Link href={`/lists/${list.id}`} key={list.id} className="block">
                             <ListCard list={list} />
@@ -161,13 +160,15 @@ function ListDiscoverPageContent() {
 
             {totalCount > 0 && (
                 <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="text-sm text-muted-foreground whitespace-nowrap">
+                    <div className="text-sm text-muted-foreground text-center sm:text-left order-1 sm:order-1">
                         Toplam {totalCount} listeden {lists.length} tanesi gösteriliyor.
                     </div>
 
-                    <DataPagination page={page} pageSize={pageSize} totalCount={totalCount} onPageChange={setPage} />
+                    <div className="order-3 sm:order-2">
+                        <DataPagination page={page} pageSize={pageSize} totalCount={totalCount} onPageChange={setPage} />
+                    </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 order-2 sm:order-3">
                         <p className="text-sm text-muted-foreground whitespace-nowrap">Sayfa başına:</p>
                         <Select value={String(pageSize)} onValueChange={(value) => setPageSize(Number(value))}>
                             <SelectTrigger className="w-20 cursor-pointer">

@@ -68,18 +68,18 @@ export function ChangePasswordCard() {
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
             <Card>
                 <CollapsibleTrigger className="w-full">
-                    <CardHeader className="cursor-pointer ">
-                        <div className="flex items-center justify-between">
-                            <div className="text-left">
-                                <CardTitle>Şifre Değiştir</CardTitle>
-                                <CardDescription>Hesabınızın güvenliği için düzenli olarak şifrenizi değiştirin.</CardDescription>
+                    <CardHeader className="cursor-pointer p-4 md:p-6">
+                        <div className="flex items-start md:items-center justify-between gap-3">
+                            <div className="text-left flex-1 min-w-0">
+                                <CardTitle className="text-base md:text-lg">Şifre Değiştir</CardTitle>
+                                <CardDescription className="text-xs md:text-sm mt-1">Hesabınızın güvenliği için düzenli olarak şifrenizi değiştirin.</CardDescription>
                             </div>
-                            {isOpen ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+                            {isOpen ? <ChevronUp className="h-5 w-5 text-muted-foreground flex-shrink-0" /> : <ChevronDown className="h-5 w-5 text-muted-foreground flex-shrink-0" />}
                         </div>
                     </CardHeader>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                    <CardContent>
+                    <CardContent className="p-4 md:p-6">
                         <Form {...form}>
                             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                                 <FormField

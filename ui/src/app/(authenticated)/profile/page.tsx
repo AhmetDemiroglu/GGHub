@@ -161,7 +161,7 @@ export default function ProfilePage() {
     );
     return (
         <AuthGuard>
-            <div className="w-full h-full p-5">
+            <div className="w-full h-full p-5 md:p-5 max-w-4xl mx-auto">
                 <div className="space-y-4">
                     <div>
                         <h1 className="text-3xl font-bold">Profil Yönetimi</h1>
@@ -170,25 +170,25 @@ export default function ProfilePage() {
 
                     <Card>
                         <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-4">
-                                    <div className="relative">
+                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                <div className="flex items-center space-x-3 md:space-x-4">
+                                    <div className="relative flex-shrink-0">
                                         <button onClick={() => setIsPhotoUploaderOpen(true)} className="rounded-full">
-                                            <Avatar className="h-16 w-16 cursor-pointer">
+                                            <Avatar className="h-14 w-14 md:h-16 md:w-16 cursor-pointer">
                                                 <AvatarImage src={getImageUrl(data?.profileImageUrl)} alt={data.username} />
                                                 <AvatarFallback>{data.username.charAt(0).toUpperCase()}</AvatarFallback>
                                             </Avatar>
                                         </button>
                                         <div className="absolute bottom-0 right-0 rounded-full bg-primary p-1 border-2 border-background cursor-pointer" onClick={() => setIsPhotoUploaderOpen(true)}>
-                                            <Pencil className="h-3 w-3 text-primary-foreground" />
+                                            <Pencil className="h-2.5 w-2.5 md:h-3 md:w-3 text-primary-foreground" />
                                         </div>
                                     </div>
-                                    <div>
-                                        <CardTitle className="text-2xl">{data.username}</CardTitle>
-                                        <CardDescription>{data.email}</CardDescription>
+                                    <div className="min-w-0 flex-1">
+                                        <CardTitle className="text-xl md:text-2xl truncate">{data.username}</CardTitle>
+                                        <CardDescription className="text-xs md:text-sm truncate">{data.email}</CardDescription>
                                     </div>
                                 </div>
-                                <Button className="cursor-pointer" variant="ghost" size="icon" onClick={() => setIsEditing(!isEditing)}>
+                                <Button className="cursor-pointer self-end md:self-auto" variant="ghost" size="icon" onClick={() => setIsEditing(!isEditing)}>
                                     {isEditing ? <X className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
                                 </Button>
                             </div>

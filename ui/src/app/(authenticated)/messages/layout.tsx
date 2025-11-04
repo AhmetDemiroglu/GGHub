@@ -37,7 +37,23 @@ const getImageUrl = (path: string | null | undefined): string | undefined => {
 export default function MessagesLayout({ children }: { children: React.ReactNode }) {
     const { user, isLoading: isAuthLoading } = useAuth();
     const pathname = usePathname();
-    const [sidebarExpanded, setSidebarExpanded] = useState(true);
+    const [sidebarExpanded, setSidebarExpanded] = useState(false);
+
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth >= 768) {
+                setSidebarExpanded(true);
+            } else {
+                setSidebarExpanded(false);
+            }
+        };
+
+        handleResize();
+
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
@@ -50,7 +66,6 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
         enabled: !!user,
     });
 
-    // Search effect
     useEffect(() => {
         if (debouncedSearch.length >= 2) {
             setIsSearching(true);

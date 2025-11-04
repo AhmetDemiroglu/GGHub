@@ -32,7 +32,9 @@ namespace GGHub.Infrastructure.Services
 
         public async Task<LoginResponseDto?> Login(UserForLoginDto userForLoginDto)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == userForLoginDto.Email.ToLower());
+            var user = await _context.Users.FirstOrDefaultAsync(u =>
+                u.Email == userForLoginDto.Email.ToLower() ||
+                u.Username.ToLower() == userForLoginDto.Email.ToLower());
 
             if (user == null || !VerifyPasswordHash(userForLoginDto.Password, user.PasswordHash, user.PasswordSalt))
             {
@@ -118,13 +120,13 @@ namespace GGHub.Infrastructure.Services
                         throw new InvalidOperationException("Bu e-posta adresi zaten kullanılıyor.");
                     }
 
-                    var existingUserByUsername = await _context.Users
-                        .FirstOrDefaultAsync(u => u.Username == userForRegisterDto.Username);
+            var existingUserByUsername = await _context.Users
+                .FirstOrDefaultAsync(u => u.Username.ToLower() == userForRegisterDto.Username.ToLower());
 
-                    if (existingUserByUsername != null)
-                    {
-                        throw new InvalidOperationException("Bu kullanıcı adı zaten kullanılıyor.");
-                    }
+            if (existingUserByUsername != null)
+            {
+                throw new InvalidOperationException("Bu kullanıcı adı zaten kullanılıyor.");
+            }
             CreatePasswordHash(userForRegisterDto.Password, out byte[] passwordHash, out byte[] passwordSalt);
             var user = new User
             {

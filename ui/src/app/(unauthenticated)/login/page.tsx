@@ -19,10 +19,7 @@ import { X } from "lucide-react";
 import Link from "next/link";
 
 const formSchema = z.object({
-    email: z
-        .string()
-        .min(1, { message: "E-posta alanı boş bırakılamaz." })
-        .refine((val) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(val), { message: "Lütfen geçerli bir e-posta adresi girin" }),
+    email: z.string().min(1, { message: "E-posta veya kullanıcı adı boş bırakılamaz." }),
     password: z.string().min(1, { message: "Şifre boş bırakılamaz." }),
 });
 
@@ -99,9 +96,9 @@ function LoginPageContent() {
                                 name="email"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>E-posta</FormLabel>
+                                        <FormLabel>E-posta veya Kullanıcı Adı</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="ornek@gghub.com" {...field} />
+                                            <Input placeholder="ornek@gghub.com veya kullanici_adi" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -125,7 +122,7 @@ function LoginPageContent() {
                                     Şifremi unuttum
                                 </Link>
                             </div>
-                            
+
                             <Button type="submit" className="w-full cursor-pointer" disabled={isPending}>
                                 {isPending ? "Giriş Yapılıyor..." : "Giriş Yap"}
                             </Button>

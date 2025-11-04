@@ -76,6 +76,9 @@ export default function MyListsPage() {
 
     const [page_Followed, setPage_Followed] = useState(1);
     const [pageSize_Followed, setPageSize_Followed] = useState(12);
+    const [page_MyLists, setPage_MyLists] = useState(1);
+    const [pageSize_MyLists, setPageSize_MyLists] = useState(12);
+
     const {
         data: followedListsResult,
         isLoading: followedListsLoading,
@@ -96,6 +99,10 @@ export default function MyListsPage() {
     useEffect(() => {
         setPage_Followed(1);
     }, [debouncedSearchTerm, selectedCategory]);
+
+    useEffect(() => {
+        setPage_MyLists(1);
+    }, [debouncedSearchTerm, selectedCategory, selectedVisibility_MyLists]);
 
     const queryClient = useQueryClient();
     const createListMutation = useMutation({
@@ -181,6 +188,14 @@ export default function MyListsPage() {
             return searchMatch && categoryMatch && visibilityMatch;
         });
     }, [myLists, debouncedSearchTerm, selectedCategory, selectedVisibility_MyLists]);
+
+    const paginatedMyLists = useMemo(() => {
+        const startIndex = (page_MyLists - 1) * pageSize_MyLists;
+        const endIndex = startIndex + pageSize_MyLists;
+        return filteredMyLists.slice(startIndex, endIndex);
+    }, [filteredMyLists, page_MyLists, pageSize_MyLists]);
+
+    const totalMyListsCount = filteredMyLists.length;
 
     if (myListsError || followedListsError) {
         const errorMsg = myListsError?.message || followedListsError?.message;
@@ -271,7 +286,7 @@ export default function MyListsPage() {
                 <TabsContent value={MY_LISTS_TAB}>
                     {myListsLoading ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {Array.from({ length: 12 }).map((_, index) => (
+                            {Array.from({ length: pageSize_MyLists }).map((_, index) => (
                                 <ListCardSkeleton key={index} />
                             ))}
                         </div>
@@ -280,47 +295,76 @@ export default function MyListsPage() {
                             {debouncedSearchTerm || selectedCategory !== "all" || selectedVisibility_MyLists !== "all" ? "Bu kriterlere uygun liste bulunamadı." : "Henüz hiç liste oluşturmamışsın."}
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {filteredMyLists.map((list) => {
-                                const cardFooter = (
-                                    <div className="flex justify-end gap-2">
-                                        <Button
-                                            variant="outline"
-                                            size="icon"
-                                            className="h-7 w-7 cursor-pointer"
-                                            aria-label="Listeyi düzenle"
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                handleEditClick(list);
-                                            }}
-                                            disabled={updateListMutation.isPending && listToEdit?.id === list.id}
-                                        >
-                                            <Edit className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="icon"
-                                            className="h-7 w-7 cursor-pointer text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive"
-                                            aria-label="Listeyi sil"
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                handleDeleteClick(list);
-                                            }}
-                                            disabled={deleteListMutation.isPending && listToDelete?.id === list.id}
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
+                        <>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                {paginatedMyLists.map((list) => {
+                                    const cardFooter = (
+                                        <div className="flex justify-end gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                className="h-7 w-7 cursor-pointer"
+                                                aria-label="Listeyi düzenle"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    handleEditClick(list);
+                                                }}
+                                                disabled={updateListMutation.isPending && listToEdit?.id === list.id}
+                                            >
+                                                <Edit className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                className="h-7 w-7 cursor-pointer text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive"
+                                                aria-label="Listeyi sil"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    handleDeleteClick(list);
+                                                }}
+                                                disabled={deleteListMutation.isPending && listToDelete?.id === list.id}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    );
+                                    return (
+                                        <Link key={list.id} href={`/lists/${list.id}`} className="block cursor-pointer">
+                                            <ListCard list={list} footer={cardFooter} />
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Sayfalama Kontrolleri */}
+                            {totalMyListsCount > 0 && (
+                                <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                    <div className="text-sm text-muted-foreground text-center sm:text-left order-1 sm:order-1">
+                                        Toplam {totalMyListsCount} listeden {paginatedMyLists.length} tanesi gösteriliyor.
                                     </div>
-                                );
-                                return (
-                                    <Link key={list.id} href={`/lists/${list.id}`} className="block cursor-pointer">
-                                        <ListCard list={list} footer={cardFooter} />
-                                    </Link>
-                                );
-                            })}
-                        </div>
+                                    <div className="order-3 sm:order-2">
+                                        <DataPagination page={page_MyLists} pageSize={pageSize_MyLists} totalCount={totalMyListsCount} onPageChange={setPage_MyLists} />
+                                    </div>
+                                    <div className="flex items-center gap-2 order-2 sm:order-3">
+                                        <p className="text-sm text-muted-foreground whitespace-nowrap">Sayfa başına:</p>
+                                        <Select value={String(pageSize_MyLists)} onValueChange={(value) => setPageSize_MyLists(Number(value))}>
+                                            <SelectTrigger className="w-20 cursor-pointer">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {pageSizeOptions.map((size) => (
+                                                    <SelectItem key={size} value={String(size)}>
+                                                        {size}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                            )}
+                        </>
                     )}
                 </TabsContent>
 
@@ -337,19 +381,21 @@ export default function MyListsPage() {
                         <>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                 {followedListsResult.items.map((list) => (
-                                    // DÜZELTME: Link import edilmeli
                                     <Link href={`/lists/${list.id}`} key={list.id} className="block">
                                         <ListCard list={list} />
-                                    </Link> // DÜZELTME: Link kapanış etiketi
+                                    </Link>
                                 ))}
                             </div>
+
                             {/* Sayfalama Kontrolleri */}
                             <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-                                <div className="text-sm text-muted-foreground whitespace-nowrap">
+                                <div className="text-sm text-muted-foreground text-center sm:text-left order-1 sm:order-1">
                                     Toplam {followedListsResult.totalCount} listeden {followedListsResult.items.length} tanesi gösteriliyor.
                                 </div>
-                                <DataPagination page={page_Followed} pageSize={pageSize_Followed} totalCount={followedListsResult.totalCount} onPageChange={setPage_Followed} />
-                                <div className="flex items-center gap-2">
+                                <div className="order-3 sm:order-2">
+                                    <DataPagination page={page_Followed} pageSize={pageSize_Followed} totalCount={followedListsResult.totalCount} onPageChange={setPage_Followed} />
+                                </div>
+                                <div className="flex items-center gap-2 order-2 sm:order-3">
                                     <p className="text-sm text-muted-foreground whitespace-nowrap">Sayfa başına:</p>
                                     <Select value={String(pageSize_Followed)} onValueChange={(value) => setPageSize_Followed(Number(value))}>
                                         <SelectTrigger className="w-20 cursor-pointer">

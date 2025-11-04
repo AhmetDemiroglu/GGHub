@@ -78,34 +78,34 @@ export function DangerZone() {
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
             <Card className="border-destructive">
                 <CollapsibleTrigger className="w-full">
-                    <CardHeader className="cursor-pointer">
-                        <div className="flex items-center justify-between">
-                            <div className="text-left">
-                                <CardTitle className="text-destructive">Tehlikeli Bölge</CardTitle>
-                                <CardDescription>Bu alandaki işlemler geri alınamaz. Lütfen dikkatli olun.</CardDescription>
+                    <CardHeader className="cursor-pointer p-4 md:p-6">
+                        <div className="flex items-start md:items-center justify-between gap-3">
+                            <div className="text-left flex-1 min-w-0">
+                                <CardTitle className="text-base md:text-lg text-destructive">Tehlikeli Bölge</CardTitle>
+                                <CardDescription className="text-xs md:text-sm mt-1">Bu alandaki işlemler geri alınamaz. Lütfen dikkatli olun.</CardDescription>
                             </div>
-                            {isOpen ? <ChevronUp className="h-5 w-5 text-destructive" /> : <ChevronDown className="h-5 w-5 text-destructive" />}
+                            {isOpen ? <ChevronUp className="h-5 w-5 text-destructive flex-shrink-0" /> : <ChevronDown className="h-5 w-5 text-destructive flex-shrink-0" />}
                         </div>
                     </CardHeader>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                    <CardContent className="space-y-4">
-                        <div className="flex items-center justify-between rounded-lg border border-dashed border-destructive p-4">
-                            <div>
-                                <h3 className="font-semibold">Verilerini Dışa Aktar</h3>
-                                <p className="text-sm text-muted-foreground">Profil bilgilerin, listelerin ve yorumların dahil tüm verilerinin bir kopyasını indir.</p>
+                    <CardContent className="space-y-4 p-4 md:p-6">
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4 rounded-lg border border-dashed border-destructive p-3 md:p-4">
+                            <div className="flex-1 min-w-0">
+                                <h3 className="font-semibold text-sm md:text-base">Verilerini Dışa Aktar</h3>
+                                <p className="text-xs md:text-sm text-muted-foreground mt-1">Profil bilgilerin, listelerin ve yorumların dahil tüm verilerinin bir kopyasını indir.</p>
                             </div>
-                            <Button className="cursor-pointer" variant="outline" onClick={() => exportData()} disabled={isExporting}>
+                            <Button className="cursor-pointer w-full md:w-auto" variant="outline" onClick={() => exportData()} disabled={isExporting}>
                                 {isExporting ? "İndiriliyor..." : <Download className="mr-2 h-4 w-4" />}
                                 {isExporting ? "" : "İndir"}
                             </Button>
                         </div>
-                        <div className="flex items-center justify-between rounded-lg border border-dashed border-destructive p-4">
-                            <div>
-                                <h3 className="font-semibold">Hesabını Kalıcı Olarak Sil</h3>
-                                <p className="text-sm text-muted-foreground">Bu işlem hesabını ve tüm verilerini anonimleştirir. Bu işlemin geri dönüşü yoktur.</p>
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4 rounded-lg border border-dashed border-destructive p-3 md:p-4">
+                            <div className="flex-1 min-w-0">
+                                <h3 className="font-semibold text-sm md:text-base">Hesabını Kalıcı Olarak Sil</h3>
+                                <p className="text-xs md:text-sm text-muted-foreground mt-1">Bu işlem hesabını ve tüm verilerini anonimleştirir. Bu işlemin geri dönüşü yoktur.</p>
                             </div>
-                            <Button className="cursor-pointer" variant="destructive" onClick={() => setIsAlertOpen(true)} disabled={isDeleting}>
+                            <Button className="cursor-pointer w-full md:w-auto" variant="destructive" onClick={() => setIsAlertOpen(true)} disabled={isDeleting}>
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Hesabımı Sil
                             </Button>

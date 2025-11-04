@@ -248,14 +248,19 @@ function DiscoverPageContent() {
             )}
 
             {data && data.totalCount > 0 && (
-                <div className="mt-8 flex items-center justify-between">
-                    <div className="text-sm text-muted-foreground whitespace-nowrap">
+                <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    {/* Info Text */}
+                    <div className="text-sm text-muted-foreground text-center sm:text-left order-1 sm:order-1">
                         Toplam {data.totalCount} oyundan {data.items.length} tanesi gösteriliyor.
                     </div>
 
-                    <DataPagination page={page} pageSize={pageSize} totalCount={data.totalCount} onPageChange={setPage} />
+                    {/* Pagination */}
+                    <div className="order-3 sm:order-2">
+                        <DataPagination page={page} pageSize={pageSize} totalCount={data.totalCount} onPageChange={setPage} />
+                    </div>
 
-                    <div className="flex items-center gap-2">
+                    {/* Page Size Selector */}
+                    <div className="flex items-center gap-2 order-2 sm:order-3">
                         <p className="text-sm text-muted-foreground whitespace-nowrap">Sayfa başına:</p>
                         <Select value={String(pageSize)} onValueChange={(value) => setPageSize(Number(value))}>
                             <SelectTrigger className="w-20 cursor-pointer">
