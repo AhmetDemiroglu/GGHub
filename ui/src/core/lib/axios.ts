@@ -49,10 +49,7 @@ axiosInstance.interceptors.response.use(
     (response) => response,
     async (error: AxiosError) => {
         if (error.response && error.response.status === 429) {
-            toast.warning("Sunucu Yoğunluğu", {
-                description: "Test sunucusunda anlık bir yoğunluk yaşanıyor. Lütfen 30 saniye bekleyip tekrar deneyin.",
-                duration: 5000,
-            });
+            (error.response as any).isRateLimitError = true;
             return Promise.reject(error);
         }
 
