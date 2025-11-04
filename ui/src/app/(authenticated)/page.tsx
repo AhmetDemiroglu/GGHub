@@ -225,14 +225,6 @@ export default function HomePage() {
                                     <p className="text-slate-500 dark:text-zinc-400">Yorum, header ve oyun içeriklerine görsel ekleyebilme (şimdilik sadece profil foto mevcut).</p>
                                 </div>
                             </li>
-
-                            <li className="flex items-start gap-3">
-                                <Smartphone className="mt-0.5 h-4 w-4 text-teal-500 dark:text-teal-400" />
-                                <div>
-                                    <p className="font-medium text-slate-900 dark:text-zinc-100">Mobil Uyumluluk</p>
-                                    <p className="text-slate-500 dark:text-zinc-400">Tüm sayfalar responsive hâle getirilecek, performans iyileştirilecek.</p>
-                                </div>
-                            </li>
                         </ul>
                         <div
                             className="mt-4 rounded-lg border border-slate-200 bg-slate-50/80 p-3 text-xs text-slate-500
