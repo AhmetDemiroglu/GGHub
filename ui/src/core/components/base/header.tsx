@@ -16,13 +16,14 @@ import { getNotifications, getUnreadNotificationCount, markAllNotificationsAsRea
 import { NotificationDto, NotificationType } from "@/models/notifications/notification.model";
 import { Badge } from "@/core/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/core/components/ui/popover";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { getConversations } from "@/api/messages/messages.api";
 import { getUnreadMessageCount } from "@/api/messages/messages.api";
 import { ConversationDto } from "@/models/messages/message.model";
 import "dayjs/locale/tr";
+import { AxiosError } from "axios";
 
 dayjs.extend(relativeTime);
 dayjs.locale("tr");
@@ -31,14 +32,34 @@ export function Header() {
     const { isAuthenticated, user, logout } = useAuth();
 
     const [notificationOpen, setNotificationOpen] = useState(false);
+    const [notifInterval, setNotifInterval] = useState<number | false>(10000);
+    const [msgInterval, setMsgInterval] = useState<number | false>(10000);
     const queryClient = useQueryClient();
 
-    const { data: unreadNotifCount } = useQuery({
+    const { data: unreadNotifCount } = useQuery<{ count: number }, Error>({
         queryKey: ["unread-notification-count"],
         queryFn: getUnreadNotificationCount,
         enabled: isAuthenticated && !!user,
-        refetchInterval: 10000,
+        refetchInterval: notifInterval,
+
+        retry: (failureCount, error) => {
+            if (error instanceof AxiosError && error.response?.status === 429) {
+                if (notifInterval) {
+                    setNotifInterval(false);
+                    setTimeout(() => setNotifInterval(15000), 30000);
+                }
+                return false;
+            }
+
+            return failureCount < 3;
+        },
     });
+
+    useEffect(() => {
+        if (unreadNotifCount && notifInterval === 15000) {
+            setNotifInterval(10000);
+        }
+    }, [unreadNotifCount, notifInterval]);
 
     const { data: notifications } = useQuery<NotificationDto[]>({
         queryKey: ["notifications"],
@@ -61,12 +82,29 @@ export function Header() {
 
     const [messagesOpen, setMessagesOpen] = useState(false);
 
-    const { data: unreadMsgCount } = useQuery({
+    const { data: unreadMsgCount } = useQuery<{ count: number }, Error>({
         queryKey: ["unread-message-count"],
         queryFn: getUnreadMessageCount,
         enabled: isAuthenticated && !!user,
-        refetchInterval: 10000,
+        refetchInterval: msgInterval,
+
+        retry: (failureCount, error) => {
+            if (error instanceof AxiosError && error.response?.status === 429) {
+                if (msgInterval) {
+                    setMsgInterval(false);
+                    setTimeout(() => setMsgInterval(15000), 30000);
+                }
+                return false;
+            }
+            return failureCount < 3;
+        },
     });
+
+    useEffect(() => {
+        if (unreadMsgCount && msgInterval === 15000) {
+            setMsgInterval(10000);
+        }
+    }, [unreadMsgCount, msgInterval]);
 
     const { data: recentMessages } = useQuery<ConversationDto[]>({
         queryKey: ["recent-messages"],

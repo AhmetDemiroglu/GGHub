@@ -1,5 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { AuthContext } from "@core/contexts/auth-context";
+import { toast } from "sonner";
 
 export const axiosInstance = axios.create({
     baseURL: `${process.env.NEXT_PUBLIC_API_BASE_URL}/api`,
@@ -47,6 +48,14 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
     (response) => response,
     async (error: AxiosError) => {
+        if (error.response && error.response.status === 429) {
+            toast.warning("Sunucu Yoğunluğu", {
+                description: "Test sunucusunda anlık bir yoğunluk yaşanıyor. Lütfen 30 saniye bekleyip tekrar deneyin.",
+                duration: 5000,
+            });
+            return Promise.reject(error);
+        }
+
         const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
         const isSkipRefreshPath = SKIP_REFRESH_PATHS.some((path) => originalRequest.url?.includes(path));
