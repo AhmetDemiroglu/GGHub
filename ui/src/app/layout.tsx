@@ -8,6 +8,7 @@ import { ThemeToggleButton } from "@core/components/base/theme-toggle-button";
 import NextTopLoader from "nextjs-toploader";
 import Script from "next/script";
 import GAListener from "./ga-listener";
+import { Suspense } from "react";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -41,7 +42,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 )}
             </head>
             <body className={inter.className}>
-                <GAListener />
+                <Suspense fallback={null}>
+                    <GAListener />
+                </Suspense>
                 <NextTopLoader
                     color="#B026FF"
                     initialPosition={0.08}

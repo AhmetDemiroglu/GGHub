@@ -4,19 +4,19 @@ import { useEffect, useRef } from "react";
 import { pageview } from "@/core/lib/ga";
 
 export default function GAListener() {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const lastRef = useRef<string>("");
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const lastRef = useRef<string>("");
 
-  useEffect(() => {
-    const q = searchParams?.toString();
-    const path = q ? `${pathname}?${q}` : pathname;
+    useEffect(() => {
+        const q = searchParams?.toString();
+        const path = q ? `${pathname}?${q}` : pathname;
 
-    if (lastRef.current === path) return;
-    lastRef.current = path;
+        if (lastRef.current === path) return;
+        lastRef.current = path;
 
-    pageview(path);
-  }, [pathname, searchParams]);
+        pageview(path);
+    }, [pathname, searchParams]);
 
-  return null;
+    return null;
 }
