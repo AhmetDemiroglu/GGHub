@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@core/components/ui/ta
 import { DataPagination } from "@core/components/other/data-pagination";
 import Link from "next/link";
 import { useAuth } from "@core/hooks/use-auth";
+import { AxiosError } from "axios";
 
 const pageSizeOptions = [12, 24, 40];
 
@@ -112,8 +113,11 @@ export default function MyListsPage() {
             toast.success(`'${createdList.name}' listesi başarıyla oluşturuldu.`);
             setIsModalOpen(false);
         },
-        onError: (error) => {
-            toast.error(`Liste oluşturulamadı: ${error.message}`);
+        onError: (error: unknown) => {
+            if (error instanceof AxiosError && (error.response as any).isRateLimitError) {
+                return;
+            }
+            toast.error(`Liste oluşturulamadı: ${(error as Error).message}`);
         },
     });
 
@@ -130,8 +134,11 @@ export default function MyListsPage() {
             setIsModalOpen(false);
             setListToEdit(null);
         },
-        onError: (error) => {
-            toast.error(`Liste güncellenemedi: ${error.message}`);
+        onError: (error: unknown) => {
+            if (error instanceof AxiosError && (error.response as any).isRateLimitError) {
+                return;
+            }
+            toast.error(`Liste güncellenemedi: ${(error as Error).message}`);
         },
     });
 
@@ -162,8 +169,11 @@ export default function MyListsPage() {
             setIsDeleteDialogOpen(false);
             setListToDelete(null);
         },
-        onError: (error) => {
-            toast.error(`Liste silinemedi: ${error.message}`);
+        onError: (error: unknown) => {
+            if (error instanceof AxiosError && (error.response as any).isRateLimitError) {
+                return;
+            }
+            toast.error(`Liste silinemedi: ${(error as Error).message}`);
         },
     });
 

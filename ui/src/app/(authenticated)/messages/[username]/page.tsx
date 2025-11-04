@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import dayjs from "dayjs";
 import { Send, AlertTriangle } from "lucide-react";
 import { UnauthorizedAccess } from "@core/components/other/unauthorized-access";
+import { AxiosError } from "axios";
 
 const getImageUrl = (path: string | null | undefined): string | undefined => {
     if (!path) {
@@ -49,9 +50,11 @@ export default function MessageThreadPage() {
             queryClient.invalidateQueries({ queryKey: ["conversations"] });
             scrollToBottom();
         },
-        onError: (error: any) => {
-            const errorMessage = error.response?.data || "Mesaj gönderilemedi.";
-            toast.error(errorMessage);
+        onError: (error: unknown) => {
+            if (error instanceof AxiosError && (error.response as any).isRateLimitError) {
+                return;
+            }
+            toast.error(`Mesaj gönderilemedi: ${(error as Error).message}`);
         },
     });
 

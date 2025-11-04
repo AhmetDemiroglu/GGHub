@@ -16,6 +16,7 @@ import { Button } from "@core/components/ui/button";
 import { ListPlus, Edit, Loader, ArrowDown, BookmarkPlus, BookmarkMinus } from "lucide-react";
 import { AddGameToListModal } from "@core/components/other/lists/add-game-to-list-modal";
 import { ListCommentSection } from "@/core/components/other/lists/list-comment-section";
+import { AxiosError } from "axios";
 
 export default function ListDetailPage() {
     const params = useParams();
@@ -67,8 +68,11 @@ export default function ListDetailPage() {
             queryClient.invalidateQueries({ queryKey: ["list-detail", listId] });
             queryClient.invalidateQueries({ queryKey: ["my-lists"] });
         },
-        onError: (error) => {
-            toast.error(`Puan kaydedilemedi: ${error.message}`);
+        onError: (error: unknown) => {
+            if (error instanceof AxiosError && (error.response as any).isRateLimitError) {
+                return;
+            }
+            toast.error(`Puan kaydedilemedi: ${(error as Error).message}`);
         },
     });
 
@@ -88,8 +92,11 @@ export default function ListDetailPage() {
             setIsModalOpen(false);
             setListToEdit(null);
         },
-        onError: (error) => {
-            toast.error(`Liste güncellenemedi: ${error.message}`);
+        onError: (error: unknown) => {
+            if (error instanceof AxiosError && (error.response as any).isRateLimitError) {
+                return;
+            }
+            toast.error(`Liste güncellenemedi: ${(error as Error).message}`);
         },
     });
 
@@ -111,11 +118,14 @@ export default function ListDetailPage() {
             toast.success("Oyun listeye eklendi.");
             queryClient.refetchQueries({ queryKey: ["list-detail", listId] });
         },
-        onError: (error, gameId, context) => {
+        onError: (error: unknown, gameId, context) => {
             if (context?.previousData) {
                 queryClient.setQueryData(["list-detail", listId], context.previousData);
             }
-            toast.error(`Hata: ${error.message}`);
+            if (error instanceof AxiosError && (error.response as any).isRateLimitError) {
+                return;
+            }
+            toast.error(`Hata: ${(error as Error).message}`);
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ["my-lists"] });
@@ -129,8 +139,11 @@ export default function ListDetailPage() {
             queryClient.invalidateQueries({ queryKey: ["list-detail", listId] });
             queryClient.invalidateQueries({ queryKey: ["my-lists"] });
         },
-        onError: (error) => {
-            toast.error(`Hata: ${error.message}`);
+        onError: (error: unknown) => {
+            if (error instanceof AxiosError && (error.response as any).isRateLimitError) {
+                return;
+            }
+            toast.error(`${(error as Error).message}`);
         },
     });
 
@@ -148,8 +161,11 @@ export default function ListDetailPage() {
             queryClient.invalidateQueries({ queryKey: ["list-detail", listId] });
             queryClient.invalidateQueries({ queryKey: ["followed-lists-by-me"] });
         },
-        onError: (error) => {
-            toast.error(`Takip etme başarısız: ${error.message}`);
+        onError: (error: unknown) => {
+            if (error instanceof AxiosError && (error.response as any).isRateLimitError) {
+                return;
+            }
+            toast.error(`Takip etme başarısız: ${(error as Error).message}`);
         },
     });
 
@@ -160,8 +176,11 @@ export default function ListDetailPage() {
             queryClient.invalidateQueries({ queryKey: ["list-detail", listId] });
             queryClient.invalidateQueries({ queryKey: ["followed-lists-by-me"] });
         },
-        onError: (error) => {
-            toast.error(`Takipten çıkma başarısız: ${error.message}`);
+        onError: (error: unknown) => {
+            if (error instanceof AxiosError && (error.response as any).isRateLimitError) {
+                return;
+            }
+            toast.error(`Takipten çıkma başarısız: ${(error as Error).message}`);
         },
     });
 
