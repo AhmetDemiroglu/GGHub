@@ -8,7 +8,8 @@ import { useAuth } from "@core/hooks/use-auth";
 import { useRouter } from "next/navigation";
 import { Button } from "@/core/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/core/components/ui/card";
-import { Download, Trash2 } from "lucide-react";
+import { Download, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/core/components/ui/collapsible";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -21,6 +22,7 @@ import {
 } from "@/core/components/ui/alert-dialog";
 
 export function DangerZone() {
+    const [isOpen, setIsOpen] = useState(false);
     const [isAlertOpen, setIsAlertOpen] = useState(false);
     const { logout } = useAuth();
     const router = useRouter();
@@ -73,34 +75,44 @@ export function DangerZone() {
     });
 
     return (
-        <Card className="border-destructive">
-            <CardHeader>
-                <CardTitle className="text-destructive">Tehlikeli Bölge</CardTitle>
-                <CardDescription>Bu alandaki işlemler geri alınamaz. Lütfen dikkatli olun.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="flex items-center justify-between rounded-lg border border-dashed border-destructive p-4">
-                    <div>
-                        <h3 className="font-semibold">Verilerini Dışa Aktar</h3>
-                        <p className="text-sm text-muted-foreground">Profil bilgilerin, listelerin ve yorumların dahil tüm verilerinin bir kopyasını indir.</p>
-                    </div>
-                    <Button className="cursor-pointer" variant="outline" onClick={() => exportData()} disabled={isExporting}>
-                        {isExporting ? "İndiriliyor..." : <Download className="mr-2 h-4 w-4" />}
-                        {isExporting ? "" : "İndir"}
-                    </Button>
-                </div>
-                <div className="flex items-center justify-between rounded-lg border border-dashed border-destructive p-4">
-                    <div>
-                        <h3 className="font-semibold">Hesabını Kalıcı Olarak Sil</h3>
-                        <p className="text-sm text-muted-foreground">Bu işlem hesabını ve tüm verilerini anonimleştirir. Bu işlemin geri dönüşü yoktur.</p>
-                    </div>
-                    <Button className="cursor-pointer" variant="destructive" onClick={() => setIsAlertOpen(true)} disabled={isDeleting}>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Hesabımı Sil
-                    </Button>
-                </div>
-            </CardContent>
-
+        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+            <Card className="border-destructive">
+                <CollapsibleTrigger className="w-full">
+                    <CardHeader className="cursor-pointer">
+                        <div className="flex items-center justify-between">
+                            <div className="text-left">
+                                <CardTitle className="text-destructive">Tehlikeli Bölge</CardTitle>
+                                <CardDescription>Bu alandaki işlemler geri alınamaz. Lütfen dikkatli olun.</CardDescription>
+                            </div>
+                            {isOpen ? <ChevronUp className="h-5 w-5 text-destructive" /> : <ChevronDown className="h-5 w-5 text-destructive" />}
+                        </div>
+                    </CardHeader>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between rounded-lg border border-dashed border-destructive p-4">
+                            <div>
+                                <h3 className="font-semibold">Verilerini Dışa Aktar</h3>
+                                <p className="text-sm text-muted-foreground">Profil bilgilerin, listelerin ve yorumların dahil tüm verilerinin bir kopyasını indir.</p>
+                            </div>
+                            <Button className="cursor-pointer" variant="outline" onClick={() => exportData()} disabled={isExporting}>
+                                {isExporting ? "İndiriliyor..." : <Download className="mr-2 h-4 w-4" />}
+                                {isExporting ? "" : "İndir"}
+                            </Button>
+                        </div>
+                        <div className="flex items-center justify-between rounded-lg border border-dashed border-destructive p-4">
+                            <div>
+                                <h3 className="font-semibold">Hesabını Kalıcı Olarak Sil</h3>
+                                <p className="text-sm text-muted-foreground">Bu işlem hesabını ve tüm verilerini anonimleştirir. Bu işlemin geri dönüşü yoktur.</p>
+                            </div>
+                            <Button className="cursor-pointer" variant="destructive" onClick={() => setIsAlertOpen(true)} disabled={isDeleting}>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Hesabımı Sil
+                            </Button>
+                        </div>
+                    </CardContent>
+                </CollapsibleContent>
+            </Card>
             <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -117,6 +129,6 @@ export function DangerZone() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-        </Card>
+        </Collapsible>
     );
 }

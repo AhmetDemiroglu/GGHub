@@ -120,6 +120,12 @@ function LoginPageContent() {
                                     </FormItem>
                                 )}
                             />
+                            <div className="text-right">
+                                <Link href="/forgot-password" className="text-sm text-muted-foreground hover:text-primary underline underline-offset-4">
+                                    Şifremi unuttum
+                                </Link>
+                            </div>
+                            
                             <Button type="submit" className="w-full cursor-pointer" disabled={isPending}>
                                 {isPending ? "Giriş Yapılıyor..." : "Giriş Yap"}
                             </Button>

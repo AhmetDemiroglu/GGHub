@@ -34,5 +34,7 @@ namespace GGHub.Core.Entities
         public bool IsEmailVerified { get; set; } = false;
         public string? EmailVerificationToken { get; set; }
         public bool IsDateOfBirthPublic { get; set; } = false;
+        public string? PasswordResetToken { get; set; }
+        public DateTime? PasswordResetTokenExpiry { get; set; }
     }
 }

@@ -14,6 +14,8 @@ import { ProfileEditForm } from "@/core/components/other/profile-edit-form";
 import { Profile } from "@/models/profile/profile.model";
 import { ProfilePhotoUploader } from "@/core/components/other/profile-photo-uploader";
 import { DangerZone } from "@/core/components/other/danger-zone";
+import { ChangePasswordCard } from "@/core/components/other/change-password-card";
+
 export default function ProfilePage() {
     const [isEditing, setIsEditing] = useState(false);
     const [isPhotoUploaderOpen, setIsPhotoUploaderOpen] = useState(false);
@@ -194,6 +196,7 @@ export default function ProfilePage() {
                         <CardContent>{isEditing ? <ProfileEditForm initialData={data} onSave={() => setIsEditing(false)} /> : <ProfileReadOnlyView data={data} />}</CardContent>
                     </Card>
 
+                    <ChangePasswordCard />
                     <DangerZone />
                 </div>
             </div>
