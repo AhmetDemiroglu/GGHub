@@ -92,11 +92,23 @@
                     GGHub'a hoş geldin! Hesabını aktif etmek için aşağıdaki butona tıklaman yeterli.
                 </p>
                 <div style='text-align: center; margin: 30px 0;'>
-                    <a href='{verificationLink}' 
-                       style='display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, {BrandStart} 0%, {BrandEnd} 100%); color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;'>
-                        Hesabımı Doğrula
-                    </a>
+                  <a href='{verificationLink}'
+                     style='
+                       display:inline-block;
+                       padding:14px 32px;
+                       background: linear-gradient(135deg, #061423 0%, #0B0F1B 45%, #1A1440 100%);
+                       color:#ffffff;
+                       text-decoration:none;
+                       border-radius:10px;
+                       font-weight:700;
+                       font-size:16px;
+                       border:1px solid rgba(255,255,255,0.08);
+                       box-shadow:0 2px 10px rgba(0,0,0,0.25);
+                     '>
+                    Hesabımı Doğrula
+                  </a>
                 </div>
+
                 <p style='margin: 20px 0 0 0; color: #6b7280; font-size: 14px; line-height: 1.6;'>
                     Eğer bu linke tıklayamıyorsan, aşağıdaki bağlantıyı tarayıcına kopyala-yapıştır yapabilirsin:
                 </p>
