@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/core/components/ui/c
 import { X } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { AxiosError } from "axios";
 
 const formSchema = z.object({
     username: z.string().min(3, { message: "Kullanıcı adı en az 3 karakter olmalıdır." }),
@@ -39,8 +40,13 @@ export default function RegisterPage() {
         onSuccess: () => {
             router.push("/login?registered=true");
         },
-        onError: (error: any) => {
-            const errorMessage = error?.response?.data?.message || "Kayıt sırasında bir hata oluştu.";
+        onError: (error: unknown) => {
+            if (error instanceof AxiosError && (error.response as any).isRateLimitError) {
+                return;
+            }
+
+            const axiosError = error as AxiosError<any>;
+            const errorMessage = axiosError?.response?.data?.message || (error as Error).message || "Kayıt sırasında bir hata oluştu.";
             toast.error("Kayıt Başarısız", {
                 description: errorMessage,
             });

@@ -13,6 +13,7 @@ import { Input } from "@/core/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/core/components/ui/card";
 import { X, Mail } from "lucide-react";
 import Link from "next/link";
+import { AxiosError } from "axios";
 
 const formSchema = z.object({
     email: z
@@ -36,8 +37,13 @@ export default function ForgotPasswordPage() {
             });
             router.push("/reset-password");
         },
-        onError: (error: any) => {
-            const errorMessage = error?.response?.data?.message || "Bir hata oluştu. Lütfen tekrar deneyin.";
+        onError: (error: unknown) => {
+            if (error instanceof AxiosError && (error.response as any).isRateLimitError) {
+                return;
+            }
+
+            const axiosError = error as AxiosError<any>;
+            const errorMessage = axiosError?.response?.data?.message || (error as Error).message || "Bir hata oluştu. Lütfen tekrar deneyin.";
             toast.error("İstek Başarısız", {
                 description: errorMessage,
             });

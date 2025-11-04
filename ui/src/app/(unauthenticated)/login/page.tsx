@@ -17,6 +17,7 @@ import { Input } from "@/core/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/core/components/ui/card";
 import { X } from "lucide-react";
 import Link from "next/link";
+import { AxiosError } from "axios";
 
 const formSchema = z.object({
     email: z.string().min(1, { message: "E-posta veya kullanıcı adı boş bırakılamaz." }),
@@ -65,8 +66,13 @@ function LoginPageContent() {
             authLogin(response.data);
             router.push("/");
         },
-        onError: (error: any) => {
-            const errorMessage = error?.response?.data?.message || "Bir hata oluştu. Lütfen tekrar deneyin.";
+        onError: (error: unknown) => {
+            if (error instanceof AxiosError && (error.response as any).isRateLimitError) {
+                return;
+            }
+
+            const axiosError = error as AxiosError<any>;
+            const errorMessage = axiosError?.response?.data?.message || (error as Error).message || "Bir hata oluştu. Lütfen tekrar deneyin.";
             toast.error("Giriş Başarısız", {
                 description: errorMessage,
             });
