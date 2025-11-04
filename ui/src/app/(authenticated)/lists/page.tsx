@@ -95,7 +95,7 @@ function ListDiscoverPageContent() {
         router.replace(newUrl, { scroll: false });
     }, [page, pageSize, debouncedSearchTerm, selectedCategory, followedByMe, pathname, router]);
     if (error) {
-        return <div className="p-5 text-red-500">Listeler yüklenirken bir hata oluştu: {error.message}</div>;
+        return <div className="p-5 text-red-500">Listeler yüklenirken bir hata oluştu</div>;
     }
 
     const lists = data?.items ?? [];

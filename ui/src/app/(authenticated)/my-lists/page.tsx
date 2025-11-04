@@ -209,7 +209,7 @@ export default function MyListsPage() {
 
     if (myListsError || followedListsError) {
         const errorMsg = myListsError?.message || followedListsError?.message;
-        return <div className="p-5 text-red-500">Listeler yüklenirken bir hata oluştu: {errorMsg}</div>;
+        return <div className="p-5 text-red-500">Listeler yüklenirken bir hata oluştu</div>;
     }
 
     const isFormPending = createListMutation.isPending || updateListMutation.isPending;
