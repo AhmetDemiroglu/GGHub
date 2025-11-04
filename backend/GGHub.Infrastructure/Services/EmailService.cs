@@ -23,6 +23,7 @@ namespace GGHub.Infrastructure.Services
             email.Body = new TextPart(TextFormat.Html) { Text = body };
 
             using var smtp = new SmtpClient();
+            //smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
 
             smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
 

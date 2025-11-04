@@ -138,6 +138,8 @@ namespace GGHub.Infrastructure.Services
             await _context.Users.AddAsync(user);
             await _context.SaveChangesAsync();
 
+            //var verificationLink = $"https://localhost:7263/api/auth/verify-email?token={user.EmailVerificationToken}";
+
             var baseUrl = _config["App:BaseUrl"] ?? "https://localhost:7263";
             var verificationLink = $"{baseUrl}/api/auth/verify-email?token={user.EmailVerificationToken}"; 
             var emailBody = $"Merhaba {user.Username},<br>GGHub hesabınızı doğrulamak için lütfen <a href='{verificationLink}'>bu linke</a> tıklayın.";
@@ -149,7 +151,7 @@ namespace GGHub.Infrastructure.Services
                 Body = emailBody
             });
 
-            _logger.LogInformation("Email job for {Email} enqueued.", user.Email);
+            _logger.LogInformation("Email job for {Email} enqueued.", user.Email); // Log ekleyelim
 
             return user;
         }
