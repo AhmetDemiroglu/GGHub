@@ -116,6 +116,7 @@ namespace GGHub.Infrastructure.Services
                     .ThenInclude(r => r.Replies)
                         .ThenInclude(r2 => r2.Replies)
                             .ThenInclude(r3 => r3.Votes)
+                .AsSplitQuery()
                 .AsNoTracking();
 
             var totalCount = await queryable.CountAsync();

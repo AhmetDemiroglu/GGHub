@@ -38,6 +38,8 @@ namespace GGHub.WebAPI.Controllers
                 return StatusCode(500, new { message = "Kayıt sırasında bir hata oluştu." });
             }
         }
+
+        [EnableRateLimiting("LoginPolicy")]
         [HttpPost("login")]
         public async Task<IActionResult> Login(UserForLoginDto userForLoginDto)
         {

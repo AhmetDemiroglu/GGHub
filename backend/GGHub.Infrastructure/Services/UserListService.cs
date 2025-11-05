@@ -99,10 +99,11 @@ namespace GGHub.Infrastructure.Services
         {
             var listsFromDb = await _context.UserLists
                 .Where(l => l.UserId == userId)
-                .Include(l => l.User)
-                .Include(l => l.UserListGames) 
-                    .ThenInclude(ulg => ulg.Game) 
-                .Include(l => l.Followers)
+                .Include(l => l.User)                             
+                .Include(l => l.UserListGames).ThenInclude(ulg => ulg.Game) 
+                .Include(l => l.Followers)                        
+                .AsSplitQuery()                                   
+                .AsNoTracking()                                   
                 .OrderByDescending(l => l.UpdatedAt)
                 .ToListAsync();
 
@@ -183,6 +184,8 @@ namespace GGHub.Infrastructure.Services
                 .Include(l => l.User)
                 .Include(l => l.UserListGames)
                     .ThenInclude(ulg => ulg.Game)
+                    .AsSplitQuery()    
+                    .AsNoTracking()
                 .AsNoTracking()
                 .FirstOrDefaultAsync(l => l.Id == listId);
 
@@ -191,10 +194,8 @@ namespace GGHub.Infrastructure.Services
                 throw new KeyNotFoundException("Liste bulunamadı.");
             }
 
-            // Giriş yapmayan kullanıcı kontrolü
             if (!currentUserId.HasValue)
             {
-                // Giriş yapmayan kullanıcı sadece Public listeleri görebilir
                 if (list.Visibility != ListVisibilitySetting.Public)
                 {
                     throw new UnauthorizedAccessException("Bu listeyi görüntülemek için giriş yapmalısınız.");
@@ -202,7 +203,6 @@ namespace GGHub.Infrastructure.Services
             }
             else
             {
-                // Giriş yapmış kullanıcı için mevcut kontroller
                 if (list.UserId != currentUserId.Value)
                 {
                     if (list.Visibility == ListVisibilitySetting.Private)
@@ -271,10 +271,11 @@ namespace GGHub.Infrastructure.Services
         public async Task<PaginatedResult<UserListPublicDto>> GetPublicListsAsync(ListQueryParams query, int? currentUserId)
         {
             var queryable = _context.UserLists
-                .Include(l => l.User)
-                .Include(l => l.UserListGames)
-                    .ThenInclude(ulg => ulg.Game)
-                    .Include(l => l.Followers)
+                .Include(l => l.User)                             
+                .Include(l => l.UserListGames).ThenInclude(ulg => ulg.Game) 
+                .Include(l => l.Followers)                      
+                .AsSplitQuery()                                 
+                .AsNoTracking()
                 .Where(l =>
                     l.Visibility == ListVisibilitySetting.Public ||
                     (currentUserId.HasValue &&
@@ -359,10 +360,11 @@ namespace GGHub.Infrastructure.Services
                 .Select(f => f.FollowedListId);
 
             var queryable = _context.UserLists
-                .Include(l => l.User) 
-                .Include(l => l.UserListGames)
-                .ThenInclude(ulg => ulg.Game)
-                .Include(l => l.Followers)
+                .Include(l => l.User)                             
+                .Include(l => l.UserListGames).ThenInclude(ulg => ulg.Game) 
+                .Include(l => l.Followers)                        
+                .AsSplitQuery()                                   
+                .AsNoTracking()
                 .Where(l => followedListIdsQuery.Contains(l.Id)) 
                 .Where(l =>
                     l.Visibility == ListVisibilitySetting.Public ||
