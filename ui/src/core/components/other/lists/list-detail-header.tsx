@@ -33,7 +33,7 @@ export function ListDetailHeader({ list, actions, myRating, onSubmitRating, isRa
         }
         const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
         return `${API_BASE}${path}`;
-    }; 
+    };
 
     const avatarSrc = getImageUrl(list.owner.profileImageUrl);
 
@@ -42,8 +42,8 @@ export function ListDetailHeader({ list, actions, myRating, onSubmitRating, isRa
             {/* Background Gradient */}
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent rounded-xl -z-10" />
 
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-6 md:gap-10 p-6 mb-0 pb-2">
-                <div className="md:col-span-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-10 p-3 sm:p-6 mb-0 pb-2">
+                <div className="md:col-span-4 space-y-3">
                     <Link href={`/profiles/${list.owner.username}`}>
                         <div className="flex items-start gap-3 group mb-2">
                             <Avatar className="h-8 w-8 flex-shrink-0">
@@ -60,9 +60,7 @@ export function ListDetailHeader({ list, actions, myRating, onSubmitRating, isRa
                             </div>
                         </div>
                     </Link>
-
-                    <h1 className="text-4xl font-bold tracking-tight">{list.name}</h1>
-
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">{list.name}</h1>
                     <div className="flex flex-wrap items-center gap-4 mt-3 text-muted-foreground text-sm">
                         <div className="flex items-center gap-1 text-yellow-500">
                             <Star className="h-4 w-4 fill-yellow-500" />
@@ -79,13 +77,11 @@ export function ListDetailHeader({ list, actions, myRating, onSubmitRating, isRa
                             <span className="font-semibold text-foreground">{getCategoryLabel(list.category)}</span>
                         </div>
                     </div>
-
                     {list.description && <p className="text-muted-foreground mt-4">{list.description}</p>}
                 </div>
-                <div className="md:col-span-1 flex flex-col justify-between h-full">
-                    <div className="flex justify-end">{actions}</div>
-                    {/* {currentUserId !== list.owner.id && <Separator className="h-[2px] bg-amber-500 rounded-full shadow-[0_0_15px_2px_rgba(250,204,21,0.9)]" />} */}
-                    <div className="flex justify-end">
+                <div className="md:col-span-1 flex flex-col gap-4 md:gap-2 md:justify-between h-full">
+                    <div className="flex justify-start md:justify-end">{actions}</div>
+                    <div className="flex justify-start md:justify-end">
                         <ListRating myRating={myRating} onSubmitRating={onSubmitRating} isPending={isRatingPending} listOwnerId={list.owner.id} currentUserId={currentUserId} />
                     </div>
                 </div>

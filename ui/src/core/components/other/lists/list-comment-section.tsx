@@ -147,7 +147,7 @@ export function ListCommentSection({ listId }: ListCommentSectionProps) {
     const isLoadingOrFetching = isLoadingComments || isFetchingComments;
 
     return (
-        <div className="mt-8 pt-6 border-t">
+        <div className="mt-8 pt-4 sm:pt-6 border-t">
             <h2 className="text-2xl font-bold mb-4">Yorumlar ({totalComments > 0 ? totalComments : ""})</h2>
             <div className="mb-6">
                 {user ? (

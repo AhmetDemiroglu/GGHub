@@ -248,11 +248,11 @@ export default function ListDetailPage() {
             {isOwner && (
                 <>
                     <Button className="cursor-pointer" onClick={() => setIsAddGameModalOpen(true)}>
-                        <ListPlus className="mr-2 h-4 w-4" />
-                        Oyun Ekle
+                        <ListPlus className="mr-0 sm:mr-1 h-4 w-4" />
+                        <span className="hidden sm:inline">Oyun</span> Ekle
                     </Button>
                     <Button variant="outline" className="cursor-pointer" onClick={handleEditClick} disabled={isFormPending} title="Listeyi düzenle">
-                        <Edit className="mr-2 h-4 w-4" /> Düzenle
+                        <Edit className="mr-1 h-4 w-4" /> Düzenle
                     </Button>
                 </>
             )}

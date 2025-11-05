@@ -93,12 +93,12 @@ export function ListFormModal({ isOpen, onClose, onSubmit, isPending, defaultVal
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[600px] max-h-[100vh] flex flex-col overflow-hidden">
+            <DialogContent className="w-[95vw] sm:max-w-[600px] max-h-[90vh] sm:max-h-[100vh] flex flex-col overflow-hidden">
                 <DialogHeader>
                     <DialogTitle>{title}</DialogTitle>
                     <DialogDescription>{description}</DialogDescription>
                 </DialogHeader>
-                <div className="flex-1 overflow-y-auto pr-6 pl-1 py-4">
+                <div className="flex-1 overflow-y-auto pr-2 sm:pr-6 pl-1 py-2 sm:py-4">
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                             {/* Liste Adı */}
@@ -159,27 +159,24 @@ export function ListFormModal({ isOpen, onClose, onSubmit, isPending, defaultVal
                                 control={form.control}
                                 name="visibility"
                                 render={({ field }) => (
-                                    <FormItem className="space-y-3">
+                                    <FormItem className="space-y-1">
                                         <FormLabel>Görünürlük</FormLabel>
                                         <FormControl>
-                                            <RadioGroup onValueChange={(value) => field.onChange(Number(value))} value={String(field.value)} className="gap-4 grid grid-cols-1 sm:grid-cols-3">
+                                            <RadioGroup onValueChange={(value) => field.onChange(Number(value))} value={String(field.value)} className="gap-3 sm:gap-4 grid grid-cols-1 sm:grid-cols-3">
                                                 {visibilityOptions.map((opt) => {
                                                     const Icon = opt.icon;
                                                     const isChecked = String(field.value) === opt.value;
                                                     return (
                                                         <FormItem key={opt.value}>
                                                             <FormLabel
-                                                                className={`
-                                flex flex-col items-center justify-center rounded-md border p-4
-                                cursor-pointer transition-colors
-                                hover:border-primary
-                                ${isChecked ? "border-transparent ring-2 ring-primary" : ""}
-                              `}
+                                                                className={`flex flex-col items-center justify-center rounded-md border p-3 sm:p-4 cursor-pointer transition-colors hover:border-primary ${
+                                                                    isChecked ? "border-transparent ring-2 ring-primary" : ""
+                                                                }`}
                                                             >
                                                                 <FormControl>
                                                                     <RadioGroupItem value={opt.value} className="sr-only" />
                                                                 </FormControl>
-                                                                <Icon className="h-6 w-6 mb-2" />
+                                                                <Icon className="h-5 w-5 sm:h-6 sm:w-6 mb-2" />
                                                                 <span>{opt.label}</span>
                                                                 <FormDescription className="text-xs text-center mt-1">{opt.description}</FormDescription>
                                                             </FormLabel>

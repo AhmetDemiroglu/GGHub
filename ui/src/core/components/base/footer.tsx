@@ -14,7 +14,7 @@ export function Footer() {
         <footer className="border-t bg-background mt-auto">
             <div className="w-full h-full">
                 <div className="space-y-4">
-                    <div className="max-w-7xl mx-auto px-6 md:px-8 lg:px-10 pt-10 pb-6">
+                    <div className="max-w-7xl mx-auto px-6 md:px-8 lg:px-0 pt-10 pb-6">
                         <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:justify-between">
                             <div className="flex flex-col gap-4 max-w-sm">
                                 <Link href="/" className="flex items-center gap-2.5 w-fit cursor-pointer group">
@@ -66,13 +66,12 @@ export function Footer() {
                                             <FaInstagram className="w-4 h-4" />
                                         </button>
                                     </div>
-                                    <p className="text-xs text-muted-foreground/60 leading-relaxed">Resmî hesaplar yakında aktif olacak. Şimdilik e-posta üzerinden ulaşabilirsin.</p>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div className="border-t border-border/40">
-                        <div className="max-w-7xl mx-auto px-6 md:px-8 lg:px-10 pt-4 flex flex-col md:flex-row items-center justify-between gap-3">
+                        <div className="max-w-7xl mx-auto px-6 md:px-8 lg:px-0 pt-4 flex flex-col md:flex-row items-center justify-between gap-3">
                             <p className="text-xs text-muted-foreground/60 text-center md:text-left">© 2025 GGHub. Tüm hakları saklıdır.</p>
                             <p className="text-[11px] text-muted-foreground/40">Oyun topluluğunuz · Made for players</p>
                         </div>

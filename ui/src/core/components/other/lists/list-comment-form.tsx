@@ -59,14 +59,14 @@ export const ListCommentForm = forwardRef<{ reset: () => void }, ListCommentForm
         }
         const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
         return `${API_BASE}${path}`;
-    }; 
-    
+    };
+
     const avatarSrc = getImageUrl(myProfile?.profileImageUrl);
 
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(handleFormSubmit)} className="flex items-start gap-3">
-                <Avatar className="h-9 w-9 mt-1 flex-shrink-0">
+                <Avatar className="h-8 w-8 sm:h-9 sm:w-9 mt-1 flex-shrink-0">
                     <AvatarImage src={avatarSrc} />
                     <AvatarFallback>{user?.username ? user.username.substring(0, 2).toUpperCase() : "?"}</AvatarFallback>
                 </Avatar>

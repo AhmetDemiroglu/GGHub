@@ -73,18 +73,32 @@ export function ListCommentItem({
     const timeAgo = dayjs(comment.createdAt).fromNow();
 
     return (
-        <div className={cn("flex gap-3", depth === 0 && "p-4 rounded-lg border border-border bg-card hover:bg-card/80 hover:shadow-[0_0_10px_1px_rgba(255,255,255,0.2)] transition-all duration-200")}>
+        <div
+            className={cn(
+                "flex flex-col sm:flex-row gap-2 sm:gap-3",
+                depth === 0 && "p-3 sm:p-4 rounded-lg border border-border bg-card hover:bg-card/80 hover:shadow-[0_0_10px_1px_rgba(255,255,255,0.2)] transition-all duration-200"
+            )}
+        >
             {/* Avatar */}
-            <Link href={`/profiles/${comment.owner.username}`} className="flex-shrink-0">
-                <Avatar className="h-9 w-9">
-                    <AvatarImage src={avatarSrc} />
-                    <AvatarFallback>{comment.owner.username.substring(0, 2).toUpperCase()}</AvatarFallback>
-                </Avatar>
-            </Link>
+            <div className="flex sm:block items-center gap-2 sm:gap-0">
+                <Link href={`/profiles/${comment.owner.username}`} className="flex-shrink-0">
+                    <Avatar className="h-8 w-8 sm:h-9 sm:w-9">
+                        <AvatarImage src={avatarSrc} />
+                        <AvatarFallback>{comment.owner.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                </Link>
+                {/* Sadece mobilde kullanıcı adını avatar yanında göster */}
+                <div className="flex sm:hidden items-baseline gap-2 text-sm">
+                    <Link href={`/profiles/${comment.owner.username}`} className="font-semibold hover:underline">
+                        {comment.owner.username}
+                    </Link>
+                    <span className="text-xs text-muted-foreground">{timeAgo}</span>
+                </div>
+            </div>
             {/* Yorum İçeriği ve Aksiyonlar */}
             <div className="flex-1 space-y-1">
                 {/* Kullanıcı Adı ve Zaman */}
-                <div className="flex items-baseline gap-2 text-sm">
+                <div className="hidden sm:flex items-baseline gap-2 text-sm">
                     <Link href={`/profiles/${comment.owner.username}`} className="font-semibold hover:underline">
                         {comment.owner.username}
                     </Link>
@@ -127,14 +141,14 @@ export function ListCommentItem({
                 )}
 
                 {/* Aksiyonlar: Oylama, Yanıtla, Sil */}
-                <div className="flex items-center gap-3 pt-1 text-muted-foreground">
+                <div className="flex items-center gap-1 sm:gap-3 pt-1 text-muted-foreground flex-wrap">
                     {/* Oylama */}
                     <div className="flex items-center gap-0.5">
                         <Button
                             variant="ghost"
                             size="icon"
                             className={cn(
-                                "h-7 w-7 text-xs hover:bg-emerald-500/10 hover:text-emerald-500",
+                                "h-6 w-6 sm:h-7 sm:w-7 text-xs hover:bg-emerald-500/10 hover:text-emerald-500",
                                 currentUserVote === 1 && "text-emerald-500 bg-emerald-500/10",
                                 isVoting || isOwner || !user ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
                             )}
@@ -253,7 +267,7 @@ export function ListCommentItem({
                 {showReplies && comment.replies && comment.replies.length > 0 && (
                     <div className="mt-4 space-y-4">
                         {comment.replies.map((reply) => (
-                            <div key={reply.id} className="ml-8 pl-4 border-l-2 border-border/40">
+                            <div key={reply.id} className="ml-2 sm:ml-6 md:ml-8 pl-1 sm:pl-3 md:pl-4 border-l-2 border-border/40">
                                 <ListCommentItem
                                     comment={reply}
                                     listId={listId}
