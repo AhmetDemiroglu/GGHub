@@ -36,5 +36,8 @@ namespace GGHub.Core.Entities
         public bool IsDateOfBirthPublic { get; set; } = false;
         public string? PasswordResetToken { get; set; }
         public DateTime? PasswordResetTokenExpiry { get; set; }
+        public bool IsBanned { get; set; } = false;
+        public DateTime? BannedAt { get; set; }
+        public string? BanReason { get; set; }
     }
 }

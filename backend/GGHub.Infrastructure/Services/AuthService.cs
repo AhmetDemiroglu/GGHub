@@ -115,18 +115,27 @@ namespace GGHub.Infrastructure.Services
             var existingUserByEmail = await _context.Users
                 .FirstOrDefaultAsync(u => u.Email == userForRegisterDto.Email.ToLower());
 
-                    if (existingUserByEmail != null)
-                    {
-                        throw new InvalidOperationException("Bu e-posta adresi zaten kullanılıyor.");
-                    }
+            if (existingUserByEmail != null)
+            {
+                if (existingUserByEmail.IsBanned)
+                {
+                    throw new InvalidOperationException("Bu e-posta adresi ile ilişkili hesap askıya alınmıştır.");
+                }
+                throw new InvalidOperationException("Bu e-posta adresi zaten kullanılıyor.");
+            }
 
             var existingUserByUsername = await _context.Users
                 .FirstOrDefaultAsync(u => u.Username.ToLower() == userForRegisterDto.Username.ToLower());
 
             if (existingUserByUsername != null)
             {
+                if (existingUserByUsername.IsBanned)
+                {
+                    throw new InvalidOperationException("Bu kullanıcı adı ile ilişkili hesap askıya alınmıştır.");
+                }
                 throw new InvalidOperationException("Bu kullanıcı adı zaten kullanılıyor.");
             }
+
             CreatePasswordHash(userForRegisterDto.Password, out byte[] passwordHash, out byte[] passwordSalt);
             var user = new User
             {
