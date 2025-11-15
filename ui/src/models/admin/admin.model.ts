@@ -27,7 +27,8 @@ export interface AdminUserSummary {
     role: string;
     isBanned: boolean;
     isEmailVerified: boolean;
-    createdAt: string; // (ISO Date string)
+    createdAt: string;
+    profileImageUrl: string | null;
 }
 export interface AdminUserDetails {
     id: number;
@@ -64,4 +65,13 @@ export interface AdminReport {
 }
 export interface UpdateReportStatusRequest {
     newStatus: ReportStatus;
+}
+export interface RecentReview {
+  id: number;
+  username: string;
+  userProfileImageUrl: string | null;
+  gameName: string;
+  gameId: number;
+  rating: number;
+  createdAt: string;
 }

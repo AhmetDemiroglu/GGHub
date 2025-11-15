@@ -48,6 +48,19 @@ namespace GGHub.WebAPI.Controllers
             var stats = await _adminService.GetDashboardStatisticsAsync();
             return Ok(stats);
         }
+        [HttpGet("recent-users")]
+        public async Task<IActionResult> GetRecentUsers(int count = 5)
+        {
+            var users = await _adminService.GetRecentUsersAsync(count > 10 ? 10 : count); 
+            return Ok(users);
+        }
+
+        [HttpGet("recent-reviews")]
+        public async Task<IActionResult> GetRecentReviews(int count = 5)
+        {
+            var reviews = await _adminService.GetRecentReviewsAsync(count > 10 ? 10 : count);
+            return Ok(reviews);
+        }
         [HttpGet("users")]
         public async Task<IActionResult> GetUsers([FromQuery] UserFilterParams filterParams)
         {

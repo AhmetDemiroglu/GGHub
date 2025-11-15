@@ -1,6 +1,16 @@
 import { axiosInstance } from "@core/lib/axios";
 import type { PaginatedResponse } from "@/models/system/api.model";
-import type { DashboardStats, UserFilterParams, AdminUserSummary, AdminUserDetails, BanUserRequest, ChangeRoleRequest, AdminReport, UpdateReportStatusRequest } from "@/models/admin/admin.model";
+import type {
+    DashboardStats,
+    UserFilterParams,
+    AdminUserSummary,
+    AdminUserDetails,
+    BanUserRequest,
+    ChangeRoleRequest,
+    AdminReport,
+    UpdateReportStatusRequest,
+    RecentReview,
+} from "@/models/admin/admin.model";
 export const getDashboardStats = () => {
     return axiosInstance.get<DashboardStats>("/admin/dashboard-stats");
 };
@@ -26,4 +36,14 @@ export const unbanUser = (userId: number) => {
 };
 export const changeUserRole = (userId: number, data: ChangeRoleRequest) => {
     return axiosInstance.put(`/admin/users/${userId}/role`, data);
+};
+export const getRecentUsers = (count: number = 5) => {
+    return axiosInstance.get<AdminUserSummary[]>("/admin/recent-users", {
+        params: { count },
+    });
+};
+export const getRecentReviews = (count: number = 5) => {
+    return axiosInstance.get<RecentReview[]>("/admin/recent-reviews", {
+        params: { count },
+    });
 };

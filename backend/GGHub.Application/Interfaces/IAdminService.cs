@@ -14,5 +14,7 @@ namespace GGHub.Application.Interfaces
         Task<bool> UnbanUserAsync(int userId, int adminUserId);
         Task<bool> ChangeUserRoleAsync(int userId, ChangeRoleRequestDto dto, int adminUserId);
         Task<DashboardStatsDto> GetDashboardStatisticsAsync();
+        Task<IEnumerable<AdminUserSummaryDto>> GetRecentUsersAsync(int count = 5);
+        Task<IEnumerable<RecentReviewDto>> GetRecentReviewsAsync(int count = 5);
     }
 }

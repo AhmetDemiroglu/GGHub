@@ -112,7 +112,8 @@ namespace GGHub.Infrastructure.Services
                 Role = u.Role,
                 IsBanned = u.IsBanned,
                 IsEmailVerified = u.IsEmailVerified,
-                CreatedAt = u.CreatedAt
+                CreatedAt = u.CreatedAt,
+                ProfileImageUrl = u.ProfileImageUrl
             }).ToListAsync();
 
             return new PaginatedResult<AdminUserSummaryDto>
@@ -233,6 +234,50 @@ namespace GGHub.Infrastructure.Services
             };
 
             return stats;
+        }
+        public async Task<IEnumerable<AdminUserSummaryDto>> GetRecentUsersAsync(int count = 5)
+        {
+            var users = await _context.Users
+                .AsNoTracking()
+                .OrderByDescending(u => u.CreatedAt)
+                .Take(count)
+                .Select(u => new AdminUserSummaryDto
+                {
+                    Id = u.Id,
+                    Username = u.Username,
+                    Email = u.Email,
+                    Role = u.Role,
+                    IsBanned = u.IsBanned,
+                    IsEmailVerified = u.IsEmailVerified,
+                    CreatedAt = u.CreatedAt,
+                    ProfileImageUrl = u.ProfileImageUrl
+                })
+                .ToListAsync();
+
+            return users;
+        }
+
+        public async Task<IEnumerable<RecentReviewDto>> GetRecentReviewsAsync(int count = 5)
+        {
+            var reviews = await _context.Reviews
+                .AsNoTracking()
+                .Include(r => r.User) 
+                .Include(r => r.Game) 
+                .OrderByDescending(r => r.CreatedAt)
+                .Take(count)
+                .Select(r => new RecentReviewDto
+                {
+                    Id = r.Id,
+                    Username = r.User.Username,
+                    UserProfileImageUrl = r.User.ProfileImageUrl,
+                    GameName = r.Game.Name,
+                    GameId = r.GameId,
+                    Rating = r.Rating,
+                    CreatedAt = r.CreatedAt
+                })
+                .ToListAsync();
+
+            return reviews;
         }
     }
 }

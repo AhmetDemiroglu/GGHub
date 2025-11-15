@@ -22,7 +22,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             return;
         }
         if (user?.role !== "Admin") {
-            router.replace("/discover");
+            router.replace("/");
             return;
         }
     }, [isLoading, isAuthenticated, user, router]);

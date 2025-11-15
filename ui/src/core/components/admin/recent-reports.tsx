@@ -27,7 +27,7 @@ interface RecentReportsProps {
 
 export const RecentReports = ({ reports }: RecentReportsProps) => {
     return (
-        <Card>
+        <Card className="h-full flex flex-col">
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                     <CardTitle>Bekleyen Raporlar</CardTitle>
@@ -37,7 +37,7 @@ export const RecentReports = ({ reports }: RecentReportsProps) => {
                     <Link href="/reports">Tümünü Gör</Link>
                 </Button>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-1">
                 <Table>
                     <TableHeader>
                         <TableRow>
