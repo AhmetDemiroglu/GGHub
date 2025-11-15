@@ -1,6 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { AuthContext } from "@core/contexts/auth-context";
-import { toast } from "sonner";
 
 export const axiosInstance = axios.create({
     baseURL: `${process.env.NEXT_PUBLIC_API_BASE_URL}/api`,

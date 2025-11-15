@@ -10,6 +10,7 @@ interface DecodedToken {
     nameid: string;
     unique_name: string;
     role: "User" | "Admin";
+    picture: string;
 }
 
 interface AuthContextValue {
@@ -61,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             id: decodedToken.nameid,
             username: decodedToken.unique_name,
             role: decodedToken.role,
+            profileImageUrl: decodedToken.picture || null,
         });
     };
 

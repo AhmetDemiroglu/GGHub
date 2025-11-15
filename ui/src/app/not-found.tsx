@@ -14,7 +14,6 @@ export default function NotFound() {
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.05),_transparent_50%),radial-gradient(circle_at_bottom,_rgba(139,92,246,0.05),_transparent_60%)]" />
             <div className="pointer-events-none absolute inset-0 opacity-[0.035] bg-[linear-gradient(120deg,#fff_1px,transparent_1px)] bg-[size:180px_180px] animate-drift" />
 
-            {/* serpiştirilmiş ikonlar */}
             <div className="pointer-events-none absolute top-20 left-10 animate-float">
                 <Gamepad2 className="h-10 w-10 text-cyan-300/35" />
             </div>
@@ -30,25 +29,17 @@ export default function NotFound() {
 
             {/* içerik alanı */}
             <div className="relative z-10 w-full max-w-5xl flex flex-col gap-10 md:flex-row md:items-center md:justify-between">
-                {/* SOL: 404 + dünya + büyüteç */}
                 <div className="relative flex-1 flex items-center justify-center md:justify-start">
-                    {/* dünya / radar → 404'ün solunda, çakışmayacak kadar uzak */}
                     <div className="absolute -left-32 top-1/2 -translate-y-1/2 h-56 w-56 rounded-full border border-cyan-400/25 bg-cyan-500/0 backdrop-blur-[1px] animate-globe z-10">
-                        {/* iç halka */}
                         <div className="absolute inset-6 rounded-full border border-cyan-200/10" />
-                        {/* yatay enlem */}
                         <div className="absolute top-1/2 left-5 right-5 -translate-y-1/2 border-t border-cyan-200/20 rounded-full" />
-                        {/* dikey boylam */}
                         <div className="absolute inset-y-6 left-1/2 -translate-x-1/2 w-[1px] bg-cyan-200/15 rounded-full" />
-                        {/* eğik hat */}
                         <div className="absolute inset-[26%] border-t border-cyan-200/10 rounded-full rotate-12" />
                     </div>
 
-                    {/* büyüteç → her şeyin üstünde */}
                     <div className="pointer-events-none absolute -left-32 top-1/2 -translate-y-1/2 h-56 w-56 z-50">
                         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 animate-search-sweep">
                             <div className="h-10 w-10 rounded-full flex items-center justify-center">
-                                {/* borderless büyüteç */}
                                 <Search className="h-7 w-7 text-cyan-100 drop-shadow-[0_0_16px_rgba(34,211,238,0.45)]" />
                             </div>
                         </div>
@@ -65,7 +56,6 @@ export default function NotFound() {
                     </div>
                 </div>
 
-                {/* SAĞ: metin + butonlar + hızlı rotalar */}
                 <div className="flex-1 max-w-xl space-y-6">
                     <div className="space-y-2">
                         <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">Aradığın sayfa dijital evrende bulunamadı.</h2>
@@ -136,7 +126,6 @@ export default function NotFound() {
                 </div>
             </div>
 
-            {/* animasyonlar */}
             <style jsx>{`
                 @keyframes drift {
                     0% {

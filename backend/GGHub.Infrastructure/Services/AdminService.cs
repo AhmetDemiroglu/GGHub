@@ -217,21 +217,19 @@ namespace GGHub.Infrastructure.Services
 
         public async Task<DashboardStatsDto> GetDashboardStatisticsAsync()
         {
-            var totalUsersTask = _context.Users.CountAsync();
-            var bannedUsersTask = _context.Users.CountAsync(u => u.IsBanned);
-            var pendingReportsTask = _context.ContentReports.CountAsync(r => r.Status == Core.Enums.ReportStatus.Open);
-            var totalListsTask = _context.UserLists.CountAsync();
-            var totalReviewsTask = _context.Reviews.CountAsync();
-
-            await Task.WhenAll(totalUsersTask, bannedUsersTask, pendingReportsTask, totalListsTask, totalReviewsTask);
+            var totalUsers = await _context.Users.CountAsync();
+            var bannedUsers = await _context.Users.CountAsync(u => u.IsBanned);
+            var pendingReports = await _context.ContentReports.CountAsync(r => r.Status == Core.Enums.ReportStatus.Open);
+            var totalLists = await _context.UserLists.CountAsync();
+            var totalReviews = await _context.Reviews.CountAsync();
 
             var stats = new DashboardStatsDto
             {
-                TotalUsers = totalUsersTask.Result,
-                BannedUsers = bannedUsersTask.Result,
-                PendingReports = pendingReportsTask.Result,
-                TotalLists = totalListsTask.Result,
-                TotalReviews = totalReviewsTask.Result
+                TotalUsers = totalUsers,
+                BannedUsers = bannedUsers,
+                PendingReports = pendingReports,
+                TotalLists = totalLists,
+                TotalReviews = totalReviews
             };
 
             return stats;

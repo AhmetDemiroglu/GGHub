@@ -18,6 +18,7 @@ export interface AuthenticatedUser {
     id: string;
     username: string;
     role: "User" | "Admin";
+    profileImageUrl: string | null;
 }
 
 export interface PasswordResetRequest {
@@ -30,6 +31,6 @@ export interface PasswordReset {
 }
 
 export interface ChangePassword {
-  currentPassword: string;
-  newPassword: string;
+    currentPassword: string;
+    newPassword: string;
 }

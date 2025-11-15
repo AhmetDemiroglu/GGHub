@@ -15,7 +15,6 @@ import {
     Star,
     Image as ImageIcon,
     Rocket,
-    Smartphone,
 } from "lucide-react";
 import logoSrc from "@core/assets/logo.png";
 import Image from "next/image";
