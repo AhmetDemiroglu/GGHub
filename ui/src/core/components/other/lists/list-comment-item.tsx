@@ -14,6 +14,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Textarea } from "@core/components/ui/textarea";
 import { toast } from "sonner";
+import { getImageUrl } from "@/core/lib/get-image-url";
 
 dayjs.extend(relativeTime);
 dayjs.locale("tr");
@@ -54,17 +55,6 @@ export function ListCommentItem({
 
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(comment.content);
-
-    const getImageUrl = (path: string | null | undefined): string | undefined => {
-        if (!path) {
-            return undefined;
-        }
-        if (path.startsWith("http://") || path.startsWith("https://")) {
-            return path;
-        }
-        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-        return `${API_BASE}${path}`;
-    };
 
     const avatarSrc = getImageUrl(comment.owner.profileImageUrl);
 

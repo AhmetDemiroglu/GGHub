@@ -14,17 +14,7 @@ import dayjs from "dayjs";
 import { Send, AlertTriangle } from "lucide-react";
 import { UnauthorizedAccess } from "@core/components/other/unauthorized-access";
 import { AxiosError } from "axios";
-
-const getImageUrl = (path: string | null | undefined): string | undefined => {
-    if (!path) {
-        return undefined;
-    }
-    if (path.startsWith("http://") || path.startsWith("https://")) {
-        return path;
-    }
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-    return `${API_BASE}${path}`;
-};
+import { getImageUrl } from "@/core/lib/get-image-url";
 
 export default function MessageThreadPage() {
     const params = useParams();

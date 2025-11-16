@@ -91,6 +91,7 @@ builder.Services.AddScoped<IProfileService, ProfileService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<ISocialService, SocialService>();
 builder.Services.AddScoped<IEmailService, ResendEmailService>();

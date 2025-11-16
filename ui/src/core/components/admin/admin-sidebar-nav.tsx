@@ -9,17 +9,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@core/components/ui/avatar"
 import type { AuthenticatedUser } from "@/models/auth/auth.model";
 import Image from "next/image";
 import logoSrc2 from "@core/assets/logo2.png";
-
-const getImageUrl = (path: string | null | undefined): string | undefined => {
-    if (!path) {
-        return undefined;
-    }
-    if (path.startsWith("http://") || path.startsWith("https://")) {
-        return path;
-    }
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-    return `${API_BASE}${path}`;
-};
+import { getImageUrl } from "@/core/lib/get-image-url";
 
 const navItems = [
     {

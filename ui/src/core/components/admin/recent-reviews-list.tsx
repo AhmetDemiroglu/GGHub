@@ -6,17 +6,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@core/components/ui/avatar"
 import { Badge } from "@core/components/ui/badge";
 import { Star } from "lucide-react";
 import Link from "next/link";
-
-const getImageUrl = (path: string | null | undefined): string | undefined => {
-    if (!path) {
-        return undefined;
-    }
-    if (path.startsWith("http://") || path.startsWith("https://")) {
-        return path;
-    }
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-    return `${API_BASE}${path}`;
-};
+import { getImageUrl } from "@/core/lib/get-image-url";
 
 interface RecentReviewsListProps {
     reviews: RecentReview[];

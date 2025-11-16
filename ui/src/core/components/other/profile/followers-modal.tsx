@@ -11,6 +11,7 @@ import { Button } from "@/core/components/ui/button";
 import { toast } from "sonner";
 import { useAuth } from "@core/hooks/use-auth";
 import Link from "next/link";
+import { getImageUrl } from "@/core/lib/get-image-url";
 
 interface User {
     id: number;
@@ -32,17 +33,6 @@ export function FollowersModal({ isOpen, onClose, username, defaultTab = "follow
     const router = useRouter();
     const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState(defaultTab);
-
-    const getImageUrl = (path: string | null | undefined): string | undefined => {
-        if (!path) {
-            return undefined;
-        }
-        if (path.startsWith("http://") || path.startsWith("https://")) {
-            return path;
-        }
-        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-        return `${API_BASE}${path}`;
-    };
 
     const { user: currentUser } = useAuth();
 

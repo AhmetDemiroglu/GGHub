@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { searchAll } from "@/api/search/search.api";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { getImageUrl } from "@/core/lib/get-image-url";
 
 export function SearchBar() {
     const [query, setQuery] = useState("");
@@ -31,17 +32,6 @@ export function SearchBar() {
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
-
-    const getImageUrl = (path: string | null | undefined): string | undefined => {
-        if (!path) {
-            return undefined;
-        }
-        if (path.startsWith("http://") || path.startsWith("https://")) {
-            return path;
-        }
-        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-        return `${API_BASE}${path}`;
-    };
 
     return (
         <div ref={searchRef} className="relative w-full max-w-lg lg:max-w-2xl">

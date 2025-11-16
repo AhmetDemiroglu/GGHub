@@ -13,6 +13,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/tr";
+import { getImageUrl } from "@/core/lib/get-image-url";
 
 dayjs.extend(relativeTime);
 dayjs.locale("tr");
@@ -29,21 +30,8 @@ export function MessageDialog({ open, onOpenChange, recipientUsername, recipient
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const { user } = useAuth();
     const queryClient = useQueryClient();
-
-    const getImageUrl = (path: string | null | undefined): string | undefined => {
-        if (!path) {
-            return undefined;
-        }
-        if (path.startsWith("http://") || path.startsWith("https://")) {
-            return path;
-        }
-        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-        return `${API_BASE}${path}`;
-    };
-
     const avatarSrc = getImageUrl(recipientProfileImageUrl);
 
-    // Messages query
     const { data: messages, isLoading } = useQuery<MessageDto[]>({
         queryKey: ["message-dialog", recipientUsername],
         queryFn: () => getMessageThread(recipientUsername),

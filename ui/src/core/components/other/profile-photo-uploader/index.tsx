@@ -12,6 +12,7 @@ import { Button } from "@/core/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
 import { Upload } from "lucide-react";
 import { Slider } from "@/core/components/ui/slider";
+import { getImageUrl } from "@/core/lib/get-image-url";
 
 interface ProfilePhotoUploaderProps {
     isOpen: boolean;
@@ -29,6 +30,8 @@ export function ProfilePhotoUploader({ isOpen, onClose, currentImageUrl, usernam
     const [zoom, setZoom] = useState(1);
     const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
     const [croppedFile, setCroppedFile] = useState<File | null>(null);
+
+    const avatarSrc = croppedFile ? URL.createObjectURL(croppedFile) : getImageUrl(currentImageUrl ?? undefined);
 
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -88,7 +91,12 @@ export function ProfilePhotoUploader({ isOpen, onClose, currentImageUrl, usernam
     const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
     return (
-        <Dialog open={isOpen} onOpenChange={resetAndClose}>
+        <Dialog
+            open={isOpen}
+            onOpenChange={(open) => {
+                if (!open) resetAndClose();
+            }}
+        >
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Profil Fotoğrafını Güncelle</DialogTitle>
@@ -103,7 +111,7 @@ export function ProfilePhotoUploader({ isOpen, onClose, currentImageUrl, usernam
                             </>
                         ) : (
                             <Avatar className="h-full w-full">
-                                <AvatarImage src={croppedFile ? URL.createObjectURL(croppedFile) : currentImageUrl ? `${API_BASE}${currentImageUrl}` : undefined} alt={username} />
+                                <AvatarImage src={avatarSrc} alt={username} />
                                 <AvatarFallback className="text-6xl">{username.charAt(0).toUpperCase()}</AvatarFallback>
                             </Avatar>
                         )}

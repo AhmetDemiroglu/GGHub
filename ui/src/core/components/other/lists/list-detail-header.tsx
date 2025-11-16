@@ -7,7 +7,7 @@ import { Star, Users, Tag } from "lucide-react";
 import Link from "next/link";
 import { ListRating } from "./list-rating";
 import React from "react";
-import { Separator } from "../../ui/separator";
+import { getImageUrl } from "@/core/lib/get-image-url";
 
 const getCategoryLabel = (category: ListCategory): string => {
     const label = ListCategory[category];
@@ -24,17 +24,6 @@ interface ListDetailHeaderProps {
 }
 
 export function ListDetailHeader({ list, actions, myRating, onSubmitRating, isRatingPending, currentUserId }: ListDetailHeaderProps) {
-    const getImageUrl = (path: string | null | undefined): string | undefined => {
-        if (!path) {
-            return undefined;
-        }
-        if (path.startsWith("http://") || path.startsWith("https://")) {
-            return path;
-        }
-        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-        return `${API_BASE}${path}`;
-    };
-
     const avatarSrc = getImageUrl(list.owner.profileImageUrl);
 
     return (

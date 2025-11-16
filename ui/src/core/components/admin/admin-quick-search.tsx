@@ -9,16 +9,8 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { getUsers } from "@/api/admin/admin.api";
 import type { AdminUserSummary } from "@/models/admin/admin.model";
-const getImageUrl = (path: string | null | undefined): string | undefined => {
-    if (!path) {
-        return undefined;
-    }
-    if (path.startsWith("http://") || path.startsWith("https://")) {
-        return path;
-    }
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-    return `${API_BASE}${path}`;
-};
+import { getImageUrl } from "@/core/lib/get-image-url";
+
 export const AdminQuickSearch = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState<AdminUserSummary[]>([]);

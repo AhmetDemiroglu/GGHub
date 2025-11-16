@@ -229,7 +229,7 @@ export default function HomePage() {
                             className="mt-4 rounded-lg border border-slate-200 bg-slate-50/80 p-3 text-xs text-slate-500
                             dark:border-zinc-800 dark:bg-zinc-950/60 dark:text-zinc-400"
                         >
-                            Geri bildirimlerin doğrultusunda sıralama ve kapsam güncellenebilir.
+                            Geri bildirimleriniz doğrultusunda sıralama ve kapsam güncellenebilir.
                         </div>
                     </div>
                 </section>

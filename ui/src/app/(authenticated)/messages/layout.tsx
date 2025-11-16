@@ -19,20 +19,10 @@ import { useDebounce } from "@core/hooks/use-debounce";
 import Link from "next/link";
 import { useAuth } from "@core/hooks/use-auth";
 import { UnauthorizedAccess } from "@core/components/other/unauthorized-access";
+import { getImageUrl } from "@/core/lib/get-image-url";
 
 dayjs.extend(relativeTime);
 dayjs.locale("tr");
-
-const getImageUrl = (path: string | null | undefined): string | undefined => {
-    if (!path) {
-        return undefined;
-    }
-    if (path.startsWith("http://") || path.startsWith("https://")) {
-        return path;
-    }
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-    return `${API_BASE}${path}`;
-};
 
 export default function MessagesLayout({ children }: { children: React.ReactNode }) {
     const { user, isLoading: isAuthLoading } = useAuth();

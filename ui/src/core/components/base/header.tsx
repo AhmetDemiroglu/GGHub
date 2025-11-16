@@ -24,6 +24,7 @@ import { getUnreadMessageCount } from "@/api/messages/messages.api";
 import { ConversationDto } from "@/models/messages/message.model";
 import "dayjs/locale/tr";
 import { AxiosError } from "axios";
+import { getImageUrl } from "@/core/lib/get-image-url";
 
 dayjs.extend(relativeTime);
 dayjs.locale("tr");
@@ -111,17 +112,6 @@ export function Header() {
         queryFn: getConversations,
         enabled: isAuthenticated && !!user && messagesOpen,
     });
-
-    const getImageUrl = (path: string | null | undefined): string | undefined => {
-        if (!path) {
-            return undefined;
-        }
-        if (path.startsWith("http://") || path.startsWith("https://")) {
-            return path;
-        }
-        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-        return `${API_BASE}${path}`;
-    };
 
     const getNotificationIcon = (type: NotificationType) => {
         switch (type) {

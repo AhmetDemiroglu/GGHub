@@ -13,6 +13,7 @@ import { forwardRef, useImperativeHandle } from "react";
 import { useAuth } from "@core/hooks/use-auth";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Profile } from "@/models/profile/profile.model";
+import { getImageUrl } from "@/core/lib/get-image-url";
 
 const commentFormSchema = z.object({
     content: z.string().min(1, { message: "Yorum boş olamaz." }).max(1000, { message: "Yorum en fazla 1000 karakter olabilir." }),
@@ -49,16 +50,6 @@ export const ListCommentForm = forwardRef<{ reset: () => void }, ListCommentForm
             content: values.content,
             parentCommentId: parentCommentId,
         });
-    };
-    const getImageUrl = (path: string | null | undefined): string | undefined => {
-        if (!path) {
-            return undefined;
-        }
-        if (path.startsWith("http://") || path.startsWith("https://")) {
-            return path;
-        }
-        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-        return `${API_BASE}${path}`;
     };
 
     const avatarSrc = getImageUrl(myProfile?.profileImageUrl);

@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/tr";
+import { getImageUrl } from "@/core/lib/get-image-url";
 
 dayjs.extend(relativeTime);
 dayjs.locale("tr");
@@ -21,16 +22,6 @@ interface BlockedUsersDialogProps {
 
 export function BlockedUsersDialog({ isOpen, onClose }: BlockedUsersDialogProps) {
     const queryClient = useQueryClient();
-    const getImageUrl = (path: string | null | undefined): string | undefined => {
-        if (!path) {
-            return undefined;
-        }
-        if (path.startsWith("http://") || path.startsWith("https://")) {
-            return path;
-        }
-        const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-        return `${API_BASE}${path}`;
-    };
 
     const { data: blockedUsers, isLoading } = useQuery({
         queryKey: ["blocked-users"],

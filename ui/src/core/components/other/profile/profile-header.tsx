@@ -22,6 +22,7 @@ import Link from "next/link";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@core/components/ui/tooltip";
 import { BlockedUsersDialog } from "@core/components/other/blocked-users-dialog";
 import { useAuth } from "@core/hooks/use-auth";
+import { getImageUrl } from "@/core/lib/get-image-url";
 
 dayjs.locale("tr");
 
@@ -29,17 +30,6 @@ interface ProfileHeaderProps {
     profile: PublicProfile;
     isOwnProfile?: boolean;
 }
-
-const getImageUrl = (path: string | null | undefined): string | undefined => {
-    if (!path) {
-        return undefined;
-    }
-    if (path.startsWith("http://") || path.startsWith("https://")) {
-        return path;
-    }
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-    return `${API_BASE}${path}`;
-};
 
 export default function ProfileHeader({ profile, isOwnProfile = false }: ProfileHeaderProps) {
     const { user } = useAuth();
