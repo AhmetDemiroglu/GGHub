@@ -5,7 +5,7 @@ namespace GGHub.Core.Entities
     public class ContentReport
     {
         public int Id { get; set; }
-        public string EntityType { get; set; } = "Review"; 
+        public string EntityType { get; set; }
         public int EntityId { get; set; } 
         public int ReporterUserId { get; set; } 
         public User ReporterUser { get; set; }

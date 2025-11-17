@@ -8,5 +8,7 @@
         public string? StatusFilter { get; set; } = "All";
         public string SortBy { get; set; } = "CreatedAt";
         public string SortDirection { get; set; } = "desc";
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
     }
 }

@@ -131,6 +131,34 @@ namespace GGHub.WebAPI.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        [HttpGet("users/{userId}/lists")]
+        public async Task<IActionResult> GetListsForUser(int userId)
+        {
+            var lists = await _adminService.GetListsForUserAsync(userId);
+            return Ok(lists);
+        }
+
+        [HttpGet("users/{userId}/reviews")]
+        public async Task<IActionResult> GetReviewsForUser(int userId)
+        {
+            var reviews = await _adminService.GetReviewsForUserAsync(userId);
+            return Ok(reviews);
+        }
+
+        [HttpGet("users/{userId}/comments")]
+        public async Task<IActionResult> GetCommentsForUser(int userId)
+        {
+            var comments = await _adminService.GetCommentsForUserAsync(userId);
+            return Ok(comments);
+        }
+
+        [HttpGet("users/{userId}/reports-made")]
+        public async Task<IActionResult> GetReportsMadeByUser(int userId)
+        {
+            var reports = await _adminService.GetReportsMadeByUserAsync(userId);
+            return Ok(reports);
+        }
         private int GetCurrentUserId()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);

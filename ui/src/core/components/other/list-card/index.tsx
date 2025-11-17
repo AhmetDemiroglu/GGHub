@@ -5,7 +5,7 @@ import { Badge } from "@core/components/ui/badge";
 import { Separator } from "@core/components/ui/separator";
 import { Globe, Lock, Users, Tag, Star, List as ListIcon, Users as FollowersIcon } from "lucide-react";
 import React from "react";
-import placeHolder2 from "@core/assets/placeholder2.png"
+import placeHolder2 from "@core/assets/placeholder2.png";
 
 interface ListCardData {
     id: number;
@@ -144,6 +144,6 @@ export function ListCard({ list, footer }: ListCardProps) {
                     {footer}
                 </div>
             </div>
-        </div> // Ana div'in kapanışı
+        </div>
     );
 }

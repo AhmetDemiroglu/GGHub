@@ -1,9 +1,16 @@
 "use client";
 
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@core/hooks/use-auth";
 import { AdminSidebarNav } from "@/core/components/admin/admin-sidebar-nav";
+import { Menu } from "lucide-react";
+import { Button } from "@/core/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/core/components/ui/sheet";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import logoSrc2 from "@core/assets/logo2.png";
+import Link from "next/link";
+import Image from "next/image";
 
 const FullPageLoader = () => (
     <div className="flex h-screen w-full items-center justify-center">
@@ -14,6 +21,7 @@ const FullPageLoader = () => (
 export default function AdminLayout({ children }: { children: ReactNode }) {
     const router = useRouter();
     const { user, isAuthenticated, isLoading } = useAuth();
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
 
     useEffect(() => {
         if (isLoading) return;
@@ -22,7 +30,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             return;
         }
         if (user?.role !== "Admin") {
-            router.replace("/");
+            router.replace("/discover");
             return;
         }
     }, [isLoading, isAuthenticated, user, router]);
@@ -32,14 +40,42 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     }
 
     return (
-        <div className="flex-1 items-start md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10 h-screen">
-            <aside className="fixed top-0 z-30 h-screen w-full shrink-0 overflow-y-auto border-r md:sticky md:block">
-                <div className="h-full p-4 lg:p-6">
-                    <AdminSidebarNav user={user} />
-                </div>
-            </aside>
+        <div className="flex h-screen flex-col overflow-hidden">
+            <header className="sticky top-0 z-40 w-full border-b bg-background px-4 md:hidden">
+                <div className="flex h-16 items-center justify-between">
+                    <Link href="/dashboard" className="flex items-center" onClick={() => setIsSheetOpen(false)}>
+                        <Image src={logoSrc2} alt="GGHub Logo" width={80} className="transition-transform group-hover:scale-110" />
+                    </Link>
 
-            <main className="relative py-6 lg:py-8 pr-9 overflow-y-auto h-screen">{children}</main>
+                    <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                        <SheetTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                                <Menu className="h-5 w-5" />
+                                <span className="sr-only">Menüyü aç</span>
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent side="left" className="w-[240px] p-0">
+                            <VisuallyHidden>
+                                <SheetTitle>Ana Menü</SheetTitle>
+                            </VisuallyHidden>
+                            <div className="h-full px-6 py-6 lg:py-8">
+                                <AdminSidebarNav user={user} onLinkClick={() => setIsSheetOpen(false)} />
+                            </div>
+                        </SheetContent>
+                    </Sheet>
+                </div>
+            </header>
+
+            <div className="flex flex-1 overflow-hidden">
+                <aside className="hidden w-[240px] flex-col border-r bg-background md:flex">
+                    <div className="flex-1 overflow-y-auto">
+                        <div className="h-full px-6 py-6 lg:py-8">
+                            <AdminSidebarNav user={user} />
+                        </div>
+                    </div>
+                </aside>
+                <main className="flex-1 overflow-y-auto">{children}</main>
+            </div>
         </div>
     );
 }

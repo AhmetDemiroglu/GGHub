@@ -7,8 +7,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar
 import { Button } from "@/core/components/ui/button";
 import { Badge } from "@/core/components/ui/badge";
 import { Separator } from "@/core/components/ui/separator";
-import { Calendar, Mail, Phone, UserPlus, UserMinus, Settings, MessageSquareMore, MessageSquareLock, Ban, ShieldOff } from "lucide-react";
+import { Calendar, Mail, Phone, UserPlus, UserMinus, Settings, MessageSquareMore, MessageSquareLock, Ban, ShieldOff, Flag } from "lucide-react";
 import { useState, useEffect } from "react";
+import { ReportDialog } from "@core/components/base/report-dialog";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { followUser, unfollowUser, blockUser, unblockUser } from "@/api/social/social.api";
 import { toast } from "sonner";
@@ -39,7 +40,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
     const [followerCount, setFollowerCount] = useState(profile.followerCount || 0);
     const queryClient = useQueryClient();
     const [messageDialogOpen, setMessageDialogOpen] = useState(false);
-
+    const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
     const avatarSrc = getImageUrl(profile.profileImageUrl);
 
     useEffect(() => {
@@ -199,7 +200,6 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
         );
     }
 
-    // Normal profil görünümü
     return (
         <div className="w-full rounded-lg overflow-hidden bg-card text-card-foreground shadow-md">
             <div className="h-48 md:h-56 w-full relative">
@@ -306,6 +306,17 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
+                                {user && (
+                                    <Button
+                                        variant="outline"
+                                        className="cursor-pointer text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                        onClick={() => setIsReportDialogOpen(true)}
+                                        title="Kullanıcıyı Raporla"
+                                    >
+                                        <Flag className="h-4 w-4" />
+                                        <span className="sm:inline ml-1">Raporla</span>
+                                    </Button>
+                                )}
                             </>
                         )}
                     </div>
@@ -398,6 +409,14 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
             )}
 
             {isOwnProfile && <BlockedUsersDialog isOpen={blockedUsersDialogOpen} onClose={() => setBlockedUsersDialogOpen(false)} />}
+            {!isOwnProfile && user && (
+                <ReportDialog
+                    isOpen={isReportDialogOpen}
+                    onOpenChange={setIsReportDialogOpen}
+                    entityType="User"
+                    entityId={profile.id}
+                />
+            )}
         </div>
     );
 }

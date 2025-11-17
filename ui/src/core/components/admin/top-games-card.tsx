@@ -14,7 +14,6 @@ interface TopGamesCardProps {
 export const TopGamesCard = ({ games }: TopGamesCardProps) => {
     return (
         <Card className="h-full flex flex-col">
-            {" "}
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <Gamepad2 className="h-5 w-5" />

@@ -44,11 +44,9 @@ export function ListCommentSection({ listId }: ListCommentSectionProps) {
 
     const totalComments = commentsResult?.totalCount ?? 0;
 
-    // Cache'teki tüm sayfaları birleştir
     const displayedComments = useMemo(() => {
         const allComments: UserListComment[] = [];
 
-        // Sayfa 1'den currentPage'e kadar tüm cache'leri topla
         for (let page = 1; page <= currentPage; page++) {
             const cachedPage = queryClient.getQueryData<PaginatedResponse<UserListComment>>(["list-comments", listId, page]);
             if (cachedPage?.items) {

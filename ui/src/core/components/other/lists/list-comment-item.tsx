@@ -9,12 +9,13 @@ import { cn } from "@core/lib/utils";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/tr";
-import { ThumbsUp, ThumbsDown, MessageSquare, Trash2, Pencil, X, Check } from "lucide-react";
+import { ThumbsUp, ThumbsDown, MessageSquare, Trash2, Pencil, X, Check, Flag } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { Textarea } from "@core/components/ui/textarea";
 import { toast } from "sonner";
 import { getImageUrl } from "@/core/lib/get-image-url";
+import { ReportDialog } from "@core/components/base/report-dialog";
 
 dayjs.extend(relativeTime);
 dayjs.locale("tr");
@@ -55,6 +56,7 @@ export function ListCommentItem({
 
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(comment.content);
+    const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
 
     const avatarSrc = getImageUrl(comment.owner.profileImageUrl);
 
@@ -224,6 +226,19 @@ export function ListCommentItem({
                         </>
                     )}
 
+                    {/* Raporla Butonu */}
+                    {user && !isOwner && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-auto px-2 py-1 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+                            onClick={() => setIsReportDialogOpen(true)}
+                            disabled={isEditing || isDeleting}
+                        >
+                            <Flag className="mr-1 h-3 w-3" /> Raporla
+                        </Button>
+                    )}
+
                     {comment.updatedAt && <span className="text-xs italic">(düzenlendi)</span>}
                 </div>
 
@@ -276,6 +291,7 @@ export function ListCommentItem({
                     </div>
                 )}
             </div>
+            <ReportDialog isOpen={isReportDialogOpen} onOpenChange={setIsReportDialogOpen} entityType="Comment" entityId={comment.id} />
         </div>
     );
 }

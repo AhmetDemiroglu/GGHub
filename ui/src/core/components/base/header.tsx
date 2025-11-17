@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import type { Profile } from "@/models/profile/profile.model";
 import { getMyProfile } from "@/api/profile/profile.api";
 import { SearchBar } from "@/core/components/other/search/search-bar";
-import { Bell, Mail, LogIn, LogOut, UserPlus, List, Star, Settings } from "lucide-react";
+import { Bell, Mail, LogIn, LogOut, UserPlus, List, Star, Settings, FileText, LayoutDashboard } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getNotifications, getUnreadNotificationCount, markAllNotificationsAsRead } from "@/api/notifications/notifications.api";
 import { NotificationDto, NotificationType } from "@/models/notifications/notification.model";
@@ -25,6 +25,7 @@ import { ConversationDto } from "@/models/messages/message.model";
 import "dayjs/locale/tr";
 import { AxiosError } from "axios";
 import { getImageUrl } from "@/core/lib/get-image-url";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/core/components/ui/tooltip";
 
 dayjs.extend(relativeTime);
 dayjs.locale("tr");
@@ -150,21 +151,29 @@ export function Header() {
                 <div className="flex items-center ml-auto mr-1">
                     <SearchBar />
 
-                    {/* Kullanıcı giriş yapmış mı? */}
                     {isAuthenticated && user ? (
                         <div className="flex items-center gap-2 ml-4">
                             {/* Notifications Bell */}
                             <Popover open={notificationOpen} onOpenChange={handleNotificationOpen}>
-                                <PopoverTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="relative cursor-pointer">
-                                        <Bell className="h-5 w-5" />
-                                        {unreadNotifCount && unreadNotifCount.count > 0 && (
-                                            <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
-                                                {unreadNotifCount.count}
-                                            </Badge>
-                                        )}
-                                    </Button>
-                                </PopoverTrigger>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <PopoverTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="relative cursor-pointer">
+                                                    <Bell className="h-5 w-5" />
+                                                    {unreadNotifCount && unreadNotifCount.count > 0 && (
+                                                        <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
+                                                            {unreadNotifCount.count}
+                                                        </Badge>
+                                                    )}
+                                                </Button>
+                                            </PopoverTrigger>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>Bildirimler</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
                                 <PopoverContent className="w-80 p-0" align="end">
                                     <div className="border-b p-3">
                                         <h3 className="font-semibold">Bildirimler</h3>
@@ -208,19 +217,27 @@ export function Header() {
                                     </div>
                                 </PopoverContent>
                             </Popover>
-
                             {/* Messages */}
                             <Popover open={messagesOpen} onOpenChange={setMessagesOpen}>
-                                <PopoverTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="relative cursor-pointer">
-                                        <Mail className="h-5 w-5" />
-                                        {unreadMsgCount && unreadMsgCount.count > 0 && (
-                                            <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
-                                                {unreadMsgCount.count}
-                                            </Badge>
-                                        )}
-                                    </Button>
-                                </PopoverTrigger>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <PopoverTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="relative cursor-pointer">
+                                                    <Mail className="h-5 w-5" />
+                                                    {unreadMsgCount && unreadMsgCount.count > 0 && (
+                                                        <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
+                                                            {unreadMsgCount.count}
+                                                        </Badge>
+                                                    )}
+                                                </Button>
+                                            </PopoverTrigger>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>Mesajlar</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
                                 <PopoverContent className="w-80 p-0" align="end">
                                     <div className="border-b p-3">
                                         <h3 className="font-semibold">Mesajlar</h3>
@@ -272,7 +289,22 @@ export function Header() {
                                     </div>
                                 </PopoverContent>
                             </Popover>
-
+                            {user.role === "Admin" && (
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="relative cursor-pointer" asChild>
+                                                <Link href="/dashboard">
+                                                    <LayoutDashboard className="h-5 w-5" />
+                                                </Link>
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>Admin Paneli</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            )}
                             {/* Profile Avatar */}
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -296,6 +328,12 @@ export function Header() {
                                             <span>Profil Yönetimi</span>
                                         </Link>
                                     </DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/my-reports" className="cursor-pointer flex items-center">
+                                            <FileText className="mr-2 h-4 w-4" />
+                                            <span>Raporlarım</span>
+                                        </Link>
+                                    </DropdownMenuItem>
                                     <DropdownMenuItem className="cursor-pointer" onClick={handleLogout}>
                                         <LogOut className="mr-2 h-4 w-4" />
                                         <span>Çıkış Yap</span>
@@ -304,8 +342,7 @@ export function Header() {
                             </DropdownMenu>
                         </div>
                     ) : (
-                        // Giriş ve Kayıt ol butonları
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 ml-2">
                             <Button asChild variant="ghost">
                                 <Link href="/login">
                                     <LogIn className="mr-1 h-4 w-4" />

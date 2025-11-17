@@ -46,6 +46,11 @@ namespace GGHub.Infrastructure.Services
                 throw new InvalidOperationException("Giriş yapmadan önce e-posta adresinizi doğrulamanız gerekmektedir.");
             }
 
+            if (user.IsBanned)
+            {
+                throw new InvalidOperationException("Hesabınız askıya alınmıştır. Lütfen yönetici ile iletişime geçin.");
+            }
+
             var accessToken = CreateToken(user);
             var refreshToken = new RefreshToken
             {

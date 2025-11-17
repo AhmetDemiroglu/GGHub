@@ -11,12 +11,9 @@ namespace GGHub.WebAPI.Controllers
     public class ReviewsController : ControllerBase
     {
         private readonly IReviewService _reviewService;
-        private readonly IReportService _reportService;
-
-        public ReviewsController(IReviewService reviewService, IReportService reportService) 
+        public ReviewsController(IReviewService reviewService) 
         {
             _reviewService = reviewService;
-            _reportService = reportService;
         }
 
         [HttpPost("/api/reviews")]
@@ -95,19 +92,6 @@ namespace GGHub.WebAPI.Controllers
             {
                 return BadRequest(ex.Message);
             }
-        }
-        [HttpPost("{reviewId}/report")]
-        [Authorize]
-        public async Task<IActionResult> ReportReview(int reviewId, ReportForCreationDto reportDto)
-        {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            try
-            {
-                await _reportService.ReportReviewAsync(reviewId, userId, reportDto);
-                return Ok(new { message = "Raporunuz başarıyla gönderildi." });
-            }
-            catch (KeyNotFoundException ex) { return NotFound(ex.Message); }
-            catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
         }
     }
 }

@@ -10,6 +10,8 @@ export interface TopList {
     listName: string;
     ownerUsername: string;
     followerCount: number;
+    averageRating: number;
+    ratingCount: number;
 }
 
 export interface TopGame {

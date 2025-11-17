@@ -13,10 +13,11 @@ import { Separator } from "@core/components/ui/separator";
 import { ListDetailHeader } from "@core/components/other/lists/list-detail-header";
 import { toast } from "sonner";
 import { Button } from "@core/components/ui/button";
-import { ListPlus, Edit, Loader, ArrowDown, BookmarkPlus, BookmarkMinus } from "lucide-react";
+import { ListPlus, Edit, Loader, ArrowDown, BookmarkPlus, BookmarkMinus, Flag } from "lucide-react";
 import { AddGameToListModal } from "@core/components/other/lists/add-game-to-list-modal";
 import { ListCommentSection } from "@/core/components/other/lists/list-comment-section";
 import { AxiosError } from "axios";
+import { ReportDialog } from "@core/components/base/report-dialog";
 
 export default function ListDetailPage() {
     const params = useParams();
@@ -30,6 +31,8 @@ export default function ListDetailPage() {
 
     const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false);
     const [visibleGameRows, setVisibleGameRows] = useState(2);
+
+    const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
 
     const { data: listDetail, isLoading } = useQuery<UserListDetail>({
         queryKey: ["list-detail", listId],
@@ -244,28 +247,40 @@ export default function ListDetailPage() {
     const currentUserId = user ? Number(user.id) : undefined;
 
     const headerActions = (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 justify-start md:justify-end">
             {isOwner && (
                 <>
                     <Button className="cursor-pointer" onClick={() => setIsAddGameModalOpen(true)}>
-                        <ListPlus className="mr-0 sm:mr-1 h-4 w-4" />
-                        <span className="hidden sm:inline">Oyun</span> Ekle
+                        <ListPlus className="mr-0 sm:mr-1 h-4 w-4" /> <span className="hidden sm:inline">Oyun</span> Ekle
                     </Button>
                     <Button variant="outline" className="cursor-pointer" onClick={handleEditClick} disabled={isFormPending} title="Listeyi düzenle">
                         <Edit className="mr-1 h-4 w-4" /> Düzenle
                     </Button>
                 </>
             )}
-            {!isOwner &&
-                (listDetail.isFollowing ? (
-                    <Button variant="outline" onClick={handleUnfollow} disabled={unfollowMutation.isPending || !user} title="Takipten Çık" className="cursor-pointer">
-                        <BookmarkMinus className="mr-0 h-4 w-4" /> Takipten Çık
+            {!isOwner && user && (
+                <>
+                    {listDetail.isFollowing ? (
+                        <Button variant="outline" onClick={handleUnfollow} disabled={unfollowMutation.isPending} title="Takipten Çık" className="cursor-pointer">
+                            <BookmarkMinus className="mr-0 h-4 w-4" /> Takipten Çık
+                        </Button>
+                    ) : (
+                        <Button variant="default" className="cursor-pointer" onClick={handleFollow} disabled={followMutation.isPending} title="Takip Et">
+                            <BookmarkPlus className="mr-0 h-4 w-4" /> Takip Et
+                        </Button>
+                    )}
+
+                    <Button
+                        variant="outline"
+                        className="cursor-pointer text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => setIsReportDialogOpen(true)}
+                        title="Listeyi Raporla"
+                    >
+                        <Flag className="h-4 w-4" />
+                        <span className="sm:inline ml-1">Raporla</span>
                     </Button>
-                ) : (
-                    <Button variant="default" className="cursor-pointer" onClick={handleFollow} disabled={followMutation.isPending || !user} title="Takip Et">
-                        <BookmarkPlus className="mr-0 h-4 w-4" /> Takip Et
-                    </Button>
-                ))}
+                </>
+            )}
         </div>
     );
 
@@ -280,9 +295,7 @@ export default function ListDetailPage() {
                 currentUserId={currentUserId}
             />
             <Separator className="my-6" />
-
             <h2 className="text-2xl font-bold mb-4">Listedeki Oyunlar ({listDetail.games.length})</h2>
-
             {listDetail.games.length === 0 ? (
                 <div className="text-center text-muted-foreground py-12">Bu listede henüz hiç oyun yok.</div>
             ) : (
@@ -311,7 +324,6 @@ export default function ListDetailPage() {
                 </div>
             )}
             <ListCommentSection listId={listId} />
-
             <AddGameToListModal
                 isOpen={isAddGameModalOpen}
                 onClose={() => setIsAddGameModalOpen(false)}
@@ -331,6 +343,7 @@ export default function ListDetailPage() {
                 isPending={isFormPending}
                 defaultValues={listToEdit}
             />
+            {!isOwner && user && <ReportDialog isOpen={isReportDialogOpen} onOpenChange={setIsReportDialogOpen} entityType="List" entityId={listDetail.id} />}
         </div>
     );
 }

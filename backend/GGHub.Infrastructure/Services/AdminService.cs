@@ -64,7 +64,8 @@ namespace GGHub.Infrastructure.Services
         {
             var query = _context.Users
                 .AsNoTracking()
-                .AsQueryable();
+                .AsQueryable()
+                .Where(u => !u.IsDeleted);
 
             if (!string.IsNullOrWhiteSpace(filterParams.SearchTerm))
             {
@@ -80,6 +81,16 @@ namespace GGHub.Infrastructure.Services
             else if (filterParams.StatusFilter?.ToLower() == "active")
             {
                 query = query.Where(u => !u.IsBanned);
+            }
+
+            if (filterParams.StartDate.HasValue)
+            {
+                query = query.Where(u => u.CreatedAt.Date >= filterParams.StartDate.Value.Date);
+            }
+            if (filterParams.EndDate.HasValue)
+            {
+                var endDate = filterParams.EndDate.Value.Date.AddDays(1).AddTicks(-1);
+                query = query.Where(u => u.CreatedAt <= endDate);
             }
 
             bool isDescending = filterParams.SortDirection?.ToLower() == "desc";
@@ -239,6 +250,7 @@ namespace GGHub.Infrastructure.Services
         {
             var users = await _context.Users
                 .AsNoTracking()
+                .Where(u => !u.IsDeleted)
                 .OrderByDescending(u => u.CreatedAt)
                 .Take(count)
                 .Select(u => new AdminUserSummaryDto
@@ -278,6 +290,90 @@ namespace GGHub.Infrastructure.Services
                 .ToListAsync();
 
             return reviews;
+        }
+
+        public async Task<IEnumerable<AdminUserListSummaryDto>> GetListsForUserAsync(int userId)
+        {
+            var lists = await _context.UserLists
+                .AsNoTracking()
+                .Where(l => l.UserId == userId && !l.User.IsDeleted)
+                .OrderByDescending(l => l.UpdatedAt)
+                .Select(l => new AdminUserListSummaryDto
+                {
+                    Id = l.Id,
+                    Name = l.Name,
+                    Visibility = l.Visibility,
+                    FollowerCount = l.Followers.Count(),
+                    GameCount = l.UserListGames.Count(),
+                    AverageRating = l.AverageRating,
+                    CreatedAt = l.CreatedAt
+                })
+                .ToListAsync();
+
+            return lists;
+        }
+
+        public async Task<IEnumerable<AdminReviewSummaryDto>> GetReviewsForUserAsync(int userId)
+        {
+            var reviews = await _context.Reviews
+                .AsNoTracking()
+                .Include(r => r.Game) 
+                .Where(r => r.UserId == userId && !r.User.IsDeleted)
+                .OrderByDescending(r => r.CreatedAt)
+                .Select(r => new AdminReviewSummaryDto
+                {
+                    Id = r.Id,
+                    GameName = r.Game.Name,
+                    GameId = r.GameId,
+                    Rating = r.Rating,
+                    Content = r.Content.Length > 100 ? r.Content.Substring(0, 100) + "..." : r.Content,
+                    CreatedAt = r.CreatedAt
+                })
+                .ToListAsync();
+
+            return reviews;
+        }
+
+        public async Task<IEnumerable<AdminCommentSummaryDto>> GetCommentsForUserAsync(int userId)
+        {
+            var comments = await _context.UserListComments
+                .AsNoTracking()
+                .Include(c => c.UserList) 
+                .Where(c => c.UserId == userId && !c.User.IsDeleted) 
+                .OrderByDescending(c => c.CreatedAt)
+                .Select(c => new AdminCommentSummaryDto
+                {
+                    Id = c.Id,
+                    ListName = c.UserList.Name,
+                    ListId = c.UserListId,
+                    ContentPreview = c.Content.Length > 100 ? c.Content.Substring(0, 100) + "..." : c.Content,
+                    FullContent = c.Content,
+                    Visibility = c.UserList.Visibility,
+                    CreatedAt = c.CreatedAt
+                })
+                .ToListAsync();
+
+            return comments;
+        }
+
+        public async Task<IEnumerable<AdminUserReportSummaryDto>> GetReportsMadeByUserAsync(int userId)
+        {
+            var reports = await _context.ContentReports
+                .AsNoTracking()
+                .Where(r => r.ReporterUserId == userId)
+                .OrderByDescending(r => r.CreatedAt)
+                .Select(r => new AdminUserReportSummaryDto
+                {
+                    ReportId = r.Id,
+                    EntityType = r.EntityType,
+                    EntityId = r.EntityId,
+                    Reason = r.Reason,
+                    Status = r.Status,
+                    ReportedAt = r.CreatedAt
+                })
+                .ToListAsync();
+
+            return reports;
         }
     }
 }

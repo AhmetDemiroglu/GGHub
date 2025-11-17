@@ -1,12 +1,14 @@
 "use client";
 
 import type { AdminReport } from "@/models/admin/admin.model";
-import { ReportStatus } from "@/models/admin/admin.model";
+import { ReportStatus } from "@/models/report/report.model";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/core/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@core/components/ui/table";
 import { Badge } from "@/core/components/ui/badge";
 import Link from "next/link";
 import { Button } from "@core/components/ui/button";
+import { translateReportStatus, getReportStatusVariant } from "@/core/lib/report.utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/core/components/ui/tooltip";
 
 const getStatusVariant = (status: ReportStatus) => {
     switch (status) {
@@ -54,11 +56,16 @@ export const RecentReports = ({ reports }: RecentReportsProps) => {
                                         <div className="font-medium">{report.reporterUsername}</div>
                                         <div className="text-xs text-muted-foreground">ID: {report.reporterId}</div>
                                     </TableCell>
-                                    <TableCell className="max-w-xs truncate">{report.reason}</TableCell>
+                                    <TableCell className="max-w-xs truncate">
+                                        <Tooltip delayDuration={0}>
+                                            <TooltipTrigger className="cursor-default">{report.reason}</TooltipTrigger>
+                                            <TooltipContent className="max-w-md">
+                                                <p>{report.reason}</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TableCell>
                                     <TableCell className="text-right">
-                                        <Badge variant={getStatusVariant(report.status)}>
-                                            {ReportStatus[report.status]} {/* Enum'u string'e çevirir */}
-                                        </Badge>
+                                        <Badge variant={getReportStatusVariant(report.status)}>{translateReportStatus(report.status)}</Badge>
                                     </TableCell>
                                 </TableRow>
                             ))

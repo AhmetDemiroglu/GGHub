@@ -10,6 +10,10 @@ import type {
     AdminReport,
     UpdateReportStatusRequest,
     RecentReview,
+    AdminUserListSummary,
+    AdminReviewSummary,
+    AdminCommentSummary,
+    AdminUserReportSummary,
 } from "@/models/admin/admin.model";
 export const getDashboardStats = () => {
     return axiosInstance.get<DashboardStats>("/admin/dashboard-stats");
@@ -46,4 +50,16 @@ export const getRecentReviews = (count: number = 5) => {
     return axiosInstance.get<RecentReview[]>("/admin/recent-reviews", {
         params: { count },
     });
+};
+export const getListsForUser = (userId: number) => {
+    return axiosInstance.get<AdminUserListSummary[]>(`/admin/users/${userId}/lists`);
+};
+export const getReviewsForUser = (userId: number) => {
+    return axiosInstance.get<AdminReviewSummary[]>(`/admin/users/${userId}/reviews`);
+};
+export const getCommentsForUser = (userId: number) => {
+    return axiosInstance.get<AdminCommentSummary[]>(`/admin/users/${userId}/comments`);
+};
+export const getReportsMadeByUser = (userId: number) => {
+    return axiosInstance.get<AdminUserReportSummary[]>(`/admin/users/${userId}/reports-made`);
 };

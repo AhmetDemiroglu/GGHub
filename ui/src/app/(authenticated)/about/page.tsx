@@ -1,4 +1,3 @@
-// app/about/page.tsx
 import Image from "next/image";
 import { Gamepad2, Users, Share2, Sparkles, Compass, ListChecks } from "lucide-react";
 import logoSrc from "@core/assets/logo.png";

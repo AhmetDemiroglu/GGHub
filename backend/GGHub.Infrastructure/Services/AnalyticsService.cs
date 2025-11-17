@@ -20,6 +20,7 @@ namespace GGHub.Infrastructure.Services
         {
             var users = await _context.Users
                 .AsNoTracking()
+                .Where(u => !u.IsDeleted)
                 .OrderByDescending(u => u.Followers.Count())
                 .Take(count)
                 .Select(u => new TopUserDto
@@ -38,14 +39,18 @@ namespace GGHub.Infrastructure.Services
             var lists = await _context.UserLists
                 .AsNoTracking()
                 .Include(l => l.User)
-                .OrderByDescending(l => l.Followers.Count())
+                .Where(l => !l.User.IsDeleted)
+                .OrderByDescending(l => l.AverageRating)
+                .ThenByDescending(l => l.Followers.Count())
                 .Take(count)
                 .Select(l => new TopListDto
                 {
                     ListId = l.Id,
                     ListName = l.Name,
                     OwnerUsername = l.User.Username,
-                    FollowerCount = l.Followers.Count()
+                    FollowerCount = l.Followers.Count(),
+                    AverageRating = l.AverageRating, 
+                    RatingCount = l.RatingCount      
                 })
                 .AsSplitQuery()
                 .ToListAsync();
@@ -56,6 +61,8 @@ namespace GGHub.Infrastructure.Services
         {
             var gameRatings = _context.Reviews
                 .AsNoTracking()
+                .Include(r => r.User)
+                .Where(r => !r.User.IsDeleted)
                 .GroupBy(r => r.GameId)
                 .Select(g => new
                 {

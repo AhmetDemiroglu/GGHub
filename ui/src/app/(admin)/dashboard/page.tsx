@@ -2,15 +2,19 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { getDashboardStats, getReports, getRecentUsers, getRecentReviews } from "@/api/admin/admin.api";
+import { getTopUsers, getTopLists, getTopRatedGames } from "@/api/analytics/analytics.api";
 import type { DashboardStats, AdminReport, AdminUserSummary, RecentReview } from "@/models/admin/admin.model";
-import { ReportStatus } from "@/models/admin/admin.model";
+import type { TopUser, TopList, TopGame } from "@/models/analytics/analytics.model";
+import { ReportStatus } from "@/models/report/report.model";
 import { Users, ShieldAlert, Library, Star } from "lucide-react";
 import { StatsCard } from "@/core/components/admin/stats-card";
 import { RecentReports } from "@/core/components/admin/recent-reports";
 import { AdminQuickSearch } from "@/core/components/admin/admin-quick-search";
 import { RecentUsersList } from "@/core/components/admin/recent-users-list";
 import { RecentReviewsList } from "@/core/components/admin/recent-reviews-list";
-
+import { TopUsersCard } from "@/core/components/admin/top-users-card";
+import { TopListsCard } from "@/core/components/admin/top-lists-card";
+import { TopGamesCard } from "@/core/components/admin/top-games-card";
 export default function DashboardPage() {
     const { data: statsData, isLoading: isLoadingStats } = useQuery<DashboardStats>({
         queryKey: ["adminDashboardStats"],
@@ -36,7 +40,23 @@ export default function DashboardPage() {
         queryFn: async () => (await getRecentReviews(5)).data,
     });
 
-    const isLoading = isLoadingStats || isLoadingReports || isLoadingRecentUsers || isLoadingRecentReviews;
+    const { data: topUsersData, isLoading: isLoadingTopUsers } = useQuery<TopUser[]>({
+        queryKey: ["analyticsTopUsers"],
+        queryFn: async () => (await getTopUsers(5)).data,
+    });
+
+    const { data: topListsData, isLoading: isLoadingTopLists } = useQuery<TopList[]>({
+        queryKey: ["analyticsTopLists"],
+        queryFn: async () => (await getTopLists(5)).data,
+    });
+
+    const { data: topGamesData, isLoading: isLoadingTopGames } = useQuery<TopGame[]>({
+        queryKey: ["analyticsTopGames"],
+        queryFn: async () => (await getTopRatedGames(5)).data,
+    });
+
+    const isLoading = isLoadingStats || isLoadingReports || isLoadingRecentUsers || isLoadingRecentReviews || isLoadingTopUsers || isLoadingTopLists || isLoadingTopGames;
+
     if (isLoading) {
         return (
             <div>
@@ -59,7 +79,7 @@ export default function DashboardPage() {
     const pendingReports = reportsData?.filter((report) => report.status === ReportStatus.Open).slice(0, 5);
 
     return (
-        <div className="flex flex-col gap-8">
+        <div className="container flex flex-col gap-8 py-6 lg:py-8 px-6 lg:px-8">
             <div>
                 <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
                 <p className="text-muted-foreground">Bu bölümde platformun genel istatistiklerini inceleyebilirsiniz.</p>
@@ -82,7 +102,6 @@ export default function DashboardPage() {
                     <AdminQuickSearch />
                 </div>
             </div>
-
             {/* Son Aktiviteler */}
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 {/* Son Kullanıcılar */}
@@ -93,6 +112,20 @@ export default function DashboardPage() {
                 {/* Son İncelemeler */}
                 <div>
                     <RecentReviewsList reviews={recentReviewsData || []} />
+                </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                {/* En İyi Kullanıcılar */}
+                <div>
+                    <TopUsersCard users={topUsersData || []} />
+                </div>
+                {/* En İyi Listeler */}
+                <div>
+                    <TopListsCard lists={topListsData || []} />
+                </div>
+                {/* En İyi Oyunlar */}
+                <div>
+                    <TopGamesCard games={topGamesData || []} />
                 </div>
             </div>
         </div>

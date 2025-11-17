@@ -16,5 +16,9 @@ namespace GGHub.Application.Interfaces
         Task<DashboardStatsDto> GetDashboardStatisticsAsync();
         Task<IEnumerable<AdminUserSummaryDto>> GetRecentUsersAsync(int count = 5);
         Task<IEnumerable<RecentReviewDto>> GetRecentReviewsAsync(int count = 5);
+        Task<IEnumerable<AdminUserListSummaryDto>> GetListsForUserAsync(int userId);
+        Task<IEnumerable<AdminReviewSummaryDto>> GetReviewsForUserAsync(int userId);
+        Task<IEnumerable<AdminCommentSummaryDto>> GetCommentsForUserAsync(int userId);
+        Task<IEnumerable<AdminUserReportSummaryDto>> GetReportsMadeByUserAsync(int userId);
     }
 }

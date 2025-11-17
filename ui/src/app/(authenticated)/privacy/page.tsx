@@ -114,9 +114,7 @@ export default function PrivacyPage() {
                         <p className="text-sm text-muted-foreground leading-relaxed">
                             Gizlilik ile ilgili sorularınız için
                             <span className="mx-2">
-                                {" "}
                                 <a href="mailto:info@gghub.social" className="inline-flex items-center gap-1 text-primary hover:underline cursor-pointer font-medium">
-                                    {" "}
                                     <Mail className="w-3.5 h-3.5" /> info@gghub.social
                                 </a>
                             </span>

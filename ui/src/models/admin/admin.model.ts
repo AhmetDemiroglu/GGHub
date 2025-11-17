@@ -1,8 +1,5 @@
-export enum ReportStatus {
-    Open = 0,
-    Resolved = 1,
-    Ignored = 2,
-}
+import { ListVisibilitySetting } from "@/models/list/list.model";
+import {ReportStatus} from "@/models/report/report.model";
 export interface DashboardStats {
     totalUsers: number;
     bannedUsers: number;
@@ -74,4 +71,49 @@ export interface RecentReview {
   gameId: number;
   rating: number;
   createdAt: string;
+}
+
+export interface AdminUserListSummary {
+  id: number;
+  name: string;
+  visibility: ListVisibilitySetting; 
+  followerCount: number;
+  gameCount: number;
+  averageRating: number;
+  createdAt: string;
+}
+export interface AdminReviewSummary {
+  id: number;
+  gameName: string;
+  gameId: number;
+  rating: number;
+  content: string;
+  createdAt: string;
+}
+export interface AdminCommentSummary {
+  id: number;
+  listName: string;
+  listId: number;
+  contentPreview: string;
+  fullContent: string;
+  visibility: ListVisibilitySetting;
+  createdAt: string; 
+}
+export interface AdminUserReportSummary {
+  reportId: number;
+  entityType: string;
+  entityId: number;
+  reason: string;
+  status: ReportStatus; 
+  reportedAt: string; 
+}
+export interface UserFilterParams {
+  page?: number;
+  pageSize?: number;
+  searchTerm?: string;
+  statusFilter?: "All" | "Active" | "Banned";
+  sortBy?: string;
+  sortDirection?: "asc" | "desc";
+  startDate?: Date;
+  endDate?: Date;
 }
