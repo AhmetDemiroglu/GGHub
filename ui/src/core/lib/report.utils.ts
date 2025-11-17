@@ -12,15 +12,15 @@ export const translateReportStatus = (status: ReportStatus): string => {
             return ReportStatus[status] || "Bilinmiyor";
     }
 };
-export const getReportStatusVariant = (status: ReportStatus): "destructive" | "default" | "secondary" | "outline" => {
+export const getReportStatusVariant = (status: ReportStatus): "info" | "success" | "danger" => {
     switch (status) {
         case ReportStatus.Open:
-            return "destructive";
+            return "info";
         case ReportStatus.Resolved:
-            return "default";
+            return "success";
         case ReportStatus.Ignored:
-            return "secondary";
+            return "danger";
         default:
-            return "outline";
+            return "info";
     }
 };

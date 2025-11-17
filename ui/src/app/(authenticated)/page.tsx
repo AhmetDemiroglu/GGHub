@@ -1,21 +1,5 @@
 import { Button } from "../../core/components/ui/button";
-import {
-    Construction,
-    HardHat,
-    Wrench,
-    Gamepad2,
-    Users,
-    MessageSquare,
-    ShieldBan,
-    ListChecks,
-    MessageCircle,
-    ThumbsUp,
-    Library,
-    Bell,
-    Star,
-    Image as ImageIcon,
-    Rocket,
-} from "lucide-react";
+import { Construction, HardHat, Wrench, Gamepad2, Users, MessageSquare, ShieldBan, ListChecks, MessageCircle, ThumbsUp, Library, Bell, Star, Image as ImageIcon, Rocket } from "lucide-react";
 import logoSrc from "@core/assets/logo.png";
 import Image from "next/image";
 
@@ -78,7 +62,7 @@ export default function HomePage() {
                             <span className="text-sm">Geliştirme Durumu</span>
                         </div>
                         <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-zinc-800">
-                            <div className="relative h-full w-2/3 rounded-full bg-gradient-to-r from-indigo-500 to-cyan-500">
+                            <div className="relative h-full w-3/4 rounded-full bg-gradient-to-r from-indigo-500 to-cyan-500">
                                 <div
                                     className="absolute inset-0 animate-[stripe_2s_linear_infinite] bg-[length:24px_24px] opacity-30"
                                     style={{
@@ -225,11 +209,9 @@ export default function HomePage() {
                                 </div>
                             </li>
                         </ul>
-                        <div
-                            className="mt-4 rounded-lg border border-slate-200 bg-slate-50/80 p-3 text-xs text-slate-500
-                            dark:border-zinc-800 dark:bg-zinc-950/60 dark:text-zinc-400"
-                        >
-                            Geri bildirimleriniz doğrultusunda sıralama ve kapsam güncellenebilir.
+                        <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50/80 p-3 text-xs text-slate-500 dark:border-zinc-800 dark:bg-zinc-950/60 dark:text-zinc-400">
+                            <span className="font-semibold text-slate-600 dark:text-zinc-300">Not: </span>Geri bildirimleriniz doğrultusunda sıralama ve kapsam güncellenebilir. <br></br>Şu anda, topluluk moderasyonu ve raporlama yönetimi için
+                            <span className="font-semibold text-slate-600 dark:text-zinc-300"> Admin Paneli</span> altyapısı geliştirilmektedir.
                         </div>
                     </div>
                 </section>
