@@ -1,5 +1,5 @@
 import { ListVisibilitySetting } from "@/models/list/list.model";
-import {ReportStatus} from "@/models/report/report.model";
+import { ReportStatus } from "@/models/report/report.model";
 export interface DashboardStats {
     totalUsers: number;
     bannedUsers: number;
@@ -64,56 +64,91 @@ export interface UpdateReportStatusRequest {
     newStatus: ReportStatus;
 }
 export interface RecentReview {
-  id: number;
-  username: string;
-  userProfileImageUrl: string | null;
-  gameName: string;
-  gameId: number;
-  rating: number;
-  createdAt: string;
+    id: number;
+    username: string;
+    userProfileImageUrl: string | null;
+    gameName: string;
+    gameId: number;
+    rating: number;
+    createdAt: string;
 }
 
 export interface AdminUserListSummary {
-  id: number;
-  name: string;
-  visibility: ListVisibilitySetting; 
-  followerCount: number;
-  gameCount: number;
-  averageRating: number;
-  createdAt: string;
+    id: number;
+    name: string;
+    visibility: ListVisibilitySetting;
+    followerCount: number;
+    gameCount: number;
+    averageRating: number;
+    createdAt: string;
 }
 export interface AdminReviewSummary {
-  id: number;
-  gameName: string;
-  gameId: number;
-  rating: number;
-  content: string;
-  createdAt: string;
+    id: number;
+    gameName: string;
+    gameId: number;
+    rating: number;
+    content: string;
+    createdAt: string;
 }
 export interface AdminCommentSummary {
-  id: number;
-  listName: string;
-  listId: number;
-  contentPreview: string;
-  fullContent: string;
-  visibility: ListVisibilitySetting;
-  createdAt: string; 
+    id: number;
+    listName: string;
+    listId: number;
+    contentPreview: string;
+    fullContent: string;
+    visibility: ListVisibilitySetting;
+    createdAt: string;
 }
 export interface AdminUserReportSummary {
-  reportId: number;
-  entityType: string;
-  entityId: number;
-  reason: string;
-  status: ReportStatus; 
-  reportedAt: string; 
+    reportId: number;
+    entityType: string;
+    entityId: number;
+    reason: string;
+    status: ReportStatus;
+    reportedAt: string;
 }
 export interface UserFilterParams {
-  page?: number;
-  pageSize?: number;
-  searchTerm?: string;
-  statusFilter?: "All" | "Active" | "Banned";
-  sortBy?: string;
-  sortDirection?: "asc" | "desc";
-  startDate?: Date;
-  endDate?: Date;
+    page?: number;
+    pageSize?: number;
+    searchTerm?: string;
+    statusFilter?: "All" | "Active" | "Banned";
+    sortBy?: string;
+    sortDirection?: "asc" | "desc";
+    startDate?: Date;
+    endDate?: Date;
+}
+
+export interface ReportFilterParams {
+    page?: number;
+    pageSize?: number;
+    searchTerm?: string;
+    statusFilter?: ReportStatus;
+    entityTypeFilter?: string;
+    sortBy?: string;
+    sortDirection?: "asc" | "desc";
+    startDate?: Date;
+    endDate?: Date;
+}
+
+export interface ReportResponseRequest {
+    response: string;
+}
+
+export interface AdminReportDetail {
+    id: number;
+    entityType: string;
+    entityId: number;
+    reason: string;
+    status: ReportStatus;
+    reportedAt: string;
+    adminResponse: string | null;
+    resolvedAt: string | null;
+    reporterId: number;
+    reporterUsername: string;
+    reporterProfileImage: string | null;
+    reportedContent: string;
+    reportedEntityTitle: string;
+    accusedUserId: number;
+    accusedUsername: string;
+    accusedProfileImage: string | null;
 }

@@ -10,5 +10,6 @@ namespace GGHub.Application.Dtos
         public string Reason { get; set; }
         public ReportStatus Status { get; set; }
         public DateTime CreatedAt { get; set; }
+        public string? AdminResponse { get; set; }
     }
 }

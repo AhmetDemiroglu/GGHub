@@ -88,7 +88,8 @@ namespace GGHub.Infrastructure.Services
                     EntityId = r.EntityId,
                     Reason = r.Reason,
                     Status = r.Status,
-                    CreatedAt = r.CreatedAt
+                    CreatedAt = r.CreatedAt,
+                    AdminResponse = r.AdminResponse
                 })
                 .ToListAsync();
 

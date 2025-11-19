@@ -16,12 +16,57 @@ namespace GGHub.Infrastructure.Services
             _context = context;
         }
 
-        public async Task<IEnumerable<AdminReportDto>> GetContentReportsAsync()
+        public async Task<PaginatedResult<AdminReportDto>> GetContentReportsAsync(ReportFilterParams filterParams)
         {
-            var reports = await _context.ContentReports
-                .Include(r => r.ReporterUser) 
-                .OrderBy(r => r.Status) 
-                .ThenByDescending(r => r.CreatedAt) 
+            var query = _context.ContentReports
+                .AsNoTracking()
+                .Include(r => r.ReporterUser)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(filterParams.SearchTerm))
+            {
+                var term = filterParams.SearchTerm.ToLower();
+                query = query.Where(r => r.Reason.ToLower().Contains(term) ||
+                                         r.ReporterUser.Username.ToLower().Contains(term));
+            }
+
+            if (filterParams.StatusFilter.HasValue)
+            {
+                query = query.Where(r => r.Status == filterParams.StatusFilter.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(filterParams.EntityTypeFilter) && filterParams.EntityTypeFilter != "All")
+            {
+                query = query.Where(r => r.EntityType == filterParams.EntityTypeFilter);
+            }
+
+            if (filterParams.StartDate.HasValue)
+            {
+                query = query.Where(r => r.CreatedAt.Date >= filterParams.StartDate.Value.Date);
+            }
+            if (filterParams.EndDate.HasValue)
+            {
+                var endDate = filterParams.EndDate.Value.Date.AddDays(1).AddTicks(-1);
+                query = query.Where(r => r.CreatedAt <= endDate);
+            }
+
+            bool isDesc = filterParams.SortDirection?.ToLower() == "desc";
+            switch (filterParams.SortBy?.ToLower())
+            {
+                case "status":
+                    query = isDesc ? query.OrderByDescending(r => r.Status) : query.OrderBy(r => r.Status);
+                    break;
+                case "createdat":
+                default:
+                    query = isDesc ? query.OrderByDescending(r => r.CreatedAt) : query.OrderBy(r => r.CreatedAt);
+                    break;
+            }
+
+            var totalCount = await query.CountAsync();
+
+            var reports = await query
+                .Skip((filterParams.Page - 1) * filterParams.PageSize)
+                .Take(filterParams.PageSize)
                 .Select(r => new AdminReportDto
                 {
                     ReportId = r.Id,
@@ -35,7 +80,13 @@ namespace GGHub.Infrastructure.Services
                 })
                 .ToListAsync();
 
-            return reports;
+            return new PaginatedResult<AdminReportDto>
+            {
+                Items = reports,
+                TotalCount = totalCount,
+                Page = filterParams.Page,
+                PageSize = filterParams.PageSize
+            };
         }
         public async Task<bool> UpdateReportStatusAsync(int reportId, ReportStatus newStatus)
         {
@@ -374,6 +425,105 @@ namespace GGHub.Infrastructure.Services
                 .ToListAsync();
 
             return reports;
+        }
+
+        public async Task<AdminReportDetailDto?> GetReportDetailAsync(int reportId)
+        {
+            var report = await _context.ContentReports
+                .Include(r => r.ReporterUser)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(r => r.Id == reportId);
+
+            if (report == null) return null;
+
+            var dto = new AdminReportDetailDto
+            {
+                Id = report.Id,
+                EntityType = report.EntityType,
+                EntityId = report.EntityId,
+                Reason = report.Reason,
+                Status = report.Status,
+                ReportedAt = report.CreatedAt,
+                AdminResponse = report.AdminResponse,
+                ResolvedAt = report.ResolvedAt,
+                ReporterId = report.ReporterUserId,
+                ReporterUsername = report.ReporterUser.Username,
+                ReporterProfileImage = report.ReporterUser.ProfileImageUrl
+            };
+
+            switch (report.EntityType)
+            {
+                case "Review":
+                    var review = await _context.Reviews
+                        .Include(r => r.User).Include(r => r.Game)
+                        .FirstOrDefaultAsync(r => r.Id == report.EntityId);
+                    if (review != null)
+                    {
+                        dto.ReportedContent = review.Content; 
+                        dto.ReportedEntityTitle = $"{review.Game.Name} İncelemesi";
+                        dto.AccusedUserId = review.UserId;
+                        dto.AccusedUsername = review.User.Username;
+                        dto.AccusedProfileImage = review.User.ProfileImageUrl;
+                    }
+                    break;
+
+                case "Comment":
+                    var comment = await _context.UserListComments
+                        .Include(c => c.User).Include(c => c.UserList) 
+                        .FirstOrDefaultAsync(c => c.Id == report.EntityId);
+
+                    if (comment != null)
+                    {
+                        dto.ReportedContent = comment.Content;
+                        dto.ReportedEntityTitle = $"'{comment.UserList.Name}' Listesindeki Yorum";
+                        dto.AccusedUserId = comment.UserId;
+                        dto.AccusedUsername = comment.User.Username;
+                        dto.AccusedProfileImage = comment.User.ProfileImageUrl;
+                    }
+                    break;
+
+                case "List":
+                    var list = await _context.UserLists
+                        .Include(l => l.User)
+                        .FirstOrDefaultAsync(l => l.Id == report.EntityId);
+                    if (list != null)
+                    {
+                        dto.ReportedContent = list.Description ?? "Açıklama yok.";
+                        dto.ReportedEntityTitle = list.Name;
+                        dto.AccusedUserId = list.UserId;
+                        dto.AccusedUsername = list.User.Username;
+                        dto.AccusedProfileImage = list.User.ProfileImageUrl;
+                    }
+                    break;
+
+                case "User":
+                    var user = await _context.Users.FindAsync(report.EntityId);
+                    if (user != null)
+                    {
+                        dto.ReportedContent = user.Bio ?? "Biyografi yok.";
+                        dto.ReportedEntityTitle = "Kullanıcı Profili";
+                        dto.AccusedUserId = user.Id;
+                        dto.AccusedUsername = user.Username;
+                        dto.AccusedProfileImage = user.ProfileImageUrl;
+                    }
+                    break;
+            }
+
+            return dto;
+        }
+        public async Task<bool> AddReportResponseAsync(int reportId, string response, int adminUserId)
+        {
+            var report = await _context.ContentReports.FindAsync(reportId);
+            if (report == null) return false;
+
+            report.AdminResponse = response;
+            report.ResolvedByAdminId = adminUserId;
+
+            report.Status = ReportStatus.Resolved;
+            report.ResolvedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return true;
         }
     }
 }

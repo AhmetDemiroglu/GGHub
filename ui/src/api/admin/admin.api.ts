@@ -7,6 +7,8 @@ import type {
     AdminUserDetails,
     BanUserRequest,
     ChangeRoleRequest,
+    ReportFilterParams,
+    ReportResponseRequest,
     AdminReport,
     UpdateReportStatusRequest,
     RecentReview,
@@ -14,12 +16,19 @@ import type {
     AdminReviewSummary,
     AdminCommentSummary,
     AdminUserReportSummary,
+    AdminReportDetail
 } from "@/models/admin/admin.model";
 export const getDashboardStats = () => {
     return axiosInstance.get<DashboardStats>("/admin/dashboard-stats");
 };
-export const getReports = () => {
-    return axiosInstance.get<AdminReport[]>("/admin/reports");
+export const getReports = (params: ReportFilterParams) => {
+    return axiosInstance.get<PaginatedResponse<AdminReport>>("/admin/reports", {
+        params,
+    });
+};
+
+export const respondToReport = (reportId: number, data: ReportResponseRequest) => {
+    return axiosInstance.post(`/admin/reports/${reportId}/respond`, data);
 };
 export const updateReportStatus = (reportId: number, data: UpdateReportStatusRequest) => {
     return axiosInstance.put(`/admin/reports/${reportId}/status`, data);
@@ -62,4 +71,7 @@ export const getCommentsForUser = (userId: number) => {
 };
 export const getReportsMadeByUser = (userId: number) => {
     return axiosInstance.get<AdminUserReportSummary[]>(`/admin/users/${userId}/reports-made`);
+};
+export const getReportDetail = (reportId: number) => {
+  return axiosInstance.get<AdminReportDetail>(`/admin/reports/${reportId}`);
 };

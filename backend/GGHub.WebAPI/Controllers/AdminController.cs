@@ -1,8 +1,8 @@
 ﻿using GGHub.Application.Dtos;
+using GGHub.Application.Dtos.Admin;
 using GGHub.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace GGHub.WebAPI.Controllers
@@ -25,10 +25,23 @@ namespace GGHub.WebAPI.Controllers
             return Ok("Tebrikler, bu mesajı sadece adminler görebilir!");
         }
         [HttpGet("reports")]
-        public async Task<IActionResult> GetReports()
+        public async Task<IActionResult> GetReports([FromQuery] ReportFilterParams filterParams)
         {
-            var reports = await _adminService.GetContentReportsAsync();
-            return Ok(reports);
+            var result = await _adminService.GetContentReportsAsync(filterParams);
+            return Ok(result);
+        }
+        [HttpPost("reports/{reportId}/respond")]
+        public async Task<IActionResult> RespondToReport(int reportId, [FromBody] ReportResponseDto dto)
+        {
+            var adminId = GetCurrentUserId();
+            var success = await _adminService.AddReportResponseAsync(reportId, dto.Response, adminId);
+
+            if (!success)
+            {
+                return NotFound(new { message = "Rapor bulunamadı." });
+            }
+
+            return Ok(new { message = "Yanıt kaydedildi ve rapor kapatıldı." });
         }
         [HttpPut("reports/{reportId}/status")]
         public async Task<IActionResult> UpdateReportStatus(int reportId, UpdateReportStatusDto statusDto)
@@ -41,6 +54,13 @@ namespace GGHub.WebAPI.Controllers
             }
 
             return Ok(new { message = "Rapor durumu başarıyla güncellendi." });
+        }
+        [HttpGet("reports/{id}")]
+        public async Task<IActionResult> GetReportDetail(int id)
+        {
+            var report = await _adminService.GetReportDetailAsync(id);
+            if (report == null) return NotFound();
+            return Ok(report);
         }
         [HttpGet("dashboard-stats")]
         public async Task<IActionResult> GetDashboardStats()

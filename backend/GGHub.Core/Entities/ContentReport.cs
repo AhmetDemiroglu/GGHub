@@ -13,5 +13,7 @@ namespace GGHub.Core.Entities
         public ReportStatus Status { get; set; } = ReportStatus.Open;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? ResolvedAt { get; set; }
+        public string? AdminResponse { get; set; }
+        public int? ResolvedByAdminId { get; set; }
     }
 }

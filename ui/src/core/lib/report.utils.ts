@@ -24,3 +24,19 @@ export const getReportStatusVariant = (status: ReportStatus): "info" | "success"
             return "info";
     }
 };
+
+export const translateEntityType = (type: string | undefined | null): string => {
+    if (!type) return "Tümü";
+    switch (type) {
+        case "Comment":
+            return "Yorum";
+        case "Review":
+            return "İnceleme";
+        case "List":
+            return "Liste";
+        case "User":
+            return "Kullanıcı";
+        default:
+            return type;
+    }
+};

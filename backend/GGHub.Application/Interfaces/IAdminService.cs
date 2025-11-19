@@ -6,7 +6,9 @@ namespace GGHub.Application.Interfaces
 {
     public interface IAdminService
     {
-        Task<IEnumerable<AdminReportDto>> GetContentReportsAsync();
+        Task<PaginatedResult<AdminReportDto>> GetContentReportsAsync(ReportFilterParams filterParams);
+        Task<bool> AddReportResponseAsync(int reportId, string response, int adminUserId);
+        Task<AdminReportDetailDto?> GetReportDetailAsync(int reportId);
         Task<bool> UpdateReportStatusAsync(int reportId, ReportStatus newStatus);
         Task<PaginatedResult<AdminUserSummaryDto>> GetUsersAsync(UserFilterParams filterParams);
         Task<AdminUserDetailsDto?> GetUserDetailsAsync(int userId);

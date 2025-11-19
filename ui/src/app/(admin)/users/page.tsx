@@ -130,11 +130,8 @@ export default function UsersPage() {
                 <h2 className="text-3xl font-bold tracking-tight">Kullanıcı Yönetimi</h2>
                 <p className="text-muted-foreground">Platformdaki tüm kullanıcıları arayın, filtreleyin ve yönetin.</p>
             </div>
-            {/* 1. FİLTRE KONTROLLERİ */}
             <div className="flex flex-wrap items-center gap-4">
-                {/* Arama Input'u */}
                 <Input placeholder="Kullanıcı adı veya e-posta..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full sm:w-auto sm:max-w-xs" />
-                {/* Durum (Aktif/Banlı) Select */}
                 <Select value={statusFilter} onValueChange={(value: string) => setStatusFilter(value as UserFilterParams["statusFilter"])}>
                     <SelectTrigger className="w-full sm:w-[180px]">
                         <SelectValue placeholder="Durum Seçin" />
@@ -150,12 +147,10 @@ export default function UsersPage() {
                     <DatePicker date={dateRange?.to} onDateChange={(date) => setDateRange((prev) => ({ from: prev?.from, to: date }))} placeholder="Bitiş Tarihi" className="w-full" />
                 </div>
 
-                {/* Filtreleri Temizle */}
                 <Button variant="ghost" onClick={clearFilters} className="sm:ml-auto border-2 cursor-pointer">
                     <BrushCleaning className="h-4 w-4" />
                 </Button>
             </div>
-            {/* 2. TABLO */}
             {isLoading && tableData.length === 0 ? (
                 <p>Yükleniyor...</p>
             ) : isError ? (

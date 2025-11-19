@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getDashboardStats, getReports, getRecentUsers, getRecentReviews } from "@/api/admin/admin.api";
 import { getTopUsers, getTopLists, getTopRatedGames } from "@/api/analytics/analytics.api";
 import type { DashboardStats, AdminReport, AdminUserSummary, RecentReview } from "@/models/admin/admin.model";
+import type { PaginatedResponse } from "@/models/system/api.model";
 import type { TopUser, TopList, TopGame } from "@/models/analytics/analytics.model";
 import { ReportStatus } from "@/models/report/report.model";
 import { Users, ShieldAlert, Library, Star } from "lucide-react";
@@ -25,9 +26,18 @@ export default function DashboardPage() {
         data: reportsData,
         isLoading: isLoadingReports,
         isError: isErrorReports,
-    } = useQuery<AdminReport[]>({
-        queryKey: ["adminReports"],
-        queryFn: async () => (await getReports()).data,
+    } = useQuery<PaginatedResponse<AdminReport>>({
+        queryKey: ["adminDashboardReports"],
+        queryFn: async () =>
+            (
+                await getReports({
+                    page: 1,
+                    pageSize: 5,
+                    statusFilter: ReportStatus.Open,
+                    sortBy: "createdAt",
+                    sortDirection: "desc",
+                })
+            ).data,
     });
 
     const { data: recentUsersData, isLoading: isLoadingRecentUsers } = useQuery<AdminUserSummary[]>({
@@ -76,8 +86,7 @@ export default function DashboardPage() {
         );
     }
 
-    const pendingReports = reportsData?.filter((report) => report.status === ReportStatus.Open).slice(0, 5);
-
+    const pendingReports = reportsData?.items || [];
     return (
         <div className="container flex flex-col gap-8 py-6 lg:py-8 px-6 lg:px-8">
             <div>
