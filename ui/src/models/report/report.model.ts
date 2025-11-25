@@ -8,9 +8,12 @@ export interface ReportForCreation {
 }
 export interface MyReportSummary {
   id: number;
-  entityType: string; 
+  entityType: string;
   entityId: number;
   reason: string;
   status: ReportStatus;
   createdAt: string;
+  adminResponse: string | null; 
+  resolvedAt: string | null;    
 }
+
