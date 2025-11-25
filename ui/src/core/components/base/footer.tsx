@@ -51,13 +51,15 @@ export function Footer() {
                                 <div className="flex flex-col gap-3">
                                     <h3 className="text-[11px] font-medium uppercase tracking-[0.3em] text-muted-foreground/60">Topluluk</h3>
                                     <div className="flex gap-3">
-                                        <button
-                                            disabled
-                                            className="p-2.5 rounded-lg bg-muted/40 border border-border/20 hover:bg-muted/70 transition-colors cursor-not-allowed opacity-60"
-                                            title="Yakında"
+                                        <a
+                                            href="https://x.com/gghub_tr"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="p-2.5 rounded-lg bg-muted/40 border border-border/20 hover:bg-muted/70 transition-colors"
+                                            aria-label="GGHub X Profili"
                                         >
                                             <FaXTwitter className="w-4 h-4" />
-                                        </button>
+                                        </a>
                                         <button
                                             disabled
                                             className="p-2.5 rounded-lg bg-muted/40 border border-border/20 hover:bg-muted/70 transition-colors cursor-not-allowed opacity-60"
