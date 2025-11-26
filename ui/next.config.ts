@@ -16,6 +16,11 @@ const nextConfig: NextConfig = {
                 port: "7263",
                 pathname: "/images/**",
             },
+            {
+                protocol: "https",
+                hostname: "media.rawg.io",
+                pathname: "/media/**", // RAWG'nin image path'i
+            },
         ],
     },
     devIndicators: false,
