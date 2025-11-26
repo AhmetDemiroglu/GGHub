@@ -6,4 +6,7 @@ export const gameApi = {
     paginate: (params: GameApiPaginateParams) => {
         return axiosInstance.get<PaginatedResponse<Game>>("/games", { params }).then((res) => res.data);
     },
+    getById: (idOrSlug: string) => {
+        return axiosInstance.get<Game>(`/games/${idOrSlug}`).then((res) => res.data);
+    },
 };

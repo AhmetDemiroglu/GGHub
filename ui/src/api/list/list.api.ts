@@ -49,3 +49,11 @@ export const removeGameFromList = (listId: number, gameId: number): Promise<void
 export const getFollowedListsByMe = (params: ListQueryParameters): Promise<PaginatedResponse<UserListPublic>> => {
     return axiosInstance.get<PaginatedResponse<UserListPublic>>("/user-lists/followed-by-me", { params }).then((response) => response.data);
 };
+
+export const toggleWishlist = (gameId: number) => {
+    return axiosInstance.post<{ isAdded: boolean; message: string }>(`/user-lists/wishlist/${gameId}`).then((res) => res.data);
+};
+
+export const checkWishlistStatus = (gameId: number) => {
+    return axiosInstance.get<{ isInWishlist: boolean }>(`/user-lists/wishlist/${gameId}/status`).then((res) => res.data);
+};

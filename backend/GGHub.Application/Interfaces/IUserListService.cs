@@ -16,5 +16,7 @@ namespace GGHub.Application.Interfaces
         Task<bool> RemoveGameFromListAsync(int listId, int rawgGameId, int userId);
         Task<bool> UpdateListAsync(int listId, UserListForUpdateDto dto, int userId);
         Task<bool> DeleteListAsync(int listId, int userId);
+        Task<bool> ToggleWishlistAsync(int userId, int gameId);
+        Task<bool> CheckWishlistStatusAsync(int userId, int gameId);
     }
 }

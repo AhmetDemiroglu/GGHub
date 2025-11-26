@@ -10,5 +10,7 @@ namespace GGHub.Application.Interfaces
         Task<bool> DeleteReviewAsync(int reviewId, int userId);
         Task<ReviewDto?> UpdateReviewAsync(int reviewId, int userId, ReviewForUpdateDto reviewDto);
         Task VoteOnReviewAsync(int reviewId, int userId, int value);
+        Task<(double Average, int Count)> GetGameRatingSummaryAsync(int gameId);
+        Task<ReviewDto?> GetUserReviewForGameAsync(int userId, int rawgGameId);
     }
 }

@@ -519,5 +519,60 @@ namespace GGHub.Infrastructure.Services
 
             return await _context.SaveChangesAsync() > 0;
         }
+
+        public async Task<bool> ToggleWishlistAsync(int userId, int gameId)
+        {
+            var wishlist = await _context.UserLists
+                .FirstOrDefaultAsync(l => l.UserId == userId && l.Type == UserListType.Wishlist);
+
+            if (wishlist == null)
+            {
+                wishlist = new UserList
+                {
+                    UserId = userId,
+                    Name = "İstek Listem",
+                    Description = "Takip ettiğim oyunlar",
+                    Category = ListCategory.Other, 
+                    Type = UserListType.Wishlist,
+                    Visibility = ListVisibilitySetting.Private,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                await _context.UserLists.AddAsync(wishlist);
+                await _context.SaveChangesAsync();
+            }
+
+            var existingItem = await _context.UserListGames
+                .FirstOrDefaultAsync(ulg => ulg.UserListId == wishlist.Id && ulg.GameId == gameId);
+
+            if (existingItem != null)
+            {
+                _context.UserListGames.Remove(existingItem);
+                await _context.SaveChangesAsync();
+                return false; 
+            }
+            else
+            {
+                await _context.UserListGames.AddAsync(new UserListGame
+                {
+                    UserListId = wishlist.Id,
+                    GameId = gameId,
+                    AddedAt = DateTime.UtcNow
+                });
+                await _context.SaveChangesAsync();
+                return true;
+            }
+        }
+
+        public async Task<bool> CheckWishlistStatusAsync(int userId, int gameId)
+        {
+            var wishlist = await _context.UserLists
+                .FirstOrDefaultAsync(l => l.UserId == userId && l.Type == UserListType.Wishlist);
+
+            if (wishlist == null) return false;
+
+            return await _context.UserListGames
+                .AnyAsync(ulg => ulg.UserListId == wishlist.Id && ulg.GameId == gameId);
+        }
     }
 }

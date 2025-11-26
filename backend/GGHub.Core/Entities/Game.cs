@@ -13,5 +13,12 @@
         public string? Description { get; set; }
         public string? CoverImage { get; set; }
         public DateTime LastSyncedAt { get; set; }
+        public string? PlatformsJson { get; set; }
+        public string? GenresJson { get; set; }
+        public string? DevelopersJson { get; set; } 
+        public string? PublishersJson { get; set; }
+        public string? StoresJson { get; set; }    
+        public string? WebsiteUrl { get; set; }   
+        public string? EsrbRating { get; set; }
     }
 }

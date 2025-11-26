@@ -30,7 +30,9 @@ namespace GGHub.Infrastructure.Services
                 ? await _context.Games.FirstOrDefaultAsync(g => g.RawgId == rawgId)
                 : await _context.Games.FirstOrDefaultAsync(g => g.Slug == idOrSlug);
 
-            if (gameInDb != null && (DateTime.UtcNow - gameInDb.LastSyncedAt).TotalDays < 1)
+            if (gameInDb != null
+                && (DateTime.UtcNow - gameInDb.LastSyncedAt).TotalDays < 1
+                && !string.IsNullOrEmpty(gameInDb.DevelopersJson))
             {
                 return gameInDb;
             }
@@ -45,25 +47,61 @@ namespace GGHub.Infrastructure.Services
                 var descriptionRaw = dto.Description ?? string.Empty;
                 var descriptionParts = descriptionRaw.Split(new[] { "\n\n" }, StringSplitOptions.None);
                 var englishDescription = descriptionParts.FirstOrDefault();
+                var platforms = dto.Platform?.Select(p => new { p.Platform.Name, p.Platform.Slug }).ToList();
+                var genres = dto.Genre?.Select(g => new { g.Name, g.Slug }).ToList();
+                var developers = dto.Developers?.Select(d => new { d.Name, d.Slug, d.ImageBackground }).ToList();
+                var publishers = dto.Publishers?.Select(p => new { p.Name, p.Slug }).ToList();
+                var stores = dto.Stores?.Select(s => new { StoreName = s.Store.Name, Domain = s.Store.Domain, Url = s.Url }).ToList();
 
-                var newGame = new Game
+                if (gameInDb != null)
                 {
-                    RawgId = dto.Id,
-                    Name = dto.Name,
-                    Slug = dto.Slug,
-                    Description = englishDescription,
-                    Released = dto.Released,
-                    BackgroundImage = dto.BackgroundImage,
-                    CoverImage = dto.CoverImage,
-                    Rating = dto.Rating,
-                    Metacritic = dto.Metacritic,
-                    LastSyncedAt = DateTime.UtcNow
-                };
+                    gameInDb.Name = dto.Name;
+                    gameInDb.Description = englishDescription;
+                    gameInDb.Rating = dto.Rating;
+                    gameInDb.Metacritic = dto.Metacritic;
+                    gameInDb.Released = dto.Released;
+                    gameInDb.BackgroundImage = dto.BackgroundImage;
+                    gameInDb.CoverImage = dto.CoverImage;
+                    gameInDb.LastSyncedAt = DateTime.UtcNow;
+                    gameInDb.PlatformsJson = platforms != null ? System.Text.Json.JsonSerializer.Serialize(platforms) : null;
+                    gameInDb.GenresJson = genres != null ? System.Text.Json.JsonSerializer.Serialize(genres) : null;
+                    gameInDb.DevelopersJson = developers != null ? System.Text.Json.JsonSerializer.Serialize(developers) : null;
+                    gameInDb.PublishersJson = publishers != null ? System.Text.Json.JsonSerializer.Serialize(publishers) : null;
+                    gameInDb.StoresJson = stores != null ? System.Text.Json.JsonSerializer.Serialize(stores) : null;
+                    gameInDb.WebsiteUrl = dto.Website;
+                    gameInDb.EsrbRating = dto.EsrbRating?.Name;
 
-                await _context.Games.AddAsync(newGame);
+                    _context.Games.Update(gameInDb);
+                }
+                else
+                {
+                    var newGame = new Game
+                    {
+                        RawgId = dto.Id,
+                        Name = dto.Name,
+                        Slug = dto.Slug,
+                        Description = englishDescription,
+                        Released = dto.Released,
+                        BackgroundImage = dto.BackgroundImage,
+                        CoverImage = dto.CoverImage,
+                        Rating = dto.Rating,
+                        Metacritic = dto.Metacritic,
+                        LastSyncedAt = DateTime.UtcNow,
+
+                        PlatformsJson = platforms != null ? System.Text.Json.JsonSerializer.Serialize(platforms) : null,
+                        GenresJson = genres != null ? System.Text.Json.JsonSerializer.Serialize(genres) : null,
+                        DevelopersJson = developers != null ? System.Text.Json.JsonSerializer.Serialize(developers) : null,
+                        PublishersJson = publishers != null ? System.Text.Json.JsonSerializer.Serialize(publishers) : null,
+                        StoresJson = stores != null ? System.Text.Json.JsonSerializer.Serialize(stores) : null,
+                        WebsiteUrl = dto.Website,
+                        EsrbRating = dto.EsrbRating?.Name
+                    };
+                    await _context.Games.AddAsync(newGame);
+                    gameInDb = newGame;
+                }
+
                 await _context.SaveChangesAsync();
-
-                return newGame;
+                return gameInDb;
             }
             catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
@@ -158,6 +196,12 @@ namespace GGHub.Infrastructure.Services
             var descriptionParts = descriptionRaw.Split(new[] { "\n\n" }, StringSplitOptions.None);
             var englishDescription = descriptionParts.FirstOrDefault();
 
+            var platforms = dto.Platform?.Select(p => new { p.Platform.Name, p.Platform.Slug }).ToList();
+            var genres = dto.Genre?.Select(g => new { g.Name, g.Slug }).ToList();
+            var developers = dto.Developers?.Select(d => new { d.Name, d.Slug, d.ImageBackground }).ToList();
+            var publishers = dto.Publishers?.Select(p => new { p.Name, p.Slug }).ToList();
+            var stores = dto.Stores?.Select(s => new { StoreName = s.Store.Name, Domain = s.Store.Domain, Url = s.Url }).ToList();
+
             var newGame = new Game
             {
                 RawgId = dto.Id,
@@ -169,7 +213,14 @@ namespace GGHub.Infrastructure.Services
                 CoverImage = dto.CoverImage,
                 Rating = dto.Rating,
                 Metacritic = dto.Metacritic,
-                LastSyncedAt = DateTime.UtcNow
+                LastSyncedAt = DateTime.UtcNow,
+                PlatformsJson = platforms != null ? System.Text.Json.JsonSerializer.Serialize(platforms) : null,
+                GenresJson = genres != null ? System.Text.Json.JsonSerializer.Serialize(genres) : null,
+                DevelopersJson = developers != null ? System.Text.Json.JsonSerializer.Serialize(developers) : null,
+                PublishersJson = publishers != null ? System.Text.Json.JsonSerializer.Serialize(publishers) : null,
+                StoresJson = stores != null ? System.Text.Json.JsonSerializer.Serialize(stores) : null,
+                WebsiteUrl = dto.Website,
+                EsrbRating = dto.EsrbRating?.Name
             };
 
             await _context.Games.AddAsync(newGame);

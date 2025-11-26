@@ -175,6 +175,42 @@ namespace GGHub.Infrastructure.Services
                 await _notificationService.CreateNotificationAsync(review.UserId, message, NotificationType.Review, $"/reviews/{review.Id}");
             }
         }
+        public async Task<(double Average, int Count)> GetGameRatingSummaryAsync(int gameId)
+        {
+            var ratings = await _context.Reviews
+                .Where(r => r.GameId == gameId)
+                .Select(r => r.Rating)
+                .ToListAsync();
+
+            if (!ratings.Any()) return (0, 0);
+
+            return (ratings.Average(), ratings.Count);
+        }
+
+        public async Task<ReviewDto?> GetUserReviewForGameAsync(int userId, int rawgGameId)
+        {
+            var game = await _context.Games.FirstOrDefaultAsync(g => g.RawgId == rawgGameId);
+            if (game == null) return null;
+
+            var review = await _context.Reviews
+                .Include(r => r.User)
+                .FirstOrDefaultAsync(r => r.UserId == userId && r.GameId == game.Id);
+
+            if (review == null) return null;
+
+            return new ReviewDto
+            {
+                Id = review.Id,
+                Content = review.Content,
+                Rating = review.Rating,
+                CreatedAt = review.CreatedAt,
+                User = new UserDto
+                {
+                    Id = review.User.Id,
+                    Username = review.User.Username
+                }
+            };
+        }
 
     }
 }

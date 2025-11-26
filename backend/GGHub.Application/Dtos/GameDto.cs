@@ -12,7 +12,28 @@
         public int? Metacritic { get; set; }
         public string? Description { get; set; }
         public string? CoverImage { get; set; }
-        public List<PlatformDto> Platforms { get; set; }
-        public List<GenreDto> Genres { get; set; }
+        public string? WebsiteUrl { get; set; }
+        public string? EsrbRating { get; set; }
+        public double GghubRating { get; set; }
+        public int GghubRatingCount { get; set; }
+        public List<PlatformDto> Platforms { get; set; } = new();
+        public List<GenreDto> Genres { get; set; } = new();
+        public List<DeveloperDto> Developers { get; set; } = new();
+        public List<PublisherDto> Publishers { get; set; } = new();
+        public List<StoreDto> Stores { get; set; } = new();
+    }
+    public class DeveloperDto
+    {
+        public string Name { get; set; }
+        public string Slug { get; set; }
+        public string? ImageBackground { get; set; }
+    }
+
+    public class PublisherDto { public string Name { get; set; } public string Slug { get; set; } }
+    public class StoreDto
+    {
+        public string StoreName { get; set; }
+        public string? Domain { get; set; }
+        public string Url { get; set; } // Satın alma linki
     }
 }

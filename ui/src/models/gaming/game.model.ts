@@ -1,3 +1,20 @@
+export interface Developer {
+    name: string;
+    slug: string;
+    imageBackground?: string;
+}
+
+export interface Publisher {
+    name: string;
+    slug: string;
+}
+
+export interface Store {
+    storeName: string;
+    domain?: string;
+    url: string;
+}
+
 export interface Genre {
     name: string;
     slug: string;
@@ -21,6 +38,13 @@ export interface Game {
     coverImage: string | null;
     platforms: Platform[];
     genres: Genre[];
+    developers?: Developer[];
+    publishers?: Publisher[];
+    stores?: Store[];
+    websiteUrl?: string;
+    esrbRating?: string;
+    gghubRating?: number;
+    gghubRatingCount?: number;
 }
 
 export type GameApiPaginateParams = {
@@ -33,3 +57,31 @@ export type GameApiPaginateParams = {
     dates?: string;
     metacritic?: string;
 };
+
+export interface ReviewUser {
+    id: number;
+    username: string;
+}
+
+export interface Review {
+    id: number;
+    content: string;
+    rating: number;
+    createdAt: string;
+    user: ReviewUser;
+}
+
+export interface CreateReviewRequest {
+    gameId: number;
+    rating: number;
+    content: string;
+}
+
+export interface UpdateReviewRequest {
+    rating: number;
+    content: string;
+}
+
+export interface VoteReviewRequest {
+    value: number;
+}

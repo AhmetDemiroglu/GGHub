@@ -23,5 +23,6 @@ namespace GGHub.Core.Entities
         public double AverageRating { get; set; } = 0;
         public int RatingCount { get; set; } = 0;
         public ICollection<UserListComment> Comments { get; set; } = new List<UserListComment>();
+        public UserListType Type { get; set; } = UserListType.Custom;
     }
 }

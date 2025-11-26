@@ -3,6 +3,7 @@ using GGHub.Application.Interfaces;
 using GGHub.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace GGHub.WebAPI.Controllers
@@ -245,6 +246,25 @@ namespace GGHub.WebAPI.Controllers
             {
                 return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
+        }
+        [HttpPost("wishlist/{gameId}")]
+        [Authorize]
+        public async Task<IActionResult> ToggleWishlist(int gameId)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            var isAdded = await _userListService.ToggleWishlistAsync(userId, gameId);
+
+            return Ok(new { IsAdded = isAdded, Message = isAdded ? "İstek listesine eklendi" : "İstek listesinden çıkarıldı" });
+        }
+        [HttpGet("wishlist/{gameId}/status")]
+        [Authorize]
+        public async Task<IActionResult> GetWishlistStatus(int gameId)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var exists = await _userListService.CheckWishlistStatusAsync(userId, gameId);
+
+            return Ok(new { isInWishlist = exists });
         }
     }
 

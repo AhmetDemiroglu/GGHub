@@ -62,7 +62,7 @@ export default function HomePage() {
                             <span className="text-sm">Geliştirme Durumu</span>
                         </div>
                         <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-zinc-800">
-                            <div className="relative h-full w-3/4 rounded-full bg-gradient-to-r from-indigo-500 to-cyan-500">
+                            <div className="relative h-full w-7/8 rounded-full bg-gradient-to-r from-indigo-500 to-cyan-500">
                                 <div
                                     className="absolute inset-0 animate-[stripe_2s_linear_infinite] bg-[length:24px_24px] opacity-30"
                                     style={{
@@ -151,6 +151,14 @@ export default function HomePage() {
                             </li>
 
                             <li className="flex items-start gap-3">
+                                <Gamepad2 className="mt-0.5 h-4 w-4 text-emerald-500 dark:text-emerald-400" />
+                                <div>
+                                    <p className="font-medium text-slate-900 dark:text-zinc-100">Oyun Detay • Puanlama • Yorumlama</p>
+                                    <p className="text-slate-500 dark:text-zinc-400">Oyun sayfalarında ayrıntılı bilgi, puan ve yorum sistemi.</p>
+                                </div>
+                            </li>
+
+                            <li className="flex items-start gap-3">
                                 <Rocket className="mt-0.5 h-4 w-4 text-cyan-500 dark:text-cyan-400" />
                                 <div>
                                     <p className="font-medium text-slate-900 dark:text-zinc-100">Oyun & Kullanıcı Arama</p>
@@ -177,13 +185,7 @@ export default function HomePage() {
                                 </div>
                             </li>
 
-                            <li className="flex items-start gap-3">
-                                <Gamepad2 className="mt-0.5 h-4 w-4 text-emerald-500 dark:text-emerald-400" />
-                                <div>
-                                    <p className="font-medium text-slate-900 dark:text-zinc-100">Oyun Detay • Puanlama • Yorumlama</p>
-                                    <p className="text-slate-500 dark:text-zinc-400">Oyun sayfalarında ayrıntılı bilgi, puan ve yorum sistemi.</p>
-                                </div>
-                            </li>
+
 
                             <li className="flex items-start gap-3">
                                 <Users className="mt-0.5 h-4 w-4 text-indigo-500 dark:text-indigo-400" />
@@ -210,8 +212,7 @@ export default function HomePage() {
                             </li>
                         </ul>
                         <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50/80 p-3 text-xs text-slate-500 dark:border-zinc-800 dark:bg-zinc-950/60 dark:text-zinc-400">
-                            <span className="font-semibold text-slate-600 dark:text-zinc-300">Not: </span>Geri bildirimleriniz doğrultusunda sıralama ve kapsam güncellenebilir. <br></br>Şu anda, topluluk moderasyonu ve raporlama yönetimi için
-                            <span className="font-semibold text-slate-600 dark:text-zinc-300"> Admin Paneli</span> altyapısı geliştirilmektedir.
+                            <span className="font-semibold text-slate-600 dark:text-zinc-300">Not: </span>Geri bildirimleriniz doğrultusunda sıralama ve kapsam güncellenebilir.
                         </div>
                     </div>
                 </section>

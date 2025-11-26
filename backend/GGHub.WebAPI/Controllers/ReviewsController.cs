@@ -93,5 +93,17 @@ namespace GGHub.WebAPI.Controllers
                 return BadRequest(ex.Message);
             }
         }
+
+        [HttpGet("game/{gameId}/me")]
+        [Authorize]
+        public async Task<IActionResult> GetMyReviewForGame(int gameId)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var review = await _reviewService.GetUserReviewForGameAsync(userId, gameId);
+
+            if (review == null) return NoContent();
+
+            return Ok(review);
+        }
     }
 }
