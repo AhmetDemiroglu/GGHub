@@ -9,5 +9,6 @@ namespace GGHub.Application.Interfaces
         Task<PaginatedResult<GameDto>> GetGamesAsync(GameQueryParams queryParams, int? userId = null);
         Task<Game?> GetGameBySlugOrIdAsync(string idOrSlug);
         Task<Game> GetOrCreateGameByRawgIdAsync(int rawgId);
+        Task<string> TranslateGameDescriptionAsync(int gameId);
     }
 }

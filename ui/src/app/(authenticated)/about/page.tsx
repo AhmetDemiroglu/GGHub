@@ -30,7 +30,7 @@ export default function AboutPage() {
                     </div>
                     <p className={`${font.className} text-lg md:text-2xl text-foreground/80 leading-relaxed`}>
                         oyun severleri bir araya getiren, <span className="text-fuchsia-600/90 drop-shadow-[0_0_6px_rgba(34,211,238,0.35)]">keşfetmeyi</span> kolaylaştıran ve
-                        <span className="text-fuchsia-600/90 drop-shadow-[0_0_6px_rgba(34,211,238,0.35)]">paylaşmayı</span> teşvik eden sosyal platform
+                        <span className="text-fuchsia-600/90 drop-shadow-[0_0_6px_rgba(34,211,238,0.35)]"> paylaşmayı</span> teşvik eden sosyal platform
                     </p>
                 </div>
 

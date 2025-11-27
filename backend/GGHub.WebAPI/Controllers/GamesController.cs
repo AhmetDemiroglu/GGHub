@@ -53,6 +53,7 @@ namespace GGHub.WebAPI.Controllers
                 Rating = game.Rating,
                 Metacritic = game.Metacritic,
                 Description = game.Description,
+                DescriptionTr = game.DescriptionTr,
                 CoverImage = game.CoverImage,
                 WebsiteUrl = game.WebsiteUrl,
                 EsrbRating = game.EsrbRating,
@@ -83,16 +84,11 @@ namespace GGHub.WebAPI.Controllers
             return Ok(gameDto);
         }
 
-        [HttpGet("test-auth")] 
-        [Authorize]
-        public IActionResult TestAuth()
+        [HttpPost("{id}/translate")]
+        public async Task<IActionResult> TranslateGameDescription(int id)
         {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var username = User.FindFirst(ClaimTypes.Name)?.Value;
-
-            return Ok($"Başarıyla giriş yaptın! Kullanıcı ID: {userId}, Kullanıcı Adı: {username}");
+            var translatedText = await _gameService.TranslateGameDescriptionAsync(id);
+            return Ok(new { descriptionTr = translatedText });
         }
-
-
     }
 }

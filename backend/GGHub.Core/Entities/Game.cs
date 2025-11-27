@@ -22,5 +22,6 @@
         public string? EsrbRating { get; set; }
         public double AverageRating { get; set; } = 0;
         public int RatingCount { get; set; } = 0;
+        public string? DescriptionTr { get; set; }
     }
 }

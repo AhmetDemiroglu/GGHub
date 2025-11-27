@@ -16,13 +16,15 @@ namespace GGHub.Infrastructure.Services
     {
         private readonly HttpClient _httpClient;
         private readonly RawgApiSettings _apiSettings;
-        private readonly GGHubDbContext _context; 
+        private readonly GGHubDbContext _context;
+        private readonly IGeminiService _geminiService;
 
-        public RawgGameService(IHttpClientFactory httpClientFactory, IOptions<RawgApiSettings> apiSettings, GGHubDbContext context)
+        public RawgGameService(IHttpClientFactory httpClientFactory, IOptions<RawgApiSettings> apiSettings, GGHubDbContext context, IGeminiService geminiService)
         {
             _httpClient = httpClientFactory.CreateClient();
             _apiSettings = apiSettings.Value;
             _context = context; 
+            _geminiService = geminiService;
         }
         public async Task<Game?> GetGameBySlugOrIdAsync(string idOrSlug)
         {
@@ -255,6 +257,27 @@ namespace GGHub.Infrastructure.Services
             await _context.SaveChangesAsync();
 
             return newGame;
+        }
+
+        public async Task<string> TranslateGameDescriptionAsync(int gameId)
+        {
+            var game = await _context.Games.FindAsync(gameId);
+            if (game == null) return "Oyun bulunamadı.";
+            if (!string.IsNullOrWhiteSpace(game.DescriptionTr))
+            {
+                return game.DescriptionTr;
+            }
+            if (string.IsNullOrWhiteSpace(game.Description))
+            {
+                return "Çevrilecek açıklama bulunamadı.";
+            }
+            var translatedText = await _geminiService.TranslateHtmlDescriptionAsync(game.Description);
+            game.DescriptionTr = translatedText;
+            _context.Entry(game).Property(x => x.DescriptionTr).IsModified = true;
+
+            await _context.SaveChangesAsync();
+
+            return translatedText;
         }
     }
 }
