@@ -9,4 +9,7 @@ export const gameApi = {
     getById: (idOrSlug: string) => {
         return axiosInstance.get<Game>(`/games/${idOrSlug}`).then((res) => res.data);
     },
+    translate: (id: number) => {
+        return axiosInstance.post<{ descriptionTr: string }>(`/games/${id}/translate`).then((res) => res.data);
+    },
 };

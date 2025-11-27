@@ -46,6 +46,7 @@ export interface Game {
     gghubRating?: number;
     gghubRatingCount?: number;
     isInWishlist?: boolean; 
+    descriptionTr?: string;
 }
 
 export type GameApiPaginateParams = {
