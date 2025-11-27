@@ -10,5 +10,6 @@ namespace GGHub.Application.Interfaces
         Task<Game?> GetGameBySlugOrIdAsync(string idOrSlug);
         Task<Game> GetOrCreateGameByRawgIdAsync(int rawgId);
         Task<string> TranslateGameDescriptionAsync(int gameId);
+        Task<List<GameDto>> GetSimilarGamesAsync(int gameId);  
     }
 }

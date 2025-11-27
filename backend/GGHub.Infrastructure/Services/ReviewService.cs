@@ -176,10 +176,18 @@ namespace GGHub.Infrastructure.Services
 
             await _context.SaveChangesAsync();
             var voter = await _context.Users.FindAsync(userId);
-            if (voter != null && review.UserId != userId) 
+            if (voter != null && review.UserId != userId)
             {
-                var message = $"{voter.Username}, yorumuna {(value == 1 ? "olumlu" : "olumsuz")} oy verdi.";
-                await _notificationService.CreateNotificationAsync(review.UserId, message, NotificationType.Review, $"/reviews/{review.Id}");
+                var game = await _context.Games.AsNoTracking().FirstOrDefaultAsync(g => g.Id == review.GameId);
+
+                if (game != null)
+                {
+                    var message = $"{voter.Username}, incelemene {(value == 1 ? "olumlu" : "olumsuz")} oy verdi.";
+                    var gameIdentifier = !string.IsNullOrEmpty(game.Slug) ? game.Slug : game.RawgId.ToString();
+                    var link = $"/games/{gameIdentifier}#review-{review.Id}";
+
+                    await _notificationService.CreateNotificationAsync(review.UserId, message, NotificationType.Review, link);
+                }
             }
         }
         public async Task<(double Average, int Count)> GetGameRatingSummaryAsync(int gameId)

@@ -84,7 +84,7 @@ export const ReviewCard = ({ review, onVote, onDelete, onUpdate }: ReviewCardPro
     };
 
     return (
-        <div className="bg-card/50 border border-border rounded-xl pt-4 px-4 hover:border-border/80 transition-colors">
+        <div id={`review-${review.id}`} className="bg-card/50 border border-border rounded-xl pt-4 px-4 hover:border-border/80 transition-colors">
             {/* Üst Kısım: Avatar ve Info */}
             <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">

@@ -145,7 +145,7 @@ export const ReviewList = ({ gameId, gameName, gameSlug, onAddReview }: ReviewLi
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                     <h3 className="text-2xl font-bold text-foreground flex items-center gap-3"> {/* text-white -> text-foreground */}
-                        Kullanıcı İncelemeleri
+                        İncelemeler
                         <span className="text-sm font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full border border-border">
                             {filteredReviews.length}
                         </span>

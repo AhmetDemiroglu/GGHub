@@ -90,5 +90,12 @@ namespace GGHub.WebAPI.Controllers
             var translatedText = await _gameService.TranslateGameDescriptionAsync(id);
             return Ok(new { descriptionTr = translatedText });
         }
+
+        [HttpGet("{id}/suggested")]
+        public async Task<IActionResult> GetSimilarGames(int id)
+        {
+            var games = await _gameService.GetSimilarGamesAsync(id);
+            return Ok(games);
+        }
     }
 }

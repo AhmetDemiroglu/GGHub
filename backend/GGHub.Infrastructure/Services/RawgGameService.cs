@@ -281,5 +281,79 @@ namespace GGHub.Infrastructure.Services
 
             return translatedText;
         }
+
+        public async Task<List<GameDto>> GetSimilarGamesAsync(int rawgGameId)
+        {
+            string requestUrl;
+
+            var sourceGame = await _context.Games
+                .AsNoTracking()
+                .Select(g => new { g.RawgId, g.GenresJson }) 
+                .FirstOrDefaultAsync(g => g.RawgId == rawgGameId);
+
+            List<GenreDto>? genres = null;
+            if (sourceGame != null && !string.IsNullOrEmpty(sourceGame.GenresJson))
+            {
+                try
+                {
+                    genres = System.Text.Json.JsonSerializer.Deserialize<List<GenreDto>>(sourceGame.GenresJson);
+                }
+                catch { }
+            }
+
+            if (genres != null && genres.Any())
+            {
+                var genreSlugs = string.Join(",", genres.Select(g => g.Slug).Take(2));
+                requestUrl = $"{_apiSettings.BaseUrl}games?key={_apiSettings.ApiKey}&genres={genreSlugs}&ordering=-metacritic&page_size=12";
+            }
+            else
+            {
+                var startDate = DateTime.Now.AddYears(-2).ToString("yyyy-MM-dd");
+                var endDate = DateTime.Now.ToString("yyyy-MM-dd");
+                requestUrl = $"{_apiSettings.BaseUrl}games?key={_apiSettings.ApiKey}&dates={startDate},{endDate}&ordering=-rating&page_size=12";
+            }
+
+            try
+            {
+                var response = await _httpClient.GetFromJsonAsync<PaginatedResponseDto<RawgGameDto>>(requestUrl);
+                if (response == null || !response.Results.Any()) return new List<GameDto>();
+
+                var rawgResults = response.Results
+                    .Where(r => r.Id != rawgGameId)
+                    .Take(10)
+                    .ToList();
+
+                var rawgIds = rawgResults.Select(r => r.Id).ToList();
+
+                var localRatings = await _context.Games
+                    .AsNoTracking()
+                    .Where(g => rawgIds.Contains(g.RawgId))
+                    .Select(g => new { g.RawgId, g.AverageRating, g.RatingCount })
+                    .ToDictionaryAsync(k => k.RawgId, v => new { v.AverageRating, v.RatingCount });
+
+                return rawgResults.Select(dto =>
+                {
+                    var stats = localRatings.ContainsKey(dto.Id) ? localRatings[dto.Id] : null;
+
+                    return new GameDto
+                    {
+                        RawgId = dto.Id,
+                        Name = dto.Name,
+                        Slug = dto.Slug,
+                        Released = dto.Released,
+                        BackgroundImage = dto.BackgroundImage,
+                        Rating = dto.Rating,       
+                        Metacritic = dto.Metacritic, 
+                        GghubRating = stats?.AverageRating ?? 0,
+                        GghubRatingCount = stats?.RatingCount ?? 0
+                    };
+                }).ToList();
+            }
+            catch
+            {
+                return new List<GameDto>();
+            }
+        }
     }
+ 
 }
