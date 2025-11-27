@@ -2,8 +2,9 @@ import { axiosInstance } from "@core/lib/axios";
 import type { PaginatedResponse } from "@/models/system/api.model";
 import type { UserList, UserListForCreation, UserListForUpdate, UserListDetail, UserListPublic, ListQueryParameters } from "@/models/list/list.model";
 
-export const getMyLists = (): Promise<UserList[]> => {
-    return axiosInstance.get<UserList[]>("/user-lists").then((response) => response.data);
+export const getMyLists = (gameId?: number): Promise<UserList[]> => {
+    const url = gameId ? `/user-lists?gameId=${gameId}` : "/user-lists";
+    return axiosInstance.get<UserList[]>(url).then((response) => response.data);
 };
 
 export const createList = (data: UserListForCreation): Promise<UserList> => {
@@ -20,6 +21,12 @@ export const deleteList = (listId: number): Promise<void> => {
 
 export const getMyListDetail = (listId: number): Promise<UserListDetail> => {
     return axiosInstance.get<UserListDetail>(`/user-lists/${listId}/my-detail`).then((response) => response.data);
+};
+
+export const getMyWishlist = (): Promise<UserListDetail | null> => {
+    return axiosInstance
+        .get<UserListDetail | null>("/user-lists/wishlist")
+        .then((response) => response.data);
 };
 
 export const getPublicLists = (params: ListQueryParameters): Promise<PaginatedResponse<UserListPublic>> => {

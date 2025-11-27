@@ -27,11 +27,7 @@ export const TopUsersCard = ({ users }: TopUsersCardProps) => {
                 <div className="flex flex-1 flex-col gap-4">
                     {users.length > 0 ? (
                         users.map((user) => (
-                            <Link
-                                href={`/profile/${user.username}`}
-                                key={user.userId}
-                                className="flex items-center gap-3 p-2 -m-2 rounded-md hover:bg-accent"
-                            >
+                            <Link href={`/users/${user.userId}`} key={user.userId} className="flex items-center gap-3 p-2 -m-2 rounded-md hover:bg-accent">
                                 <Avatar className="h-9 w-9">
                                     <AvatarImage src={getImageUrl(user.profileImageUrl)} alt={user.username} />
                                     <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>

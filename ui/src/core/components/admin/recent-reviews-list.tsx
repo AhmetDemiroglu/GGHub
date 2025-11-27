@@ -34,7 +34,10 @@ export const RecentReviewsList = ({ reviews }: RecentReviewsListProps) => {
                                     <Link href={`/profile/${review.username}`} className="text-sm font-medium truncate hover:underline">
                                         {review.username}
                                     </Link>
-                                    <Link href={`/discover/${review.gameId}`} className="text-xs text-muted-foreground truncate block hover:underline">
+                                    <Link
+                                        href={`/games/${review.slug || review.rawgId}`}
+                                        className="text-xs text-muted-foreground truncate block hover:underline"
+                                    >
                                         {review.gameName}
                                     </Link>
                                 </div>

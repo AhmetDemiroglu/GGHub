@@ -2,6 +2,7 @@
 using GGHub.Application.DTOs.Common;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
+using GGHub.Core.Enums;
 using GGHub.Infrastructure.Dtos;
 using GGHub.Infrastructure.Persistence; 
 using GGHub.Infrastructure.Settings;
@@ -109,7 +110,7 @@ namespace GGHub.Infrastructure.Services
             }
         }
 
-        public async Task<PaginatedResult<GameDto>> GetGamesAsync(GameQueryParams queryParams)
+        public async Task<PaginatedResult<GameDto>> GetGamesAsync(GameQueryParams queryParams, int? userId = null)
         {
             var requestUrl = $"{_apiSettings.BaseUrl}games?key={_apiSettings.ApiKey}&page={queryParams.Page}&page_size={queryParams.PageSize}";
 
@@ -151,21 +152,48 @@ namespace GGHub.Infrastructure.Services
                 };
             }
 
+            var rawgIds = response.Results.Select(r => r.Id).ToList();
+
+            var wishlistGameIds = new HashSet<int>(); 
+            if (userId.HasValue)
+            {
+                var wishlist = await _context.UserLists
+                    .Where(l => l.UserId == userId && l.Type == UserListType.Wishlist)
+                    .SelectMany(l => l.UserListGames)
+                    .Select(ulg => ulg.Game.RawgId)
+                    .ToListAsync();
+
+                foreach (var id in wishlist) wishlistGameIds.Add(id);
+            }
+
+            var localRatings = await _context.Games
+                .Where(g => rawgIds.Contains(g.RawgId))
+                .Select(g => new { g.RawgId, g.AverageRating, g.RatingCount })
+                .ToDictionaryAsync(k => k.RawgId, v => new { v.AverageRating, v.RatingCount });
+
             var gameDtos = response.Results
-                .Select(dto => new GameDto
+                .Select(dto =>
                 {
-                    Id = 0,
-                    RawgId = dto.Id,
-                    Slug = dto.Slug,
-                    Name = dto.Name,
-                    Released = dto.Released,
-                    BackgroundImage = dto.BackgroundImage,
-                    Rating = dto.Rating,
-                    Metacritic = dto.Metacritic,
-                    Description = null,
-                    CoverImage = null,
-                    Platforms = dto.Platforms?.Select(p => new PlatformDto { Name = p.Platform.Name, Slug = p.Platform.Slug }).ToList() ?? new List<PlatformDto>(),
-                    Genres = dto.Genres?.Select(g => new GenreDto { Name = g.Name, Slug = g.Slug }).ToList() ?? new List<GenreDto>()
+                    var stats = localRatings.ContainsKey(dto.Id) ? localRatings[dto.Id] : null;
+
+                    return new GameDto
+                    {
+                        Id = 0, 
+                        RawgId = dto.Id,
+                        Slug = dto.Slug,
+                        Name = dto.Name,
+                        Released = dto.Released,
+                        BackgroundImage = dto.BackgroundImage,
+                        Rating = dto.Rating,
+                        Metacritic = dto.Metacritic,
+                        Description = null,
+                        CoverImage = null,
+                        IsInWishlist = wishlistGameIds.Contains(dto.Id),
+                        Platforms = dto.Platforms?.Select(p => new PlatformDto { Name = p.Platform.Name, Slug = p.Platform.Slug }).ToList() ?? new List<PlatformDto>(),
+                        Genres = dto.Genres?.Select(g => new GenreDto { Name = g.Name, Slug = g.Slug }).ToList() ?? new List<GenreDto>(),
+                        GghubRating = stats?.AverageRating ?? 0,
+                        GghubRatingCount = stats?.RatingCount ?? 0
+                    };
                 })
                 .ToList();
 

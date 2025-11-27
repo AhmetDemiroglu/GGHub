@@ -43,6 +43,7 @@ namespace GGHub.Infrastructure.Services
 
             await _context.Reviews.AddAsync(review);
             await _context.SaveChangesAsync();
+            await UpdateGameRatingStatisticsAsync(game.Id);
 
             return review;
         }
@@ -68,7 +69,8 @@ namespace GGHub.Infrastructure.Services
                     User = new UserDto
                     {
                         Id = r.User.Id,
-                        Username = r.User.Username
+                        Username = r.User.Username,
+                        ProfileImageUrl = r.User.ProfileImageUrl
                     }
                 })
                 .ToListAsync();
@@ -89,8 +91,11 @@ namespace GGHub.Infrastructure.Services
                 return false;
             }
 
+            var gameId = review.GameId;
+
             _context.Reviews.Remove(review);
             await _context.SaveChangesAsync();
+            await UpdateGameRatingStatisticsAsync(gameId);
 
             return true;
         }
@@ -115,6 +120,7 @@ namespace GGHub.Infrastructure.Services
             review.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+            await UpdateGameRatingStatisticsAsync(review.GameId);
 
             return new ReviewDto
             {
@@ -125,7 +131,8 @@ namespace GGHub.Infrastructure.Services
                 User = new UserDto
                 {
                     Id = review.User.Id,
-                    Username = review.User.Username
+                    Username = review.User.Username,
+                    ProfileImageUrl = review.User.ProfileImageUrl
                 }
             };
         }
@@ -207,10 +214,71 @@ namespace GGHub.Infrastructure.Services
                 User = new UserDto
                 {
                     Id = review.User.Id,
-                    Username = review.User.Username
+                    Username = review.User.Username,
+                    ProfileImageUrl = review.User.ProfileImageUrl
                 }
             };
         }
 
+        public async Task<IEnumerable<ReviewDto>> GetReviewsForGameAsync(int rawgGameId, int? userId = null)
+        {
+            var gameInDb = await _context.Games.FirstOrDefaultAsync(g => g.RawgId == rawgGameId);
+
+            if (gameInDb == null)
+            {
+                return Enumerable.Empty<ReviewDto>();
+            }
+
+            var reviews = await _context.Reviews
+                .Where(r => r.GameId == gameInDb.Id)
+                .Include(r => r.User)
+                .Include(r => r.ReviewVotes)
+                .OrderByDescending(r => r.CreatedAt)
+                .Select(r => new ReviewDto
+                {
+                    Id = r.Id,
+                    Content = r.Content,
+                    Rating = r.Rating,
+                    CreatedAt = r.CreatedAt,
+                    VoteScore = r.ReviewVotes.Sum(v => v.Value),
+                    CurrentUserVote = userId.HasValue
+                        ? r.ReviewVotes.Where(v => v.UserId == userId).Select(v => (int?)v.Value).FirstOrDefault()
+                        : null,
+                    User = new UserDto
+                    {
+                        Id = r.User.Id,
+                        Username = r.User.Username,
+                        ProfileImageUrl = r.User.ProfileImageUrl
+                    }
+                })
+                .ToListAsync();
+
+            return reviews;
+        }
+
+        private async Task UpdateGameRatingStatisticsAsync(int gameId)
+        {
+            var stats = await _context.Reviews
+                .Where(r => r.GameId == gameId)
+                .GroupBy(r => r.GameId)
+                .Select(g => new
+                {
+                    Average = g.Average(r => r.Rating),
+                    Count = g.Count()
+                })
+                .FirstOrDefaultAsync();
+
+            var game = await _context.Games.FindAsync(gameId);
+            if (game != null)
+            {
+                game.AverageRating = stats?.Average ?? 0;
+                game.RatingCount = stats?.Count ?? 0;
+
+                _context.Entry(game).Property(x => x.AverageRating).IsModified = true;
+                _context.Entry(game).Property(x => x.RatingCount).IsModified = true;
+
+                await _context.SaveChangesAsync();
+            }
+        }
     }
 }

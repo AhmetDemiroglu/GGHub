@@ -21,7 +21,17 @@ namespace GGHub.WebAPI.Controllers
         [HttpGet]
         public async Task<IActionResult> GetGames([FromQuery] GameQueryParams queryParams)
         {
-            var games = await _gameService.GetGamesAsync(queryParams);
+            int? userId = null;
+            if (User.Identity != null && User.Identity.IsAuthenticated)
+            {
+                var claim = User.FindFirst(ClaimTypes.NameIdentifier);
+                if (claim != null && int.TryParse(claim.Value, out int parsedId))
+                {
+                    userId = parsedId;
+                }
+            }
+
+            var games = await _gameService.GetGamesAsync(queryParams, userId);
             return Ok(games);
         }
         [HttpGet("{idOrSlug}")]

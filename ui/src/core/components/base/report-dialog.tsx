@@ -86,7 +86,7 @@ export const ReportDialog = ({ isOpen, onOpenChange, entityType, entityId }: Rep
                         value={reason}
                         onChange={(e) => setReason(e.target.value)}
                         disabled={isPending}
-                        className="min-h-[100px]"
+                        className="min-h-[100px] mt-2"
                     />
                 </div>
 

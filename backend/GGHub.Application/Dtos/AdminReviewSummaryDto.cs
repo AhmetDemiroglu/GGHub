@@ -8,5 +8,7 @@
         public int Rating { get; set; }
         public string Content { get; set; }
         public DateTime CreatedAt { get; set; }
+        public int RawgId { get; set; }
+        public string Slug { get; set; }
     }
 }

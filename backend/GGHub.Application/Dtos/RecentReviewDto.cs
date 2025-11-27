@@ -11,5 +11,7 @@ namespace GGHub.Application.Dtos
         public int GameId { get; set; }
         public int Rating { get; set; }
         public DateTime CreatedAt { get; set; }
+        public int RawgId { get; set; }
+        public string Slug { get; set; }
     }
 }

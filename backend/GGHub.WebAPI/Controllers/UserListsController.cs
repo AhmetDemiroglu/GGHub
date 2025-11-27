@@ -66,10 +66,10 @@ namespace GGHub.WebAPI.Controllers
             }
         }
         [HttpGet("/api/user-lists")]
-        public async Task<IActionResult> GetMyLists()
+        public async Task<IActionResult> GetMyLists([FromQuery] int? gameId = null) 
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var lists = await _userListService.GetListsForUserAsync(userId);
+            var lists = await _userListService.GetListsForUserAsync(userId, gameId);
             return Ok(lists);
         }
         [HttpGet("{listId}/my-detail")]
@@ -265,6 +265,26 @@ namespace GGHub.WebAPI.Controllers
             var exists = await _userListService.CheckWishlistStatusAsync(userId, gameId);
 
             return Ok(new { isInWishlist = exists });
+        }
+
+        [HttpGet("wishlist")]
+        [Authorize]
+        public async Task<IActionResult> GetMyWishlist()
+        {
+            int? currentUserId = null;
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim != null)
+            {
+                currentUserId = int.Parse(userIdClaim.Value);
+            }
+
+            if (currentUserId == null)
+            {
+                return Unauthorized(new { message = "Giriş yapılmalı." });
+            }
+
+            var wishlist = await _userListService.GetWishlistForUserAsync(currentUserId.Value);
+            return Ok(wishlist);
         }
     }
 

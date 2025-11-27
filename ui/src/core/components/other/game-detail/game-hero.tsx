@@ -8,20 +8,18 @@ import { checkWishlistStatus, toggleWishlist } from "@/api/list/list.api";
 import { toast } from "sonner";
 import { useAuth } from "@/core/hooks/use-auth";
 import { GameAddToListDialog } from "./game-add-to-list-dialog";
-import { GameReviewDialog } from "./game-review-dialog";
 import { createReview, getMyReview } from "@/api/review/review.api";
 
 interface GameHeroProps {
     game: Game;
+    onOpenReviewModal: () => void;
 }
 
-
-export const GameHero = ({ game }: GameHeroProps) => {
+export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
     const { isAuthenticated } = useAuth();
     const queryClient = useQueryClient();
 
     const [isListDialogOpen, setIsListDialogOpen] = useState(false);
-    const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
 
     const { data: wishlistStatus, isLoading: isStatusLoading } = useQuery({
         queryKey: ["wishlist-status", game.id],
@@ -30,7 +28,7 @@ export const GameHero = ({ game }: GameHeroProps) => {
     });
 
     const { mutate: mutateWishlist, isPending: isWishlistLoading } = useMutation({
-        mutationFn: () => toggleWishlist(game.id),
+        mutationFn: () => toggleWishlist(game.rawgId),
         onSuccess: (data) => {
             queryClient.setQueryData(["wishlist-status", game.id], { isInWishlist: data.isAdded });
 
@@ -38,6 +36,11 @@ export const GameHero = ({ game }: GameHeroProps) => {
                 description: data.isAdded ? "Oyun istek listenize eklendi." : "Oyun istek listenizden çıkarıldı."
             });
         },
+        onError: (error) => {
+            toast.error("İşlem başarısız oldu", {
+                description: "Lütfen giriş yaptığınızdan emin olun."
+            });
+        }
     });
 
     const { data: myReview } = useQuery({
@@ -66,14 +69,6 @@ export const GameHero = ({ game }: GameHeroProps) => {
         } catch (err) {
             toast.error("Kopyalama Başarısız");
         }
-    };
-
-    const handleRateClick = () => {
-        if (!isAuthenticated) {
-            toast.error("Giriş Yapmalısınız", { description: "Puan vermek ve inceleme yazmak için üye girişi gereklidir." });
-            return;
-        }
-        setIsReviewDialogOpen(true);
     };
 
     const releaseDate = game.released
@@ -180,7 +175,7 @@ export const GameHero = ({ game }: GameHeroProps) => {
                     <div className="lg:col-span-5 lg:flex lg:justify-end">
                         <GameRatingBar
                             rating={game.gghubRating || 0}
-                            onRateClick={handleRateClick}
+                            onRateClick={onOpenReviewModal}
                             actionLabel={myReview ? "Puanını Düzenle" : "Puan vermek için tıkla"}
                         />
                     </div>
@@ -189,14 +184,6 @@ export const GameHero = ({ game }: GameHeroProps) => {
                     isOpen={isListDialogOpen}
                     onClose={() => setIsListDialogOpen(false)}
                     gameId={game.rawgId}
-                />
-                <GameReviewDialog 
-                    isOpen={isReviewDialogOpen} 
-                    onClose={() => setIsReviewDialogOpen(false)} 
-                    gameId={game.rawgId} 
-                    gameSlug={game.slug}
-                    gameName={game.name}
-                    existingReview={myReview}
                 />
             </div>
         </div>

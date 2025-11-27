@@ -68,7 +68,7 @@ export default function MyListsPage() {
         error: myListsError,
     } = useQuery<UserList[]>({
         queryKey: ["my-lists"],
-        queryFn: listApi.getMyLists,
+        queryFn: () => listApi.getMyLists(),
         enabled: !!user,
         staleTime: Infinity,
         refetchOnWindowFocus: false,
@@ -122,10 +122,6 @@ export default function MyListsPage() {
             toast.error(`Liste oluşturulamadı: ${(error as Error).message}`);
         },
     });
-
-    const handleCreateList = (values: UserListForCreation) => {
-        createListMutation.mutate(values);
-    };
 
     const updateListMutation = useMutation({
         mutationFn: ({ listId, data }: { listId: number; data: UserListForUpdate }) => listApi.updateList(listId, data),
@@ -191,13 +187,17 @@ export default function MyListsPage() {
     };
 
     const filteredMyLists = useMemo(() => {
-        if (!myLists) return [];
-        return myLists.filter((list) => {
+        const lists = myLists ?? [];
+        
+        return lists.filter((list: UserList) => {
             const searchMatch =
                 debouncedSearchTerm === "" || list.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) || list.description?.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
             const categoryMatch = selectedCategory === "all" || list.category === Number(selectedCategory);
             const visibilityMatch = selectedVisibility_MyLists === "all" || list.visibility === Number(selectedVisibility_MyLists);
-            return searchMatch && categoryMatch && visibilityMatch;
+            
+            const typeMatch = list.type !== 1; 
+
+            return searchMatch && categoryMatch && visibilityMatch && typeMatch;
         });
     }, [myLists, debouncedSearchTerm, selectedCategory, selectedVisibility_MyLists]);
 
@@ -309,7 +309,7 @@ export default function MyListsPage() {
                     ) : (
                         <>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                {paginatedMyLists.map((list) => {
+                                {paginatedMyLists.map((list: UserList) => {
                                     const cardFooter = (
                                         <div className="flex justify-end gap-2">
                                             <Button

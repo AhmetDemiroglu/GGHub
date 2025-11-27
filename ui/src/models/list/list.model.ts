@@ -54,6 +54,8 @@ export interface UserList {
     averageRating: number;
     ratingCount: number;
     firstGameImageUrls: (string | null)[];
+    type: number;
+    containsCurrentGame?: boolean;
 }
 export interface UserListPublic {
     id: number;

@@ -22,5 +22,7 @@ namespace GGHub.Application.Dtos
         public int RatingCount { get; set; }
         public List<string?> FirstGameImageUrls { get; set; } = new List<string?>();
         public UserDto Owner { get; set; }
+        public int Type { get; set; }
+        public bool ContainsCurrentGame { get; set; }
     }
 }

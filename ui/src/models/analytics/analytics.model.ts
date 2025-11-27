@@ -20,4 +20,6 @@ export interface TopGame {
     gameImageUrl: string | null;
     averageRating: number;
     reviewCount: number;
+    rawgId: number;
+    slug: string;
 }

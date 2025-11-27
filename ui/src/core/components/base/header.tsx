@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import type { Profile } from "@/models/profile/profile.model";
 import { getMyProfile } from "@/api/profile/profile.api";
 import { SearchBar } from "@/core/components/other/search/search-bar";
-import { Bell, Mail, LogIn, LogOut, UserPlus, List, Star, Settings, FileText, LayoutDashboard } from "lucide-react";
+import { Bell, Mail, LogIn, LogOut, UserPlus, List, Star, Settings, FileText, LayoutDashboard, Gift } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getNotifications, getUnreadNotificationCount, markAllNotificationsAsRead } from "@/api/notifications/notifications.api";
 import { NotificationDto, NotificationType } from "@/models/notifications/notification.model";
@@ -78,7 +78,7 @@ export function Header() {
                     queryClient.invalidateQueries({ queryKey: ["unread-notification-count"] });
                     queryClient.invalidateQueries({ queryKey: ["notifications"] });
                 })
-                .catch(() => {});
+                .catch(() => { });
         }
     };
 
@@ -326,6 +326,12 @@ export function Header() {
                                         <Link href="/profile" className="cursor-pointer flex items-center">
                                             <Settings className="mr-2 h-4 w-4" />
                                             <span>Profil Yönetimi</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/wishlist" className="cursor-pointer flex items-center">
+                                            <Gift className="mr-2 h-4 w-4" />
+                                            <span>İstek Listem</span>
                                         </Link>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem asChild>

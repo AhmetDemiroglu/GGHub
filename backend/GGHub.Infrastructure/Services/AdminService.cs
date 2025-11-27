@@ -336,7 +336,9 @@ namespace GGHub.Infrastructure.Services
                     GameName = r.Game.Name,
                     GameId = r.GameId,
                     Rating = r.Rating,
-                    CreatedAt = r.CreatedAt
+                    CreatedAt = r.CreatedAt,
+                    RawgId = r.Game.RawgId,
+                    Slug = r.Game.Slug
                 })
                 .ToListAsync();
 
@@ -378,7 +380,9 @@ namespace GGHub.Infrastructure.Services
                     GameId = r.GameId,
                     Rating = r.Rating,
                     Content = r.Content.Length > 100 ? r.Content.Substring(0, 100) + "..." : r.Content,
-                    CreatedAt = r.CreatedAt
+                    CreatedAt = r.CreatedAt,
+                    RawgId = r.Game.RawgId,
+                    Slug = r.Game.Slug
                 })
                 .ToListAsync();
 

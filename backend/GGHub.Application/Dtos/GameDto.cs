@@ -21,6 +21,7 @@
         public List<DeveloperDto> Developers { get; set; } = new();
         public List<PublisherDto> Publishers { get; set; } = new();
         public List<StoreDto> Stores { get; set; } = new();
+        public bool IsInWishlist { get; set; }
     }
     public class DeveloperDto
     {

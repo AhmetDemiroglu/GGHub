@@ -12,5 +12,6 @@ namespace GGHub.Application.Interfaces
         Task VoteOnReviewAsync(int reviewId, int userId, int value);
         Task<(double Average, int Count)> GetGameRatingSummaryAsync(int gameId);
         Task<ReviewDto?> GetUserReviewForGameAsync(int userId, int rawgGameId);
+        Task<IEnumerable<ReviewDto>> GetReviewsForGameAsync(int rawgGameId, int? userId = null);
     }
 }

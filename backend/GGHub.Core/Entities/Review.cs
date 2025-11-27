@@ -16,6 +16,7 @@ namespace GGHub.Core.Entities
         public int UserId { get; set; }
         public User User { get; set; } 
         public int GameId { get; set; }
-        public Game Game { get; set; } 
+        public Game Game { get; set; }
+        public ICollection<ReviewVote> ReviewVotes { get; set; } = new List<ReviewVote>();
     }
 }

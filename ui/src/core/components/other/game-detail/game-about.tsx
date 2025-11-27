@@ -9,11 +9,10 @@ export const GameAbout = ({ game }: { game: Game }) => {
 
     return (
         <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-white">Hakkında</h2>
-
-            <div className={`relative text-gray-300 leading-relaxed text-lg font-light ${!isExpanded && isLongContent ? "max-h-[300px] overflow-hidden" : ""}`}>
+            <h2 className="text-2xl font-bold text-foreground">Hakkında</h2>
+            <div className={`relative text-muted-foreground leading-relaxed text-lg font-light ${!isExpanded && isLongContent ? "max-h-[300px] overflow-hidden" : ""}`}>
                 <div
-                    className="prose prose-invert max-w-none prose-p:my-4 prose-a:text-blue-400"
+                    className="prose dark:prose-invert max-w-none prose-p:my-4 prose-a:text-primary prose-p:text-muted-foreground"
                     dangerouslySetInnerHTML={{ __html: game.description }}
                 />
 
@@ -27,7 +26,7 @@ export const GameAbout = ({ game }: { game: Game }) => {
             {isLongContent && (
                 <button
                     onClick={() => setIsExpanded(!isExpanded)}
-                    className="text-xs font-bold uppercase tracking-widest bg-white/5 hover:bg-white/10 text-white px-4 py-2 rounded transition-colors"
+                    className="text-xs font-bold uppercase tracking-widest bg-secondary hover:bg-secondary/80 text-secondary-foreground px-4 py-2 rounded transition-colors cursor-pointer"
                 >
                     {isExpanded ? "Daha Az Göster" : "Daha Fazla Göster"}
                 </button>

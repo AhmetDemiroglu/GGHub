@@ -8,7 +8,7 @@ namespace GGHub.Application.Interfaces
     {
         Task<UserList> CreateListAsync(UserListForCreationDto listDto, int userId);
         Task AddGameToListAsync(int listId, int rawgGameId, int userId);
-        Task<IEnumerable<UserListDto>> GetListsForUserAsync(int userId);
+        Task<IEnumerable<UserListDto>> GetListsForUserAsync(int userId, int? rawgGameId = null);
         Task<UserListDetailDto?> GetMyListDetailAsync(int listId, int userId);
         Task<UserListDetailDto> GetListDetailAsync(int listId, int? currentUserId);
         Task<PaginatedResult<UserListPublicDto>> GetPublicListsAsync(ListQueryParams query, int? currentUserId);
@@ -18,5 +18,6 @@ namespace GGHub.Application.Interfaces
         Task<bool> DeleteListAsync(int listId, int userId);
         Task<bool> ToggleWishlistAsync(int userId, int gameId);
         Task<bool> CheckWishlistStatusAsync(int userId, int gameId);
+        Task<UserListDetailDto?> GetWishlistForUserAsync(int userId);
     }
 }

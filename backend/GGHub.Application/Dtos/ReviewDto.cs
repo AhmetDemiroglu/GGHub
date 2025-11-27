@@ -6,6 +6,8 @@
         public string Content { get; set; }
         public int Rating { get; set; }
         public DateTime CreatedAt { get; set; }
-        public UserDto User { get; set; } // Tam User entity'si yerine güvenli UserDto'yu kullanıyoruz.
+        public UserDto User { get; set; }
+        public int? CurrentUserVote { get; set; }
+        public int VoteScore { get; set; }
     }
 }

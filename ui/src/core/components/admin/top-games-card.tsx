@@ -25,7 +25,11 @@ export const TopGamesCard = ({ games }: TopGamesCardProps) => {
                 <div className="flex flex-1 flex-col gap-4">
                     {games.length > 0 ? (
                         games.map((game) => (
-                            <Link href={`/discover/${game.gameId}`} key={game.gameId} className="flex items-center gap-3 p-2 -m-2 rounded-md hover:bg-accent">
+                            <Link
+                                key={game.slug || game.rawgId}
+                                href={`/games/${game.slug || game.rawgId}`}
+                                className="flex items-center gap-3 p-2 -m-2 rounded-md hover:bg-accent"
+                            >
                                 <Image src={getImageUrl(game.gameImageUrl) || "/assets/placeholder.png"} alt={game.gameName} width={40} height={56} className="rounded-sm object-cover" />
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium truncate">{game.gameName}</p>

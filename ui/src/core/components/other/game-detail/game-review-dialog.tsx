@@ -36,15 +36,10 @@ export const GameReviewDialog = ({ isOpen, onClose, gameId, gameSlug, gameName, 
         onSuccess: () => {
             toast.success(existingReview ? "İnceleme Güncellendi" : "İnceleme Kaydedildi");
 
-            // KRİTİK DÜZELTME: Hem ID hem Slug tabanlı query'leri yenile
-            // Sayfa slug ile açıldıysa ["game", "the-witcher-3"] yenilenmeli
             queryClient.invalidateQueries({ queryKey: ["game", gameSlug] });
-            // Sayfa ID ile açıldıysa ["game", "3328"] yenilenmeli (her ihtimale karşı)
             queryClient.invalidateQueries({ queryKey: ["game", gameId.toString()] });
-
-            // Kullanıcının kendi incelemesini de yenile
             queryClient.invalidateQueries({ queryKey: ["my-review", gameId] });
-
+            queryClient.invalidateQueries({ queryKey: ["game-reviews", gameId] });
             onClose();
         },
     });
@@ -64,6 +59,25 @@ export const GameReviewDialog = ({ isOpen, onClose, gameId, gameSlug, gameName, 
 
     if (!isOpen) return null;
 
+    const getRatingButtonClasses = (num: number, currentRating: number) => {
+        const isActive = num <= currentRating;
+        if (!isActive) {
+            return "bg-zinc-900 border-zinc-700 text-zinc-500 hover:border-zinc-500 hover:text-zinc-300";
+        }
+        if (num >= 9) {
+            return "bg-emerald-500 border-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.5)]";
+        }
+
+        if (num >= 7) {
+            return "bg-blue-600 border-blue-500 text-white shadow-[0_0_10px_rgba(59,130,246,0.5)]";
+        }
+
+        if (num >= 5) {
+            return "bg-yellow-500 border-yellow-500 text-black shadow-[0_0_10px_rgba(245,158,11,0.5)]";
+        }
+
+        return "bg-red-500 border-red-500 text-white shadow-[0_0_10px_rgba(239,68,68,0.5)]";
+    };
     const renderRatingButtons = () => {
         return (
             <div className="flex flex-wrap gap-2 justify-center mb-6">
@@ -72,12 +86,7 @@ export const GameReviewDialog = ({ isOpen, onClose, gameId, gameSlug, gameName, 
                         key={num}
                         type="button"
                         onClick={() => setRating(num)}
-                        className={`w-8 h-10 rounded-md font-bold text-sm transition-all flex items-center justify-center border ${rating >= num
-                            ? (num >= 8 ? "bg-green-500 border-green-500 text-white shadow-[0_0_10px_rgba(34,197,94,0.4)]" :
-                                num >= 5 ? "bg-yellow-500 border-yellow-500 text-black shadow-[0_0_10px_rgba(234,179,8,0.4)]" :
-                                    "bg-red-500 border-red-500 text-white shadow-[0_0_10px_rgba(239,68,68,0.4)]")
-                            : "bg-zinc-900 border-zinc-700 text-zinc-500 hover:border-zinc-500 hover:text-zinc-300"
-                            }`}
+                        className={`w-8 h-10 rounded-md font-bold text-sm transition-all flex items-center justify-center border ${getRatingButtonClasses(num, rating)}`}
                     >
                         {num}
                     </button>
@@ -135,14 +144,14 @@ export const GameReviewDialog = ({ isOpen, onClose, gameId, gameSlug, gameName, 
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-5 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+                            className="cursor-pointer px-5 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
                         >
                             İptal
                         </button>
                         <button
                             type="submit"
                             disabled={isPending}
-                            className="px-6 py-2.5 bg-white text-black rounded-lg text-sm font-bold hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            className="cursor-pointer px-6 py-2.5 bg-white text-black rounded-lg text-sm font-bold hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                         >
                             {isPending && <Loader2 size={16} className="animate-spin" />}
                             Gönder

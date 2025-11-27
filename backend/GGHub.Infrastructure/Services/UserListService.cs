@@ -95,7 +95,7 @@ namespace GGHub.Infrastructure.Services
                 }
             }
         }
-        public async Task<IEnumerable<UserListDto>> GetListsForUserAsync(int userId)
+        public async Task<IEnumerable<UserListDto>> GetListsForUserAsync(int userId, int? rawgGameId = null)
         {
             var listsFromDb = await _context.UserLists
                 .Where(l => l.UserId == userId)
@@ -128,6 +128,8 @@ namespace GGHub.Infrastructure.Services
                     FirstName = listEntity.User.FirstName,
                     LastName = listEntity.User.LastName
                 },
+                Type = (int)listEntity.Type,
+                ContainsCurrentGame = rawgGameId.HasValue && listEntity.UserListGames.Any(ulg => ulg.Game.RawgId == rawgGameId.Value),
                 FirstGameImageUrls = listEntity.UserListGames 
                                       .OrderBy(ulg => ulg.AddedAt)
                                       .Select(ulg => ulg.Game.BackgroundImage)
@@ -170,7 +172,9 @@ namespace GGHub.Infrastructure.Services
                         Slug = ulg.Game.Slug,
                         CoverImage = ulg.Game.CoverImage,
                         BackgroundImage = ulg.Game.BackgroundImage,
-                        Released = ulg.Game.Released
+                        Released = ulg.Game.Released,
+                        GghubRating = ulg.Game.AverageRating,
+                        GghubRatingCount = ulg.Game.RatingCount
                     }).ToList()
                 })
                 .FirstOrDefaultAsync();
@@ -241,6 +245,8 @@ namespace GGHub.Infrastructure.Services
                 Released = ulg.Game.Released,
                 Rating = ulg.Game.Rating,
                 Metacritic = ulg.Game.Metacritic,
+                GghubRating = ulg.Game.AverageRating,
+                GghubRatingCount = ulg.Game.RatingCount
             }).ToList();
 
             return new UserListDetailDto
@@ -520,8 +526,10 @@ namespace GGHub.Infrastructure.Services
             return await _context.SaveChangesAsync() > 0;
         }
 
-        public async Task<bool> ToggleWishlistAsync(int userId, int gameId)
+        public async Task<bool> ToggleWishlistAsync(int userId, int rawgGameId)
         {
+            var game = await _gameService.GetOrCreateGameByRawgIdAsync(rawgGameId);
+
             var wishlist = await _context.UserLists
                 .FirstOrDefaultAsync(l => l.UserId == userId && l.Type == UserListType.Wishlist);
 
@@ -532,7 +540,7 @@ namespace GGHub.Infrastructure.Services
                     UserId = userId,
                     Name = "İstek Listem",
                     Description = "Takip ettiğim oyunlar",
-                    Category = ListCategory.Other, 
+                    Category = ListCategory.Other,
                     Type = UserListType.Wishlist,
                     Visibility = ListVisibilitySetting.Private,
                     CreatedAt = DateTime.UtcNow,
@@ -543,7 +551,7 @@ namespace GGHub.Infrastructure.Services
             }
 
             var existingItem = await _context.UserListGames
-                .FirstOrDefaultAsync(ulg => ulg.UserListId == wishlist.Id && ulg.GameId == gameId);
+                .FirstOrDefaultAsync(ulg => ulg.UserListId == wishlist.Id && ulg.GameId == game.Id);
 
             if (existingItem != null)
             {
@@ -556,11 +564,11 @@ namespace GGHub.Infrastructure.Services
                 await _context.UserListGames.AddAsync(new UserListGame
                 {
                     UserListId = wishlist.Id,
-                    GameId = gameId,
+                    GameId = game.Id,
                     AddedAt = DateTime.UtcNow
                 });
                 await _context.SaveChangesAsync();
-                return true;
+                return true; 
             }
         }
 
@@ -573,6 +581,64 @@ namespace GGHub.Infrastructure.Services
 
             return await _context.UserListGames
                 .AnyAsync(ulg => ulg.UserListId == wishlist.Id && ulg.GameId == gameId);
+        }
+
+        public async Task<UserListDetailDto?> GetWishlistForUserAsync(int userId)
+        {
+            var list = await _context.UserLists
+                .Include(l => l.UserListGames)
+                    .ThenInclude(ulg => ulg.Game)
+                .Include(l => l.User)
+                .Include(l => l.Followers)
+                .AsSplitQuery()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(l => l.UserId == userId && l.Type == UserListType.Wishlist);
+
+            if (list == null)
+            {
+                return null;
+            }
+
+            var gameSummaries = list.UserListGames
+                .Select(ulg => new GameSummaryDto
+                {
+                    Id = ulg.Game.Id,
+                    RawgId = ulg.Game.RawgId,
+                    Name = ulg.Game.Name,
+                    Slug = ulg.Game.Slug,
+                    CoverImage = ulg.Game.CoverImage,
+                    BackgroundImage = ulg.Game.BackgroundImage,
+                    Released = ulg.Game.Released,
+                    Rating = ulg.Game.Rating,
+                    Metacritic = ulg.Game.Metacritic,
+                    GghubRating = ulg.Game.AverageRating,
+                    GghubRatingCount = ulg.Game.RatingCount
+                })
+                .ToList();
+
+            return new UserListDetailDto
+            {
+                Id = list.Id,
+                Name = list.Name,
+                Description = list.Description,
+                Visibility = list.Visibility,
+                Category = list.Category,
+                UpdatedAt = list.UpdatedAt,
+                GameCount = list.UserListGames.Count,
+                FollowerCount = list.Followers?.Count() ?? 0,
+                RatingCount = list.RatingCount,
+                AverageRating = list.AverageRating,
+                Owner = new UserDto
+                {
+                    Id = list.User.Id,
+                    Username = list.User.Username,
+                    ProfileImageUrl = list.User.ProfileImageUrl,
+                    FirstName = list.User.FirstName,
+                    LastName = list.User.LastName,
+                },
+                Games = gameSummaries,
+                IsFollowing = false
+            };
         }
     }
 }

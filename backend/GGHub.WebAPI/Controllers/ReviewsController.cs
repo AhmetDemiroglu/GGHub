@@ -35,7 +35,16 @@ namespace GGHub.WebAPI.Controllers
         [HttpGet("/api/games/{gameId}/reviews")]
         public async Task<IActionResult> GetReviewsForGame(int gameId)
         {
-            var reviews = await _reviewService.GetReviewsForGameAsync(gameId);
+            int? userId = null;
+            if (User.Identity != null && User.Identity.IsAuthenticated)
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+                if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int parsedId))
+                {
+                    userId = parsedId;
+                }
+            }
+            var reviews = await _reviewService.GetReviewsForGameAsync(gameId, userId);
             return Ok(reviews);
         }
         [HttpDelete("/api/reviews/{reviewId}")]

@@ -45,6 +45,7 @@ export interface Game {
     esrbRating?: string;
     gghubRating?: number;
     gghubRatingCount?: number;
+    isInWishlist?: boolean; 
 }
 
 export type GameApiPaginateParams = {
@@ -61,6 +62,7 @@ export type GameApiPaginateParams = {
 export interface ReviewUser {
     id: number;
     username: string;
+    profileImageUrl: string | null;
 }
 
 export interface Review {
@@ -69,6 +71,8 @@ export interface Review {
     rating: number;
     createdAt: string;
     user: ReviewUser;
+    voteScore: number;
+    currentUserVote: number | null;
 }
 
 export interface CreateReviewRequest {

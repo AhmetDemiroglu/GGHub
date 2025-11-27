@@ -71,6 +71,8 @@ export interface RecentReview {
     gameId: number;
     rating: number;
     createdAt: string;
+    rawgId: number;
+    slug: string;
 }
 
 export interface AdminUserListSummary {
@@ -89,6 +91,8 @@ export interface AdminReviewSummary {
     rating: number;
     content: string;
     createdAt: string;
+    rawgId: number;
+    slug: string;
 }
 export interface AdminCommentSummary {
     id: number;

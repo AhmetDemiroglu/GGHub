@@ -66,7 +66,11 @@ export const UserReviewsTab = ({ userId }: UserReviewsTabProps) => {
                                 })}
                             </TableCell>
                             <TableCell className="text-right">
-                                <Link href={`/discover/${review.gameId}`} target="_blank" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+                                <Link
+                                    href={`/games/${review.slug || review.rawgId}`}
+                                    target="_blank"
+                                    className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+                                >
                                     <BowArrow className="h-3.5 w-3.5" />
                                     Oyunu Gör
                                 </Link>

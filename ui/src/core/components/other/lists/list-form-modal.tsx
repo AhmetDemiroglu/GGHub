@@ -92,7 +92,12 @@ export function ListFormModal({ isOpen, onClose, onSubmit, isPending, defaultVal
     }, [isOpen, defaultValues, form]);
 
     return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
+        <Dialog
+            open={isOpen}
+            onOpenChange={(open) => {
+                if (!open) onClose();
+            }}
+        >
             <DialogContent className="w-[95vw] sm:max-w-[600px] max-h-[90vh] sm:max-h-[100vh] flex flex-col overflow-hidden">
                 <DialogHeader>
                     <DialogTitle>{title}</DialogTitle>
@@ -169,9 +174,8 @@ export function ListFormModal({ isOpen, onClose, onSubmit, isPending, defaultVal
                                                     return (
                                                         <FormItem key={opt.value}>
                                                             <FormLabel
-                                                                className={`flex flex-col items-center justify-center rounded-md border p-3 sm:p-4 cursor-pointer transition-colors hover:border-primary ${
-                                                                    isChecked ? "border-transparent ring-2 ring-primary" : ""
-                                                                }`}
+                                                                className={`flex flex-col items-center justify-center rounded-md border p-3 sm:p-4 cursor-pointer transition-colors hover:border-primary ${isChecked ? "border-transparent ring-2 ring-primary" : ""
+                                                                    }`}
                                                             >
                                                                 <FormControl>
                                                                     <RadioGroupItem value={opt.value} className="sr-only" />

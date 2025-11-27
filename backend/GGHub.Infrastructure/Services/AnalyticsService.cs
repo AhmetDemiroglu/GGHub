@@ -70,8 +70,6 @@ namespace GGHub.Infrastructure.Services
                     AverageRating = g.Average(r => r.Rating),
                     ReviewCount = g.Count()
                 })
-                // TODO: Yorum sayısı filtresi
-                //.Where(g => g.ReviewCount > 2) 
                 .OrderByDescending(g => g.AverageRating)
                 .ThenByDescending(g => g.ReviewCount)
                 .Take(count);
@@ -87,7 +85,9 @@ namespace GGHub.Infrastructure.Services
                         GameName = game.Name,
                         GameImageUrl = game.BackgroundImage, 
                         AverageRating = agg.AverageRating,
-                        ReviewCount = agg.ReviewCount
+                        ReviewCount = agg.ReviewCount,
+                        RawgId = game.RawgId,
+                        Slug = game.Slug
                     }
                 )
                 .ToListAsync();
