@@ -157,7 +157,7 @@ namespace GGHub.Infrastructure.Services
                 };
             }
 
-            var rawgIds = response.Results.Select(r => r.Id).ToList();
+            var rawgIds = response.Results.Select(r => r.Id).Distinct().ToList();
 
             var wishlistGameIds = new HashSet<int>(); 
             if (userId.HasValue)
@@ -169,6 +169,38 @@ namespace GGHub.Infrastructure.Services
                     .ToListAsync();
 
                 foreach (var id in wishlist) wishlistGameIds.Add(id);
+            }
+
+            var existingRawgIds = await _context.Games
+                .Where(g => rawgIds.Contains(g.RawgId))
+                .Select(g => g.RawgId)
+                .ToListAsync();
+
+            var newGames = response.Results
+                .Where(r => !existingRawgIds.Contains(r.Id))
+                .Select(dto => new Game
+                {
+                    RawgId = dto.Id,
+                    Name = dto.Name,
+                    Slug = dto.Slug,
+                    Released = dto.Released,
+                    BackgroundImage = dto.BackgroundImage,
+                    Rating = dto.Rating,
+                    Metacritic = dto.Metacritic,
+                    GenresJson = dto.Genres != null
+                        ? System.Text.Json.JsonSerializer.Serialize(dto.Genres.Select(g => new { g.Name, g.Slug }))
+                        : null,
+                    PlatformsJson = dto.Platforms != null
+                        ? System.Text.Json.JsonSerializer.Serialize(dto.Platforms.Select(p => new { p.Platform.Name, p.Platform.Slug }))
+                        : null,
+                    LastSyncedAt = DateTime.UtcNow
+                })
+                .ToList();
+
+            if (newGames.Any())
+            {
+                await _context.Games.AddRangeAsync(newGames);
+                await _context.SaveChangesAsync();
             }
 
             var localRatings = await _context.Games
@@ -210,56 +242,118 @@ namespace GGHub.Infrastructure.Services
                 PageSize = queryParams.PageSize
             };
         }
-        public async Task<Game> GetOrCreateGameByRawgIdAsync(int rawgId)
+        public async Task<Game> EnsureGameExistsAsync(int rawgId, object? rawgDtoObj = null)
         {
+            var rawgDto = rawgDtoObj as RawgGameDto;
             var gameInDb = await _context.Games.FirstOrDefaultAsync(g => g.RawgId == rawgId);
 
-            if (gameInDb != null)
+            if (gameInDb != null
+                && (DateTime.UtcNow - gameInDb.LastSyncedAt).TotalDays < 1
+                && !string.IsNullOrEmpty(gameInDb.GenresJson)
+                && !string.IsNullOrEmpty(gameInDb.DevelopersJson))
             {
                 return gameInDb;
             }
 
-            var requestUrl = $"{_apiSettings.BaseUrl}games/{rawgId}?key={_apiSettings.ApiKey}";
-            var dto = await _httpClient.GetFromJsonAsync<RawgGameSingleDto>(requestUrl);
-
-            if (dto == null)
-                throw new Exception($"RAWG API'sinde {rawgId} ID'li oyun bulunamadı.");
-
-            var descriptionRaw = dto.Description ?? string.Empty;
-            var descriptionParts = descriptionRaw.Split(new[] { "\n\n" }, StringSplitOptions.None);
-            var englishDescription = descriptionParts.FirstOrDefault();
-
-            var platforms = dto.Platform?.Select(p => new { p.Platform.Name, p.Platform.Slug }).ToList();
-            var genres = dto.Genre?.Select(g => new { g.Name, g.Slug }).ToList();
-            var developers = dto.Developers?.Select(d => new { d.Name, d.Slug, d.ImageBackground }).ToList();
-            var publishers = dto.Publishers?.Select(p => new { p.Name, p.Slug }).ToList();
-            var stores = dto.Stores?.Select(s => new { StoreName = s.Store.Name, Domain = s.Store.Domain, Url = s.Url }).ToList();
-
-            var newGame = new Game
+            RawgGameSingleDto? fullDto = null;
+            if (gameInDb == null || string.IsNullOrEmpty(gameInDb.DevelopersJson))
             {
-                RawgId = dto.Id,
-                Name = dto.Name,
-                Slug = dto.Slug,
-                Description = englishDescription,
-                Released = dto.Released,
-                BackgroundImage = dto.BackgroundImage,
-                CoverImage = dto.CoverImage,
-                Rating = dto.Rating,
-                Metacritic = dto.Metacritic,
-                LastSyncedAt = DateTime.UtcNow,
-                PlatformsJson = platforms != null ? System.Text.Json.JsonSerializer.Serialize(platforms) : null,
-                GenresJson = genres != null ? System.Text.Json.JsonSerializer.Serialize(genres) : null,
-                DevelopersJson = developers != null ? System.Text.Json.JsonSerializer.Serialize(developers) : null,
-                PublishersJson = publishers != null ? System.Text.Json.JsonSerializer.Serialize(publishers) : null,
-                StoresJson = stores != null ? System.Text.Json.JsonSerializer.Serialize(stores) : null,
-                WebsiteUrl = dto.Website,
-                EsrbRating = dto.EsrbRating?.Name
-            };
+                var requestUrl = $"{_apiSettings.BaseUrl}games/{rawgId}?key={_apiSettings.ApiKey}";
+                try
+                {
+                    fullDto = await _httpClient.GetFromJsonAsync<RawgGameSingleDto>(requestUrl);
+                }
+                catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    if (gameInDb != null) return gameInDb;
+                    if (rawgDto == null) throw new Exception($"RAWG API'sinde {rawgId} ID'li oyun bulunamadı.");
+                }
+            }
 
-            await _context.Games.AddAsync(newGame);
+            string? SerializeIfNotNull<T>(T? data) => data != null ? System.Text.Json.JsonSerializer.Serialize(data) : null;
+
+            if (gameInDb != null)
+            {
+                if (fullDto != null)
+                {
+                    var descriptionParts = (fullDto.Description ?? "").Split(new[] { "\n\n" }, StringSplitOptions.None);
+
+                    gameInDb.Name = fullDto.Name;
+                    gameInDb.Slug = fullDto.Slug;
+                    gameInDb.Description = descriptionParts.FirstOrDefault();
+                    gameInDb.Released = fullDto.Released;
+                    gameInDb.BackgroundImage = fullDto.BackgroundImage;
+                    gameInDb.CoverImage = fullDto.CoverImage;
+                    gameInDb.Rating = fullDto.Rating;
+                    gameInDb.Metacritic = fullDto.Metacritic;
+                    gameInDb.WebsiteUrl = fullDto.Website;
+                    gameInDb.EsrbRating = fullDto.EsrbRating?.Name;
+                    gameInDb.PlatformsJson = SerializeIfNotNull(fullDto.Platform?.Select(p => new { p.Platform.Name, p.Platform.Slug }).ToList());
+                    gameInDb.GenresJson = SerializeIfNotNull(fullDto.Genre?.Select(g => new { g.Name, g.Slug }).ToList());
+                    gameInDb.DevelopersJson = SerializeIfNotNull(fullDto.Developers?.Select(d => new { d.Name, d.Slug, d.ImageBackground }).ToList());
+                    gameInDb.PublishersJson = SerializeIfNotNull(fullDto.Publishers?.Select(p => new { p.Name, p.Slug }).ToList());
+                    gameInDb.StoresJson = SerializeIfNotNull(fullDto.Stores?.Select(s => new { StoreName = s.Store.Name, Domain = s.Store.Domain, Url = s.Url }).ToList());
+                }
+                else if (rawgDto != null && string.IsNullOrEmpty(gameInDb.GenresJson))
+                {
+                    gameInDb.GenresJson = SerializeIfNotNull(rawgDto.Genres?.Select(g => new { g.Name, g.Slug }).ToList());
+                    gameInDb.PlatformsJson = SerializeIfNotNull(rawgDto.Platforms?.Select(p => new { p.Platform.Name, p.Platform.Slug }).ToList());
+                }
+
+                gameInDb.LastSyncedAt = DateTime.UtcNow;
+                _context.Games.Update(gameInDb);
+            }
+            else
+            {
+                var newGame = new Game
+                {
+                    RawgId = rawgId,
+                    LastSyncedAt = DateTime.UtcNow
+                };
+
+                if (fullDto != null)
+                {
+                    var descriptionParts = (fullDto.Description ?? "").Split(new[] { "\n\n" }, StringSplitOptions.None);
+
+                    newGame.Name = fullDto.Name;
+                    newGame.Slug = fullDto.Slug;
+                    newGame.Description = descriptionParts.FirstOrDefault();
+                    newGame.Released = fullDto.Released;
+                    newGame.BackgroundImage = fullDto.BackgroundImage;
+                    newGame.CoverImage = fullDto.CoverImage;
+                    newGame.Rating = fullDto.Rating;
+                    newGame.Metacritic = fullDto.Metacritic;
+                    newGame.WebsiteUrl = fullDto.Website;
+                    newGame.EsrbRating = fullDto.EsrbRating?.Name;
+                    newGame.PlatformsJson = SerializeIfNotNull(fullDto.Platform?.Select(p => new { p.Platform.Name, p.Platform.Slug }).ToList());
+                    newGame.GenresJson = SerializeIfNotNull(fullDto.Genre?.Select(g => new { g.Name, g.Slug }).ToList());
+                    newGame.DevelopersJson = SerializeIfNotNull(fullDto.Developers?.Select(d => new { d.Name, d.Slug, d.ImageBackground }).ToList());
+                    newGame.PublishersJson = SerializeIfNotNull(fullDto.Publishers?.Select(p => new { p.Name, p.Slug }).ToList());
+                    newGame.StoresJson = SerializeIfNotNull(fullDto.Stores?.Select(s => new { StoreName = s.Store.Name, Domain = s.Store.Domain, Url = s.Url }).ToList());
+                }
+                else if (rawgDto != null)
+                {
+                    newGame.Name = rawgDto.Name;
+                    newGame.Slug = rawgDto.Slug;
+                    newGame.Released = rawgDto.Released;
+                    newGame.BackgroundImage = rawgDto.BackgroundImage;
+                    newGame.Rating = rawgDto.Rating;
+                    newGame.Metacritic = rawgDto.Metacritic;
+                    newGame.GenresJson = SerializeIfNotNull(rawgDto.Genres?.Select(g => new { g.Name, g.Slug }).ToList());
+                    newGame.PlatformsJson = SerializeIfNotNull(rawgDto.Platforms?.Select(p => new { p.Platform.Name, p.Platform.Slug }).ToList());
+                }
+
+                await _context.Games.AddAsync(newGame);
+                gameInDb = newGame;
+            }
+
             await _context.SaveChangesAsync();
+            return gameInDb;
+        }
 
-            return newGame;
+        public async Task<Game> GetOrCreateGameByRawgIdAsync(int rawgId)
+        {
+            return await EnsureGameExistsAsync(rawgId);
         }
 
         public async Task<string> TranslateGameDescriptionAsync(int gameId)
@@ -338,11 +432,18 @@ namespace GGHub.Infrastructure.Services
                     .Select(g => g.First())
                     .ToList();
 
-                var localRatings = await _context.Games
+                foreach (var dto in rawgResults)
+                {
+                    try
+                    {
+                        await EnsureGameExistsAsync(dto.Id, dto);
+                    }
+                    catch { }
+                }
+
+                var updatedRatings = await _context.Games
                     .AsNoTracking()
                     .Where(g => rawgIds.Contains(g.RawgId))
-                    .GroupBy(g => g.RawgId)
-                    .Select(g => g.First())
                     .ToDictionaryAsync(
                         k => k.RawgId,
                         v => new { v.AverageRating, v.RatingCount }
@@ -350,7 +451,7 @@ namespace GGHub.Infrastructure.Services
 
                 return rawgResults.Select(dto =>
                 {
-                    localRatings.TryGetValue(dto.Id, out var stats);
+                    updatedRatings.TryGetValue(dto.Id, out var stats);
                     return new GameDto
                     {
                         RawgId = dto.Id,
