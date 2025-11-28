@@ -15,9 +15,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isMounted && !isAuthenticated) {
-      router.push('/login');
+        const currentPath = window.location.pathname + window.location.search;
+        router.push(`/login?returnUrl=${encodeURIComponent(currentPath)}`);
     }
-  }, [isAuthenticated, router, isMounted]);
+}, [isAuthenticated, router, isMounted]);
 
   if (!isMounted || !isAuthenticated) {
     return null;

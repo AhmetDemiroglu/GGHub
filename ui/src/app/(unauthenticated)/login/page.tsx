@@ -28,7 +28,7 @@ function LoginPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { login: authLogin } = useAuth();
-    const returnUrl = searchParams.get("returnUrl") || "/";
+    const returnUrl = useRef(searchParams.get("returnUrl") || "/");
 
     useEffect(() => {
         const isRegistered = searchParams.get("registered");
@@ -65,7 +65,7 @@ function LoginPageContent() {
         onSuccess: (response) => {
             toast.success("Başarıyla giriş yapıldı!");
             authLogin(response.data);
-            router.push(returnUrl);
+            router.push(returnUrl.current);
         },
         onError: (error: unknown) => {
             if (error instanceof AxiosError && (error.response as any).isRateLimitError) {

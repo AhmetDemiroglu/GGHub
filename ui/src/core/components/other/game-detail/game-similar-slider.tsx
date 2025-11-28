@@ -126,9 +126,6 @@ export const GameSimilarSlider = ({ rawgId }: GameSimilarSliderProps) => {
                     })}
                 </div>
             </div>
-            <p className="px-4 text-center text-[11px] text-zinc-400 md:hidden mt-3 select-none animate-[subtle-bounce_2.2s_ease-in-out_infinite]">
-                ← Kaydırarak daha fazla oyun keşfedin →
-            </p>
         </section>
     );
 };
