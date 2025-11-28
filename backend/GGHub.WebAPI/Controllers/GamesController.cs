@@ -13,6 +13,7 @@ namespace GGHub.WebAPI.Controllers
     {
         private readonly IGameService _gameService;
         private readonly IReviewService _reviewService;
+
         public GamesController(IGameService gameService, IReviewService reviewService) 
         {
             _gameService = gameService;

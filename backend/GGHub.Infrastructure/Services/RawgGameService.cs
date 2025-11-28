@@ -9,6 +9,7 @@ using GGHub.Infrastructure.Settings;
 using Microsoft.EntityFrameworkCore; 
 using Microsoft.Extensions.Options;
 using System.Net.Http.Json;
+using Microsoft.Extensions.Logging;
 
 namespace GGHub.Infrastructure.Services
 {
@@ -18,13 +19,15 @@ namespace GGHub.Infrastructure.Services
         private readonly RawgApiSettings _apiSettings;
         private readonly GGHubDbContext _context;
         private readonly IGeminiService _geminiService;
+        private readonly ILogger<RawgGameService> _logger;
 
-        public RawgGameService(IHttpClientFactory httpClientFactory, IOptions<RawgApiSettings> apiSettings, GGHubDbContext context, IGeminiService geminiService)
+        public RawgGameService(IHttpClientFactory httpClientFactory, IOptions<RawgApiSettings> apiSettings, GGHubDbContext context, IGeminiService geminiService, ILogger<RawgGameService> logger)
         {
             _httpClient = httpClientFactory.CreateClient();
             _apiSettings = apiSettings.Value;
             _context = context; 
             _geminiService = geminiService;
+            _logger = logger;
         }
         public async Task<Game?> GetGameBySlugOrIdAsync(string idOrSlug)
         {
@@ -315,8 +318,23 @@ namespace GGHub.Infrastructure.Services
 
             try
             {
+                _logger.LogInformation("[GetSimilarGames] RawgId: {RawgId}, RequestUrl: {Url}", rawgGameId, requestUrl.Replace(_apiSettings.ApiKey, "***"));
+
                 var response = await _httpClient.GetFromJsonAsync<PaginatedResponseDto<RawgGameDto>>(requestUrl);
-                if (response == null || !response.Results.Any()) return new List<GameDto>();
+
+                if (response == null)
+                {
+                    _logger.LogWarning("[GetSimilarGames] Response NULL for RawgId: {RawgId}", rawgGameId);
+                    return new List<GameDto>();
+                }
+
+                if (!response.Results.Any())
+                {
+                    _logger.LogWarning("[GetSimilarGames] Response EMPTY for RawgId: {RawgId}, Count: {Count}", rawgGameId, response.Count);
+                    return new List<GameDto>();
+                }
+
+                _logger.LogInformation("[GetSimilarGames] Success - {Count} games found", response.Results.Count());
 
                 var rawgResults = response.Results
                     .Where(r => r.Id != rawgGameId)
@@ -349,8 +367,9 @@ namespace GGHub.Infrastructure.Services
                     };
                 }).ToList();
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "[GetSimilarGames] EXCEPTION for RawgId: {RawgId}", rawgGameId);
                 return new List<GameDto>();
             }
         }
