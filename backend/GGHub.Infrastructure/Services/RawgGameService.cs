@@ -287,10 +287,6 @@ namespace GGHub.Infrastructure.Services
 
         public async Task<List<GameDto>> GetSimilarGamesAsync(int rawgGameId)
         {
-
-            var debugInfo = $"ApiKey Length: {_apiSettings.ApiKey?.Length ?? 0}, BaseUrl: {_apiSettings.BaseUrl ?? "NULL"}";
-            throw new Exception($"[DEBUG] {debugInfo}");
-
             string requestUrl;
 
             var sourceGame = await _context.Games
@@ -374,7 +370,7 @@ namespace GGHub.Infrastructure.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[GetSimilarGames] EXCEPTION for RawgId: {RawgId}", rawgGameId);
-                return new List<GameDto>();
+                throw;
             }
         }
     }
