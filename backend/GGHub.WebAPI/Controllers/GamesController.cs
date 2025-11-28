@@ -93,10 +93,23 @@ namespace GGHub.WebAPI.Controllers
         }
 
         [HttpGet("{id}/suggested")]
-        public async Task<IActionResult> GetSimilarGames(int id)
+        public IActionResult GetSimilarGames(int id)
         {
-            var games = await _gameService.GetSimilarGamesAsync(id);
-            return Ok(games);
+            try
+            {
+                // Debug bilgisi döndür
+                var debugInfo = new
+                {
+                    Message = "DEBUG MODE",
+                    RawgId = id,
+                    Timestamp = DateTime.UtcNow
+                };
+                return Ok(debugInfo);
+            }
+            catch (Exception ex)
+            {
+                return Ok(new { Error = ex.Message, StackTrace = ex.StackTrace });
+            }
         }
     }
 }
