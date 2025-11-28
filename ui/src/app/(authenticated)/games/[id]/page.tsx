@@ -16,6 +16,10 @@ export async function generateMetadata(
         const response = await fetch(`${baseUrl}/games/${id}`, { next: { revalidate: 60 } });
 
         if (!response.ok) {
+            console.error("[Metadata API Error]", {
+                status: response.status,
+                url: `${baseUrl}/games/${id}`
+            });
             return {
                 title: "Oyun Bulunamadı - GGHub",
                 description: "Aradığınız oyun sistemde mevcut değil."
@@ -48,6 +52,10 @@ export async function generateMetadata(
             }
         };
     } catch (error) {
+        console.error("[Metadata Fetch Error]", {
+            url: `${process.env.NEXT_PUBLIC_API_BASE_URL}/games/${id}`,
+            error: error instanceof Error ? error.message : error
+        });
         return {
             title: "GGHub - Oyun Detayı",
         };
