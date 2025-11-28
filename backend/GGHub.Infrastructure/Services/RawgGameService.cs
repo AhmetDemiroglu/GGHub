@@ -318,6 +318,9 @@ namespace GGHub.Infrastructure.Services
 
             try
             {
+                var debugInfo = $"ApiKey Length: {_apiSettings.ApiKey?.Length ?? 0}, BaseUrl: {_apiSettings.BaseUrl ?? "NULL"}";
+                throw new Exception($"[DEBUG] {debugInfo}");
+
                 _logger.LogInformation("[GetSimilarGames] RawgId: {RawgId}, RequestUrl: {Url}", rawgGameId, requestUrl.Replace(_apiSettings.ApiKey, "***"));
 
                 var response = await _httpClient.GetFromJsonAsync<PaginatedResponseDto<RawgGameDto>>(requestUrl);
