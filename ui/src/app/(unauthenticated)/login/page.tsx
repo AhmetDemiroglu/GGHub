@@ -28,6 +28,7 @@ function LoginPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { login: authLogin } = useAuth();
+    const returnUrl = searchParams.get("returnUrl") || "/";
 
     useEffect(() => {
         const isRegistered = searchParams.get("registered");
@@ -64,7 +65,7 @@ function LoginPageContent() {
         onSuccess: (response) => {
             toast.success("Başarıyla giriş yapıldı!");
             authLogin(response.data);
-            router.push("/");
+            router.push(returnUrl);
         },
         onError: (error: unknown) => {
             if (error instanceof AxiosError && (error.response as any).isRateLimitError) {
@@ -86,8 +87,14 @@ function LoginPageContent() {
     return (
         <div className="flex items-center justify-center min-h-screen">
             <Card className="w-[400px] relative">
-                <Link href="/" aria-label="Ana Sayfaya Dön">
-                    <Button variant="ghost" size="icon" className="absolute top-4 right-4 h-6 w-6">
+                <Link href="/" aria-label="">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-4 right-4 h-6 w-6 cursor-pointer"
+                        onClick={() => router.back()}
+                        aria-label="Geri Dön"
+                    >
                         <X className="h-4 w-4" />
                     </Button>
                 </Link>

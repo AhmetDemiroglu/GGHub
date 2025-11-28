@@ -2,7 +2,7 @@ import { gameApi } from "@/api/gaming/game.api";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import Image from "next/image";
-import React, { useEffect, useRef, useState } from "react";
+import React from "react";
 import logoSrc from "@core/assets/logo.png";
 import placeHolder2 from "@core/assets/placeholder2.png";
 
@@ -17,57 +17,9 @@ export const GameSimilarSlider = ({ rawgId }: GameSimilarSliderProps) => {
         enabled: !!rawgId,
     });
 
-    const containerRef = useRef<HTMLDivElement | null>(null);
-    const [isUserInteracting, setIsUserInteracting] = useState(false);
-
-    useEffect(() => {
-        if (!containerRef.current || !games || games.length === 0) return;
-        if (isUserInteracting) return;
-
-        const container = containerRef.current;
-        let frameId: number | null = null;
-        let lastTime = performance.now();
-
-        const speedPxPerSec = 50;
-
-        const step = (now: number) => {
-            const dt = now - lastTime;
-            lastTime = now;
-
-            const maxScroll = container.scrollWidth / 2;
-            const delta = (speedPxPerSec * dt) / 1000;
-
-            let nextScrollLeft = container.scrollLeft + delta;
-
-            if (nextScrollLeft >= maxScroll) {
-                nextScrollLeft = 0;
-            }
-
-            container.scrollLeft = nextScrollLeft;
-
-            frameId = requestAnimationFrame(step);
-        };
-
-        frameId = requestAnimationFrame(step);
-
-        return () => {
-            if (frameId !== null) cancelAnimationFrame(frameId);
-        };
-    }, [games, isUserInteracting]);
-
     if (isLoading || !games || games.length === 0) return null;
 
     const sliderContent = [...games, ...games];
-
-    const handleUserStart = () => {
-        setIsUserInteracting(true);
-    };
-
-    const handleUserEnd = () => {
-        setTimeout(() => {
-            setIsUserInteracting(false);
-        }, 2000);
-    };
 
     return (
         <section className="w-full mt-12 border-t border-border/60 bg-gradient-to-b from-background/40 to-background">
@@ -87,20 +39,11 @@ export const GameSimilarSlider = ({ rawgId }: GameSimilarSliderProps) => {
                 </div>
             </div>
 
-            {/* scroll */}
-            <div
-                ref={containerRef}
-                className="relative w-full overflow-x-auto no-scrollbar group touch-pan-x"
-                onMouseEnter={() => setIsUserInteracting(true)}
-                onMouseLeave={handleUserEnd}
-                onTouchStart={handleUserStart}
-                onTouchEnd={handleUserEnd}
-            >
-                {/* Sol / sağ fade */}
+            <div className="relative w-full overflow-hidden group">
                 <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-20 md:w-28 bg-gradient-to-r from-background via-background/80 to-transparent z-10" />
                 <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-20 md:w-28 bg-gradient-to-l from-background via-background/80 to-transparent z-10" />
 
-                <div className="flex gap-5 md:gap-6 w-max px-4 md:px-0 pb-6">
+                <div className="flex gap-5 md:gap-6 animate-similar-scroll hover:[animation-play-state:paused] w-max px-4 md:px-0 pb-6 overflow-x-auto touch-pan-x md:overflow-visible md:touch-none no-scrollbar">
                     {sliderContent.map((game, index) => {
                         const year = game.released ? new Date(game.released).getFullYear() : null;
                         const rating = typeof game.rating === "number" ? game.rating : null;
@@ -183,7 +126,6 @@ export const GameSimilarSlider = ({ rawgId }: GameSimilarSliderProps) => {
                     })}
                 </div>
             </div>
-
             <p className="px-4 text-center text-[11px] text-zinc-400 md:hidden mt-3 select-none animate-[subtle-bounce_2.2s_ease-in-out_infinite]">
                 ← Kaydırarak daha fazla oyun keşfedin →
             </p>
