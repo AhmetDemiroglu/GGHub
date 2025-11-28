@@ -302,6 +302,8 @@ namespace GGHub.Infrastructure.Services
 
                 gameInDb.LastSyncedAt = DateTime.UtcNow;
                 _context.Games.Update(gameInDb);
+                await _context.SaveChangesAsync();
+                return gameInDb;
             }
             else
             {
@@ -343,12 +345,20 @@ namespace GGHub.Infrastructure.Services
                     newGame.PlatformsJson = SerializeIfNotNull(rawgDto.Platforms?.Select(p => new { p.Platform.Name, p.Platform.Slug }).ToList());
                 }
 
-                await _context.Games.AddAsync(newGame);
-                gameInDb = newGame;
+                try
+                {
+                    await _context.Games.AddAsync(newGame);
+                    await _context.SaveChangesAsync();
+                    return newGame;
+                }
+                catch (DbUpdateException)
+                {
+                    _context.Entry(newGame).State = EntityState.Detached;
+                    gameInDb = await _context.Games.FirstOrDefaultAsync(g => g.RawgId == rawgId);
+                    if (gameInDb == null) throw;
+                    return gameInDb;
+                }
             }
-
-            await _context.SaveChangesAsync();
-            return gameInDb;
         }
 
         public async Task<Game> GetOrCreateGameByRawgIdAsync(int rawgId)
@@ -442,12 +452,14 @@ namespace GGHub.Infrastructure.Services
                 }
 
                 var updatedRatings = await _context.Games
-                    .AsNoTracking()
-                    .Where(g => rawgIds.Contains(g.RawgId))
-                    .ToDictionaryAsync(
-                        k => k.RawgId,
-                        v => new { v.AverageRating, v.RatingCount }
-                    );
+                .AsNoTracking()
+                .Where(g => rawgIds.Contains(g.RawgId))
+                .GroupBy(g => g.RawgId)
+                .Select(g => g.First())
+                .ToDictionaryAsync(
+                    k => k.RawgId,
+                    v => new { v.AverageRating, v.RatingCount }
+                );
 
                 return rawgResults.Select(dto =>
                 {
