@@ -97,18 +97,17 @@ namespace GGHub.WebAPI.Controllers
         {
             try
             {
-                // Debug bilgisi döndür
-                var debugInfo = new
-                {
-                    Message = "DEBUG MODE",
-                    RawgId = id,
-                    Timestamp = DateTime.UtcNow
-                };
-                return Ok(debugInfo);
+                var result = _gameService.GetSimilarGamesAsync(id).Result;
+                return Ok(new { Count = result.Count, Data = result });
             }
             catch (Exception ex)
             {
-                return Ok(new { Error = ex.Message, StackTrace = ex.StackTrace });
+                return Ok(new
+                {
+                    Error = ex.Message,
+                    InnerError = ex.InnerException?.Message,
+                    StackTrace = ex.StackTrace
+                });
             }
         }
     }
