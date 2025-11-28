@@ -30,8 +30,8 @@ namespace GGHub.Infrastructure.Services
         {
             bool isId = int.TryParse(idOrSlug, out int rawgId);
             var gameInDb = isId
-                ? await _context.Games.FirstOrDefaultAsync(g => g.RawgId == rawgId)
-                : await _context.Games.FirstOrDefaultAsync(g => g.Slug == idOrSlug);
+                ? await _context.Games.AsNoTracking().FirstOrDefaultAsync(g => g.RawgId == rawgId)
+                : await _context.Games.AsNoTracking().FirstOrDefaultAsync(g => g.Slug == idOrSlug);
 
             if (gameInDb != null
                 && (DateTime.UtcNow - gameInDb.LastSyncedAt).TotalDays < 1
