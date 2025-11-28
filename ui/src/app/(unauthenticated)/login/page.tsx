@@ -91,7 +91,7 @@ function LoginPageContent() {
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="absolute top-4 right-4 h-6 w-6 cursor-pointer"
+                        className="cursor-pointer absolute top-4 right-4 h-6 w-6"
                         onClick={() => router.back()}
                         aria-label="Geri Dön"
                     >

@@ -1,6 +1,9 @@
+"use client";
+
 import { Lock } from "lucide-react";
 import { Button } from "@core/components/ui/button";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface UnauthorizedAccessProps {
     title?: string;
@@ -8,6 +11,13 @@ interface UnauthorizedAccessProps {
 }
 
 export function UnauthorizedAccess({ title = "Bu sayfaya erişim yetkiniz yok", description = "Bu sayfayı görüntülemek için giriş yapmalısınız." }: UnauthorizedAccessProps) {
+    const router = useRouter();
+
+    const handleLogin = () => {
+        const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+        router.push(`/login?returnUrl=${returnUrl}`);
+    };
+
     return (
         <div className="flex items-center justify-center h-full bg-background">
             <div className="text-center space-y-6 pt-4 mt-5">
@@ -21,8 +31,8 @@ export function UnauthorizedAccess({ title = "Bu sayfaya erişim yetkiniz yok", 
                     <p className="text-muted-foreground">{description}</p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                    <Button asChild className="cursor-pointer">
-                        <Link href="/login">Giriş Yap</Link>
+                    <Button onClick={handleLogin} className="cursor-pointer">
+                        Giriş Yap
                     </Button>
                     <Button variant="outline" asChild className="cursor-pointer">
                         <Link href="/register">Kayıt Ol</Link>

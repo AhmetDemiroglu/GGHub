@@ -14,6 +14,8 @@ import { X } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
 const formSchema = z.object({
     username: z.string().min(3, { message: "Kullanıcı adı en az 3 karakter olmalıdır." }),
@@ -24,8 +26,10 @@ const formSchema = z.object({
     password: z.string().min(6, { message: "Şifre en az 6 karakter olmalıdır." }),
 });
 
-export default function RegisterPage() {
+function RegisterPageContent() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const returnUrl = searchParams.get("returnUrl") || "/";
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -38,7 +42,7 @@ export default function RegisterPage() {
     const { mutate, isPending } = useMutation({
         mutationFn: registerApi,
         onSuccess: () => {
-            router.push("/login?registered=true");
+            router.push(`/login?registered=true&returnUrl=${encodeURIComponent(returnUrl)}`);
         },
         onError: (error: unknown) => {
             if (error instanceof AxiosError && (error.response as any).isRateLimitError) {
@@ -60,7 +64,13 @@ export default function RegisterPage() {
         <div className="flex items-center justify-center min-h-screen">
             <Card className="w-[400px] relative">
                 <Link href="/" aria-label="Ana Sayfaya Dön">
-                    <Button variant="ghost" size="icon" className="absolute top-4 right-4 h-6 w-6">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-4 right-4 h-6 w-6 cursor-pointer"
+                        onClick={() => router.back()}
+                        aria-label="Geri Dön"
+                    >
                         <X className="h-4 w-4" />
                     </Button>
                 </Link>
@@ -117,7 +127,7 @@ export default function RegisterPage() {
                             </Button>
                             <p className="text-left text-sm text-muted-foreground">
                                 Zaten bir hesabın var mı?
-                                <Link href="/login" className="underline font-bold underline-offset-4 hover:text-primary ml-1">
+                                <Link href={`/login?returnUrl=${encodeURIComponent(returnUrl)}`} className="underline font-bold underline-offset-4 hover:text-primary ml-1">
                                     Giriş Yap
                                 </Link>
                             </p>
@@ -126,5 +136,12 @@ export default function RegisterPage() {
                 </CardContent>
             </Card>
         </div>
+    );
+}
+export default function RegisterPage() {
+    return (
+        <Suspense fallback={<div />}>
+            <RegisterPageContent />
+        </Suspense>
     );
 }

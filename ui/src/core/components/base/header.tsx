@@ -138,7 +138,6 @@ export function Header() {
     const router = useRouter();
     const handleLogout = () => {
         logout();
-        router.push("/");
         toast.info("Başarıyla çıkış yapıldı.");
     };
 
@@ -349,17 +348,20 @@ export function Header() {
                         </div>
                     ) : (
                         <div className="flex items-center space-x-2 ml-2">
-                            <Button asChild variant="ghost">
-                                <Link href="/login">
-                                    <LogIn className="mr-1 h-4 w-4" />
-                                    Giriş Yap
-                                </Link>
+                            <Button
+                                variant="ghost"
+                                onClick={() => router.push(`/login?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`)}
+                                className="cursor-pointer"
+                            >
+                                <LogIn className="mr-1 h-4 w-4" />
+                                Giriş Yap
                             </Button>
-                            <Button asChild>
-                                <Link href="/register">
-                                    <UserPlus className="mr-1 h-4 w-4" />
-                                    Kayıt Ol
-                                </Link>
+                            <Button
+                                onClick={() => router.push(`/register?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`)}
+                                className="cursor-pointer"
+                            >
+                                <UserPlus className="mr-1 h-4 w-4" />
+                                Kayıt Ol
                             </Button>
                         </div>
                     )}
