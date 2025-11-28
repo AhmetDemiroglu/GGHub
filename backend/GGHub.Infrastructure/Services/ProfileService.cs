@@ -26,6 +26,11 @@ namespace GGHub.Infrastructure.Services
                 return null;
             }
 
+            var reviewCount = await _context.Reviews.CountAsync(r => r.UserId == userId);
+            var listCount = await _context.UserLists.CountAsync(l => l.UserId == userId);
+            var followerCount = await _context.Follows.CountAsync(f => f.FolloweeId == userId);
+            var followingCount = await _context.Follows.CountAsync(f => f.FollowerId == userId);
+
             return new ProfileDto
             {
                 Id = user.Id,
@@ -43,7 +48,11 @@ namespace GGHub.Infrastructure.Services
                 IsPhoneNumberPublic = user.IsPhoneNumberPublic,
                 ProfileVisibility = user.ProfileVisibility,
                 MessageSetting = user.MessageSetting,
-                IsDateOfBirthPublic = user.IsDateOfBirthPublic
+                IsDateOfBirthPublic = user.IsDateOfBirthPublic,
+                ReviewCount = reviewCount,
+                ListCount = listCount,
+                FollowerCount = followerCount,
+                FollowingCount = followingCount
             };
         }
 
@@ -155,6 +164,9 @@ namespace GGHub.Infrastructure.Services
             var followerCount = await _context.Follows.CountAsync(f => f.FolloweeId == profileUser.Id);
             var followingCount = await _context.Follows.CountAsync(f => f.FollowerId == profileUser.Id);
 
+            var reviewCount = await _context.Reviews.CountAsync(r => r.UserId == profileUser.Id);
+            var listCount = await _context.UserLists.CountAsync(l => l.UserId == profileUser.Id);
+
             return new ProfileDto
             {
                 Id = profileUser.Id,
@@ -176,7 +188,9 @@ namespace GGHub.Infrastructure.Services
                 IsFollowing = isFollowing,
                 IsFollowedBy = isFollowedBy,
                 FollowerCount = followerCount,
-                FollowingCount = followingCount
+                FollowingCount = followingCount,
+                ReviewCount = reviewCount,
+                ListCount = listCount
             };
         }
         public async Task AnonymizeUserAsync(int userId)

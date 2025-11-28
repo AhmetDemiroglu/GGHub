@@ -70,4 +70,6 @@ export interface PublicProfile {
     followingCount?: number;
     isBlockedByMe?: boolean;
     isBlockingMe?: boolean;
+    reviewCount?: number;
+    listCount?: number;
 }

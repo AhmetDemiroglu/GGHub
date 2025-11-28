@@ -26,6 +26,8 @@ namespace GGHub.Application.Dtos
         public int FollowingCount { get; set; }
         public bool IsBlockedByMe { get; set; }
         public bool IsBlockingMe { get; set; }
+        public int ReviewCount { get; set; }
+        public int ListCount { get; set; }
 
     }
 }

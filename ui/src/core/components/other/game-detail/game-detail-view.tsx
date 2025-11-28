@@ -11,7 +11,7 @@ import { GameReviewDialog } from "@/core/components/other/game-detail/game-revie
 import { useAuth } from "@/core/hooks/use-auth";
 import { toast } from "sonner";
 import { getMyReview } from "@/api/review/review.api";
-import { GameSimilarSlider } from "@/core/components/other/game-detail/game-similar-slider"; // Slider ekli
+import { GameSimilarSlider } from "@/core/components/other/game-detail/game-similar-slider";
 
 interface GameDetailViewProps {
     idOrSlug: string;
@@ -54,8 +54,8 @@ export const GameDetailView = ({ idOrSlug }: GameDetailViewProps) => {
     }
 
     return (
-        <div className="w-full min-h-full bg-background text-foreground pb-10">
-            <div className="max-w-[1600px] mx-auto px-4 md:px-8 pt-6 space-y-8">
+        <div className="w-full min-h-full bg-background text-foreground pb-5">
+            <div className="max-w-[1600px] mx-auto px-4 md:px-5 pt-5 space-y-8">
 
                 <GameHero
                     game={game}
