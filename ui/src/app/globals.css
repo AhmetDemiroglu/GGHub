@@ -147,12 +147,18 @@
 }
 
 @keyframes similar-scroll {
-    0% {
-        transform: translateX(0);
-    }
-    100% {
-        transform: translateX(-50%);
-    }
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@media (min-width: 768px) {
+  .animate-similar-scroll {
+    animation: similar-scroll 40s linear infinite;
+  }
+
+  .animate-similar-scroll:hover {
+    animation-play-state: paused;
+  }
 }
 
 .animate-similar-scroll {

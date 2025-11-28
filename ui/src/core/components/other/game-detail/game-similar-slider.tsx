@@ -39,11 +39,14 @@ export const GameSimilarSlider = ({ rawgId }: GameSimilarSliderProps) => {
                 </div>
             </div>
 
-            <div className="relative w-full overflow-hidden group">
+            {/* WRAPPER: mobilde scroll, desktop'ta hidden */}
+            <div className="relative w-full overflow-x-auto md:overflow-hidden group no-scrollbar touch-pan-x">
+                {/* Sol / sağ fade */}
                 <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-20 md:w-28 bg-gradient-to-r from-background via-background/80 to-transparent z-10" />
                 <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-20 md:w-28 bg-gradient-to-l from-background via-background/80 to-transparent z-10" />
 
-                <div className="flex gap-5 md:gap-6 animate-similar-scroll hover:[animation-play-state:paused] w-max px-4 md:px-0 pb-6 overflow-x-auto touch-pan-x md:overflow-visible md:touch-none no-scrollbar">
+                {/* TRACK: sadece içerik + animasyon */}
+                <div className="flex gap-5 md:gap-6 animate-similar-scroll hover:[animation-play-state:paused] w-max px-4 md:px-0 pb-6">
                     {sliderContent.map((game, index) => {
                         const year = game.released ? new Date(game.released).getFullYear() : null;
                         const rating = typeof game.rating === "number" ? game.rating : null;
@@ -126,6 +129,7 @@ export const GameSimilarSlider = ({ rawgId }: GameSimilarSliderProps) => {
                     })}
                 </div>
             </div>
+
             <p className="px-4 text-center text-[11px] text-zinc-400 md:hidden mt-3 select-none animate-[subtle-bounce_2.2s_ease-in-out_infinite]">
                 ← Kaydırarak daha fazla oyun keşfedin →
             </p>
