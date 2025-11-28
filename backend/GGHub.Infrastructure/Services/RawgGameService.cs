@@ -287,14 +287,14 @@ namespace GGHub.Infrastructure.Services
 
         public async Task<List<GameDto>> GetSimilarGamesAsync(int rawgGameId)
         {
-            string requestUrl;
-
             var sourceGame = await _context.Games
                 .AsNoTracking()
-                .Select(g => new { g.RawgId, g.GenresJson }) 
+                .Select(g => new { g.RawgId, g.GenresJson })
                 .FirstOrDefaultAsync(g => g.RawgId == rawgGameId);
 
+            string requestUrl;
             List<GenreDto>? genres = null;
+
             if (sourceGame != null && !string.IsNullOrEmpty(sourceGame.GenresJson))
             {
                 try
@@ -318,41 +318,39 @@ namespace GGHub.Infrastructure.Services
 
             try
             {
-
-                _logger.LogInformation("[GetSimilarGames] RawgId: {RawgId}, RequestUrl: {Url}", rawgGameId, requestUrl.Replace(_apiSettings.ApiKey, "***"));
                 var response = await _httpClient.GetFromJsonAsync<PaginatedResponseDto<RawgGameDto>>(requestUrl);
 
-                if (response == null)
+                if (response?.Results == null || !response.Results.Any())
                 {
-                    _logger.LogWarning("[GetSimilarGames] Response NULL for RawgId: {RawgId}", rawgGameId);
                     return new List<GameDto>();
                 }
 
-                if (!response.Results.Any())
-                {
-                    _logger.LogWarning("[GetSimilarGames] Response EMPTY for RawgId: {RawgId}, Count: {Count}", rawgGameId, response.Count);
-                    return new List<GameDto>();
-                }
-
-                _logger.LogInformation("[GetSimilarGames] Success - {Count} games found", response.Results.Count());
-
-                var rawgResults = response.Results
+                var rawgIds = response.Results
                     .Where(r => r.Id != rawgGameId)
+                    .Select(r => r.Id)
+                    .Distinct()
                     .Take(10)
                     .ToList();
 
-                var rawgIds = rawgResults.Select(r => r.Id).ToList();
+                var rawgResults = response.Results
+                    .Where(r => rawgIds.Contains(r.Id))
+                    .GroupBy(r => r.Id)
+                    .Select(g => g.First())
+                    .ToList();
 
                 var localRatings = await _context.Games
                     .AsNoTracking()
                     .Where(g => rawgIds.Contains(g.RawgId))
-                    .Select(g => new { g.RawgId, g.AverageRating, g.RatingCount })
-                    .ToDictionaryAsync(k => k.RawgId, v => new { v.AverageRating, v.RatingCount });
+                    .GroupBy(g => g.RawgId)
+                    .Select(g => g.First())
+                    .ToDictionaryAsync(
+                        k => k.RawgId,
+                        v => new { v.AverageRating, v.RatingCount }
+                    );
 
                 return rawgResults.Select(dto =>
                 {
-                    var stats = localRatings.ContainsKey(dto.Id) ? localRatings[dto.Id] : null;
-
+                    localRatings.TryGetValue(dto.Id, out var stats);
                     return new GameDto
                     {
                         RawgId = dto.Id,
@@ -360,8 +358,8 @@ namespace GGHub.Infrastructure.Services
                         Slug = dto.Slug,
                         Released = dto.Released,
                         BackgroundImage = dto.BackgroundImage,
-                        Rating = dto.Rating,       
-                        Metacritic = dto.Metacritic, 
+                        Rating = dto.Rating,
+                        Metacritic = dto.Metacritic,
                         GghubRating = stats?.AverageRating ?? 0,
                         GghubRatingCount = stats?.RatingCount ?? 0
                     };
