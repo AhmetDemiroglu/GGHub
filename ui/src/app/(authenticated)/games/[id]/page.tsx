@@ -10,7 +10,7 @@ export async function generateMetadata(
     { params }: Props
 ): Promise<Metadata> {
     const { id } = await params;
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "https://localhost:7263/api";
+    const baseUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api` || "https://localhost:7263/api";
 
     try {
         const response = await fetch(`${baseUrl}/games/${id}`, { next: { revalidate: 60 } });
