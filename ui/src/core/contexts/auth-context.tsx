@@ -11,6 +11,17 @@ interface DecodedToken {
     unique_name: string;
     role: "User" | "Admin";
     picture: string;
+    exp: number;
+}
+
+function getTokenMinutesRemaining(token: string): number {
+    try {
+        const decoded = jwtDecode<DecodedToken>(token);
+        const now = Date.now() / 1000;
+        return Math.floor((decoded.exp - now) / 60);
+    } catch {
+        return 0;
+    }
 }
 
 interface AuthContextValue {
@@ -53,6 +64,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
         localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(data));
     }, [accessToken, refreshToken, user]);
+
+    useEffect(() => {
+        if (!accessToken || !refreshToken) return;
+
+        const checkAndRefresh = async () => {
+            const minutesRemaining = getTokenMinutesRemaining(accessToken);
+
+            if (minutesRemaining > 0 && minutesRemaining < 10) {
+                try {
+                    const response = await fetch(
+                        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/refresh`,
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ token: refreshToken }),
+                        }
+                    );
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        login({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+                    }
+                } catch (error) {
+                    console.error("Token refresh failed:", error);
+                }
+            }
+        };
+
+        const interval = setInterval(checkAndRefresh, 5 * 60 * 1000);
+        checkAndRefresh();
+
+        return () => clearInterval(interval);
+    }, [accessToken, refreshToken]);
 
     const login = ({ accessToken, refreshToken }: { accessToken: string; refreshToken: string }) => {
         const decodedToken = jwtDecode<DecodedToken>(accessToken);

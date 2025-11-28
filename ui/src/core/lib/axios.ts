@@ -77,7 +77,6 @@ axiosInstance.interceptors.response.use(
                 const refreshToken = authContextRef?.refreshToken;
                 if (!refreshToken || !authContextRef) {
                     authContextRef?.logout();
-                    window.location.href = "/login";
                     return Promise.reject(error);
                 }
 
@@ -96,7 +95,6 @@ axiosInstance.interceptors.response.use(
                 processQueue(_error, null);
 
                 authContextRef?.logout();
-                window.location.href = "/login";
                 return Promise.reject(_error);
             } finally {
                 isRefreshing = false;
