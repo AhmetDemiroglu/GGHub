@@ -18,7 +18,7 @@ namespace GGHub.Infrastructure.Services
 
         public async Task<string> TranslateHtmlDescriptionAsync(string englishText)
         {
-            var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={_apiKey}";
+            var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={_apiKey}";
 
             var prompt = $@"
                 GÖREVİN: Aşağıda verilen İngilizce video oyunu açıklamasını TÜRKÇE'ye çevirmek.
