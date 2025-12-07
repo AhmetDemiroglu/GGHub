@@ -123,6 +123,22 @@
     }
 }
 
+@layer utilities {
+    @keyframes bounce-x {
+        0%,
+        100% {
+            transform: translateX(0);
+        }
+        50% {
+            transform: translateX(3px);
+        }
+    }
+
+    .animate-bounce-x {
+        animation: bounce-x 1s infinite;
+    }
+}
+
 .no-scrollbar::-webkit-scrollbar {
     display: none;
 }

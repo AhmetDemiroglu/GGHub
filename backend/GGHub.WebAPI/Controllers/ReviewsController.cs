@@ -114,5 +114,22 @@ namespace GGHub.WebAPI.Controllers
 
             return Ok(review);
         }
+
+        [HttpGet("user/{username}")]
+        public async Task<IActionResult> GetReviewsByUser(string username)
+        {
+            int? userId = null;
+            if (User.Identity != null && User.Identity.IsAuthenticated)
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+                if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int parsedId))
+                {
+                    userId = parsedId;
+                }
+            }
+
+            var reviews = await _reviewService.GetReviewsByUserAsync(username, userId);
+            return Ok(reviews);
+        }
     }
 }

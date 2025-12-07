@@ -72,7 +72,6 @@ export default function MyListsPage() {
         enabled: !!user,
         staleTime: Infinity,
         refetchOnWindowFocus: false,
-        refetchOnMount: false,
         refetchOnReconnect: false,
     });
 
@@ -188,14 +187,14 @@ export default function MyListsPage() {
 
     const filteredMyLists = useMemo(() => {
         const lists = myLists ?? [];
-        
+
         return lists.filter((list: UserList) => {
             const searchMatch =
                 debouncedSearchTerm === "" || list.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) || list.description?.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
             const categoryMatch = selectedCategory === "all" || list.category === Number(selectedCategory);
             const visibilityMatch = selectedVisibility_MyLists === "all" || list.visibility === Number(selectedVisibility_MyLists);
-            
-            const typeMatch = list.type !== 1; 
+
+            const typeMatch = list.type !== 1;
 
             return searchMatch && categoryMatch && visibilityMatch && typeMatch;
         });

@@ -286,6 +286,24 @@ namespace GGHub.WebAPI.Controllers
             var wishlist = await _userListService.GetWishlistForUserAsync(currentUserId.Value);
             return Ok(wishlist);
         }
+
+        [HttpGet("user/{username}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetListsByUsername(string username)
+        {
+            int? currentUserId = null;
+            if (User.Identity != null && User.Identity.IsAuthenticated)
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+                if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int parsedId))
+                {
+                    currentUserId = parsedId;
+                }
+            }
+
+            var lists = await _userListService.GetListsByUsernameAsync(username, currentUserId);
+            return Ok(lists);
+        }
     }
 
 }

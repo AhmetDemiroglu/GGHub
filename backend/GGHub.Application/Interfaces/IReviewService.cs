@@ -13,5 +13,6 @@ namespace GGHub.Application.Interfaces
         Task<(double Average, int Count)> GetGameRatingSummaryAsync(int gameId);
         Task<ReviewDto?> GetUserReviewForGameAsync(int userId, int rawgGameId);
         Task<IEnumerable<ReviewDto>> GetReviewsForGameAsync(int rawgGameId, int? userId = null);
+        Task<IEnumerable<ReviewDto>> GetReviewsByUserAsync(string username, int? currentUserId = null);
     }
 }

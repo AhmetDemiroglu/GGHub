@@ -264,6 +264,50 @@ namespace GGHub.Infrastructure.Services
             return reviews;
         }
 
+        public async Task<IEnumerable<ReviewDto>> GetReviewsByUserAsync(string username, int? currentUserId = null)
+        {
+            var targetUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            if (targetUser == null) return Enumerable.Empty<ReviewDto>();
+
+            var reviews = await _context.Reviews
+                .AsNoTracking()
+                .Where(r => r.UserId == targetUser.Id)
+                .Include(r => r.Game) 
+                .Include(r => r.User) 
+                .Include(r => r.ReviewVotes)
+                .OrderByDescending(r => r.CreatedAt)
+                .Select(r => new ReviewDto
+                {
+                    Id = r.Id,
+                    Content = r.Content,
+                    Rating = r.Rating,
+                    CreatedAt = r.CreatedAt,
+                    VoteScore = r.ReviewVotes.Sum(v => v.Value),
+                    CurrentUserVote = currentUserId.HasValue
+                        ? r.ReviewVotes.Where(v => v.UserId == currentUserId).Select(v => (int?)v.Value).FirstOrDefault()
+                        : null,
+                    User = new UserDto
+                    {
+                        Id = r.User.Id,
+                        Username = r.User.Username,
+                        ProfileImageUrl = r.User.ProfileImageUrl
+                    },
+                    Game = new GameSummaryDto
+                    {
+                        Id = r.Game.Id,
+                        RawgId = r.Game.RawgId,
+                        Name = r.Game.Name,
+                        Slug = r.Game.Slug,
+                        CoverImage = r.Game.CoverImage,
+                        BackgroundImage = r.Game.BackgroundImage,
+                        Released = r.Game.Released
+                    }
+                })
+                .ToListAsync();
+
+            return reviews;
+        }
+
         private async Task UpdateGameRatingStatisticsAsync(int gameId)
         {
             var stats = await _context.Reviews

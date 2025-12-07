@@ -24,9 +24,7 @@ export const getMyListDetail = (listId: number): Promise<UserListDetail> => {
 };
 
 export const getMyWishlist = (): Promise<UserListDetail | null> => {
-    return axiosInstance
-        .get<UserListDetail | null>("/user-lists/wishlist")
-        .then((response) => response.data);
+    return axiosInstance.get<UserListDetail | null>("/user-lists/wishlist").then((response) => response.data);
 };
 
 export const getPublicLists = (params: ListQueryParameters): Promise<PaginatedResponse<UserListPublic>> => {
@@ -63,4 +61,9 @@ export const toggleWishlist = (gameId: number) => {
 
 export const checkWishlistStatus = (gameId: number) => {
     return axiosInstance.get<{ isInWishlist: boolean }>(`/user-lists/wishlist/${gameId}/status`).then((res) => res.data);
+};
+
+export const getListsByUsername = async (username: string): Promise<UserList[]> => {
+    const response = await axiosInstance.get<UserList[]>(`/user-lists/user/${username}`);
+    return response.data;
 };

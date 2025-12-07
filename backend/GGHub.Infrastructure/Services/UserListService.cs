@@ -640,5 +640,62 @@ namespace GGHub.Infrastructure.Services
                 IsFollowing = false
             };
         }
+        public async Task<IEnumerable<UserListDto>> GetListsByUsernameAsync(string username, int? currentUserId)
+        {
+            var targetUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            if (targetUser == null) return Enumerable.Empty<UserListDto>();
+
+            var query = _context.UserLists
+                .AsNoTracking()
+                .Where(l => l.UserId == targetUser.Id);
+
+            if (currentUserId != targetUser.Id)
+            {
+                var isFollowing = currentUserId.HasValue &&
+                                  await _context.Follows.AnyAsync(f => f.FollowerId == currentUserId && f.FolloweeId == targetUser.Id);
+
+                query = query.Where(l =>
+                    l.Visibility == ListVisibilitySetting.Public ||
+                    (l.Visibility == ListVisibilitySetting.Followers && isFollowing)
+                );
+            }
+
+            var listsFromDb = await query
+                .Include(l => l.User)
+                .Include(l => l.UserListGames).ThenInclude(ulg => ulg.Game)
+                .Include(l => l.Followers)
+                .AsSplitQuery()
+                .OrderByDescending(l => l.UpdatedAt)
+                .ToListAsync();
+
+            return listsFromDb.Select(listEntity => new UserListDto
+            {
+                Id = listEntity.Id,
+                Name = listEntity.Name,
+                Description = listEntity.Description,
+                Visibility = listEntity.Visibility,
+                Category = listEntity.Category,
+                AverageRating = listEntity.AverageRating,
+                RatingCount = listEntity.RatingCount,
+                CreatedAt = listEntity.CreatedAt,
+                UpdatedAt = listEntity.UpdatedAt,
+                GameCount = listEntity.UserListGames.Count,
+                FollowerCount = listEntity.Followers.Count,
+                Owner = new UserDto
+                {
+                    Id = listEntity.User.Id,
+                    Username = listEntity.User.Username,
+                    ProfileImageUrl = listEntity.User.ProfileImageUrl,
+                    FirstName = listEntity.User.FirstName,
+                    LastName = listEntity.User.LastName
+                },
+                Type = (int)listEntity.Type,
+                FirstGameImageUrls = listEntity.UserListGames
+                    .OrderBy(ulg => ulg.AddedAt)
+                    .Select(ulg => ulg.Game.BackgroundImage)
+                    .Take(4)
+                    .ToList()
+            }).ToList();
+        }
     }
 }

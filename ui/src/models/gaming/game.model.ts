@@ -45,7 +45,7 @@ export interface Game {
     esrbRating?: string;
     gghubRating?: number;
     gghubRatingCount?: number;
-    isInWishlist?: boolean; 
+    isInWishlist?: boolean;
     descriptionTr?: string;
 }
 
@@ -59,34 +59,3 @@ export type GameApiPaginateParams = {
     dates?: string;
     metacritic?: string;
 };
-
-export interface ReviewUser {
-    id: number;
-    username: string;
-    profileImageUrl: string | null;
-}
-
-export interface Review {
-    id: number;
-    content: string;
-    rating: number;
-    createdAt: string;
-    user: ReviewUser;
-    voteScore: number;
-    currentUserVote: number | null;
-}
-
-export interface CreateReviewRequest {
-    gameId: number;
-    rating: number;
-    content: string;
-}
-
-export interface UpdateReviewRequest {
-    rating: number;
-    content: string;
-}
-
-export interface VoteReviewRequest {
-    value: number;
-}

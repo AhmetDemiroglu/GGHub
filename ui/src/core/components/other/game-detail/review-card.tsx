@@ -1,4 +1,4 @@
-import { Review } from "@/models/gaming/game.model";
+import { Review } from "@/models/review/review.model";
 import { ThumbsUp, ThumbsDown, User as UserIcon, Trash2, Pencil, Flag, Check, X } from "lucide-react";
 import React, { useState } from "react";
 import { toast } from "sonner";

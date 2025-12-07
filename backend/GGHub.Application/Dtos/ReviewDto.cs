@@ -9,5 +9,6 @@
         public UserDto User { get; set; }
         public int? CurrentUserVote { get; set; }
         public int VoteScore { get; set; }
+        public GameSummaryDto? Game { get; set; }
     }
 }

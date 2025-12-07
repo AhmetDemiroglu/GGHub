@@ -54,8 +54,9 @@ export interface UserList {
     averageRating: number;
     ratingCount: number;
     firstGameImageUrls: (string | null)[];
-    type: number;
+    type: UserListType;
     containsCurrentGame?: boolean;
+    isFollowing: boolean;
 }
 export interface UserListPublic {
     id: number;
@@ -145,4 +146,10 @@ export interface UserListComment {
     currentUserVote: number;
     replies?: UserListComment[];
     replyCount?: number;
+}
+
+export enum UserListType {
+    Custom = 0,
+    Wishlist = 1,
+    Favorites = 2,
 }

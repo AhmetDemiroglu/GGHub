@@ -19,5 +19,6 @@ namespace GGHub.Application.Interfaces
         Task<bool> ToggleWishlistAsync(int userId, int gameId);
         Task<bool> CheckWishlistStatusAsync(int userId, int gameId);
         Task<UserListDetailDto?> GetWishlistForUserAsync(int userId);
+        Task<IEnumerable<UserListDto>> GetListsByUsernameAsync(string username, int? currentUserId);
     }
 }

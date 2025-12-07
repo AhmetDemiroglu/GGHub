@@ -2,10 +2,13 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { getProfileByUsername } from "@/api/profile/profile.api";
-import ProfileHeader from "@core/components/other/profile/profile-header";
+import ProfileHeader from "./profile-header";
+import ProfileReviews from "./profile-reviews";
 import { useAuth } from "@core/hooks/use-auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/core/components/ui/tabs";
 import { Loader2, LayoutDashboard, Star, Library, Users } from "lucide-react";
+import ProfileLists from "./profile-lists";
+import ProfileNetwork from "./profile-network";
 
 interface ProfileContentProps {
     username: string;
@@ -48,7 +51,7 @@ export default function ProfileContent({ username }: ProfileContentProps) {
             <div className="space-y-4">
                 <ProfileHeader profile={profile} isOwnProfile={isOwnProfile} />
                 <Tabs defaultValue="overview" className="w-ful">
-                    <TabsList className="w-full flex flex-nowrap overflow-x-auto justify-start border-b bg-transparent p-1 h-14 space-x-0 mb-6 no-scrollbar">
+                    <TabsList className="w-full flex flex-nowrap overflow-x-auto justify-start border-b bg-transparent p-1 h-14 space-x-0 mb-4 no-scrollbar">
                         {/* 1. GENEL BAKIŞ */}
                         <TabsTrigger
                             value="overview"
@@ -108,22 +111,16 @@ export default function ProfileContent({ username }: ProfileContentProps) {
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="reviews" className="mt-0 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
-                        <div className="p-4 border rounded-xl bg-card text-card-foreground shadow-sm min-h-[200px] flex items-center justify-center">
-                            <p className="text-muted-foreground font-medium">İncelemeler yükleniyor...</p>
-                        </div>
+                    <TabsContent value="reviews" className="mt-0 mb-1 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
+                        <ProfileReviews username={profile.username} />
                     </TabsContent>
 
-                    <TabsContent value="lists" className="mt-0 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
-                        <div className="p-4 border rounded-xl bg-card text-card-foreground shadow-sm min-h-[200px] flex items-center justify-center">
-                            <p className="text-muted-foreground font-medium">Listeler yükleniyor...</p>
-                        </div>
+                    <TabsContent value="lists" className="mt-0 mb-1 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
+                        <ProfileLists username={profile.username} />
                     </TabsContent>
 
                     <TabsContent value="network" className="mt-0 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
-                        <div className="p-4 border rounded-xl bg-card text-card-foreground shadow-sm min-h-[200px] flex items-center justify-center">
-                            <p className="text-muted-foreground font-medium">Takipçiler ve Takip edilenler...</p>
-                        </div>
+                        <ProfileNetwork username={profile.username} />
                     </TabsContent>
                 </Tabs>
             </div>

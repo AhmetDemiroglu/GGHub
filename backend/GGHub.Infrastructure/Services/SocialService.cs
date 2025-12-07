@@ -18,7 +18,7 @@ namespace GGHub.Infrastructure.Services
         }
         public async Task<bool> FollowUserAsync(int followerId, string followeeUsername)
         {
-            var followee = await _context.Users.FirstOrDefaultAsync(u => u.Username == followeeUsername);
+            var followee = await _context.Users.FirstOrDefaultAsync(u => u.Username == followeeUsername && !u.IsDeleted);
             if (followee == null || followee.Id == followerId) return false;
 
             var isBlocked = await _context.UserBlocks
@@ -47,7 +47,7 @@ namespace GGHub.Infrastructure.Services
         }
         public async Task<bool> UnfollowUserAsync(int followerId, string followeeUsername)
         {
-            var followee = await _context.Users.FirstOrDefaultAsync(u => u.Username == followeeUsername);
+            var followee = await _context.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Username == followeeUsername);
             if (followee == null) return false;
 
             var follow = await _context.Follows.FirstOrDefaultAsync(f => f.FollowerId == followerId && f.FolloweeId == followee.Id);
@@ -105,6 +105,7 @@ namespace GGHub.Infrastructure.Services
             var followers = await _context.Follows
                 .Where(f => f.FolloweeId == user.Id)
                 .Include(f => f.Follower)
+                .Where(f => !f.Follower.IsDeleted)
                 .ToListAsync();
 
             var result = new List<UserDto>();
@@ -146,6 +147,7 @@ namespace GGHub.Infrastructure.Services
             var following = await _context.Follows
                 .Where(f => f.FollowerId == user.Id)
                 .Include(f => f.Followee)
+                .Where(f => !f.Followee.IsDeleted)
                 .ToListAsync();
 
             var result = new List<UserDto>();

@@ -23,7 +23,14 @@ const getScoreStyling = (type: ScoreType, score: number | null | undefined) => {
 };
 
 export function ScoreBadge({ type, score }: ScoreBadgeProps) {
-  const scoreValue = typeof score === 'number' && type === 'rawg' ? score.toFixed(1) : score;
+  const scoreValue =
+    typeof score === "number"
+      ? type === "rawg"
+        ? score.toFixed(1)
+        : type === "gghub"
+          ? score.toFixed(1)
+          : score
+      : score;
 
   return (
     <div>

@@ -1,5 +1,5 @@
 import { axiosInstance } from "@core/lib/axios";
-import { Review, CreateReviewRequest, UpdateReviewRequest, VoteReviewRequest } from "@/models/gaming/game.model";
+import { Review, CreateReviewRequest, UpdateReviewRequest, VoteReviewRequest } from "@/models/review/review.model";
 
 export const getGameReviews = (rawgGameId: number) => {
     return axiosInstance.get<Review[]>(`/games/${rawgGameId}/reviews`).then((res) => res.data);
@@ -16,10 +16,12 @@ export const deleteReview = (reviewId: number) => {
 export const voteReview = (reviewId: number, data: VoteReviewRequest) => {
     return axiosInstance.post(`/reviews/${reviewId}/vote`, data).then((res) => res.data);
 };
-
 export const getMyReview = (rawgGameId: number) => {
     return axiosInstance
         .get<Review | null>(`/reviews/game/${rawgGameId}/me`)
         .then((res) => res.data || null)
         .catch(() => null);
+};
+export const getReviewsByUser = (username: string): Promise<Review[]> => {
+    return axiosInstance.get<Review[]>(`/reviews/user/${username}`).then((response) => response.data);
 };
