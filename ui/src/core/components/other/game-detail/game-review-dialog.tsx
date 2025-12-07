@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, Loader2 } from "lucide-react";
 import React, { useState } from "react";
 import { toast } from "sonner";
-import { Review } from "@/models/gaming/game.model";
+import { Review } from "@/models/review/review.model";
 
 interface GameReviewDialogProps {
     isOpen: boolean;
