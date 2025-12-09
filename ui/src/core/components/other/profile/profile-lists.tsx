@@ -25,15 +25,17 @@ export default function ProfileLists({ username }: ProfileListsProps) {
         );
     }
 
-    if (!lists || lists.length === 0) {
+    const displayLists = (lists || []).filter(l => l.type !== UserListType.Wishlist && l.type !== UserListType.Favorites);
+
+    if (displayLists.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-16 px-4 text-center border-2 border-dashed rounded-xl bg-muted/10">
                 <div className="bg-muted/50 p-4 rounded-full mb-4">
                     <Library className="h-8 w-8 text-muted-foreground/50" />
                 </div>
-                <h3 className="text-lg font-semibold text-foreground">Liste bulunamadı</h3>
+                <h3 className="text-lg font-semibold text-foreground">Görüntülenecek liste yok</h3>
                 <p className="text-muted-foreground mt-2 max-w-sm">
-                    Bu kullanıcı henüz herkese açık bir liste oluşturmamış.
+                    Bu alanda sadece özel oluşturulmuş listeler yer alır.
                 </p>
             </div>
         );
@@ -41,7 +43,7 @@ export default function ProfileLists({ username }: ProfileListsProps) {
 
     return (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-            {lists.map((list) => {
+            {displayLists.map((list) => {
                 const listCardData = {
                     id: list.id,
                     name: list.name,
@@ -52,7 +54,7 @@ export default function ProfileLists({ username }: ProfileListsProps) {
                     ratingCount: 0,
                     gameCount: list.gameCount,
                     followerCount: list.followerCount,
-                    firstGameImageUrls: list.firstGameImageUrls,
+                    firstGameImageUrls: list.previewGames.map(g => g.coverImage),
                     owner: {
                         id: 0,
                         username: username,

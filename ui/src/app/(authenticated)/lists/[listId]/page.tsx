@@ -125,10 +125,16 @@ export default function ListDetailPage() {
             if (context?.previousData) {
                 queryClient.setQueryData(["list-detail", listId], context.previousData);
             }
-            if (error instanceof AxiosError && (error.response as any).isRateLimitError) {
-                return;
+            if (error instanceof AxiosError) {
+                if ((error.response as any)?.isRateLimitError) return;
+
+                const backendMessage = error.response?.data?.message || error.response?.data;
+                const displayMessage = typeof backendMessage === 'string'
+                    ? backendMessage
+                    : error.message;
+
+                toast.error(displayMessage);
             }
-            toast.error(`Hata: ${(error as Error).message}`);
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ["my-lists"] });
@@ -309,7 +315,7 @@ export default function ListDetailPage() {
 
                     {hasMoreGames && (
                         <>
-                            <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none" />
+                            <div className="absolute bottom-0 left-0 right-0 h-40 bg-linear-to-t from-background via-background/80 to-transparent pointer-events-none" />
                             <div className="relative flex flex-col items-center gap-3 mt-6">
                                 <span className="text-sm text-muted-foreground font-medium">Daha Fazla Oyun Göster ({listDetail.games.length - visibleGamesCount} adet)</span>
                                 <button onClick={() => setVisibleGameRows((prev) => prev + ROWS_PER_LOAD)} className="group relative cursor-pointer" aria-label="Daha fazla oyun göster">

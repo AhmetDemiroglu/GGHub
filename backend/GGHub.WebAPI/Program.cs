@@ -102,6 +102,8 @@ builder.Services.AddScoped<IUserListCommentService, UserListCommentService>();
 builder.Services.AddSingleton<IEmailQueue, EmailQueue>();
 builder.Services.AddHostedService<BackgroundEmailService>();
 builder.Services.AddHttpClient<IGeminiService, GeminiService>();
+builder.Services.AddScoped<IStatsService, StatsService>();
+builder.Services.AddScoped<IActivityService, ActivityService>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 

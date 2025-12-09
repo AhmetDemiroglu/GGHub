@@ -8,6 +8,9 @@ import { AxiosError } from "axios";
 
 const handleGlobalError = (error: unknown) => {
     if (error instanceof AxiosError) {
+        if ((error as any).isBusinessError) {
+            return;
+        }
         if (error.response && (error.response as any).isRateLimitError) {
             toast.warning("Sunucu Yoğunluğu", {
                 description: "Test sunucusunda anlık bir yoğunluk yaşanıyor. Lütfen 30 saniye bekleyip tekrar deneyin.",

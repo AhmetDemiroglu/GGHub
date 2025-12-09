@@ -41,6 +41,12 @@ export interface UserListForUpdate {
     visibility: ListVisibilitySetting;
     category: ListCategory;
 }
+export interface ListGamePreview {
+    id: number;
+    name: string;
+    slug: string;
+    coverImage: string | null;
+}
 export interface UserList {
     id: number;
     name: string;
@@ -57,6 +63,7 @@ export interface UserList {
     type: UserListType;
     containsCurrentGame?: boolean;
     isFollowing: boolean;
+    previewGames: ListGamePreview[];
 }
 export interface UserListPublic {
     id: number;

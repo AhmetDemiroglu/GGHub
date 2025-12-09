@@ -17,12 +17,12 @@ export const GameSimilarSlider = ({ rawgId }: GameSimilarSliderProps) => {
         enabled: !!rawgId,
     });
 
-    if (isLoading || !games || games.length === 0) return null;
+    if (isLoading || !games || !Array.isArray(games) || games.length === 0) return null;
 
     const sliderContent = [...games, ...games];
 
     return (
-        <section className="w-full mt-12 border-t border-border/60 bg-gradient-to-b from-background/40 to-background">
+        <section className="w-full mt-12 border-t border-border/60 bg-linear-to-b from-background/40 to-background">
             <div className="flex items-center justify-between gap-2 px-4 md:px-0 pt-8 pb-6">
                 <div className="space-y-1">
                     <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground/70">
@@ -40,10 +40,10 @@ export const GameSimilarSlider = ({ rawgId }: GameSimilarSliderProps) => {
             </div>
 
             <div className="relative w-full overflow-hidden group">
-                <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-20 md:w-28 bg-gradient-to-r from-background via-background/80 to-transparent z-10" />
-                <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-20 md:w-28 bg-gradient-to-l from-background via-background/80 to-transparent z-10" />
+                <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-20 md:w-28 bg-linear-to-r from-background via-background/80 to-transparent z-10" />
+                <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-20 md:w-28 bg-linear-to-l from-background via-background/80 to-transparent z-10" />
 
-                <div className="flex gap-5 md:gap-6 animate-similar-scroll hover:[animation-play-state:paused] w-max px-4 md:px-0 pb-6 overflow-x-auto touch-pan-x md:overflow-visible md:touch-none no-scrollbar">
+                <div className="flex gap-5 md:gap-6 animate-similar-scroll hover:paused w-max px-4 md:px-0 pb-6 overflow-x-auto touch-pan-x md:overflow-visible md:touch-none no-scrollbar">
                     {sliderContent.map((game, index) => {
                         const year = game.released ? new Date(game.released).getFullYear() : null;
                         const rating = typeof game.rating === "number" ? game.rating : null;
@@ -57,7 +57,7 @@ export const GameSimilarSlider = ({ rawgId }: GameSimilarSliderProps) => {
                             <Link
                                 key={`${game.rawgId}-${index}`}
                                 href={`/games/${game.slug || game.rawgId}`}
-                                className="relative group/card w-64 md:w-72 h-44 md:h-48 rounded-2xl overflow-hidden border border-border/60 bg-background/40 shadow-sm hover:shadow-[0_0_40px_rgba(56,189,248,0.35)] hover:border-primary/70 transition-all duration-300 flex-shrink-0"
+                                className="relative group/card w-64 md:w-72 h-44 md:h-48 rounded-2xl overflow-hidden border border-border/60 bg-background/40 shadow-sm hover:shadow-[0_0_40px_rgba(56,189,248,0.35)] hover:border-primary/70 transition-all duration-300 shrink-0"
                             >
                                 <div className="absolute inset-0">
                                     <Image
@@ -69,7 +69,7 @@ export const GameSimilarSlider = ({ rawgId }: GameSimilarSliderProps) => {
                                     />
                                 </div>
 
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/0" />
+                                <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/50 to-black/0" />
                                 <div className="absolute inset-0 bg-radial from-cyan-500/10 via-transparent to-transparent pointer-events-none" />
 
                                 {gghubRating && (

@@ -67,3 +67,8 @@ export const getListsByUsername = async (username: string): Promise<UserList[]> 
     const response = await axiosInstance.get<UserList[]>(`/user-lists/user/${username}`);
     return response.data;
 };
+
+export const getFavoritesList = async (username: string): Promise<UserList | null> => {
+    const response = await axiosInstance.get<UserList | null>(`/user-lists/user/${username}/favorites`);
+    return response.data;
+};

@@ -23,7 +23,7 @@ export const GameAddToListDialog = ({ isOpen, onClose, gameId }: GameAddToListDi
         enabled: isOpen,
     });
 
-    const filteredLists = myLists?.filter(list => list.type !== 1);
+    const filteredLists = myLists?.filter(list => list.type !== 1 && list.type !== 2);
 
     const { mutate: addGame, isPending: isAdding } = useMutation({
         mutationFn: (listId: number) => addGameToList(listId, gameId),
@@ -57,19 +57,14 @@ export const GameAddToListDialog = ({ isOpen, onClose, gameId }: GameAddToListDi
             queryClient.invalidateQueries({ queryKey: ["my-lists"] });
             toast.success("Oyun listeye eklendi");
         },
-        onError: (error: any) => {
-            toast.error("Ekleme başarısız", {
-                description: error.response?.data?.message || "Bir hata oluştu"
-            });
-        }
     });
 
-    const { mutateAsync: createNewListAsync, isPending: isCreating } = useMutation({ // mutate -> mutateAsync
+    const { mutateAsync: createNewListAsync, isPending: isCreating } = useMutation({
         mutationFn: (newList: UserListForCreation) => createList(newList),
         onSuccess: (createdList) => {
             queryClient.invalidateQueries({ queryKey: ["my-lists"] });
             toast.success(`'${createdList.name}' oluşturuldu.`);
-            setIsCreateModalOpen(false); // Formu kapat, alttaki modal geri gelir
+            setIsCreateModalOpen(false);
         },
         onError: (error: any) => {
             toast.error("Liste oluşturulamadı", { description: error.response?.data?.message });
@@ -111,7 +106,7 @@ export const GameAddToListDialog = ({ isOpen, onClose, gameId }: GameAddToListDi
                                             onClick={() => !isAdded && addGame(list.id)}
                                         >
                                             {/* Sol: İkon (Sabit) */}
-                                            <div className="w-10 h-10 bg-zinc-900 rounded flex items-center justify-center border border-zinc-800 font-bold text-zinc-500 group-hover:text-zinc-300 flex-shrink-0">
+                                            <div className="w-10 h-10 bg-zinc-900 rounded flex items-center justify-center border border-zinc-800 font-bold text-zinc-500 group-hover:text-zinc-300 shrink-0">
                                                 {list.name.charAt(0).toUpperCase()}
                                             </div>
 
@@ -157,7 +152,7 @@ export const GameAddToListDialog = ({ isOpen, onClose, gameId }: GameAddToListDi
                                             {!isAdded && (
                                                 <button
                                                     disabled={isLoading}
-                                                    className="w-8 h-8 flex items-center justify-center cursor-pointer rounded-full bg-secondary text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-all flex-shrink-0"
+                                                    className="w-8 h-8 flex items-center justify-center cursor-pointer rounded-full bg-secondary text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-all shrink-0"
                                                 >
                                                     {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Plus size={18} />}
                                                 </button>

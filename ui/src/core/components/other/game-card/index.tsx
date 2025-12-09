@@ -61,7 +61,7 @@ export const GameCard = memo(function GameCard({ game }: { game: Game }) {
                                 alt={game.name}
                                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-card via-card/10 to-transparent" />
+                            <div className="absolute inset-0 bg-linear-to-t from-card via-card/10 to-transparent" />
                         </div>
 
                         <div className="p-4 flex flex-col flex-1">

@@ -8,8 +8,8 @@ import { checkWishlistStatus, toggleWishlist } from "@/api/list/list.api";
 import { toast } from "sonner";
 import { useAuth } from "@/core/hooks/use-auth";
 import { GameAddToListDialog } from "./game-add-to-list-dialog";
-import { createReview, getMyReview } from "@/api/review/review.api";
-
+import { getMyReview } from "@/api/review/review.api";
+import { FavoriteButton } from "./favorite-button";
 interface GameHeroProps {
     game: Game;
     onOpenReviewModal: () => void;
@@ -82,8 +82,8 @@ export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
                 className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-1000 hover:scale-105"
                 style={{ backgroundImage: `url(${game.backgroundImage || "/placeholder-game.jpg"})` }}
             >
-                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/90 via-30% to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-r from-background via-background/50 to-transparent" />
+                <div className="absolute inset-0 bg-linear-to-t from-background via-background/90 via-30% to-transparent" />
+                <div className="absolute inset-0 bg-linear-to-r from-background via-background/50 to-transparent" />
             </div>
 
             {/* İçerik Alanı */}s
@@ -137,6 +137,8 @@ export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
                             </div>
                         </button>
 
+
+
                         {/* İstek Listesine Ekle */}
                         <button
                             onClick={handleWishlistClick}
@@ -163,6 +165,10 @@ export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
                         </button>
 
                         {/* More Actions */}
+                        <FavoriteButton
+                            gameId={game.rawgId}
+                            className="h-[70px] w-[58px] rounded-xl flex items-center justify-center bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20"
+                        />
                         <button
                             onClick={handleShare}
                             className="flex items-center justify-center w-14 bg-white/5 text-white border border-white/10 rounded-xl hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer backdrop-blur-md"

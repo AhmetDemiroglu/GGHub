@@ -33,10 +33,10 @@ export function AddGameToListModal({ isOpen, onClose, onAddGame, isPending, exis
         queryFn: () =>
             submittedSearchTerm
                 ? gameApi.paginate({
-                      page: page,
-                      pageSize: 20,
-                      search: submittedSearchTerm,
-                  })
+                    page: page,
+                    pageSize: 20,
+                    search: submittedSearchTerm,
+                })
                 : Promise.resolve(null),
         placeholderData: (previousData) => previousData,
     });
@@ -96,7 +96,7 @@ export function AddGameToListModal({ isOpen, onClose, onAddGame, isPending, exis
                                         <img
                                             src={game.backgroundImage || placeHolder.src}
                                             alt={game.name}
-                                            className="h-12 w-10 object-cover rounded flex-shrink-0"
+                                            className="h-12 w-10 object-cover rounded shrink-0"
                                             onError={(e) => {
                                                 const target = e.target as HTMLImageElement;
                                                 if (target.dataset.fallbackApplied) return;
@@ -110,11 +110,11 @@ export function AddGameToListModal({ isOpen, onClose, onAddGame, isPending, exis
                                         </div>
                                     </div>
                                     {isAlreadyInList ? (
-                                        <span className="text-xs text-green-500 flex items-center flex-shrink-0">
+                                        <span className="text-xs text-green-500 flex items-center shrink-0">
                                             <Check className="h-4 w-4 mr-1" /> Listede
                                         </span>
                                     ) : (
-                                        <Button size="sm" onClick={() => onAddGame(game.rawgId)} disabled={isPending} className="flex-shrink-0 cursor-pointer">
+                                        <Button size="sm" onClick={() => onAddGame(game.rawgId)} disabled={isPending} className="shrink-0 cursor-pointer">
                                             {isPending ? <Loader className="h-4 w-4 animate-spin" /> : "Ekle"}
                                         </Button>
                                     )}

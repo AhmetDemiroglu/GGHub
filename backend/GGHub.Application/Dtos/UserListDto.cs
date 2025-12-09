@@ -24,5 +24,13 @@ namespace GGHub.Application.Dtos
         public UserDto Owner { get; set; }
         public int Type { get; set; }
         public bool ContainsCurrentGame { get; set; }
+        public List<ListGamePreviewDto> PreviewGames { get; set; } = new();
+    }
+    public class ListGamePreviewDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Slug { get; set; } = string.Empty;
+        public string? CoverImage { get; set; }
     }
 }

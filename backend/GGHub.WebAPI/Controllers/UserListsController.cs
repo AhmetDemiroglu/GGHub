@@ -304,6 +304,40 @@ namespace GGHub.WebAPI.Controllers
             var lists = await _userListService.GetListsByUsernameAsync(username, currentUserId);
             return Ok(lists);
         }
+
+        [HttpPost("favorites/{gameId}")]
+        [Authorize]
+        public async Task<IActionResult> ToggleFavorite(int gameId)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            try
+            {
+                var isAdded = await _userListService.ToggleFavoriteAsync(userId, gameId);
+                return Ok(new { IsAdded = isAdded, Message = isAdded ? "Favorilere eklendi" : "Favorilerden çıkarıldı" });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpGet("favorites/{gameId}/status")]
+        [Authorize]
+        public async Task<IActionResult> GetFavoriteStatus(int gameId)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var exists = await _userListService.CheckFavoriteStatusAsync(userId, gameId);
+            return Ok(new { isFavorite = exists });
+        }
+
+        [HttpGet("user/{username}/favorites")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetUserFavorites(string username)
+        {
+            var list = await _userListService.GetFavoritesListByUsernameAsync(username);
+            return Ok(list);
+        }
     }
 
 }

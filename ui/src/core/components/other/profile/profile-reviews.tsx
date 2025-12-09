@@ -96,7 +96,7 @@ export default function ProfileReviews({ username }: ProfileReviewsProps) {
                                     {review.content}
                                 </p>
 
-                                <div className="flex items-center justify-end mt-auto pt-2 gap-2 text-xs font-medium text-primary/100">
+                                <div className="flex items-center justify-end mt-auto pt-2 gap-2 text-xs font-medium text-primary">
                                     <span>Detayı Görüntüle</span>
                                     <CircleArrowRight className="h-3.5 w-3.5 animate-bounce-x" />
                                 </div>

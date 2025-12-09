@@ -70,6 +70,15 @@ namespace GGHub.Infrastructure.Services
                 throw new InvalidOperationException("Bu oyun bu listede zaten mevcut.");
             }
 
+            if (list.Type == UserListType.Favorites)
+            {
+                var currentCount = await _context.UserListGames.CountAsync(ulg => ulg.UserListId == listId);
+                if (currentCount >= 5)
+                {
+                    throw new InvalidOperationException("Favori listesine en fazla 5 oyun ekleyebilirsiniz.");
+                }
+            }
+
             var userListGame = new UserListGame
             {
                 UserListId = listId,
@@ -99,6 +108,7 @@ namespace GGHub.Infrastructure.Services
         {
             var listsFromDb = await _context.UserLists
                 .Where(l => l.UserId == userId)
+                .Where(l => l.Type != UserListType.Wishlist && l.Type != UserListType.Favorites)
                 .Include(l => l.User)                             
                 .Include(l => l.UserListGames).ThenInclude(ulg => ulg.Game) 
                 .Include(l => l.Followers)                        
@@ -647,7 +657,8 @@ namespace GGHub.Infrastructure.Services
 
             var query = _context.UserLists
                 .AsNoTracking()
-                .Where(l => l.UserId == targetUser.Id);
+                .Where(l => l.UserId == targetUser.Id)
+                .Where(l => l.Type != UserListType.Wishlist && l.Type != UserListType.Favorites);
 
             if (currentUserId != targetUser.Id)
             {
@@ -690,12 +701,112 @@ namespace GGHub.Infrastructure.Services
                     LastName = listEntity.User.LastName
                 },
                 Type = (int)listEntity.Type,
-                FirstGameImageUrls = listEntity.UserListGames
+                PreviewGames = listEntity.UserListGames
                     .OrderBy(ulg => ulg.AddedAt)
-                    .Select(ulg => ulg.Game.BackgroundImage)
-                    .Take(4)
+                    .Select(ulg => new ListGamePreviewDto
+                    {
+                        Id = ulg.Game.Id,
+                        Name = ulg.Game.Name,
+                        Slug = ulg.Game.Slug,
+                        CoverImage = ulg.Game.CoverImage ?? ulg.Game.BackgroundImage 
+                    })
+                    .Take(5) 
                     .ToList()
             }).ToList();
+        }
+        public async Task<bool> ToggleFavoriteAsync(int userId, int rawgGameId)
+        {
+            var game = await _gameService.GetOrCreateGameByRawgIdAsync(rawgGameId);
+
+            var favoritesList = await _context.UserLists
+                .Include(l => l.UserListGames)
+                .FirstOrDefaultAsync(l => l.UserId == userId && l.Type == UserListType.Favorites);
+
+            if (favoritesList == null)
+            {
+                favoritesList = new UserList
+                {
+                    UserId = userId,
+                    Name = "Favori Oyunlarım",
+                    Description = "En sevdiğim, vitrinlik oyunlar.",
+                    Category = ListCategory.Other,
+                    Type = UserListType.Favorites,
+                    Visibility = ListVisibilitySetting.Public,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                await _context.UserLists.AddAsync(favoritesList);
+                await _context.SaveChangesAsync();
+            }
+
+            var existingItem = favoritesList.UserListGames
+                .FirstOrDefault(ulg => ulg.GameId == game.Id);
+
+            if (existingItem != null)
+            {
+                _context.UserListGames.Remove(existingItem);
+                await _context.SaveChangesAsync();
+                return false; 
+            }
+            else
+            {
+                if (favoritesList.UserListGames.Count >= 5)
+                {
+                    throw new InvalidOperationException("Favori listesine en fazla 5 oyun ekleyebilirsiniz.");
+                }
+
+                await _context.UserListGames.AddAsync(new UserListGame
+                {
+                    UserListId = favoritesList.Id,
+                    GameId = game.Id,
+                    AddedAt = DateTime.UtcNow
+                });
+                await _context.SaveChangesAsync();
+                return true;
+            }
+        }
+
+        public async Task<bool> CheckFavoriteStatusAsync(int userId, int rawgGameId)
+        {
+            var list = await _context.UserLists
+                .Include(l => l.UserListGames).ThenInclude(ulg => ulg.Game)
+                .FirstOrDefaultAsync(l => l.UserId == userId && l.Type == UserListType.Favorites);
+
+            if (list == null) return false;
+
+            return list.UserListGames.Any(ulg => ulg.Game.RawgId == rawgGameId);
+        }
+
+        public async Task<UserListDto?> GetFavoritesListByUsernameAsync(string username)
+        {
+            var targetUser = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Username == username);
+            if (targetUser == null) return null;
+
+            var favList = await _context.UserLists
+                .AsNoTracking()
+                .Where(l => l.UserId == targetUser.Id && l.Type == UserListType.Favorites)
+                .Include(l => l.UserListGames).ThenInclude(ulg => ulg.Game)
+                .FirstOrDefaultAsync();
+
+            if (favList == null) return null;
+
+            return new UserListDto
+            {
+                Id = favList.Id,
+                Name = favList.Name,
+                Type = (int)favList.Type,
+                PreviewGames = favList.UserListGames
+                    .OrderBy(ulg => ulg.AddedAt)
+                    .Select(ulg => new ListGamePreviewDto
+                    {
+                        Id = ulg.Game.Id,
+                        Name = ulg.Game.Name,
+                        Slug = ulg.Game.Slug,
+                        CoverImage = ulg.Game.CoverImage ?? ulg.Game.BackgroundImage
+                    })
+                    .Take(5)
+                    .ToList()
+            };
         }
     }
 }

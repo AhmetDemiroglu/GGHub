@@ -142,7 +142,7 @@ export function Header() {
     };
 
     return (
-        <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
             <div className="flex h-14 items-center px-6">
                 <Link className="mr-3 flex items-center space-x-2" href="/">
                     <Image src={logoSrc} alt="GGHub Logo" width={35} height={22} priority className="h-8 w-auto" />
@@ -255,7 +255,7 @@ export function Header() {
                                                         onClick={() => setMessagesOpen(false)}
                                                     >
                                                         <div className="flex items-center gap-3">
-                                                            <Avatar className="h-10 w-10 flex-shrink-0">
+                                                            <Avatar className="h-10 w-10 shrink-0">
                                                                 <AvatarImage src={avatarSrc} alt={conversation.partnerUsername} />
                                                                 <AvatarFallback>{conversation.partnerUsername.charAt(0).toUpperCase()}</AvatarFallback>
                                                             </Avatar>
@@ -263,7 +263,7 @@ export function Header() {
                                                                 <div className="flex items-center justify-between mb-1">
                                                                     <p className="font-semibold text-sm truncate">{conversation.partnerUsername}</p>
                                                                     {conversation.unreadCount > 0 && (
-                                                                        <Badge variant="default" className="ml-2 flex-shrink-0 h-5 w-5 flex items-center justify-center p-0 text-xs">
+                                                                        <Badge variant="default" className="ml-2 shrink-0 h-5 w-5 flex items-center justify-center p-0 text-xs">
                                                                             {conversation.unreadCount}
                                                                         </Badge>
                                                                     )}
@@ -315,11 +315,11 @@ export function Header() {
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent className="w-56" align="end" forceMount>
-                                    <DropdownMenuLabel asChild>
-                                        <Link href={`/profiles/${user.username}`} className="cursor-pointer">
+                                    <DropdownMenuItem asChild>
+                                        <Link href={`/profiles/${user.username}`} className="cursor-pointer font-semibold">
                                             {user.username}
                                         </Link>
-                                    </DropdownMenuLabel>
+                                    </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem asChild>
                                         <Link href="/profile" className="cursor-pointer flex items-center">

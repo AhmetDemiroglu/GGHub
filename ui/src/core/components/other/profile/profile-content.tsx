@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/core/components/ui/t
 import { Loader2, LayoutDashboard, Star, Library, Users } from "lucide-react";
 import ProfileLists from "./profile-lists";
 import ProfileNetwork from "./profile-network";
+import ProfileOverview from "./overview/profile-overview";
 
 interface ProfileContentProps {
     username: string;
@@ -100,15 +101,8 @@ export default function ProfileContent({ username }: ProfileContentProps) {
                     </TabsList>
 
                     {/* --- İÇERİKLER --- */}
-
-                    <TabsContent value="overview" className="mt-0 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
-                        <div className="p-8 border-2 border-dashed border-muted rounded-xl bg-muted/10 text-center flex flex-col items-center justify-center min-h-[300px]">
-                            <div className="bg-background p-4 rounded-full shadow-sm mb-4">
-                                <LayoutDashboard className="h-8 w-8 text-muted-foreground" />
-                            </div>
-                            <h3 className="text-lg font-semibold text-foreground">Genel Bakış Paneli</h3>
-                            <p className="text-muted-foreground max-w-sm mt-2">Bu alan Faz 3 kapsamında geliştirilecektir. Kullanıcının son aktiviteleri ve öne çıkan istatistikleri burada yer alacak.</p>
-                        </div>
+                    <TabsContent value="overview" className="mt-0 mb-1 animate-in fade-in-50 duration-300">
+                        <ProfileOverview username={profile.username} />
                     </TabsContent>
 
                     <TabsContent value="reviews" className="mt-0 mb-1 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">

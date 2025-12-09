@@ -30,7 +30,12 @@ namespace GGHub.Infrastructure.Services
             var alreadyFollowing = await _context.Follows.AnyAsync(f => f.FollowerId == followerId && f.FolloweeId == followee.Id);
             if (alreadyFollowing) return true;
 
-            var follow = new Follow { FollowerId = followerId, FolloweeId = followee.Id };
+            var follow = new Follow
+            {
+                FollowerId = followerId,
+                FolloweeId = followee.Id,
+                CreatedAt = DateTime.UtcNow
+            };
             await _context.Follows.AddAsync(follow);
             var success = await _context.SaveChangesAsync() > 0;
 
