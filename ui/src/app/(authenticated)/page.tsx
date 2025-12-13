@@ -18,7 +18,7 @@ export const metadata: Metadata = {
         locale: "tr_TR",
         images: [
             {
-                url: "/og/home.jpg",
+                url: "/og/home.png",
                 width: 1200,
                 height: 630,
                 alt: "GGHub",
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
         title: "GGHub • Türkiye'nin oyuncu sosyal platformu",
         description:
             "Profil oluştur, takip et, oyunları ve listeleri keşfet. Erken erişimde aktif geliştirme.",
-        images: ["/og/home.jpg"],
+        images: ["/og/home.png"],
     },
 };
 
