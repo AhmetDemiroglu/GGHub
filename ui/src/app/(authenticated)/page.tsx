@@ -2,6 +2,37 @@ import { Button } from "../../core/components/ui/button";
 import { Construction, HardHat, Wrench, Gamepad2, Users, MessageSquare, ShieldBan, ListChecks, MessageCircle, ThumbsUp, Library, Bell, Star, Image as ImageIcon, Rocket } from "lucide-react";
 import logoSrc from "@core/assets/logo.png";
 import Image from "next/image";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Hub",
+    description:
+        "Türkiye'nin oyuncu sosyal platformu. Profil oluştur, takip et, oyunları ve listeleri keşfet.",
+    openGraph: {
+        type: "website",
+        url: "https://gghub.social/",
+        siteName: "GGHub",
+        title: "GGHub • Türkiye'nin oyuncu sosyal platformu",
+        description:
+            "Profil oluştur, takip et, oyunları ve listeleri keşfet. Erken erişimde aktif geliştirme.",
+        locale: "tr_TR",
+        images: [
+            {
+                url: "/og/home.jpg",
+                width: 1200,
+                height: 630,
+                alt: "GGHub",
+            },
+        ],
+    },
+    twitter: {
+        card: "summary_large_image",
+        title: "GGHub • Türkiye'nin oyuncu sosyal platformu",
+        description:
+            "Profil oluştur, takip et, oyunları ve listeleri keşfet. Erken erişimde aktif geliştirme.",
+        images: ["/og/home.jpg"],
+    },
+};
 
 export default function HomePage() {
     return (
