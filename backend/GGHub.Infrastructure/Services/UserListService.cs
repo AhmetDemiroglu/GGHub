@@ -13,12 +13,14 @@ namespace GGHub.Infrastructure.Services
         private readonly GGHubDbContext _context;
         private readonly IGameService _gameService;
         private readonly INotificationService _notificationService;
+        private readonly IGamificationService _gamificationService;
 
-        public UserListService(GGHubDbContext context, IGameService gameService, INotificationService notificationService)
+        public UserListService(GGHubDbContext context, IGameService gameService, INotificationService notificationService, IGamificationService gamificationService)
         {
             _context = context;
             _gameService = gameService;
             _notificationService = notificationService;
+            _gamificationService = gamificationService;
         }
 
         public async Task<UserList> CreateListAsync(UserListForCreationDto listDto, int userId)
@@ -44,6 +46,9 @@ namespace GGHub.Infrastructure.Services
 
             await _context.UserLists.AddAsync(userList);
             await _context.SaveChangesAsync();
+
+            await _gamificationService.AddXpAsync(userId, 30, "ListCreated");
+            await _gamificationService.CheckAchievementsAsync(userId, "ListCreated");
 
             return userList;
         }
@@ -532,10 +537,15 @@ namespace GGHub.Infrastructure.Services
             }
 
             _context.UserLists.Remove(list);
+            var result = await _context.SaveChangesAsync() > 0;
 
-            return await _context.SaveChangesAsync() > 0;
+            if (result)
+            {
+                await _gamificationService.AddXpAsync(userId, -30, "ListDeleted");
+            }
+
+            return result;
         }
-
         public async Task<bool> ToggleWishlistAsync(int userId, int rawgGameId)
         {
             var game = await _gameService.GetOrCreateGameByRawgIdAsync(rawgGameId);

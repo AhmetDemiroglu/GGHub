@@ -5,9 +5,10 @@ import { getUserStats } from "@/api/stats/stats.api";
 import { getUserActivityFeed } from "@/api/activity/activity.api";
 import GamerDNAChart from "./gamer-dna-chart";
 import ActivityFeed from "./activity-feed";
-import { Loader2, TrendingUp, Users, List, Star } from "lucide-react";
+import { Loader2, TrendingUp, Users, List, Star, Award } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/core/components/ui/card";
 import TopFiveGames from "./top-five-games";
+import Image from "next/image";
 
 interface ProfileOverviewProps {
     username: string;
@@ -42,6 +43,41 @@ export default function ProfileOverview({ username }: ProfileOverviewProps) {
                 <div className="h-[300px]">
                     <GamerDNAChart data={stats.gamerDna} username={username} />
                 </div>
+                {/* Rozet Vitrini */}
+                <Card className="bg-card/50 border-border/50 backdrop-blur-sm">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                            <Award className="h-4 w-4 text-yellow-500" />
+                            Kazanılan Rozetler
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-3 pt-0">
+                        {stats.recentAchievements && stats.recentAchievements.length > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                                {stats.recentAchievements.map((iconUrl, index) => (
+                                    <div
+                                        key={index}
+                                        className="relative h-10 w-10 bg-background/50 rounded-full border border-border/50 p-1.5 shadow-sm hover:scale-110 transition-transform cursor-help group"
+                                        title="Rozet Detayı"
+                                    >
+                                        <Image
+                                            src={iconUrl}
+                                            alt="Achievement Badge"
+                                            fill
+                                            className="object-contain drop-shadow-md"
+                                            unoptimized={true}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-xs text-muted-foreground py-2 text-center bg-muted/20 rounded-md border border-dashed border-muted">
+                                Henüz rozet kazanılmadı.
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
                 {/* İstatistik Kartları Grid */}
                 <div className="grid grid-cols-2 gap-3">
                     <Card className="bg-primary/5 border-primary/10">

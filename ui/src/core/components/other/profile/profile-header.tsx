@@ -16,7 +16,6 @@ import { toast } from "sonner";
 import Image from "next/image";
 import gameBanner from "@/core/assets/games.jpg";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/core/components/ui/dropdown-menu";
-import { useRouter } from "next/navigation";
 import { FollowersModal } from "./followers-modal";
 import { MessageDialog } from "@core/components/other/message-dialog";
 import Link from "next/link";
@@ -24,6 +23,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@core/
 import { BlockedUsersDialog } from "@core/components/other/blocked-users-dialog";
 import { useAuth } from "@core/hooks/use-auth";
 import { getImageUrl } from "@/core/lib/get-image-url";
+import { useQuery } from "@tanstack/react-query";
+import { getUserGamificationStats } from "@/api/gamification/gamification.api";
 
 dayjs.locale("tr");
 
@@ -42,6 +43,12 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
     const [messageDialogOpen, setMessageDialogOpen] = useState(false);
     const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
     const avatarSrc = getImageUrl(profile.profileImageUrl);
+
+    const { data: stats } = useQuery({
+        queryKey: ["gamification", profile.id],
+        queryFn: () => getUserGamificationStats(profile.id),
+        enabled: !!profile.id,
+    });
 
     useEffect(() => {
         setIsFollowing(profile.isFollowing || false);
@@ -323,47 +330,81 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                 </div>
 
                 <div className="mt-4 space-y-2">
+                    {/* 1. Satır: İsim ve Level Rozeti */}
                     <div>
-                        <h1 className="text-2xl font-bold">{displayName}</h1>
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-2xl font-bold">{displayName}</h1>
+                            {stats && (
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <div className="relative h-8 w-8 cursor-help hover:scale-110 transition-transform">
+                                                <Image
+                                                    src={`/assets/badges/level_${stats.currentLevel}.ico`}
+                                                    alt={`Level ${stats.currentLevel}`}
+                                                    fill
+                                                    className="object-contain"
+                                                    unoptimized={true}
+                                                />
+                                            </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>{stats.levelName} (Lvl {stats.currentLevel})</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            )}
+                        </div>
                         <p className="text-muted-foreground">@{profile.username}</p>
                     </div>
 
+                    {/* 2. Satır: Durum (Varsa) */}
                     {profile.status && (
                         <div className="flex items-center gap-2 pt-1">
-                            <Badge variant="secondary" className="text-xs">
-                                Durum
-                            </Badge>
+                            <Badge variant="secondary" className="text-xs">Durum</Badge>
                             <p className="text-sm text-muted-foreground">{profile.status}</p>
                         </div>
                     )}
 
-                    {profile.bio && <p className="text-sm text-foreground/90 pt-2">{profile.bio}</p>}
+                    {/* 3. Satır: Biyografi (Varsa) */}
+                    {profile.bio && <p className="text-sm text-foreground/90 pt-2 max-w-2xl leading-relaxed">{profile.bio}</p>}
                 </div>
 
-                {(followerCount !== undefined && followerCount !== null) || (profile.followingCount !== undefined && profile.followingCount !== null) ? (
-                    <div className="flex gap-4 text-sm mt-4">
-                        <div
-                            className="cursor-pointer hover:underline"
-                            onClick={() => {
-                                setDefaultModalTab("followers");
-                                setFollowersModalOpen(true);
-                            }}
-                        >
-                            <span className="font-bold">{followerCount}</span>
-                            <span className="text-muted-foreground"> Takipçi</span>
+                {/* 4. Satır: İstatistikler ve XP Bar (Flex Container) */}
+                <div className="mt-2 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+
+                    {/* Sol: Takipçi Sayıları */}
+                    {(followerCount !== undefined || profile.followingCount !== undefined) && (
+                        <div className="flex gap-4 text-sm pb-0">
+                            <div className="cursor-pointer hover:underline group" onClick={() => { setDefaultModalTab("followers"); setFollowersModalOpen(true); }}>
+                                <span className="font-bold group-hover:text-primary transition-colors">{followerCount}</span>
+                                <span className="text-muted-foreground ml-1">Takipçi</span>
+                            </div>
+                            <div className="cursor-pointer hover:underline group" onClick={() => { setDefaultModalTab("following"); setFollowersModalOpen(true); }}>
+                                <span className="font-bold group-hover:text-primary transition-colors">{profile.followingCount ?? 0}</span>
+                                <span className="text-muted-foreground ml-1">Takip</span>
+                            </div>
                         </div>
-                        <div
-                            className="cursor-pointer hover:underline"
-                            onClick={() => {
-                                setDefaultModalTab("following");
-                                setFollowersModalOpen(true);
-                            }}
-                        >
-                            <span className="font-bold">{profile.followingCount ?? 0}</span>
-                            <span className="text-muted-foreground"> Takip</span>
+                    )}
+
+                    {/* Sağ: XP Bar*/}
+                    {isOwnProfile && stats && (
+                        <div className="w-full sm:w-60">
+                            <div className="flex justify-between w-full text-[10px] font-medium mb-1.5 px-0.5">
+                                <span className="text-primary">Lvl {stats.currentLevel}</span>
+                                <span className="text-muted-foreground">{stats.currentXp} / {stats.nextLevelXp} XP</span>
+                            </div>
+
+                            <div className="h-2.5 w-full bg-secondary/50 rounded-full overflow-hidden ring-1 ring-white/5">
+                                <div
+                                    className="h-full bg-linear-to-r from-violet-600 via-purple-500 to-fuchsia-500 shadow-[0_0_10px_rgba(168,85,247,0.4)] transition-all duration-500 ease-out"
+                                    style={{ width: `${Math.max(stats.progressPercentage, 1)}%` }}
+                                />
+                            </div>
+                            <span className="text-[10px] text-muted-foreground">Sonraki seviyeye %{100 - stats.progressPercentage} kaldı</span>
                         </div>
-                    </div>
-                ) : null}
+                    )}
+                </div>
 
                 <Separator className="my-4" />
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">

@@ -12,11 +12,13 @@ namespace GGHub.Infrastructure.Services
         private readonly GGHubDbContext _context;
         private readonly IGameService _gameService;
         private readonly INotificationService _notificationService;
-        public ReviewService(GGHubDbContext context, IGameService gameService, INotificationService notificationService)
+        private readonly IGamificationService _gamificationService;
+        public ReviewService(GGHubDbContext context, IGameService gameService, INotificationService notificationService, IGamificationService gamificationService)
         {
             _context = context;
             _gameService = gameService;
             _notificationService = notificationService;
+            _gamificationService = gamificationService;
         }
 
         public async Task<Review> CreateReviewAsync(ReviewForCreationDto reviewDto, int userId)
@@ -44,6 +46,9 @@ namespace GGHub.Infrastructure.Services
             await _context.Reviews.AddAsync(review);
             await _context.SaveChangesAsync();
             await UpdateGameRatingStatisticsAsync(game.Id);
+
+            await _gamificationService.AddXpAsync(userId, 25, "ReviewCreated");
+            await _gamificationService.CheckAchievementsAsync(userId, "ReviewCreated");
 
             return review;
         }
@@ -96,6 +101,8 @@ namespace GGHub.Infrastructure.Services
             _context.Reviews.Remove(review);
             await _context.SaveChangesAsync();
             await UpdateGameRatingStatisticsAsync(gameId);
+
+            await _gamificationService.AddXpAsync(userId, -25, "ReviewDeleted");
 
             return true;
         }

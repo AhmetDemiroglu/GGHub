@@ -29,6 +29,8 @@ namespace GGHub.Infrastructure.Services
 
             // 2. XP Ekle
             stats.CurrentXp += xpAmount;
+            if (stats.CurrentXp < 0) stats.CurrentXp = 0;
+
             stats.UpdatedAt = DateTime.UtcNow;
 
             // 3. Seviye Kontrolü

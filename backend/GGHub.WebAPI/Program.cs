@@ -170,7 +170,7 @@ builder.Services.AddSwaggerGen(options =>
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference // DOÐRU KOD
+                Reference = new OpenApiReference
                 {
                     Type = ReferenceType.SecurityScheme,
                     Id = "Bearer"
@@ -193,7 +193,6 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
-        // Loglama yapýlabilir
         Console.WriteLine($"Seeding hatasý: {ex.Message}");
     }
 }

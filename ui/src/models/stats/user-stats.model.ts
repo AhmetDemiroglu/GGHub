@@ -9,4 +9,13 @@ export interface UserStats {
     totalGamesListed: number;
     totalFollowers: number;
     gamerDna: GenreStat[];
+
+    // Gamification
+    currentLevel: number;
+    levelName: string;
+    currentXp: number;
+    nextLevelXp: number;
+    progressPercentage: number;
+    recentAchievements: string[];
+    totalLists: number;
 }

@@ -11,10 +11,12 @@ namespace GGHub.Infrastructure.Services
     {
         private readonly GGHubDbContext _context;
         private readonly INotificationService _notificationService;
-        public SocialService(GGHubDbContext context, INotificationService notificationService)
+        private readonly IGamificationService _gamificationService;
+        public SocialService(GGHubDbContext context, INotificationService notificationService, IGamificationService gamificationService)
         {
             _context = context;
             _notificationService = notificationService;
+            _gamificationService = gamificationService;
         }
         public async Task<bool> FollowUserAsync(int followerId, string followeeUsername)
         {
@@ -46,6 +48,9 @@ namespace GGHub.Infrastructure.Services
                 {
                     var message = $"{follower.Username} seni takip etmeye başladı.";
                     await _notificationService.CreateNotificationAsync(followee.Id, message, NotificationType.Follow, $"/profiles/{follower.Username}");
+                    
+                    await _gamificationService.AddXpAsync(followerId, 20, "UserFollowed");
+                    await _gamificationService.CheckAchievementsAsync(followee.Id, "FollowerGained");
                 }
             }
             return success;
@@ -59,7 +64,15 @@ namespace GGHub.Infrastructure.Services
             if (follow == null) return false; 
 
             _context.Follows.Remove(follow);
-            return await _context.SaveChangesAsync() > 0;
+
+            var success = await _context.SaveChangesAsync() > 0;
+
+            if (success)
+            {
+                await _gamificationService.AddXpAsync(followerId, -20, "UserUnfollowed");
+            }
+
+            return success;
         }
         public async Task<bool> FollowListAsync(int userId, int listId)
         {
