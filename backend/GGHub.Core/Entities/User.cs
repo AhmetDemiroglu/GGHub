@@ -39,5 +39,8 @@ namespace GGHub.Core.Entities
         public bool IsBanned { get; set; } = false;
         public DateTime? BannedAt { get; set; }
         public string? BanReason { get; set; }
+        public UserStats? Stats { get; set; }
+        public ICollection<UserAchievement> Achievements { get; set; } = new List<UserAchievement>();
+
     }
 }

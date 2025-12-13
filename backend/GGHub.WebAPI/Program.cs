@@ -1,6 +1,7 @@
 using Amazon.S3;
 using GGHub.Application.Interfaces;
 using GGHub.Infrastructure.Persistence;
+using GGHub.Infrastructure.Persistence.Seeders;
 using GGHub.Infrastructure.Services;
 using GGHub.Infrastructure.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -103,6 +104,7 @@ builder.Services.AddSingleton<IEmailQueue, EmailQueue>();
 builder.Services.AddHostedService<BackgroundEmailService>();
 builder.Services.AddHttpClient<IGeminiService, GeminiService>();
 builder.Services.AddScoped<IStatsService, StatsService>();
+builder.Services.AddScoped<IGamificationService, GamificationService>();
 builder.Services.AddScoped<IActivityService, ActivityService>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -180,6 +182,21 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<GGHubDbContext>();
+        await GamificationSeeder.SeedAsync(context);
+    }
+    catch (Exception ex)
+    {
+        // Loglama yapýlabilir
+        Console.WriteLine($"Seeding hatasý: {ex.Message}");
+    }
+}
 
 if (app.Environment.IsProduction())
 {

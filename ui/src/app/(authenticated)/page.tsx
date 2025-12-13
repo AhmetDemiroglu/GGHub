@@ -9,7 +9,7 @@ export default function HomePage() {
             <div className="space-y-4">
                 <section
                     className="relative overflow-hidden rounded-2xl 
-                    border border-slate-200 bg-gradient-to-br from-slate-50 via-white to-slate-100 
+                    border border-slate-200 bg-linear-to-br from-slate-50 via-white to-slate-100 
                     p-6 md:p-10
                     dark:border-zinc-800 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-950"
                 >
@@ -25,7 +25,7 @@ export default function HomePage() {
                         <div>
                             <div className="flex items-center gap-2.5 w-fit cursor-pointer group">
                                 <Image src={logoSrc} alt="GGHub Logo" width={38} height={38} className="rounded-md transition-transform group-hover:scale-105" />
-                                <span className="text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-br from-[#00eaff] via-[#4b7bff] to-[#c93aff] bg-clip-text text-transparent">Hub</span>
+                                <span className="text-3xl md:text-4xl font-bold tracking-tight bg-linear-to-br from-[#00eaff] via-[#4b7bff] to-[#c93aff] bg-clip-text text-transparent">Hub</span>
                             </div>
                             <p className="mt-1 text-slate-600 dark:text-zinc-300">Türkiye&apos;nin oyuncu sosyal platformu.</p>
                             <p className="mt-4 max-w-2xl text-slate-500 text-sm dark:text-zinc-400">
@@ -62,9 +62,9 @@ export default function HomePage() {
                             <span className="text-sm">Geliştirme Durumu</span>
                         </div>
                         <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-zinc-800">
-                            <div className="relative h-full w-7/8 rounded-full bg-gradient-to-r from-indigo-500 to-cyan-500">
+                            <div className="relative h-full w-7/8 rounded-full bg-linear-to-rrom-indigo-500 to-cyan-500">
                                 <div
-                                    className="absolute inset-0 animate-[stripe_2s_linear_infinite] bg-[length:24px_24px] opacity-30"
+                                    className="absolute inset-0 animate-[stripe_2s_linear_infinite] bg-size-[24px_24px] opacity-30"
                                     style={{
                                         backgroundImage:
                                             "linear-gradient(135deg, rgba(255,255,255,.25) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.25) 50%, rgba(255,255,255,.25) 75%, transparent 75%, transparent)",

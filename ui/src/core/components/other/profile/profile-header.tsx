@@ -14,7 +14,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { followUser, unfollowUser, blockUser, unblockUser } from "@/api/social/social.api";
 import { toast } from "sonner";
 import Image from "next/image";
-import gameBanner from "@/core/assets/games 7.png";
+import gameBanner from "@/core/assets/games.jpg";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/core/components/ui/dropdown-menu";
 import { useRouter } from "next/navigation";
 import { FollowersModal } from "./followers-modal";
@@ -396,7 +396,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                     </div>
 
                     {isFollowing && (
-                        <Badge variant="secondary" className="flex-shrink-0">
+                        <Badge variant="secondary" className="shrink-0">
                             Takip Ediliyor
                         </Badge>
                     )}

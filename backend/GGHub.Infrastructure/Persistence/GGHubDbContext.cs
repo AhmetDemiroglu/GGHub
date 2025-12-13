@@ -30,6 +30,10 @@ namespace GGHub.Infrastructure.Persistence
         public DbSet<UserListRating> UserListRatings { get; set; }
         public DbSet<UserListComment> UserListComments { get; set; }
         public DbSet<UserListCommentVote> UserListCommentVotes { get; set; }
+        public DbSet<Level> Levels { get; set; }
+        public DbSet<Achievement> Achievements { get; set; }
+        public DbSet<UserAchievement> UserAchievements { get; set; }
+        public DbSet<UserStats> UserStats { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -114,6 +118,14 @@ namespace GGHub.Infrastructure.Persistence
                     .HasForeignKey(d => d.BlockedId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
+            modelBuilder.Entity<UserStats>()
+                .HasOne(us => us.User)
+                .WithOne(u => u.Stats)
+                .HasForeignKey<UserStats>(us => us.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserAchievement>()
+                .HasKey(ua => new { ua.UserId, ua.AchievementId });
         }
     }
 

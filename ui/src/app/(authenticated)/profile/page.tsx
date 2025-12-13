@@ -163,7 +163,7 @@ export default function ProfilePage() {
                         <CardHeader>
                             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                                 <div className="flex items-center space-x-3 md:space-x-4">
-                                    <div className="relative flex-shrink-0">
+                                    <div className="relative shrink-0">
                                         <button onClick={() => setIsPhotoUploaderOpen(true)} className="rounded-full">
                                             <Avatar className="h-14 w-14 md:h-16 md:w-16 cursor-pointer">
                                                 <AvatarImage src={getImageUrl(data?.profileImageUrl)} alt={data.username} />

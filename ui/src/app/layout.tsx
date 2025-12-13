@@ -13,9 +13,37 @@ import { Suspense } from "react";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-    title: "GGHub",
+    metadataBase: new URL("https://gghub.social"),
+
+    title: {
+        default: "GGHub",
+        template: "%s • GGHub",
+    },
+
     description: "Türkiye'nin Oyuncu Sosyal Platformu",
-    icons: [{ rel: "icon", url: "/favicon.ico" }],
+
+    applicationName: "GGHub",
+
+    alternates: {
+        canonical: "https://gghub.social",
+    },
+
+    robots: {
+        index: true,
+        follow: true,
+        googleBot: {
+            index: true,
+            follow: true,
+            "max-image-preview": "large",
+            "max-snippet": -1,
+            "max-video-preview": -1,
+        },
+    },
+
+    icons: {
+        icon: "/favicon.ico",
+        shortcut: "/favicon.ico",
+    },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
