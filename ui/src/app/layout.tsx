@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 
     title: {
         default: "GGHub",
-        template: "%s • GGHub",
+        template: "GGHub",
     },
 
     description: "Türkiye'nin Oyuncu Sosyal Platformu",
