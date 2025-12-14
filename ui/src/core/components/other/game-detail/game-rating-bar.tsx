@@ -75,7 +75,7 @@ export const GameRatingBar = ({ rating, onRateClick, actionLabel = "Puan vermek 
 
                 {/* Ana Puan Barı */}
                 <div
-                    className={`h-full bg-gradient-to-r ${info.gradient} transition-all duration-1000 ease-out relative`}
+                    className={`h-full bg-linear-to-r ${info.gradient} transition-all duration-1000 ease-out relative`}
                     style={{ width: `${percentage}%` }}
                 >
                     {/* Parlama Efekti */}

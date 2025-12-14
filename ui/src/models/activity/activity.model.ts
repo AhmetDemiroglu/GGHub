@@ -21,11 +21,19 @@ export interface ListActivityData {
     previewImages: (string | null)[];
 }
 
+export interface FollowActivityData {
+    username: string;
+    profileImageUrl: string | null;
+    id?: number; 
+    firstName?: string | null;
+    lastName?: string | null;
+}
+
 export interface Activity {
     id: number;
     type: ActivityType;
     occurredAt: string;
     reviewData?: ReviewActivityData;
     listData?: ListActivityData;
-    followData?: ReviewUser;
+    followData?: FollowActivityData;
 }

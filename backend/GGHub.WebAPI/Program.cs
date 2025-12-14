@@ -106,6 +106,7 @@ builder.Services.AddHttpClient<IGeminiService, GeminiService>();
 builder.Services.AddScoped<IStatsService, StatsService>();
 builder.Services.AddScoped<IGamificationService, GamificationService>();
 builder.Services.AddScoped<IActivityService, ActivityService>();
+builder.Services.AddScoped<IHomeService, HomeService>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 

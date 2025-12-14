@@ -24,7 +24,7 @@ export const ListGameCard = memo(function ListGameCard({ game, showRemoveButton,
                 <img
                     src={game.backgroundImage ?? placeHolder3.src}
                     alt={game.name}
-                    className="w-20 h-20 object-cover rounded flex-shrink-0"
+                    className="w-20 h-20 object-cover rounded shrink-0"
                     loading="lazy"
                     onError={(e) => {
                         const target = e.target as HTMLImageElement;
@@ -75,7 +75,7 @@ export const ListGameCard = memo(function ListGameCard({ game, showRemoveButton,
                             e.stopPropagation();
                             onRemove?.(game.rawgId);
                         }}
-                        className="cursor-pointer flex-shrink-0 self-start p-2 rounded-md hover:bg-destructive/10 text-destructive transition-colors disabled:opacity-50 z-10" // z-10 eklendi
+                        className="cursor-pointer shrink-0 self-start p-2 rounded-md hover:bg-destructive/10 text-destructive transition-colors disabled:opacity-50 z-10" // z-10 eklendi
                         aria-label="Listeden çıkar"
                     >
                         <Trash2 className="h-4 w-4" />
