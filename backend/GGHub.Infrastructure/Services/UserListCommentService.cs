@@ -11,10 +11,11 @@ namespace GGHub.Infrastructure.Services
     public class UserListCommentService : IUserListCommentService
     {
         private readonly GGHubDbContext _context;
-
-        public UserListCommentService(GGHubDbContext context)
+        private readonly IGamificationService _gamificationService;
+        public UserListCommentService(GGHubDbContext context, IGamificationService gamificationService)
         {
             _context = context;
+            _gamificationService = gamificationService;
         }
         private async Task CheckListVisibility(int listId, int? userId)
         {
@@ -66,6 +67,7 @@ namespace GGHub.Infrastructure.Services
             await _context.UserListComments.AddAsync(comment);
             await _context.SaveChangesAsync();
 
+            await _gamificationService.AddXpAsync(userId, 5, "CommentCreated");
             return MapToCommentDto(comment, user, 0, 0, 0, userId);
         }
 
@@ -87,7 +89,14 @@ namespace GGHub.Infrastructure.Services
             if (comment.UserId != userId) throw new UnauthorizedAccessException("Bu yorumu silme yetkiniz yok.");
 
             _context.UserListComments.Remove(comment);
-            return await _context.SaveChangesAsync() > 0;
+            var success = await _context.SaveChangesAsync() > 0;
+
+            if (success)
+            {
+                await _gamificationService.AddXpAsync(userId, -5, "CommentDeleted");
+            }
+
+            return success;
         }
 
         public async Task<PaginatedResult<UserListCommentDto>> GetCommentsForListAsync(int listId, int? currentUserId,ListQueryParams query)

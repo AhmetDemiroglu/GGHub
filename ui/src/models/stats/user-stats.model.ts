@@ -4,6 +4,13 @@ export interface GenreStat {
     color: string;
 }
 
+export interface Achievement {
+    title: string;
+    description: string;
+    iconUrl: string;
+    earnedAt: string;
+}
+
 export interface UserStats {
     totalReviews: number;
     totalGamesListed: number;
@@ -16,6 +23,6 @@ export interface UserStats {
     currentXp: number;
     nextLevelXp: number;
     progressPercentage: number;
-    recentAchievements: string[];
+    recentAchievements: Achievement[];
     totalLists: number;
 }

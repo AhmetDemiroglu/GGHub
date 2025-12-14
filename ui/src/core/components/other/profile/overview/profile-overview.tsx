@@ -9,6 +9,7 @@ import { Loader2, TrendingUp, Users, List, Star, Award } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/core/components/ui/card";
 import TopFiveGames from "./top-five-games";
 import Image from "next/image";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/core/components/ui/tooltip";
 
 interface ProfileOverviewProps {
     username: string;
@@ -44,39 +45,55 @@ export default function ProfileOverview({ username }: ProfileOverviewProps) {
                     <GamerDNAChart data={stats.gamerDna} username={username} />
                 </div>
                 {/* Rozet Vitrini */}
-                <Card className="bg-card/50 border-border/50 backdrop-blur-sm">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
-                            <Award className="h-4 w-4 text-yellow-500" />
-                            Kazanılan Rozetler
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-3 pt-0">
+                <div className="relative overflow-hidden rounded-xl border border-yellow-500/20 bg-linear-to-br from-card via-card/50 to-muted/50 p-4 shadow-sm backdrop-blur-sm">
+                    <div className="absolute -top-10 -right-10 h-32 w-32 bg-yellow-500/10 blur-[50px] rounded-full pointer-events-none" />
+
+                    <div className="flex items-center gap-2 mb-4">
+                        <div className="p-1.5 bg-yellow-500/10 rounded-lg">
+                            <Award className="h-5 w-5 text-yellow-600 dark:text-yellow-500" />
+                        </div>
+                        <h3 className="font-semibold text-foreground tracking-tight">Rozet Koleksiyonu</h3>
+                    </div>
+
+                    <div className="min-h-20">
                         {stats.recentAchievements && stats.recentAchievements.length > 0 ? (
-                            <div className="flex flex-wrap gap-2">
-                                {stats.recentAchievements.map((iconUrl, index) => (
-                                    <div
-                                        key={index}
-                                        className="relative h-10 w-10 bg-background/50 rounded-full border border-border/50 p-1.5 shadow-sm hover:scale-110 transition-transform cursor-help group"
-                                        title="Rozet Detayı"
-                                    >
-                                        <Image
-                                            src={iconUrl}
-                                            alt="Achievement Badge"
-                                            fill
-                                            className="object-contain drop-shadow-md"
-                                            unoptimized={true}
-                                        />
-                                    </div>
+                            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                                {stats.recentAchievements.map((badge, index) => (
+                                    <TooltipProvider key={index}>
+                                        <Tooltip delayDuration={200}>
+                                            <TooltipTrigger asChild>
+                                                <div className="group flex flex-col items-center gap-2 p-2 rounded-lg hover:bg-muted/50 transition-all duration-300 cursor-help hover:-translate-y-1 border border-transparent hover:border-border/50">
+                                                    {/* İkon Kutusu */}
+                                                    <div className="relative h-12 w-12 drop-shadow-md group-hover:drop-shadow-xl transition-all">
+                                                        <Image
+                                                            src={badge.iconUrl}
+                                                            alt={badge.title}
+                                                            fill
+                                                            className="object-contain"
+                                                            unoptimized={true}
+                                                        />
+                                                    </div>
+                                                    {/* Rozet İsmi */}
+                                                    <span className="text-[10px] font-medium text-center text-muted-foreground group-hover:text-primary transition-colors line-clamp-1 w-full">
+                                                        {badge.title}
+                                                    </span>
+                                                </div>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="top">
+                                                <p className="text-xs text-muted">{badge.description}</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
                                 ))}
                             </div>
                         ) : (
-                            <div className="text-xs text-muted-foreground py-2 text-center bg-muted/20 rounded-md border border-dashed border-muted">
-                                Henüz rozet kazanılmadı.
+                            <div className="flex flex-col items-center justify-center py-6 text-center space-y-2 border border-dashed border-border rounded-lg bg-muted/20">
+                                <Award className="h-8 w-8 text-muted-foreground/30" />
+                                <span className="text-xs text-muted-foreground">Henüz vitrinde rozet yok.</span>
                             </div>
                         )}
-                    </CardContent>
-                </Card>
+                    </div>
+                </div>
 
                 {/* İstatistik Kartları Grid */}
                 <div className="grid grid-cols-2 gap-3">

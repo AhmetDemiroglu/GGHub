@@ -12,7 +12,7 @@
         public int NextLevelXp { get; set; }
         public int ProgressPercentage { get; set; }
         public int TotalLists { get; set; }
-        public List<string> RecentAchievements { get; set; } = new();
+        public List<AchievementDto> RecentAchievements { get; set; } = new();
         public List<GenreStatDto> GamerDna { get; set; } = new(); 
     }
 

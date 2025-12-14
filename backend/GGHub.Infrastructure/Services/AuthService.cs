@@ -21,13 +21,15 @@ namespace GGHub.Infrastructure.Services
         private readonly IEmailService _emailService;
         private readonly ILogger<AuthService> _logger;
         private readonly IEmailQueue _emailQueue;
-        public AuthService(GGHubDbContext context, IConfiguration config, IEmailService emailService, ILogger<AuthService> logger, IEmailQueue emailQueue)
+        private readonly IGamificationService _gamificationService; 
+        public AuthService(GGHubDbContext context, IConfiguration config, IEmailService emailService, ILogger<AuthService> logger, IEmailQueue emailQueue, IGamificationService gamificationService)
         {
             _context = context;
             _config = config;
             _emailService = emailService;
             _logger = logger;
             _emailQueue = emailQueue;
+            _gamificationService = gamificationService;
         }
 
         public async Task<LoginResponseDto?> Login(UserForLoginDto userForLoginDto)
@@ -166,6 +168,9 @@ namespace GGHub.Infrastructure.Services
             });
 
             _logger.LogInformation("Email job for {Email} enqueued.", user.Email);
+
+            await _gamificationService.AddXpAsync(user.Id, 50, "Welcome");
+            await _gamificationService.CheckAchievementsAsync(user.Id, "Welcome");
 
             return user;
         }

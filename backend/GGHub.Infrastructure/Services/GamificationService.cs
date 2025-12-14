@@ -1,4 +1,5 @@
-﻿using GGHub.Application.Dtos.Stats;
+﻿using GGHub.Application.Dtos;
+using GGHub.Application.Dtos.Stats;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
 using GGHub.Infrastructure.Persistence;
@@ -24,7 +25,8 @@ namespace GGHub.Infrastructure.Services
             if (stats == null)
             {
                 stats = new UserStats { UserId = userId, CurrentLevel = 1, CurrentXp = 0 };
-                _context.UserStats.Add(stats);
+                _context.UserStats.Add(stats);          
+                await CheckAchievementsAsync(userId, "Welcome");
             }
 
             // 2. XP Ekle
@@ -54,6 +56,11 @@ namespace GGHub.Infrastructure.Services
 
             switch (activityType)
             {
+                case "Welcome":
+                    targetBadgeTitle = "Novice";
+                    conditionMet = true;
+                    break;
+
                 case "ReviewCreated":
                     // "Critic" Rozeti: İlk incelemesini yaptıysa
                     int reviewCount = await _context.Reviews.CountAsync(r => r.UserId == userId);
@@ -124,6 +131,17 @@ namespace GGHub.Infrastructure.Services
                 .Include(us => us.User)
                 .FirstOrDefaultAsync(x => x.UserId == userId);
 
+            if (stats != null)
+            {
+                var hasNoviceBadge = await _context.UserAchievements
+                    .AnyAsync(ua => ua.UserId == userId && ua.Achievement.Title == "Novice");
+
+                if (!hasNoviceBadge)
+                {
+                    await CheckAchievementsAsync(userId, "Welcome");
+                }
+            }
+
             if (stats == null)
             {
                 return new UserStatsDto
@@ -168,7 +186,13 @@ namespace GGHub.Infrastructure.Services
                 RecentAchievements = await _context.UserAchievements
                     .Where(ua => ua.UserId == userId)
                     .OrderByDescending(ua => ua.EarnedAt)
-                    .Select(ua => ua.Achievement.IconUrl)
+                    .Select(ua => new AchievementDto  
+                    {
+                        Title = ua.Achievement.Title,
+                        Description = ua.Achievement.Description,
+                        IconUrl = ua.Achievement.IconUrl,
+                        EarnedAt = ua.EarnedAt
+                    })
                     .Take(5)
                     .ToListAsync()
             };

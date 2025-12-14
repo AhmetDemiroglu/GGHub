@@ -4,13 +4,13 @@ import Link from "next/link";
 import { useAuth } from "@core/hooks/use-auth";
 import { Button } from "@/core/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/core/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/core/components/ui/dropdown-menu";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { Profile } from "@/models/profile/profile.model";
 import { getMyProfile } from "@/api/profile/profile.api";
 import { SearchBar } from "@/core/components/other/search/search-bar";
-import { Bell, Mail, LogIn, LogOut, UserPlus, List, Star, Settings, FileText, LayoutDashboard, Gift } from "lucide-react";
+import { Bell, Mail, LogIn, LogOut, UserPlus, List, Star, Settings, FileText, LayoutDashboard, Gift, User } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getNotifications, getUnreadNotificationCount, markAllNotificationsAsRead } from "@/api/notifications/notifications.api";
 import { NotificationDto, NotificationType } from "@/models/notifications/notification.model";
@@ -317,6 +317,7 @@ export function Header() {
                                 <DropdownMenuContent className="w-56" align="end" forceMount>
                                     <DropdownMenuItem asChild>
                                         <Link href={`/profiles/${user.username}`} className="cursor-pointer font-semibold">
+                                        <User className="mr-2 h-4 w-4" />
                                             {user.username}
                                         </Link>
                                     </DropdownMenuItem>

@@ -9,10 +9,11 @@ namespace GGHub.Infrastructure.Services
     public class StatsService : IStatsService
     {
         private readonly GGHubDbContext _context;
-
-        public StatsService(GGHubDbContext context)
+        private readonly IGamificationService _gamificationService; 
+        public StatsService(GGHubDbContext context , IGamificationService gamificationService)
         {
             _context = context;
+            _gamificationService = gamificationService;
         }
 
         public async Task<UserStatsDto> GetUserStatsAsync(string username)
@@ -24,19 +25,17 @@ namespace GGHub.Infrastructure.Services
             if (user == null) return new UserStatsDto();
 
             // 1. Temel Sayaçlar
+            var gamificationStats = await _gamificationService.GetUserStatsAsync(user.Id);
             var totalReviews = await _context.Reviews.CountAsync(r => r.UserId == user.Id);
             var totalLists = await _context.UserListGames.CountAsync(ulg => ulg.UserList.UserId == user.Id);
             var totalFollowers = await _context.Follows.CountAsync(f => f.FolloweeId == user.Id);
 
             // 2. DNA Hesaplama
-
-            // Review yaptığı oyunların türleri
             var reviewedGamesGenres = await _context.Reviews
                 .Where(r => r.UserId == user.Id)
                 .Select(r => r.Game.GenresJson)
                 .ToListAsync();
 
-            // Listelerine eklediği oyunların türleri (Wishlist dahil)
             var listedGamesGenres = await _context.UserListGames
                 .Where(ulg => ulg.UserList.UserId == user.Id)
                 .Select(ulg => ulg.Game.GenresJson)
@@ -92,7 +91,15 @@ namespace GGHub.Infrastructure.Services
                 TotalReviews = totalReviews,
                 TotalGamesListed = totalLists,
                 TotalFollowers = totalFollowers,
-                GamerDna = dna
+                GamerDna = dna,
+
+                CurrentLevel = gamificationStats.CurrentLevel,
+                LevelName = gamificationStats.LevelName,
+                CurrentXp = gamificationStats.CurrentXp,
+                NextLevelXp = gamificationStats.NextLevelXp,
+                ProgressPercentage = gamificationStats.ProgressPercentage,
+                RecentAchievements = gamificationStats.RecentAchievements,
+                TotalLists = totalLists
             };
         }
         private class RawgGenre
