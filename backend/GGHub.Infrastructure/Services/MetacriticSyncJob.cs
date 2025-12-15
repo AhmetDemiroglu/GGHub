@@ -108,9 +108,11 @@ namespace GGHub.Infrastructure.Services
                         {
                             game.Metacritic = result.Score;
                             game.MetacriticUrl = result.Url;
+                            game.LastSyncedAt = DateTime.UtcNow;
 
-                            context.Entry(game).Property(g => g.Metacritic).IsModified = true;
-                            context.Entry(game).Property(g => g.MetacriticUrl).IsModified = true;
+                            context.Entry(game).Property(x => x.Metacritic).IsModified = true;
+                            context.Entry(game).Property(x => x.MetacriticUrl).IsModified = true;
+                            context.Entry(game).Property(x => x.LastSyncedAt).IsModified = true;
 
                             var successMsg = $"SUCCESS -> '{game.Name}': {result.Score}";
                             _logger.LogInformation(successMsg);
