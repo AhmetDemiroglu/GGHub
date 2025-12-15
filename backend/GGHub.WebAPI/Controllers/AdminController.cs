@@ -221,6 +221,7 @@ namespace GGHub.WebAPI.Controllers
         }
 
         [HttpGet("sync-logs")]
+        [AllowAnonymous]
         public IActionResult GetSyncLogs()
         {
             var logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "metacritic_sync.txt");
@@ -236,7 +237,6 @@ namespace GGHub.WebAPI.Controllers
             return Ok(lastLines);
         }
 
-        [AllowAnonymous]
         private int GetCurrentUserId()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
