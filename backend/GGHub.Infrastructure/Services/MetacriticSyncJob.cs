@@ -76,7 +76,6 @@ namespace GGHub.Infrastructure.Services
 
             if (gameIdsToSync.Count == 0)
             {
-                // Boşuna log kirliliği yapmasın, sadece console'a bilgi düşsün
                 _logger.LogInformation("[MetacriticSync] İşlenecek oyun yok.");
                 return;
             }
@@ -104,11 +103,12 @@ namespace GGHub.Infrastructure.Services
                         {
                             game.Metacritic = result.Score;
                             game.MetacriticUrl = result.Url;
+
+                            // EF Core'a değişikliği açıkça bildir
+                            context.Games.Update(game);
                             await context.SaveChangesAsync(stoppingToken);
 
                             var successMsg = $"SUCCESS -> '{game.Name}': {result.Score}";
-                            _logger.LogInformation(successMsg);
-                            LogToFile(successMsg);
                         }
                         else
                         {
