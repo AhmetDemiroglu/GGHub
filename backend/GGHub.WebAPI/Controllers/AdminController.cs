@@ -208,7 +208,7 @@ namespace GGHub.WebAPI.Controllers
             try
             {
                 result = await _metacriticService.GetMetacriticScoreAsync(game.Name, game.Released)
-                                                 .WaitAsync(TimeSpan.FromSeconds(20));
+                                                 .WaitAsync(TimeSpan.FromSeconds(15));
             }
             catch (TimeoutException)
             {
