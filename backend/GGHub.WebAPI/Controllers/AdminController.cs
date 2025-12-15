@@ -198,7 +198,33 @@ namespace GGHub.WebAPI.Controllers
                 return NotFound(new { message = "Oyun bulunamadı" });
             }
 
-            var result = await _metacriticService.GetMetacriticScoreAsync(game.Name, game.Released);
+            if (game == null)
+            {
+                return NotFound(new { message = "Oyun bulunamadı" });
+            }
+
+            MetacriticResult? result = null;
+
+            try
+            {
+                result = await _metacriticService.GetMetacriticScoreAsync(game.Name, game.Released)
+                                                 .WaitAsync(TimeSpan.FromSeconds(20));
+            }
+            catch (TimeoutException)
+            {
+                _logger.LogWarning("[Admin] Sync Timeout for '{GameName}'", game.Name);
+
+                return Ok(new
+                {
+                    success = false,
+                    message = $"'{game.Name}' için işlem zaman aşımına uğradı (Metacritic yanıt vermedi)."
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[Admin] Sync Error for '{GameName}'", game.Name);
+                return StatusCode(500, new { success = false, message = "Sunucu hatası oluştu." });
+            }
 
             if (result == null)
             {
