@@ -74,14 +74,14 @@ export default function HomeBentoGrid({ trending, leaders }: HomeBentoGridProps)
                 </div>
 
                 <Card className="border-border/50 bg-card/50 backdrop-blur-sm h-fit">
-                    <CardHeader className="pb-2">
+                    <CardHeader className="pb-0">
                         <CardTitle className="text-sm font-medium text-muted-foreground">
                             En Yüksek XP Kazananlar
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
                         <ScrollArea className="h-[380px] px-4">
-                            <div className="space-y-4 py-2">
+                            <div className="space-y-4 pb-2">
                                 {leaders.map((user, index) => (
                                     <Link href={`/profiles/${user.username}`} key={user.userId}>
                                         <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors group cursor-pointer">
