@@ -289,7 +289,7 @@ namespace GGHub.Infrastructure.Services
                     gameInDb.BackgroundImage = fullDto.BackgroundImage;
                     gameInDb.CoverImage = fullDto.CoverImage;
                     gameInDb.Rating = fullDto.Rating;
-                    gameInDb.Metacritic = fullDto.Metacritic;
+                    gameInDb.Metacritic = fullDto.Metacritic ?? gameInDb.Metacritic;
                     gameInDb.WebsiteUrl = fullDto.Website;
                     gameInDb.EsrbRating = fullDto.EsrbRating?.Name;
                     gameInDb.PlatformsJson = SerializeIfNotNull(fullDto.Platform?.Select(p => new { p.Platform.Name, p.Platform.Slug }).ToList());
