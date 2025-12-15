@@ -98,7 +98,7 @@ export const GameSimilarSlider = ({ rawgId }: GameSimilarSliderProps) => {
                                         {rating && (
                                             <span className="inline-flex items-center gap-1">
                                                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400" />
-                                                <span>Oyuncu {rating.toFixed(1)}/5</span>
+                                                <span>Rawg {rating.toFixed(1)}/5</span>
                                             </span>
                                         )}
                                         {metacritic && (
