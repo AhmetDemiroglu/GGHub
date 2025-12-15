@@ -30,8 +30,8 @@ namespace GGHub.Infrastructure.Services
                             && g.BackgroundImage != null
                             && string.Compare(g.Released, twoYearsAgo) >= 0
 
-                            && (g.Metacritic != null && g.Metacritic >= 80)
-                            && (g.Rating != null && g.Rating >= 4.0)
+                            && (g.Metacritic != null && g.Metacritic >= 75)
+                            && (g.Rating != null && g.Rating >= 3.80)
 
                             && (g.AverageRating == 0 || g.AverageRating >= 7.0))
                 .ToListAsync();
