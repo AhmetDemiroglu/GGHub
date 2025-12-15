@@ -12,19 +12,14 @@ namespace GGHub.Infrastructure.Services
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<MetacriticSyncJob> _logger;
         private readonly TimeSpan _interval = TimeSpan.FromMinutes(30);
-
-        // Log dosyasının yolu (Uygulamanın çalıştığı dizine kaydeder)
         private readonly string _logFilePath;
 
         public MetacriticSyncJob(IServiceProvider serviceProvider, ILogger<MetacriticSyncJob> logger)
         {
             _serviceProvider = serviceProvider;
             _logger = logger;
-            // Dosya yolu: /app/metacritic_sync.txt
             _logFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "metacritic_sync.txt");
         }
-
-        // Basit dosya yazma yardımcısı
         private void LogToFile(string message)
         {
             try
@@ -32,14 +27,14 @@ namespace GGHub.Infrastructure.Services
                 var logLine = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] {message}{Environment.NewLine}";
                 File.AppendAllText(_logFilePath, logLine);
             }
-            catch { /* Dosya hatası ana akışı bozmasın */ }
+            catch { }
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             var msg = "!!! [MetacriticSync] SERVIS BASLATILDI (V4 - File Logging) !!!";
             _logger.LogInformation(msg);
-            LogToFile(msg); // Dosyaya da yaz
+            LogToFile(msg); 
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -97,18 +92,28 @@ namespace GGHub.Infrastructure.Services
                     try
                     {
                         LogToFile($"Processing -> '{game.Name}'...");
-                        var result = await metacriticService.GetMetacriticScoreAsync(game.Name, game.Released);
+                        var serviceTask = metacriticService.GetMetacriticScoreAsync(game.Name, game.Released);
+                        var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
 
+                        var completedTask = await Task.WhenAny(serviceTask, timeoutTask);
+
+                        if (completedTask == timeoutTask)
+                        {
+                            throw new TimeoutException("30 saniye içinde cevap gelmedi (Hard Limit).");
+                        }
+
+                        var result = await serviceTask;
                         if (result != null)
                         {
                             game.Metacritic = result.Score;
                             game.MetacriticUrl = result.Url;
 
-                            // EF Core'a değişikliği açıkça bildir
                             context.Games.Update(game);
                             await context.SaveChangesAsync(stoppingToken);
 
                             var successMsg = $"SUCCESS -> '{game.Name}': {result.Score}";
+                            _logger.LogInformation(successMsg);
+                            LogToFile(successMsg);
                         }
                         else
                         {
@@ -120,8 +125,16 @@ namespace GGHub.Infrastructure.Services
                             LogToFile(failMsg);
                         }
 
-                        // IP ban yememek için bekleme
                         await Task.Delay(TimeSpan.FromSeconds(Random.Shared.Next(5, 10)), stoppingToken);
+                    }
+                    catch (TimeoutException tEx)
+                    {
+                        var timeMsg = $"TIMEOUT -> '{game.Name}': {tEx.Message}";
+                        _logger.LogWarning(timeMsg);
+                        LogToFile(timeMsg);
+
+                        game.LastSyncedAt = DateTime.UtcNow;
+                        await context.SaveChangesAsync(stoppingToken);
                     }
                     catch (Exception ex)
                     {

@@ -9,12 +9,10 @@ namespace GGHub.Infrastructure.Services
     {
         private readonly HttpClient _httpClient;
         private readonly ILogger<MetacriticService> _logger;
-        // Kilit mekanizması ve rate limit
         private static readonly object _lock = new();
         private static DateTime _lastRequestTime = DateTime.MinValue;
-        private const int REQUEST_DELAY_MS = 3000; // 3 saniye bekleme yeterli
+        private const int REQUEST_DELAY_MS = 3000; 
 
-        // Metacritic'i kandırmak için tarayıcı kimlikleri havuzu
         private readonly string[] _userAgents = new[]
         {
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
@@ -28,7 +26,6 @@ namespace GGHub.Infrastructure.Services
         {
             _httpClient = httpClientFactory.CreateClient("Metacritic");
             _logger = logger;
-            // Constructor'da Timeout vermek yerine Request anında Token kullanacağız.
         }
 
         public async Task<MetacriticResult?> GetMetacriticScoreAsync(string gameName, string? releaseDate)
@@ -37,26 +34,21 @@ namespace GGHub.Infrastructure.Services
 
             try
             {
-                var searchQuery = HttpUtility.UrlEncode(gameName);
+                var searchQuery = Uri.EscapeDataString(gameName);
                 var searchUrl = $"https://www.metacritic.com/search/{searchQuery}/?page=1&category=13";
 
-                // HER İSTEKTE YENİ REQUEST MESAJI (Headerları değiştirebilmek için)
                 using var request = new HttpRequestMessage(HttpMethod.Get, searchUrl);
 
-                // Rastgele User-Agent seç
                 var randomAgent = _userAgents[Random.Shared.Next(_userAgents.Length)];
                 request.Headers.TryAddWithoutValidation("User-Agent", randomAgent);
                 request.Headers.TryAddWithoutValidation("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
                 request.Headers.TryAddWithoutValidation("Accept-Language", "en-US,en;q=0.9");
                 request.Headers.TryAddWithoutValidation("Referer", "https://www.google.com/");
 
-                // --- İŞTE ÇÖZÜM: CANCELLATION TOKEN SOURCE ---
-                // 30 saniye sonra bu token "İptal" sinyali gönderir.
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
 
                 try
                 {
-                    // SendAsync metoduna bu token'ı veriyoruz. 30sn dolarsa istisna fırlatır.
                     using var response = await _httpClient.SendAsync(request, cts.Token);
 
                     _logger.LogDebug("[Metacritic] Status: {StatusCode} for {Url}", response.StatusCode, searchUrl);
@@ -72,7 +64,6 @@ namespace GGHub.Infrastructure.Services
 
                     if (!results.Any())
                     {
-                        // HTML dönmesine rağmen regex tutmadıysa yapı değişmiş veya captcha olabilir
                         _logger.LogWarning("[Metacritic] HTML received but Regex found nothing for '{GameName}'. Len: {Len}", gameName, html.Length);
                         return null;
                     }
@@ -86,7 +77,6 @@ namespace GGHub.Infrastructure.Services
                 }
                 catch (OperationCanceledException)
                 {
-                    // Timeout olduğunda burası çalışır
                     _logger.LogError("[Metacritic] TIMEOUT (30s limit) for '{GameName}'. Server did not respond in time.", gameName);
                     return null;
                 }
@@ -116,7 +106,6 @@ namespace GGHub.Infrastructure.Services
         private List<MetacriticResult> ParseSearchResults(string html)
         {
             var results = new List<MetacriticResult>();
-            // Regex değişmedi, aynen koruyoruz
             var itemPattern = new Regex(
                 @"<a\s+href=""(/game/[^""]+)""\s+data-testid=""search-result-item""[^>]*>.*?" +
                 @"data-testid=""product-release-date""[^>]*>\s*([^<]+)\s*</span>.*?" +
