@@ -235,6 +235,8 @@ namespace GGHub.WebAPI.Controllers
 
             return Ok(lastLines);
         }
+
+        [AllowAnonymous]
         private int GetCurrentUserId()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
