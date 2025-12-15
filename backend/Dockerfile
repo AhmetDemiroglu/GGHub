@@ -15,7 +15,7 @@ RUN dotnet restore "GGHub.WebAPI/GGHub.WebAPI.csproj"
 # DEĞİŞİKLİK: Kök dizindeki her şeyi değil, SADECE 'backend/' klasörünün İÇERİĞİNİ kopyala
 COPY backend/ .
 
-# Proje klasörüne git (Bu satır artık doğru çalışacak)
+# Proje klasörüne git 
 WORKDIR "/src/GGHub.WebAPI"
 RUN dotnet build "GGHub.WebAPI.csproj" -c Release -o /app/build
 

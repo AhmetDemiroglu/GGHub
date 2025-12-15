@@ -107,6 +107,9 @@ builder.Services.AddScoped<IStatsService, StatsService>();
 builder.Services.AddScoped<IGamificationService, GamificationService>();
 builder.Services.AddScoped<IActivityService, ActivityService>();
 builder.Services.AddScoped<IHomeService, HomeService>();
+builder.Services.AddHttpClient("Metacritic");
+builder.Services.AddScoped<IMetacriticService, MetacriticService>();
+builder.Services.AddHostedService<MetacriticSyncJob>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 

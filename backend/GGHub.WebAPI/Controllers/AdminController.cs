@@ -1,8 +1,10 @@
 ﻿using GGHub.Application.Dtos;
 using GGHub.Application.Dtos.Admin;
 using GGHub.Application.Interfaces;
+using GGHub.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace GGHub.WebAPI.Controllers
@@ -12,8 +14,10 @@ namespace GGHub.WebAPI.Controllers
     [Authorize(Roles = "Admin")]
     public class AdminController : ControllerBase
     {
-        private readonly IAdminService _adminService; 
-
+        private readonly IAdminService _adminService;
+        private readonly IMetacriticService _metacriticService;
+        private readonly ILogger<AdminController> _logger;
+        private readonly GGHubDbContext _context;
         public AdminController(IAdminService adminService) 
         {
             _adminService = adminService; 
@@ -178,6 +182,42 @@ namespace GGHub.WebAPI.Controllers
         {
             var reports = await _adminService.GetReportsMadeByUserAsync(userId);
             return Ok(reports);
+        }
+
+        [HttpPost("sync-metacritic/{gameId}")]
+        public async Task<IActionResult> SyncMetacritic(int gameId)
+        {
+            var game = await _context.Games.FirstOrDefaultAsync(g => g.Id == gameId);
+
+            if (game == null)
+            {
+                return NotFound(new { message = "Oyun bulunamadı" });
+            }
+
+            var result = await _metacriticService.GetMetacriticScoreAsync(game.Name, game.Released);
+
+            if (result == null)
+            {
+                return Ok(new
+                {
+                    success = false,
+                    message = $"'{game.Name}' için Metacritic puanı bulunamadı"
+                });
+            }
+
+            game.Metacritic = result.Score;
+            game.MetacriticUrl = result.Url;
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("[Admin] Metacritic synced for '{GameName}': {Score}", game.Name, result.Score);
+
+            return Ok(new
+            {
+                success = true,
+                message = $"'{game.Name}' için Metacritic puanı güncellendi",
+                score = result.Score,
+                url = result.Url
+            });
         }
         private int GetCurrentUserId()
         {
