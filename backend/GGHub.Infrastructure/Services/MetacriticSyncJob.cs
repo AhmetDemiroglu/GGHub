@@ -65,7 +65,7 @@ namespace GGHub.Infrastructure.Services
                     .Where(g => g.Metacritic == null && !string.IsNullOrEmpty(g.Name))
                     .OrderBy(g => g.LastSyncedAt)
 
-                    .Take(20)
+                    .Take(100)
                     .Select(g => g.Id)
                     .ToListAsync(stoppingToken);
             }
@@ -109,12 +109,14 @@ namespace GGHub.Infrastructure.Services
                             game.Metacritic = result.Score;
                             game.MetacriticUrl = result.Url;
 
-                            context.Games.Update(game);
-                            await context.SaveChangesAsync(stoppingToken);
+                            context.Entry(game).Property(g => g.Metacritic).IsModified = true;
+                            context.Entry(game).Property(g => g.MetacriticUrl).IsModified = true;
 
                             var successMsg = $"SUCCESS -> '{game.Name}': {result.Score}";
                             _logger.LogInformation(successMsg);
                             LogToFile(successMsg);
+
+                            await context.SaveChangesAsync(stoppingToken);
                         }
                         else
                         {
