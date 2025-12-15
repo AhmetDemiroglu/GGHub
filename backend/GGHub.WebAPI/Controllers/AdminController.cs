@@ -219,6 +219,22 @@ namespace GGHub.WebAPI.Controllers
                 url = result.Url
             });
         }
+
+        [HttpGet("sync-logs")]
+        public IActionResult GetSyncLogs()
+        {
+            var logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "metacritic_sync.txt");
+
+            if (!System.IO.File.Exists(logPath))
+            {
+                return Ok("Henüz bir log dosyası oluşmadı.");
+            }
+
+            var lines = System.IO.File.ReadAllLines(logPath);
+            var lastLines = lines.TakeLast(200).Reverse();
+
+            return Ok(lastLines);
+        }
         private int GetCurrentUserId()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);

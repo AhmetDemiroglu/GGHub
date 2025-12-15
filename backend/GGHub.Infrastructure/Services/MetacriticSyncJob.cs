@@ -13,15 +13,33 @@ namespace GGHub.Infrastructure.Services
         private readonly ILogger<MetacriticSyncJob> _logger;
         private readonly TimeSpan _interval = TimeSpan.FromMinutes(30);
 
+        // Log dosyasının yolu (Uygulamanın çalıştığı dizine kaydeder)
+        private readonly string _logFilePath;
+
         public MetacriticSyncJob(IServiceProvider serviceProvider, ILogger<MetacriticSyncJob> logger)
         {
             _serviceProvider = serviceProvider;
             _logger = logger;
+            // Dosya yolu: /app/metacritic_sync.txt
+            _logFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "metacritic_sync.txt");
+        }
+
+        // Basit dosya yazma yardımcısı
+        private void LogToFile(string message)
+        {
+            try
+            {
+                var logLine = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] {message}{Environment.NewLine}";
+                File.AppendAllText(_logFilePath, logLine);
+            }
+            catch { /* Dosya hatası ana akışı bozmasın */ }
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("[MetacriticSync] Service started");
+            var msg = "!!! [MetacriticSync] SERVIS BASLATILDI (V4 - File Logging) !!!";
+            _logger.LogInformation(msg);
+            LogToFile(msg); // Dosyaya da yaz
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -31,7 +49,9 @@ namespace GGHub.Infrastructure.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "[MetacriticSync] Error during sync batch");
+                    var err = $"[MetacriticSync] Kritik Hata: {ex.Message}";
+                    _logger.LogError(ex, err);
+                    LogToFile(err);
                 }
 
                 await Task.Delay(_interval, stoppingToken);
@@ -48,15 +68,20 @@ namespace GGHub.Infrastructure.Services
 
                 gameIdsToSync = await context.Games
                     .Where(g => g.Metacritic == null && !string.IsNullOrEmpty(g.Name))
-                    .OrderByDescending(g => g.LastSyncedAt) 
-                    .Take(20) 
+                    .OrderByDescending(g => g.LastSyncedAt)
+                    .Take(20)
                     .Select(g => g.Id)
                     .ToListAsync(stoppingToken);
             }
 
-            _logger.LogInformation("[MetacriticSync] Processing batch of {Count} games", gameIdsToSync.Count);
+            if (gameIdsToSync.Count == 0)
+            {
+                // Boşuna log kirliliği yapmasın, sadece console'a bilgi düşsün
+                _logger.LogInformation("[MetacriticSync] İşlenecek oyun yok.");
+                return;
+            }
 
-            if (gameIdsToSync.Count == 0) return;
+            LogToFile($"--- Yeni Batch Başladı: {gameIdsToSync.Count} oyun ---");
 
             foreach (var gameId in gameIdsToSync)
             {
@@ -68,7 +93,6 @@ namespace GGHub.Infrastructure.Services
                     var metacriticService = scope.ServiceProvider.GetRequiredService<IMetacriticService>();
 
                     var game = await context.Games.FindAsync(new object[] { gameId }, stoppingToken);
-
                     if (game == null) continue;
 
                     try
@@ -79,29 +103,34 @@ namespace GGHub.Infrastructure.Services
                         {
                             game.Metacritic = result.Score;
                             game.MetacriticUrl = result.Url;
-
                             await context.SaveChangesAsync(stoppingToken);
 
-                            _logger.LogInformation("[MetacriticSync] SAVED DB -> '{GameName}': {Score}", game.Name, result.Score);
+                            var successMsg = $"SUCCESS -> '{game.Name}': {result.Score}";
+                            _logger.LogInformation(successMsg);
+                            LogToFile(successMsg);
                         }
                         else
                         {
                             game.LastSyncedAt = DateTime.UtcNow;
                             await context.SaveChangesAsync(stoppingToken);
 
-                            _logger.LogWarning("[MetacriticSync] Not found: '{GameName}'", game.Name);
+                            var failMsg = $"NOT FOUND -> '{game.Name}'";
+                            _logger.LogWarning(failMsg);
+                            LogToFile(failMsg);
                         }
 
-                        await Task.Delay(TimeSpan.FromSeconds(Random.Shared.Next(5, 15)), stoppingToken);
+                        // IP ban yememek için bekleme
+                        await Task.Delay(TimeSpan.FromSeconds(Random.Shared.Next(5, 10)), stoppingToken);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError("[MetacriticSync] Failed processing game ID {Id}: {Message}", gameId, ex.Message);
+                        var errMsg = $"ERROR -> ID {gameId}: {ex.Message}";
+                        _logger.LogError(errMsg);
+                        LogToFile(errMsg);
                     }
                 }
             }
-
-            _logger.LogInformation("[MetacriticSync] Batch completed.");
+            LogToFile("--- Batch Tamamlandı ---");
         }
     }
 }
