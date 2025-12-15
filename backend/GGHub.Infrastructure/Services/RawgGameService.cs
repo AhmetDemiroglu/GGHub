@@ -256,7 +256,11 @@ namespace GGHub.Infrastructure.Services
             }
 
             RawgGameSingleDto? fullDto = null;
-            if (gameInDb == null || string.IsNullOrEmpty(gameInDb.DevelopersJson))
+            bool needsApiCall = gameInDb == null
+                || string.IsNullOrEmpty(gameInDb.DevelopersJson)
+                || (DateTime.UtcNow - gameInDb.LastSyncedAt).TotalDays >= 1;
+
+            if (needsApiCall)
             {
                 var requestUrl = $"{_apiSettings.BaseUrl}games/{rawgId}?key={_apiSettings.ApiKey}";
                 try
