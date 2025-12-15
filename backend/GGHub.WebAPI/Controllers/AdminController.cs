@@ -18,9 +18,13 @@ namespace GGHub.WebAPI.Controllers
         private readonly IMetacriticService _metacriticService;
         private readonly ILogger<AdminController> _logger;
         private readonly GGHubDbContext _context;
-        public AdminController(IAdminService adminService) 
+
+        public AdminController(IAdminService adminService, IMetacriticService metacriticService, GGHubDbContext context, ILogger<AdminController> logger)
         {
-            _adminService = adminService; 
+            _adminService = adminService;
+            _metacriticService = metacriticService; 
+            _context = context;                    
+            _logger = logger;                       
         }
         [HttpGet("test")]
         [ApiExplorerSettings(IgnoreApi = true)]

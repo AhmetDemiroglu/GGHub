@@ -16,7 +16,7 @@ import type {
     AdminReviewSummary,
     AdminCommentSummary,
     AdminUserReportSummary,
-    AdminReportDetail
+    AdminReportDetail,
 } from "@/models/admin/admin.model";
 export const getDashboardStats = () => {
     return axiosInstance.get<DashboardStats>("/admin/dashboard-stats");
@@ -73,5 +73,8 @@ export const getReportsMadeByUser = (userId: number) => {
     return axiosInstance.get<AdminUserReportSummary[]>(`/admin/users/${userId}/reports-made`);
 };
 export const getReportDetail = (reportId: number) => {
-  return axiosInstance.get<AdminReportDetail>(`/admin/reports/${reportId}`);
+    return axiosInstance.get<AdminReportDetail>(`/admin/reports/${reportId}`);
+};
+export const forceSyncMetacritic = (gameId: number) => {
+    return axiosInstance.post(`/admin/sync-metacritic/${gameId}`);
 };

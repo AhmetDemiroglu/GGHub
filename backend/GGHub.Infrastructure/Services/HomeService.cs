@@ -12,6 +12,7 @@ namespace GGHub.Infrastructure.Services
         private readonly GGHubDbContext _context;
         private readonly IGameService _gameService;
 
+
         public HomeService(GGHubDbContext context, IGameService gameService)
         {
             _context = context;
@@ -21,18 +22,17 @@ namespace GGHub.Infrastructure.Services
         public async Task<HomeViewModel> GetHomeContentAsync(int? currentUserId)
         {
             var viewModel = new HomeViewModel();
-            var oneYearAgo = DateTime.UtcNow.AddYears(-2).ToString("yyyy-MM-dd");
+            var twoYearsAgo = DateTime.UtcNow.AddYears(-2).ToString("yyyy-MM-dd");
 
-            // 1. HERO GAMES
             var heroCandidates = await _context.Games
                 .AsNoTracking()
                 .Where(g => g.Released != null
                             && g.BackgroundImage != null
-                            && string.Compare(g.Released, oneYearAgo) >= 0
-                            && (
-                                (g.Metacritic != null && g.Metacritic >= 75) ||
-                                (g.Rating != null && g.Rating >= 4.0)
-                            )
+                            && string.Compare(g.Released, twoYearsAgo) >= 0
+
+                            && (g.Metacritic != null && g.Metacritic >= 80)
+                            && (g.Rating != null && g.Rating >= 4.0)
+
                             && (g.AverageRating == 0 || g.AverageRating >= 7.0))
                 .ToListAsync();
 

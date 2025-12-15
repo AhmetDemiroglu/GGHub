@@ -48,7 +48,7 @@ export default function HomeFeed({ activities, isAuthenticated }: HomeFeedProps)
                 <ScrollArea className="h-full">
                     <div className="flex flex-col">
                         {activities.length > 0 ? activities.map((activity) => (
-                            <div key={`${activity.type}-${activity.id}`} className="p-4 border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors">
+                            <div key={getActivityKey(activity)} className="p-4 border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors">
                                 {renderActivityItem(activity)}
                             </div>
                         )) : (
@@ -62,6 +62,24 @@ export default function HomeFeed({ activities, isAuthenticated }: HomeFeedProps)
             </CardContent>
         </Card>
     );
+}
+
+function getActivityKey(activity: Activity) {
+    switch (activity.type) {
+        case ActivityType.Review:
+            return `review-${activity.reviewData?.reviewId ?? activity.reviewData?.game?.slug ?? activity.id}-${activity.occurredAt}`;
+
+        case ActivityType.ListCreated:
+            return `list-${activity.listData?.listId ?? activity.id}-${activity.occurredAt}`;
+
+        case ActivityType.FollowUser: {
+            const u = activity.followData?.username?.trim() || "unknown";
+            return `follow-${u}-${activity.occurredAt}`;
+        }
+
+        default:
+            return `activity-${activity.type}-${activity.id}-${activity.occurredAt}`;
+    }
 }
 
 function renderActivityItem(activity: Activity) {

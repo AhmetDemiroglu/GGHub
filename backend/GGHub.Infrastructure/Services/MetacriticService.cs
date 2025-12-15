@@ -9,7 +9,7 @@ namespace GGHub.Infrastructure.Services
     {
         private readonly HttpClient _httpClient;
         private readonly ILogger<MetacriticService> _logger;
-        private static readonly object _lock = new();
+        private static readonly object _rateLimitLock = new();
         private static DateTime _lastRequestTime = DateTime.MinValue;
         private const int REQUEST_DELAY_MS = 3000; 
 
@@ -25,6 +25,7 @@ namespace GGHub.Infrastructure.Services
         public MetacriticService(IHttpClientFactory httpClientFactory, ILogger<MetacriticService> logger)
         {
             _httpClient = httpClientFactory.CreateClient("Metacritic");
+            _httpClient.Timeout = TimeSpan.FromSeconds(30);
             _logger = logger;
         }
 
@@ -91,7 +92,8 @@ namespace GGHub.Infrastructure.Services
         private async Task ApplyRateLimitAsync()
         {
             int delayNeeded = 0;
-            lock (_lock)
+
+            lock (_rateLimitLock)
             {
                 var elapsed = DateTime.UtcNow - _lastRequestTime;
                 if (elapsed.TotalMilliseconds < REQUEST_DELAY_MS)

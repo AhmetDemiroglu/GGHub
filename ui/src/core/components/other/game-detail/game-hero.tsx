@@ -10,14 +10,17 @@ import { useAuth } from "@/core/hooks/use-auth";
 import { GameAddToListDialog } from "./game-add-to-list-dialog";
 import { getMyReview } from "@/api/review/review.api";
 import { FavoriteButton } from "./favorite-button";
+import { AdminGameRefreshButton } from "./admin-game-refresh-button";
 interface GameHeroProps {
     game: Game;
     onOpenReviewModal: () => void;
 }
 
 export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, user } = useAuth();
     const queryClient = useQueryClient();
+
+    const isAdmin = user?.role === "Admin";
 
     const [isListDialogOpen, setIsListDialogOpen] = useState(false);
 
@@ -175,6 +178,12 @@ export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
                         >
                             <Share2 size={20} />
                         </button>
+
+                        {isAdmin && !game.metacritic && (
+                            <div className="flex items-center justify-center w-14 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl hover:bg-red-500/20 hover:border-red-500/30 transition-all cursor-pointer backdrop-blur-md">
+                                <AdminGameRefreshButton gameId={game.id} />
+                            </div>
+                        )}
                     </div>
 
                     {/* Sağ Taraf: Rating Bar */}
