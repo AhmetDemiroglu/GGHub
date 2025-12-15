@@ -64,7 +64,10 @@ namespace GGHub.Infrastructure.Services
                     gameInDb.Name = dto.Name;
                     gameInDb.Description = englishDescription;
                     gameInDb.Rating = dto.Rating;
-                    gameInDb.Metacritic = dto.Metacritic;
+                    if (dto.Metacritic != null)
+                    {
+                        gameInDb.Metacritic = dto.Metacritic;
+                    }
                     gameInDb.Released = dto.Released;
                     gameInDb.BackgroundImage = dto.BackgroundImage;
                     gameInDb.CoverImage = dto.CoverImage;
@@ -256,7 +259,9 @@ namespace GGHub.Infrastructure.Services
             }
 
             RawgGameSingleDto? fullDto = null;
-            bool needsApiCall = gameInDb == null
+
+            bool needsApiCall =
+                gameInDb == null
                 || string.IsNullOrEmpty(gameInDb.DevelopersJson)
                 || (DateTime.UtcNow - gameInDb.LastSyncedAt).TotalDays >= 1;
 
@@ -289,79 +294,88 @@ namespace GGHub.Infrastructure.Services
                     gameInDb.BackgroundImage = fullDto.BackgroundImage;
                     gameInDb.CoverImage = fullDto.CoverImage;
                     gameInDb.Rating = fullDto.Rating;
-                    gameInDb.Metacritic = fullDto.Metacritic ?? gameInDb.Metacritic;
                     gameInDb.WebsiteUrl = fullDto.Website;
                     gameInDb.EsrbRating = fullDto.EsrbRating?.Name;
+
                     gameInDb.PlatformsJson = SerializeIfNotNull(fullDto.Platform?.Select(p => new { p.Platform.Name, p.Platform.Slug }).ToList());
                     gameInDb.GenresJson = SerializeIfNotNull(fullDto.Genre?.Select(g => new { g.Name, g.Slug }).ToList());
                     gameInDb.DevelopersJson = SerializeIfNotNull(fullDto.Developers?.Select(d => new { d.Name, d.Slug, d.ImageBackground }).ToList());
                     gameInDb.PublishersJson = SerializeIfNotNull(fullDto.Publishers?.Select(p => new { p.Name, p.Slug }).ToList());
                     gameInDb.StoresJson = SerializeIfNotNull(fullDto.Stores?.Select(s => new { StoreName = s.Store.Name, Domain = s.Store.Domain, Url = s.Url }).ToList());
+
+                    if (gameInDb.Metacritic == null && fullDto.Metacritic != null)
+                        gameInDb.Metacritic = fullDto.Metacritic;
                 }
                 else if (rawgDto != null && string.IsNullOrEmpty(gameInDb.GenresJson))
                 {
                     gameInDb.GenresJson = SerializeIfNotNull(rawgDto.Genres?.Select(g => new { g.Name, g.Slug }).ToList());
                     gameInDb.PlatformsJson = SerializeIfNotNull(rawgDto.Platforms?.Select(p => new { p.Platform.Name, p.Platform.Slug }).ToList());
+
+                    if (gameInDb.Metacritic == null && rawgDto.Metacritic != null)
+                        gameInDb.Metacritic = rawgDto.Metacritic;
                 }
 
                 gameInDb.LastSyncedAt = DateTime.UtcNow;
-                _context.Games.Update(gameInDb);
                 await _context.SaveChangesAsync();
                 return gameInDb;
             }
-            else
+
+            var newGame = new Game
             {
-                var newGame = new Game
-                {
-                    RawgId = rawgId,
-                    LastSyncedAt = DateTime.UtcNow
-                };
+                RawgId = rawgId,
+                LastSyncedAt = DateTime.UtcNow
+            };
 
-                if (fullDto != null)
-                {
-                    var descriptionParts = (fullDto.Description ?? "").Split(new[] { "\n\n" }, StringSplitOptions.None);
+            if (fullDto != null)
+            {
+                var descriptionParts = (fullDto.Description ?? "").Split(new[] { "\n\n" }, StringSplitOptions.None);
 
-                    newGame.Name = fullDto.Name;
-                    newGame.Slug = fullDto.Slug;
-                    newGame.Description = descriptionParts.FirstOrDefault();
-                    newGame.Released = fullDto.Released;
-                    newGame.BackgroundImage = fullDto.BackgroundImage;
-                    newGame.CoverImage = fullDto.CoverImage;
-                    newGame.Rating = fullDto.Rating;
+                newGame.Name = fullDto.Name;
+                newGame.Slug = fullDto.Slug;
+                newGame.Description = descriptionParts.FirstOrDefault();
+                newGame.Released = fullDto.Released;
+                newGame.BackgroundImage = fullDto.BackgroundImage;
+                newGame.CoverImage = fullDto.CoverImage;
+                newGame.Rating = fullDto.Rating;
+                newGame.WebsiteUrl = fullDto.Website;
+                newGame.EsrbRating = fullDto.EsrbRating?.Name;
+
+                newGame.PlatformsJson = SerializeIfNotNull(fullDto.Platform?.Select(p => new { p.Platform.Name, p.Platform.Slug }).ToList());
+                newGame.GenresJson = SerializeIfNotNull(fullDto.Genre?.Select(g => new { g.Name, g.Slug }).ToList());
+                newGame.DevelopersJson = SerializeIfNotNull(fullDto.Developers?.Select(d => new { d.Name, d.Slug, d.ImageBackground }).ToList());
+                newGame.PublishersJson = SerializeIfNotNull(fullDto.Publishers?.Select(p => new { p.Name, p.Slug }).ToList());
+                newGame.StoresJson = SerializeIfNotNull(fullDto.Stores?.Select(s => new { StoreName = s.Store.Name, Domain = s.Store.Domain, Url = s.Url }).ToList());
+
+                if (fullDto.Metacritic != null)
                     newGame.Metacritic = fullDto.Metacritic;
-                    newGame.WebsiteUrl = fullDto.Website;
-                    newGame.EsrbRating = fullDto.EsrbRating?.Name;
-                    newGame.PlatformsJson = SerializeIfNotNull(fullDto.Platform?.Select(p => new { p.Platform.Name, p.Platform.Slug }).ToList());
-                    newGame.GenresJson = SerializeIfNotNull(fullDto.Genre?.Select(g => new { g.Name, g.Slug }).ToList());
-                    newGame.DevelopersJson = SerializeIfNotNull(fullDto.Developers?.Select(d => new { d.Name, d.Slug, d.ImageBackground }).ToList());
-                    newGame.PublishersJson = SerializeIfNotNull(fullDto.Publishers?.Select(p => new { p.Name, p.Slug }).ToList());
-                    newGame.StoresJson = SerializeIfNotNull(fullDto.Stores?.Select(s => new { StoreName = s.Store.Name, Domain = s.Store.Domain, Url = s.Url }).ToList());
-                }
-                else if (rawgDto != null)
-                {
-                    newGame.Name = rawgDto.Name;
-                    newGame.Slug = rawgDto.Slug;
-                    newGame.Released = rawgDto.Released;
-                    newGame.BackgroundImage = rawgDto.BackgroundImage;
-                    newGame.Rating = rawgDto.Rating;
-                    newGame.Metacritic = rawgDto.Metacritic;
-                    newGame.GenresJson = SerializeIfNotNull(rawgDto.Genres?.Select(g => new { g.Name, g.Slug }).ToList());
-                    newGame.PlatformsJson = SerializeIfNotNull(rawgDto.Platforms?.Select(p => new { p.Platform.Name, p.Platform.Slug }).ToList());
-                }
+            }
+            else if (rawgDto != null)
+            {
+                newGame.Name = rawgDto.Name;
+                newGame.Slug = rawgDto.Slug;
+                newGame.Released = rawgDto.Released;
+                newGame.BackgroundImage = rawgDto.BackgroundImage;
+                newGame.Rating = rawgDto.Rating;
 
-                try
-                {
-                    await _context.Games.AddAsync(newGame);
-                    await _context.SaveChangesAsync();
-                    return newGame;
-                }
-                catch (DbUpdateException)
-                {
-                    _context.Entry(newGame).State = EntityState.Detached;
-                    gameInDb = await _context.Games.FirstOrDefaultAsync(g => g.RawgId == rawgId);
-                    if (gameInDb == null) throw;
-                    return gameInDb;
-                }
+                newGame.GenresJson = SerializeIfNotNull(rawgDto.Genres?.Select(g => new { g.Name, g.Slug }).ToList());
+                newGame.PlatformsJson = SerializeIfNotNull(rawgDto.Platforms?.Select(p => new { p.Platform.Name, p.Platform.Slug }).ToList());
+
+                if (rawgDto.Metacritic != null)
+                    newGame.Metacritic = rawgDto.Metacritic;
+            }
+
+            try
+            {
+                await _context.Games.AddAsync(newGame);
+                await _context.SaveChangesAsync();
+                return newGame;
+            }
+            catch (DbUpdateException)
+            {
+                _context.Entry(newGame).State = EntityState.Detached;
+                gameInDb = await _context.Games.FirstOrDefaultAsync(g => g.RawgId == rawgId);
+                if (gameInDb == null) throw;
+                return gameInDb;
             }
         }
 
