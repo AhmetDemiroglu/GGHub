@@ -63,7 +63,8 @@ namespace GGHub.Infrastructure.Services
 
                 gameIdsToSync = await context.Games
                     .Where(g => g.Metacritic == null && !string.IsNullOrEmpty(g.Name))
-                    .OrderByDescending(g => g.LastSyncedAt)
+                    .OrderBy(g => g.LastSyncedAt)
+
                     .Take(20)
                     .Select(g => g.Id)
                     .ToListAsync(stoppingToken);
