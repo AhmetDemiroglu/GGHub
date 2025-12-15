@@ -97,6 +97,7 @@ namespace GGHub.Infrastructure.Services
 
                     try
                     {
+                        LogToFile($"Processing -> '{game.Name}'...");
                         var result = await metacriticService.GetMetacriticScoreAsync(game.Name, game.Released);
 
                         if (result != null)
@@ -124,7 +125,7 @@ namespace GGHub.Infrastructure.Services
                     }
                     catch (Exception ex)
                     {
-                        var errMsg = $"ERROR -> ID {gameId}: {ex.Message}";
+                        var errMsg = $"ERROR -> '{game.Name}': {ex.Message}";
                         _logger.LogError(errMsg);
                         LogToFile(errMsg);
                     }
