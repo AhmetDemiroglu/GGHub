@@ -109,7 +109,12 @@ builder.Services.AddScoped<IActivityService, ActivityService>();
 builder.Services.AddScoped<IHomeService, HomeService>();
 builder.Services.AddHttpClient("Metacritic");
 builder.Services.AddScoped<IMetacriticService, MetacriticService>();
-builder.Services.AddHostedService<MetacriticSyncJob>();
+
+var metacriticJobEnabled = builder.Configuration.GetValue<bool>("Jobs:MetacriticSync:Enabled");
+if (metacriticJobEnabled)
+{
+    builder.Services.AddHostedService<MetacriticSyncJob>();
+}
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
