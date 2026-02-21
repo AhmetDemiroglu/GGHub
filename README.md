@@ -1,310 +1,155 @@
-# GGHub - Gaming Community Platform
+<div align="center">
+  
+# 🎮 GGHub
 
-A modern full-stack gaming community platform built with .NET 8.0 and Next.js 15. GGHub allows users to discover games, create and share game lists, write reviews, follow other gamers, and engage with a vibrant gaming community.
+**A Next-Generation Platform for the Gaming Community**
 
-[![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
-[![Next.js](https://img.shields.io/badge/Next.js-15.4-000000?logo=next.js)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-19.1-61DAFB?logo=react)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript)](https://www.typescriptlang.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?logo=postgresql)](https://www.postgresql.org/)
+[![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge&logo=dotnet)](https://dotnet.microsoft.com/)
+[![Next.js](https://img.shields.io/badge/Next.js-15.4-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19.1-20232A?style=for-the-badge&logo=react)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 
-## 🎮 Features
+GGHub is a modern, full-stack gaming community platform tailored for gamers to discover titles, curate custom lists, share reviews, and connect with a vibrant global community. Built specifically with **.NET 8 Clean Architecture** and **Next.js 15 App Router**.
 
-### Core Features (Production Ready)
-- **User Authentication & Authorization** - JWT-based auth with refresh tokens, email verification, password reset
-- **User Profiles** - Customizable profiles with privacy settings, profile photos, GDPR compliance (data export/deletion)
-- **Game Discovery** - Search and filter games powered by RAWG API (14 genres, 11 platforms)
-- **User Lists** - Create and manage game collections with public/private/friends-only visibility
-- **List Interactions** - Follow lists, rate (1-5 stars), comment with nested replies, vote on comments
-- **Social Features** - Follow/unfollow users, direct messaging, user blocking
-- **Notifications** - Activity notifications (follows, comments, ratings, votes) - Polling based
-- **Content Reporting** - Report inappropriate content (users, lists, reviews, comments)
-- **Admin Panel** - User management, content moderation, analytics dashboard
-- **Search** - Global search across games, users, and lists
-- **Game Detail Pages** - Comprehensive game information and reviews (backend ready, frontend in progress)
-- **Game Reviews** - Write and vote on game reviews (backend complete, frontend integration pending)
+[Report Bug](https://github.com/ahmetdemiroglu/GGHub/issues) · [Request Feature](https://github.com/ahmetdemiroglu/GGHub/issues)
 
+</div>
 
-### In Development
-- **Real-time Features** - Live notifications and messaging (SignalR)
+---
 
-## 🏗️ Architecture
+## ✨ Key Features
 
-### Backend (Clean Architecture)
-```
-backend/
-├── GGHub.Core/          # Domain entities, enums (17 entities)
-├── GGHub.Application/   # Interfaces, DTOs (60+ DTOs)
-├── GGHub.Infrastructure/# Service implementations, EF Core, external APIs
-└── GGHub.WebAPI/        # Controllers, middleware (15 controllers, 100+ endpoints)
-```
+### 🛡️ Core System & Security
+- **Authentication & Authorization:** Secure JWT-based auth setup with refresh tokens, email verification, and password recovery.
+- **Privacy & GDPR:** Profile privacy controls, data export, and account deletion compliance.
+- **Admin Dashboard:** Comprehensive user management, content moderation, and platform analytics.
+
+### 🎮 Gaming & Discovery
+- **Extensive Database:** Search, filter, and discover games across 14 genres and 11 platforms, powered by the **RAWG API**.
+- **Game Details:** Deep dive into game metadata, community ratings, and comprehensive reviews.
+- **Custom Game Lists:** Curate, manage, and share personal game collections with customizable visibility settings (Public/Private/Friends-only).
+
+### 💬 Community & Social
+- **Interactions:** Follow curated lists, leave ratings (1-5 stars), and participate in threaded comments with voting systems.
+- **Social Graph:** Follow/unfollow other gamers and customize your content feed.
+- **Direct Messaging:** Private peer-to-peer conversations between individual users.
+- **Activity & Notifications:** Stay updated on follows, list interactions, and relevant mentions.
+
+---
+
+## 🏗️ Technical Architecture
+
+GGHub strictly follows a separation of concerns pattern to ensure maximum scalability and maintainability.
+
+### Backend (Clean .NET Architecture)
+Our robust C# backend is divided into decoupled layers focusing on core business logic.
+- **`GGHub.Core`**: Domain models, entities (17+), and core enums.
+- **`GGHub.Application`**: Business rules, use cases, interfaces, and 60+ DTOs.
+- **`GGHub.Infrastructure`**: EF Core 9 setup, external API integrations, and generic repositories.
+- **`GGHub.WebAPI`**: RESTful endpoints, controllers (15+), and custom middleware.
 
 ### Frontend (Next.js App Router)
-```
-ui/src/
-├── api/                 # Backend API integration (14 modules)
-├── app/                 # Next.js pages and layouts
-│   ├── (admin)/         # Admin dashboard
-│   ├── (authenticated)/ # Main app pages
-│   └── (unauthenticated)/ # Login, register
-├── core/
-│   ├── components/      # 82+ reusable components
-│   ├── contexts/        # React contexts (auth)
-│   ├── hooks/           # Custom hooks
-│   └── lib/             # Utilities (axios, validation)
-├── models/              # TypeScript models
-└── types/               # Type definitions
-```
+A blazing-fast, server-rendered React application utilizing modern hooks and UI paradigms.
+- **`ui/src/app`**: Complete routing setup split into `(admin)`, `(authenticated)`, and `(unauthenticated)` modules.
+- **`ui/src/core`**: 80+ reusable UI components built on standard Radix primitives and Tailwind v4.
+- **`ui/src/api`**: Modularized Axios-based API client integrating smoothly with TanStack React Query.
 
-## 🛠️ Tech Stack
-
-### Backend
-- **.NET 8.0** - Modern C# with nullable reference types
-- **Entity Framework Core 9.0** - ORM with PostgreSQL
-- **PostgreSQL** - Primary database
-- **JWT Authentication** - Secure token-based auth with refresh tokens
-- **Serilog** - Structured logging
-- **Swagger/OpenAPI** - API documentation
-- **RAWG Games API** - Game data integration
-- **Cloudflare R2** - Image storage (S3-compatible)
-- **Resend** - Transactional emails
-
-### Frontend
-- **Next.js 15.4** - React framework with App Router
-- **React 19.1** - Latest React with server components
-- **TypeScript** - Full type safety
-- **Tailwind CSS v4** - Utility-first styling
-- **Radix UI** - Accessible component primitives
-- **TanStack React Query** - Server state management
-- **React Hook Form + Zod** - Form handling and validation
-- **Axios** - HTTP client with interceptors
-- **Sonner** - Toast notifications
+---
 
 ## 🚀 Getting Started
+
+Follow these steps to set up a local development environment.
 
 ### Prerequisites
 - [.NET 8.0 SDK](https://dotnet.microsoft.com/download)
 - [Node.js 20+](https://nodejs.org/)
 - [PostgreSQL 15+](https://www.postgresql.org/)
 
-### Backend Setup
+### 1. Backend Setup
 
-1. **Navigate to backend directory:**
 ```bash
+# Clone and navigate to the backend
 cd backend
-```
 
-2. **Configure environment variables:**
-Create `appsettings.Development.json`:
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Database=gghub;Username=postgres;Password=yourpassword"
-  },
-  "JwtSettings": {
-    "SecretKey": "your-secret-key-min-32-characters",
-    "Issuer": "GGHub",
-    "Audience": "GGHubUsers",
-    "ExpirationMinutes": 60,
-    "RefreshTokenExpirationDays": 7
-  },
-  "RawgApiSettings": {
-    "ApiKey": "your-rawg-api-key",
-    "BaseUrl": "https://api.rawg.io/api"
-  },
-  "EmailSettings": {
-    "ResendApiKey": "your-resend-api-key",
-    "FromEmail": "noreply@yourdomain.com"
-  },
-  "CloudflareR2Settings": {
-    "AccessKey": "your-r2-access-key",
-    "SecretKey": "your-r2-secret-key",
-    "BucketName": "your-bucket",
-    "Endpoint": "https://your-account-id.r2.cloudflarestorage.com"
-  }
-}
-```
-
-3. **Apply database migrations:**
-```bash
+# Apply database migrations
 cd GGHub.WebAPI
 dotnet ef database update
-```
 
-4. **Run the backend:**
-```bash
+# Run the .NET Server
 dotnet run
 ```
-Backend available at `https://localhost:7000`.
 
----
+> **Note:** Ensure you configure `appsettings.Development.json` with your localized connection strings, JWT secret, RAWG API key, and Cloudflare R2 credentials. The API will be available at `https://localhost:7000`.
 
-### Frontend Setup
+### 2. Frontend Setup
 
-1. **Navigate to frontend directory:**
 ```bash
+# Navigate to the frontend
 cd ui
-```
 
-2. **Install dependencies:**
-```bash
+# Install node dependencies
 npm install
-```
 
-3. **Configure environment variables:**
-Create `.env.local`:
-```
-NEXT_PUBLIC_API_URL=https://localhost:7000
-NEXT_PUBLIC_GA_ID=your-google-analytics-id
-NEXT_PUBLIC_CLARITY_ID=your-clarity-id
-```
-
-4. **Run the development server:**
-```bash
+# Run the development server
 npm run dev
 ```
-Frontend available at `http://localhost:3000`.
+
+> **Note:** Configure `.env.local` with `NEXT_PUBLIC_API_URL=https://localhost:7000`. The frontend will be available at `http://localhost:3000`.
 
 ---
 
-## 📚 API Documentation
-Swagger UI:
-```
-https://localhost:7000/swagger
-```
+## 📚 API Reference
 
-### Key Endpoints
+Comprehensive Swagger documentation is generated automatically and available locally at:
+[`https://localhost:7000/swagger`](https://localhost:7000/swagger)
 
-#### Authentication
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `POST /api/auth/refresh`
-
-#### User Lists
-- `GET /api/user-lists`
-- `POST /api/user-lists`
-- `POST /api/user-lists/{id}/games`
-- `POST /api/user-lists/{id}/follow`
-
-#### Social
-- `POST /api/profiles/{username}/follow`
-- `GET /api/messages/conversations`
-- `POST /api/messages`
-
-#### Admin
-- `GET /api/admin/dashboard-stats`
-- `GET /api/admin/reports`
-- `POST /api/admin/users/{id}/ban`
+**Highlighted Endpoints:**
+- **Auth:** `/api/auth/register`, `/api/auth/login`, `/api/auth/refresh`
+- **Lists:** `/api/user-lists`, `/api/user-lists/{id}/games`
+- **Social:** `/api/profiles/{username}/follow`, `/api/messages`
+- **Admin:** `/api/admin/dashboard-stats`, `/api/admin/reports`
 
 ---
 
-## 🗺️ Roadmap
+## 🗺️ Roadmap & Status
 
-### Current Status
-- ✅ Backend: **100%** complete
-- ✅ Frontend: **87%** complete
-- ⏳ API Integration: **93%**
-- ⏳ Testing: In progress
-- ⏳ Deployment Infrastructure: In progress
+### ✅ Completed Milestones
+- Functional MVP with Auth, User Profiles, and Game Browsing.
+- Complete .NET Backend logic and 90%+ Frontend Integration.
+- Game detail, direct messaging, and advanced user lists modules are live.
 
-### Short-term (MVP - 6–8 Weeks)
-- Game detail pages
-- Game review system
-- Frontend testing (Jest + RTL)
-- CI/CD pipeline (Docker, GitHub Actions)
-- Server-side auth middleware
-- Backend unit/integration tests
+### 🚧 Current Focus
+- Implementing Real-time SignalR notifications and WebSocket messaging.
+- Deepening integration testing (Jest + RTL, .NET xUnit).
+- Containerization and automated CI/CD deployment pipelines (Docker, GitHub Actions).
 
-### Mid-term (v1.1 - 8–12 Weeks)
-- Personalized feed
-- Recommendation engine
-- Real-time messaging and notifications (WebSocket)
-- Twitter-like short posts
-- Redis caching
-- Monitoring/observability
-
-### Long-term (Scaling - 12+ Weeks)
-- Long-form guides
-- Gamification system
-- ML-based recommendations
-- Advanced ML moderation
-- OAuth providers (Google/Discord/Steam)
-- Two-factor auth
-- PWA support
-
----
-
-## 🧪 Testing
-
-### Backend
-```bash
-cd backend/GGHub.Tests
-dotnet test
-```
-
-### Frontend
-```bash
-cd ui
-npm test
-```
-
----
-
-## 📦 Project Structure
-
-### Backend Entities
-- User
-- Game
-- UserList
-- Review
-- Follow
-- Message
-- Notification
-- ContentReport
-- UserBlock
-- AuditLog
-- RefreshToken
-- (Join Tables: UserListGame, UserListComment, ReviewVote, UserListRating, etc.)
-
-### Frontend Pages
-- Authentication
-- Profile
-- Lists
-- Games
-- Messages
-- Notifications
-- Admin
-- Search
+### 🔭 Future Vision (v1.1+)
+- Advanced algorithmic personalized feeds and recommendation engines.
+- Long-form community gaming guides.
+- Built-in gamification and progression system.
+- OAuth 2.0 Providers (Google, Steam, Discord).
 
 ---
 
 ## 🤝 Contributing
-1. Fork the repo
-2. Create feature branch
-3. Commit changes
-4. Push and open Pull Request
+
+We welcome community contributions! Please follow the standard flow:
+1. **Fork** the repository.
+2. Create your **Feature Branch** (`git checkout -b feature/AmazingFeature`).
+3. **Commit** your changes (`git commit -m 'Add some AmazingFeature'`).
+4. **Push** to the branch (`git push origin feature/AmazingFeature`).
+5. Open a **Pull Request**.
 
 ---
 
-## 📄 License
-MIT License
+<div align="center">
 
----
+**Built with ❤️ by [Ahmet Demiroğlu](https://github.com/ahmetdemiroglu)**
 
-## 👥 Authors
-**Ahmet Demiroğlu** – GitHub
+📧 [ahmetdemiroglu89@gmail.com](mailto:ahmetdemiroglu89@gmail.com) &nbsp;·&nbsp; 📱 +90 555 713 70 64
 
----
+*This project is licensed under the [MIT License](LICENSE).*
 
-## 🙏 Acknowledgments
-- RAWG API
-- Radix UI
-- Tailwind CSS
-- shadcn/ui
-
----
-
-## 📞 Contact & Support
-- Open a GitHub Issue
-- Email: ahmetdemiroglu89@gmail.com
-- Phone: +90 555 713 70 64
+</div>
