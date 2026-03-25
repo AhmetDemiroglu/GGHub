@@ -30,7 +30,6 @@ import {
     Star,
     User,
     UserPlus,
-    X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -184,15 +183,10 @@ function SidebarInner({ isMobile }: { isMobile: boolean }) {
     return (
         <div className="flex h-full flex-col" data-collapsed={collapsed}>
             {/* ── Header: Logo ────────────────────────────────────────────── */}
-            <div className={`flex items-center border-b border-border/40 ${collapsed ? "justify-center px-2 py-3" : "justify-between px-4 py-3"}`}>
+            <div className={`flex items-center border-b border-border/40 ${collapsed ? "justify-center px-2 py-3" : "px-4 py-3"}`}>
                 <Link href={localizeHref("/")} className="flex shrink-0 items-center" onClick={onLinkClick}>
                     <Image src={logoSrc} alt="GGHub" width={35} height={22} priority className={collapsed ? "h-5 w-auto" : "h-7 w-auto"} />
                 </Link>
-                {isMobile && (
-                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 cursor-pointer text-muted-foreground hover:text-foreground" onClick={() => setMobileOpen(false)}>
-                        <X className="h-4 w-4" />
-                    </Button>
-                )}
             </div>
 
             {/* ── Search ──────────────────────────────────────────────────── */}
