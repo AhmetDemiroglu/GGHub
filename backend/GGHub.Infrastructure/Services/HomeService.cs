@@ -165,10 +165,10 @@ namespace GGHub.Infrastructure.Services
         {
             if (preferTurkish)
             {
-                return !string.IsNullOrWhiteSpace(descriptionTr) ? descriptionTr : descriptionEn;
+                return !string.IsNullOrWhiteSpace(descriptionTr) ? descriptionTr : null;
             }
 
-            return !string.IsNullOrWhiteSpace(descriptionEn) ? descriptionEn : descriptionTr;
+            return !string.IsNullOrWhiteSpace(descriptionEn) ? descriptionEn : null;
         }
     }
 }

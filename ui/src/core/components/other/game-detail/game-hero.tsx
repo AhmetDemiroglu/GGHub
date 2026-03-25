@@ -11,7 +11,7 @@ import { GameAddToListDialog } from "./game-add-to-list-dialog";
 import { getMyReview } from "@/api/review/review.api";
 import { FavoriteButton } from "./favorite-button";
 import { AdminGameRefreshButton } from "./admin-game-refresh-button";
-import { useI18n } from "@/core/contexts/locale-context";
+import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 
 interface GameHeroProps {
     game: Game;
@@ -20,6 +20,7 @@ interface GameHeroProps {
 
 export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
     const t = useI18n();
+    const locale = useCurrentLocale();
     const { isAuthenticated, user } = useAuth();
     const queryClient = useQueryClient();
     const isAdmin = user?.role === "Admin";
@@ -56,6 +57,7 @@ export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
 
     const isAdded = wishlistStatus?.isInWishlist ?? false;
     const isButtonLoading = isStatusLoading || isWishlistLoading;
+    const heroDescription = locale === "tr" ? game.descriptionTr : game.description;
 
     const handleWishlistClick = () => {
         if (!isAuthenticated) {
@@ -104,6 +106,12 @@ export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
                 </div>
 
                 <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-white mb-8 leading-[0.9] tracking-tight drop-shadow-2xl">{game.name}</h1>
+
+                {heroDescription ? (
+                    <p className="mb-8 max-w-3xl text-sm leading-7 text-white/70 md:text-base line-clamp-3">
+                        {heroDescription.replace(/<[^>]*>/g, "").trim()}
+                    </p>
+                ) : null}
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:items-end">
                     <div className="lg:col-span-7 flex flex-wrap gap-3">
