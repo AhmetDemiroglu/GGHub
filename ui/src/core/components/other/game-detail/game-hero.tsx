@@ -57,7 +57,11 @@ export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
 
     const isAdded = wishlistStatus?.isInWishlist ?? false;
     const isButtonLoading = isStatusLoading || isWishlistLoading;
-    const heroDescription = locale === "tr" ? game.descriptionTr : game.description;
+    const heroDescriptionSource = locale === "tr" ? game.descriptionTr : game.description;
+    const heroDescription = heroDescriptionSource
+        ?.replace(/<[^>]*>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
 
     const handleWishlistClick = () => {
         if (!isAuthenticated) {
@@ -108,8 +112,8 @@ export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
                 <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-white mb-8 leading-[0.9] tracking-tight drop-shadow-2xl">{game.name}</h1>
 
                 {heroDescription ? (
-                    <p className="mb-8 max-w-3xl text-sm leading-7 text-white/70 md:text-base line-clamp-3">
-                        {heroDescription.replace(/<[^>]*>/g, "").trim()}
+                    <p className="mb-8 max-w-4xl text-sm leading-7 text-white/70 md:text-base line-clamp-4">
+                        {heroDescription}
                     </p>
                 ) : null}
 

@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Autoplay from "embla-carousel-autoplay";
 import { Play } from "lucide-react";
+import { gameApi } from "@/api/gaming/game.api";
 import { HomeGame } from "@/models/home/home.model";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 import { getImageUrl } from "@/core/lib/get-image-url";
@@ -20,22 +21,94 @@ interface HeroSliderProps {
     games: HomeGame[];
 }
 
+const normalizeDescription = (value: string | null | undefined) => {
+    if (!value) return null;
+
+    const plainText = value
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    return plainText || null;
+};
+
 export default function HeroSlider({ games }: HeroSliderProps) {
     const locale = useCurrentLocale();
     const t = useI18n();
     const plugin = useRef(Autoplay({ delay: 3000, stopOnInteraction: false }));
+    const [descriptionOverrides, setDescriptionOverrides] = useState<Record<string, string>>({});
 
     if (!games || games.length === 0) {
         return null;
     }
 
+    useEffect(() => {
+        let cancelled = false;
+
+        const gamesNeedingDescription = games.filter((game) => {
+            const key = `${locale}:${game.id || game.rawgId}`;
+            return !normalizeDescription(game.description) && !descriptionOverrides[key];
+        });
+
+        if (gamesNeedingDescription.length === 0) {
+            return;
+        }
+
+        const fillMissingDescriptions = async () => {
+            const resolvedEntries = await Promise.all(
+                gamesNeedingDescription.map(async (game) => {
+                    try {
+                        const detail = await gameApi.getById(game.slug || String(game.rawgId));
+                        const localizedDescription = locale === "tr"
+                            ? normalizeDescription(detail.descriptionTr)
+                            : normalizeDescription(detail.description);
+
+                        return localizedDescription
+                            ? [`${locale}:${game.id || game.rawgId}`, localizedDescription] as const
+                            : null;
+                    } catch {
+                        return null;
+                    }
+                }),
+            );
+
+            if (cancelled) {
+                return;
+            }
+
+            const nextOverrides = resolvedEntries.reduce<Record<string, string>>((accumulator, entry) => {
+                if (!entry) {
+                    return accumulator;
+                }
+
+                accumulator[entry[0]] = entry[1];
+                return accumulator;
+            }, {});
+
+            if (Object.keys(nextOverrides).length > 0) {
+                setDescriptionOverrides((current) => ({ ...current, ...nextOverrides }));
+            }
+        };
+
+        void fillMissingDescriptions();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [games, locale, descriptionOverrides]);
+
     return (
         <div className="group relative w-full">
             <Carousel plugins={[plugin.current]} className="w-full" onMouseEnter={plugin.current.stop} onMouseLeave={plugin.current.reset}>
                 <CarouselContent>
-                    {games.map((game) => (
-                        <CarouselItem key={game.id}>
-                            <div className="relative h-[300px] w-full overflow-hidden rounded-2xl border border-border/50 bg-background shadow-2xl md:h-[360px]">
+                    {games.map((game) => {
+                        const descriptionKey = `${locale}:${game.id || game.rawgId}`;
+                        const resolvedDescription = normalizeDescription(game.description) ?? descriptionOverrides[descriptionKey] ?? null;
+
+                        return (
+                            <CarouselItem key={game.id}>
+                                <div className="relative h-[300px] w-full overflow-hidden rounded-2xl border border-border/50 bg-background shadow-2xl md:h-[360px]">
                                 <div className="absolute inset-0 z-0">
                                     <Image
                                         src={getImageUrl(game.backgroundImage) || "/assets/placeholder-game.jpg"}
@@ -98,7 +171,7 @@ export default function HeroSlider({ games }: HeroSliderProps) {
 
                                         <h2 className="line-clamp-2 text-2xl font-black tracking-tighter text-foreground drop-shadow-xl md:text-3xl lg:text-4xl">{game.name}</h2>
 
-                                        {game.description ? <p className="line-clamp-2 max-w-xl text-xs text-muted-foreground md:text-sm">{game.description}</p> : null}
+                                        {resolvedDescription ? <p className="line-clamp-2 max-w-xl text-xs text-muted-foreground md:text-sm">{resolvedDescription}</p> : null}
 
                                         <div className="flex justify-center pt-2 md:justify-start">
                                             <Link href={buildLocalizedPathname(`/games/${game.slug || game.rawgId}`, locale)}>
@@ -110,9 +183,10 @@ export default function HeroSlider({ games }: HeroSliderProps) {
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </CarouselItem>
-                    ))}
+                                </div>
+                            </CarouselItem>
+                        );
+                    })}
                 </CarouselContent>
 
                 <div className="absolute bottom-12 right-12 flex gap-2 opacity-0 transition-opacity duration-300 group-hover:opacity-100">

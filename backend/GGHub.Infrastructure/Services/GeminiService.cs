@@ -7,6 +7,7 @@ namespace GGHub.Infrastructure.Services
 {
     public class GeminiService : IGeminiService
     {
+        private const string TranslationModel = "gemini-3.1-flash-lite-preview";
         private readonly HttpClient _httpClient;
         private readonly string _apiKey;
 
@@ -18,7 +19,7 @@ namespace GGHub.Infrastructure.Services
 
         public async Task<string> TranslateHtmlDescriptionAsync(string englishText)
         {
-            var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={_apiKey}";
+            var url = $"https://generativelanguage.googleapis.com/v1beta/models/{TranslationModel}:generateContent?key={_apiKey}";
 
             var prompt = $@"
                 GÖREVİN: Aşağıda verilen İngilizce video oyunu açıklamasını TÜRKÇE'ye çevirmek.
