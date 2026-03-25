@@ -1,10 +1,16 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useQuery } from "@tanstack/react-query";
 import { getUserStats } from "@/api/stats/stats.api";
 import { getUserActivityFeed } from "@/api/activity/activity.api";
-import GamerDNAChart from "./gamer-dna-chart";
 import ActivityFeed from "./activity-feed";
+import { Skeleton } from "@/core/components/ui/skeleton";
+
+const GamerDNAChart = dynamic(() => import("./gamer-dna-chart"), {
+    loading: () => <Skeleton className="h-[300px] w-full rounded-xl" />,
+    ssr: false,
+});
 import { Loader2, TrendingUp, Users, List, Star, Award } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/core/components/ui/card";
 import TopFiveGames from "./top-five-games";
@@ -19,11 +25,13 @@ export default function ProfileOverview({ username }: ProfileOverviewProps) {
     const { data: stats, isLoading: statsLoading } = useQuery({
         queryKey: ["user-stats", username],
         queryFn: () => getUserStats(username),
+        staleTime: 3 * 60 * 1000,
     });
 
     const { data: activities, isLoading: activityLoading } = useQuery({
         queryKey: ["user-activity", username],
         queryFn: () => getUserActivityFeed(username),
+        staleTime: 2 * 60 * 1000,
     });
 
     if (statsLoading || activityLoading) {
@@ -69,8 +77,8 @@ export default function ProfileOverview({ username }: ProfileOverviewProps) {
                                                             src={badge.iconUrl}
                                                             alt={badge.title}
                                                             fill
+                                                            sizes="48px"
                                                             className="object-contain"
-                                                            unoptimized={true}
                                                         />
                                                     </div>
                                                     {/* Rozet İsmi */}

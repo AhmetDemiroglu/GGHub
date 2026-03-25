@@ -2,15 +2,15 @@ import type { Metadata } from "next";
 import HomeView from "@/core/components/other/home/home-view";
 
 export const metadata: Metadata = {
-    title: "Ana Sayfa | GGHub",
-    description: "Türkiye'nin oyuncu sosyal platformu. En popüler oyunları keşfet, arkadaşlarının aktivitelerini takip et ve rozetler kazan.",
+    title: "GGHub",
+    description: "GGHub",
     openGraph: {
-        title: "GGHub • Oyunun Kalbi Burada Atıyor",
-        description: "Trend oyunlar, liderlik tabloları ve kişiselleştirilmiş oyuncu akışı GGHub'da.",
+        title: "GGHub",
+        description: "GGHub",
         type: "website",
         url: "https://gghub.social/",
         siteName: "GGHub",
-        locale: "tr_TR",
+        locale: "en_US",
         images: [
             {
                 url: "/og/home.png",
@@ -22,9 +22,8 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: "summary_large_image",
-        title: "GGHub • Türkiye'nin oyuncu sosyal platformu",
-        description:
-            "Profil oluştur, takip et, oyunları ve listeleri keşfet. Erken erişimde aktif geliştirme.",
+        title: "GGHub",
+        description: "GGHub",
         images: ["/og/home.png"],
     },
 };

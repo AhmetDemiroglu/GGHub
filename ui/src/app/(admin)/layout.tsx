@@ -1,62 +1,70 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@core/hooks/use-auth";
-import { AdminSidebarNav } from "@/core/components/admin/admin-sidebar-nav";
-import { Menu } from "lucide-react";
-import { Button } from "@/core/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/core/components/ui/sheet";
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import logoSrc2 from "@core/assets/logo2.png";
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
+import { ReactNode, useEffect, useState } from "react";
+import { Menu } from "lucide-react";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { useRouter } from "next/navigation";
+import { Button } from "@/core/components/ui/button";
+import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/core/components/ui/sheet";
+import { AdminSidebarNav } from "@/core/components/admin/admin-sidebar-nav";
+import { useAuth } from "@core/hooks/use-auth";
+import { buildLocalizedPathname } from "@/i18n/config";
+import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
+import logoSrc2 from "@core/assets/logo2.png";
 
-const FullPageLoader = () => (
+const FullPageLoader = ({ label }: { label: string }) => (
     <div className="flex h-screen w-full items-center justify-center">
-        <p>Yükleniyor...</p>
+        <p>{label}</p>
     </div>
 );
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
     const router = useRouter();
+    const t = useI18n();
+    const locale = useCurrentLocale();
     const { user, isAuthenticated, isLoading } = useAuth();
     const [isSheetOpen, setIsSheetOpen] = useState(false);
 
     useEffect(() => {
-        if (isLoading) return;
+        if (isLoading) {
+            return;
+        }
+
         if (!isAuthenticated) {
-            router.replace("/login");
+            router.replace(buildLocalizedPathname("/login", locale));
             return;
         }
+
         if (user?.role !== "Admin") {
-            router.replace("/discover");
-            return;
+            router.replace(buildLocalizedPathname("/discover", locale));
         }
-    }, [isLoading, isAuthenticated, user, router]);
+    }, [isLoading, isAuthenticated, user, router, locale]);
 
     if (isLoading || !isAuthenticated || user?.role !== "Admin") {
-        return <FullPageLoader />;
+        return <FullPageLoader label={t("admin.loading")} />;
     }
 
     return (
         <div className="flex h-screen flex-col overflow-hidden">
             <header className="sticky top-0 z-40 w-full border-b bg-background px-4 md:hidden">
                 <div className="flex h-16 items-center justify-between">
-                    <Link href="/dashboard" className="flex items-center" onClick={() => setIsSheetOpen(false)}>
-                        <Image src={logoSrc2} alt="GGHub Logo" width={80} className="transition-transform group-hover:scale-110" />
+                    <Link href={buildLocalizedPathname("/dashboard", locale)} className="flex items-center" onClick={() => setIsSheetOpen(false)}>
+                        <Image src={logoSrc2} alt="GGHub logo" width={80} className="transition-transform group-hover:scale-110" />
                     </Link>
 
                     <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                         <SheetTrigger asChild>
                             <Button variant="ghost" size="icon">
                                 <Menu className="h-5 w-5" />
-                                <span className="sr-only">Menüyü aç</span>
+                                <span className="sr-only">{t("admin.menuOpen")}</span>
                             </Button>
                         </SheetTrigger>
                         <SheetContent side="left" className="w-[240px] p-0">
                             <VisuallyHidden>
-                                <SheetTitle>Ana Menü</SheetTitle>
+                                <SheetTitle>{t("admin.mainMenu")}</SheetTitle>
+                                <SheetDescription>{t("admin.mainMenu")}</SheetDescription>
                             </VisuallyHidden>
                             <div className="h-full px-6 py-6 lg:py-8">
                                 <AdminSidebarNav user={user} onLinkClick={() => setIsSheetOpen(false)} />

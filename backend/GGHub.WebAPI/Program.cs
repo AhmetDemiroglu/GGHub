@@ -1,9 +1,11 @@
-using Amazon.S3;
+ï»¿using Amazon.S3;
 using GGHub.Application.Interfaces;
 using GGHub.Infrastructure.Persistence;
 using GGHub.Infrastructure.Persistence.Seeders;
 using GGHub.Infrastructure.Services;
 using GGHub.Infrastructure.Settings;
+using GGHub.WebAPI.Hubs;
+using GGHub.WebAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -12,7 +14,9 @@ using Microsoft.OpenApi.Models;
 using Resend;
 using Serilog;
 using System.Text;
+using System.IO.Compression;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.ResponseCompression;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -107,7 +111,11 @@ builder.Services.AddScoped<IStatsService, StatsService>();
 builder.Services.AddScoped<IGamificationService, GamificationService>();
 builder.Services.AddScoped<IActivityService, ActivityService>();
 builder.Services.AddScoped<IHomeService, HomeService>();
-builder.Services.AddHttpClient("Metacritic");
+builder.Services.AddHttpClient("Metacritic")
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        UseCookies = false
+    });
 builder.Services.AddScoped<IMetacriticService, MetacriticService>();
 
 var metacriticJobEnabled = builder.Configuration.GetValue<bool>("Jobs:MetacriticSync:Enabled");
@@ -130,7 +138,16 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 //}
 
 builder.Services.AddDbContext<GGHubDbContext>(options =>
-    options.UseNpgsql(connectionString));
+{
+    options.UseNpgsql(connectionString, npgsqlOptions =>
+    {
+        npgsqlOptions.CommandTimeout(30);
+        npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 3,
+            maxRetryDelay: TimeSpan.FromSeconds(5),
+            errorCodesToAdd: null);
+    });
+});
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -141,6 +158,23 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration.GetSection("JwtSettings:Key").Value!)),
             ValidateIssuer = false,
             ValidateAudience = false
+        };
+
+        // Allow SignalR to receive the JWT token via query string
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                {
+                    context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
+            }
         };
     });
 
@@ -160,6 +194,34 @@ builder.Services.AddRateLimiter(options =>
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<IUserConnectionService, UserConnectionService>();
+builder.Services.AddScoped<IHubNotificationService, HubNotificationService>();
+
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+    options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(new[]
+    {
+        "application/json",
+        "application/javascript",
+        "text/css",
+        "text/plain"
+    });
+});
+builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
+{
+    options.Level = CompressionLevel.Fastest;
+});
+builder.Services.Configure<GzipCompressionProviderOptions>(options =>
+{
+    options.Level = CompressionLevel.SmallestSize;
+});
+
+builder.Services.AddMemoryCache();
+
 builder.Services.AddControllers();
 
 builder.Services.AddEndpointsApiExplorer();
@@ -168,7 +230,7 @@ builder.Services.AddSwaggerGen(options =>
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         In = ParameterLocation.Header,
-        Description = "Lütfen token'ý 'Bearer ' kelimesinin ardýndan bir boþluk býrakarak girin.",
+        Description = "Please enter the token after the word 'Bearer ' followed by a space.",
         Name = "Authorization",
         Type = SecuritySchemeType.ApiKey,
         Scheme = "Bearer"
@@ -202,7 +264,7 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Seeding hatasý: {ex.Message}");
+        Console.WriteLine($"Seeding error: {ex.Message}");
     }
 }
 
@@ -252,9 +314,14 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseCors(MyAllowSpecificOrigins); 
+app.UseResponseCompression();
 
-app.UseHttpsRedirection();        
+app.UseCors(MyAllowSpecificOrigins);
+
+if (app.Environment.IsProduction())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseRateLimiter();
 
@@ -265,6 +332,8 @@ app.UseStaticFiles();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapHub<ChatHub>("/hubs/chat");
 
 app.MapGet("/", () => "GGHub API is running!").AllowAnonymous();
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow })).AllowAnonymous();

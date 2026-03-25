@@ -1,72 +1,63 @@
+"use client";
+
 import Image from "next/image";
-import logoSrc from "@core/assets/logo.png";
 import Link from "next/link";
-import { useAuth } from "@core/hooks/use-auth";
-import { Button } from "@/core/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/core/components/ui/dropdown-menu";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import type { Profile } from "@/models/profile/profile.model";
-import { getMyProfile } from "@/api/profile/profile.api";
-import { SearchBar } from "@/core/components/other/search/search-bar";
-import { Bell, Mail, LogIn, LogOut, UserPlus, List, Star, Settings, FileText, LayoutDashboard, Gift, User } from "lucide-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getNotifications, getUnreadNotificationCount, markAllNotificationsAsRead } from "@/api/notifications/notifications.api";
-import { NotificationDto, NotificationType } from "@/models/notifications/notification.model";
-import { Badge } from "@/core/components/ui/badge";
-import { Popover, PopoverContent, PopoverTrigger } from "@/core/components/ui/popover";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-import { getConversations } from "@/api/messages/messages.api";
-import { getUnreadMessageCount } from "@/api/messages/messages.api";
-import { ConversationDto } from "@/models/messages/message.model";
+import "dayjs/locale/en";
 import "dayjs/locale/tr";
-import { AxiosError } from "axios";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Bell, FileText, Gift, LayoutDashboard, List, LogIn, LogOut, Mail, Settings, Star, User, UserPlus } from "lucide-react";
+import { toast } from "sonner";
+import { getUnreadMessageCount, getConversations } from "@/api/messages/messages.api";
+import { getNotifications, getUnreadNotificationCount, markAllNotificationsAsRead } from "@/api/notifications/notifications.api";
+import { getMyProfile } from "@/api/profile/profile.api";
+import { ConversationDto } from "@/models/messages/message.model";
+import { NotificationDto, NotificationType } from "@/models/notifications/notification.model";
+import type { Profile } from "@/models/profile/profile.model";
+import logoSrc from "@core/assets/logo.png";
+import { useAuth } from "@core/hooks/use-auth";
 import { getImageUrl } from "@/core/lib/get-image-url";
+import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
+import { Badge } from "@/core/components/ui/badge";
+import { Button } from "@/core/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/core/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/core/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/core/components/ui/tooltip";
+import { SearchBar } from "@/core/components/other/search/search-bar";
+import { LanguageSwitcher } from "@/core/components/base/language-switcher";
+import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
+import { buildLocalizedPathname } from "@/i18n/config";
 
 dayjs.extend(relativeTime);
-dayjs.locale("tr");
 
 export function Header() {
+    const t = useI18n();
+    const locale = useCurrentLocale();
     const { isAuthenticated, user, logout } = useAuth();
-
-    const [notificationOpen, setNotificationOpen] = useState(false);
-    const [notifInterval, setNotifInterval] = useState<number | false>(10000);
-    const [msgInterval, setMsgInterval] = useState<number | false>(10000);
     const queryClient = useQueryClient();
+    const [notificationOpen, setNotificationOpen] = useState(false);
+    const [messagesOpen, setMessagesOpen] = useState(false);
 
-    const { data: unreadNotifCount } = useQuery<{ count: number }, Error>({
+    useEffect(() => {
+        dayjs.locale(locale === "tr" ? "tr" : "en");
+    }, [locale]);
+
+    // Unread counts fetched once on mount; SignalR pushes updates via cache
+    const { data: unreadNotifCount } = useQuery<{ count: number }>({
         queryKey: ["unread-notification-count"],
         queryFn: getUnreadNotificationCount,
         enabled: isAuthenticated && !!user,
-        refetchInterval: notifInterval,
-
-        retry: (failureCount, error) => {
-            if (error instanceof AxiosError && error.response?.status === 429) {
-                if (notifInterval) {
-                    setNotifInterval(false);
-                    setTimeout(() => setNotifInterval(15000), 30000);
-                }
-                return false;
-            }
-
-            return failureCount < 3;
-        },
+        staleTime: 2 * 60 * 1000,
+        refetchOnWindowFocus: false,
     });
-
-    useEffect(() => {
-        if (unreadNotifCount && notifInterval === 15000) {
-            setNotifInterval(10000);
-        }
-    }, [unreadNotifCount, notifInterval]);
 
     const { data: notifications } = useQuery<NotificationDto[]>({
         queryKey: ["notifications"],
         queryFn: getNotifications,
         enabled: isAuthenticated && !!user && notificationOpen,
+        staleTime: 60 * 1000,
     });
 
     const handleNotificationOpen = (open: boolean) => {
@@ -78,43 +69,33 @@ export function Header() {
                     queryClient.invalidateQueries({ queryKey: ["unread-notification-count"] });
                     queryClient.invalidateQueries({ queryKey: ["notifications"] });
                 })
-                .catch(() => { });
+                .catch(() => undefined);
         }
     };
 
-    const [messagesOpen, setMessagesOpen] = useState(false);
-
-    const { data: unreadMsgCount } = useQuery<{ count: number }, Error>({
+    const { data: unreadMsgCount } = useQuery<{ count: number }>({
         queryKey: ["unread-message-count"],
         queryFn: getUnreadMessageCount,
         enabled: isAuthenticated && !!user,
-        refetchInterval: msgInterval,
-
-        retry: (failureCount, error) => {
-            if (error instanceof AxiosError && error.response?.status === 429) {
-                if (msgInterval) {
-                    setMsgInterval(false);
-                    setTimeout(() => setMsgInterval(15000), 30000);
-                }
-                return false;
-            }
-            return failureCount < 3;
-        },
+        staleTime: 2 * 60 * 1000,
+        refetchOnWindowFocus: false,
     });
-
-    useEffect(() => {
-        if (unreadMsgCount && msgInterval === 15000) {
-            setMsgInterval(10000);
-        }
-    }, [unreadMsgCount, msgInterval]);
 
     const { data: recentMessages } = useQuery<ConversationDto[]>({
         queryKey: ["recent-messages"],
         queryFn: getConversations,
         enabled: isAuthenticated && !!user && messagesOpen,
+        staleTime: 30 * 1000,
     });
 
-    const getNotificationIcon = (type: NotificationType) => {
+    const { data: profile } = useQuery<Profile>({
+        queryKey: ["my-profile"],
+        queryFn: getMyProfile,
+        enabled: isAuthenticated && !!user,
+        staleTime: 5 * 60 * 1000,
+    });
+
+    const notificationIcon = (type: NotificationType) => {
         switch (type) {
             case NotificationType.Follow:
                 return <UserPlus className="h-5 w-5 text-blue-500" />;
@@ -123,36 +104,30 @@ export function Header() {
             case NotificationType.Review:
                 return <Star className="h-5 w-5 text-yellow-500" />;
             default:
-                return <Bell className="h-8 w-5 text-muted-foreground" />;
+                return <Bell className="h-5 w-5 text-muted-foreground" />;
         }
     };
 
-    const enabled = isAuthenticated && !!user;
-    const { data } = useQuery<Profile>({
-        queryKey: ["my-profile"],
-        queryFn: getMyProfile,
-        enabled,
-        staleTime: 5 * 60 * 1000,
-    });
+    const localizeHref = (href: string) => {
+        return href.startsWith("/") ? buildLocalizedPathname(href, locale) : href;
+    };
 
-    const router = useRouter();
     const handleLogout = () => {
         logout();
-        toast.info("Başarıyla çıkış yapıldı.");
+        toast.info(t("nav.logoutSuccess"));
     };
 
     return (
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
             <div className="flex h-14 items-center px-6">
-                <Link className="mr-3 flex items-center space-x-2" href="/">
-                    <Image src={logoSrc} alt="GGHub Logo" width={35} height={22} priority className="h-8 w-auto" />
+                <Link className="mr-3 flex items-center space-x-2" href={buildLocalizedPathname("/", locale)}>
+                    <Image src={logoSrc} alt="GGHub logo" width={35} height={22} priority className="h-8 w-auto" />
                 </Link>
-                <div className="flex items-center ml-auto mr-1">
+                <div className="ml-auto mr-1 flex items-center gap-2">
                     <SearchBar />
 
                     {isAuthenticated && user ? (
-                        <div className="flex items-center gap-2 ml-4">
-                            {/* Notifications Bell */}
+                        <div className="ml-2 flex items-center gap-2">
                             <Popover open={notificationOpen} onOpenChange={handleNotificationOpen}>
                                 <TooltipProvider>
                                     <Tooltip>
@@ -160,37 +135,34 @@ export function Header() {
                                             <PopoverTrigger asChild>
                                                 <Button variant="ghost" size="icon" className="relative cursor-pointer">
                                                     <Bell className="h-5 w-5" />
-                                                    {unreadNotifCount && unreadNotifCount.count > 0 && (
-                                                        <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
+                                                    {unreadNotifCount?.count ? (
+                                                        <Badge variant="destructive" className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center p-0 text-xs">
                                                             {unreadNotifCount.count}
                                                         </Badge>
-                                                    )}
+                                                    ) : null}
                                                 </Button>
                                             </PopoverTrigger>
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                            <p>Bildirimler</p>
+                                            <p>{t("nav.notifications")}</p>
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
                                 <PopoverContent className="w-80 p-0" align="end">
                                     <div className="border-b p-3">
-                                        <h3 className="font-semibold">Bildirimler</h3>
+                                        <h3 className="font-semibold">{t("nav.notificationsTitle")}</h3>
                                     </div>
                                     <div className="max-h-96 overflow-y-auto">
-                                        {notifications && notifications.length > 0 ? (
+                                        {notifications?.filter((item) => item.type !== NotificationType.Message).length ? (
                                             notifications
-                                                .filter((n) => n.type !== NotificationType.Message)
+                                                .filter((item) => item.type !== NotificationType.Message)
                                                 .map((notification) => {
-                                                    const timeAgo = dayjs(notification.createdAt).fromNow();
-                                                    const icon = getNotificationIcon(notification.type);
-
                                                     const content = (
                                                         <div className="flex items-start gap-3">
-                                                            {icon}
-                                                            <div className="flex-1 min-w-0">
+                                                            {notificationIcon(notification.type)}
+                                                            <div className="min-w-0 flex-1">
                                                                 <p className="text-sm">{notification.message}</p>
-                                                                <p className="text-xs text-muted-foreground mt-1">{timeAgo}</p>
+                                                                <p className="mt-1 text-xs text-muted-foreground">{dayjs(notification.createdAt).fromNow()}</p>
                                                             </div>
                                                         </div>
                                                     );
@@ -198,25 +170,25 @@ export function Header() {
                                                     return notification.link ? (
                                                         <Link
                                                             key={notification.id}
-                                                            href={notification.link}
-                                                            className={`block p-3 border-b hover:bg-accent cursor-pointer ${!notification.isRead ? "bg-accent/50" : ""}`}
+                                                            href={localizeHref(notification.link)}
+                                                            className={`block cursor-pointer border-b p-3 hover:bg-accent ${!notification.isRead ? "bg-accent/50" : ""}`}
                                                             onClick={() => setNotificationOpen(false)}
                                                         >
                                                             {content}
                                                         </Link>
                                                     ) : (
-                                                        <div key={notification.id} className={`p-3 border-b ${!notification.isRead ? "bg-accent/50" : ""}`}>
+                                                        <div key={notification.id} className={`border-b p-3 ${!notification.isRead ? "bg-accent/50" : ""}`}>
                                                             {content}
                                                         </div>
                                                     );
                                                 })
                                         ) : (
-                                            <div className="p-8 text-center text-sm text-muted-foreground">Bildirim yok</div>
+                                            <div className="p-8 text-center text-sm text-muted-foreground">{t("nav.noNotifications")}</div>
                                         )}
                                     </div>
                                 </PopoverContent>
                             </Popover>
-                            {/* Messages */}
+
                             <Popover open={messagesOpen} onOpenChange={setMessagesOpen}>
                                 <TooltipProvider>
                                     <Tooltip>
@@ -224,146 +196,155 @@ export function Header() {
                                             <PopoverTrigger asChild>
                                                 <Button variant="ghost" size="icon" className="relative cursor-pointer">
                                                     <Mail className="h-5 w-5" />
-                                                    {unreadMsgCount && unreadMsgCount.count > 0 && (
-                                                        <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
+                                                    {unreadMsgCount?.count ? (
+                                                        <Badge variant="destructive" className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center p-0 text-xs">
                                                             {unreadMsgCount.count}
                                                         </Badge>
-                                                    )}
+                                                    ) : null}
                                                 </Button>
                                             </PopoverTrigger>
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                            <p>Mesajlar</p>
+                                            <p>{t("nav.messages")}</p>
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
                                 <PopoverContent className="w-80 p-0" align="end">
                                     <div className="border-b p-3">
-                                        <h3 className="font-semibold">Mesajlar</h3>
+                                        <h3 className="font-semibold">{t("nav.messagesTitle")}</h3>
                                     </div>
                                     <div className="max-h-96 overflow-y-auto">
-                                        {recentMessages && recentMessages.length > 0 ? (
-                                            recentMessages.slice(0, 5).map((conversation) => {
-                                                const avatarSrc = getImageUrl(conversation.partnerProfileImageUrl);
-                                                const timeAgo = dayjs(conversation.lastMessageSentAt).fromNow();
-
-                                                return (
-                                                    <Link
-                                                        key={conversation.partnerId}
-                                                        href={`/messages/${conversation.partnerUsername}`}
-                                                        className="block p-3 border-b hover:bg-accent cursor-pointer"
-                                                        onClick={() => setMessagesOpen(false)}
-                                                    >
-                                                        <div className="flex items-center gap-3">
-                                                            <Avatar className="h-10 w-10 shrink-0">
-                                                                <AvatarImage src={avatarSrc} alt={conversation.partnerUsername} />
-                                                                <AvatarFallback>{conversation.partnerUsername.charAt(0).toUpperCase()}</AvatarFallback>
-                                                            </Avatar>
-                                                            <div className="flex-1 min-w-0">
-                                                                <div className="flex items-center justify-between mb-1">
-                                                                    <p className="font-semibold text-sm truncate">{conversation.partnerUsername}</p>
-                                                                    {conversation.unreadCount > 0 && (
-                                                                        <Badge variant="default" className="ml-2 shrink-0 h-5 w-5 flex items-center justify-center p-0 text-xs">
-                                                                            {conversation.unreadCount}
-                                                                        </Badge>
-                                                                    )}
-                                                                </div>
-                                                                <p className="text-xs text-muted-foreground truncate">{conversation.lastMessage}</p>
-                                                                <p className="text-xs text-muted-foreground mt-1">{timeAgo}</p>
+                                        {recentMessages?.length ? (
+                                            recentMessages.slice(0, 5).map((conversation) => (
+                                                <Link
+                                                    key={conversation.partnerId}
+                                                    href={buildLocalizedPathname(`/messages/${conversation.partnerUsername}`, locale)}
+                                                    className="block cursor-pointer border-b p-3 hover:bg-accent"
+                                                    onClick={() => setMessagesOpen(false)}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <Avatar className="h-10 w-10 shrink-0">
+                                                            <AvatarImage src={getImageUrl(conversation.partnerProfileImageUrl)} alt={conversation.partnerUsername} />
+                                                            <AvatarFallback>{conversation.partnerUsername.charAt(0).toUpperCase()}</AvatarFallback>
+                                                        </Avatar>
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="mb-1 flex items-center justify-between">
+                                                                <p className="truncate text-sm font-semibold">{conversation.partnerUsername}</p>
+                                                                {conversation.unreadCount > 0 ? (
+                                                                    <Badge variant="default" className="ml-2 flex h-5 w-5 shrink-0 items-center justify-center p-0 text-xs">
+                                                                        {conversation.unreadCount}
+                                                                    </Badge>
+                                                                ) : null}
                                                             </div>
+                                                            <p className="truncate text-xs text-muted-foreground">{conversation.lastMessage}</p>
+                                                            <p className="mt-1 text-xs text-muted-foreground">{dayjs(conversation.lastMessageSentAt).fromNow()}</p>
                                                         </div>
-                                                    </Link>
-                                                );
-                                            })
+                                                    </div>
+                                                </Link>
+                                            ))
                                         ) : (
-                                            <div className="p-8 text-center text-sm text-muted-foreground">Mesaj yok</div>
+                                            <div className="p-8 text-center text-sm text-muted-foreground">{t("nav.noMessages")}</div>
                                         )}
                                     </div>
                                     <div className="border-t p-2">
                                         <Button variant="ghost" className="w-full text-sm" asChild>
-                                            <Link href="/messages" onClick={() => setMessagesOpen(false)}>
-                                                Tüm Mesajları Gör
+                                            <Link href={buildLocalizedPathname("/messages", locale)} onClick={() => setMessagesOpen(false)}>
+                                                {t("nav.viewAllMessages")}
                                             </Link>
                                         </Button>
                                     </div>
                                 </PopoverContent>
                             </Popover>
-                            {user.role === "Admin" && (
+
+                            {user.role === "Admin" ? (
                                 <TooltipProvider>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
                                             <Button variant="ghost" size="icon" className="relative cursor-pointer" asChild>
-                                                <Link href="/dashboard">
+                                                <Link href={buildLocalizedPathname("/dashboard", locale)}>
                                                     <LayoutDashboard className="h-5 w-5" />
                                                 </Link>
                                             </Button>
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                            <p>Admin Paneli</p>
+                                            <p>{t("nav.adminPanel")}</p>
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
-                            )}
-                            {/* Profile Avatar */}
+                            ) : null}
+
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" className="relative h-8 w-8 ml-3 rounded-full">
-                                        <Avatar className="h-10 w-10 cursor-pointer">
-                                            <AvatarImage src={getImageUrl(data?.profileImageUrl)} alt={user.username} />
+                                    <button className="ml-2 flex cursor-pointer items-center gap-2.5 rounded-full border border-border/50 bg-muted/50 py-1 pl-3 pr-1 transition-colors hover:bg-muted">
+                                        <div className="hidden text-right sm:block">
+                                            {profile?.firstName || profile?.lastName ? (
+                                                <p className="text-sm font-medium leading-tight">{[profile.firstName, profile.lastName].filter(Boolean).join(" ")}</p>
+                                            ) : null}
+                                            <p className="text-xs text-muted-foreground leading-tight">@{user.username}</p>
+                                        </div>
+                                        <Avatar className="h-8 w-8">
+                                            <AvatarImage src={getImageUrl(profile?.profileImageUrl)} alt={user.username} />
                                             <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
                                         </Avatar>
-                                    </Button>
+                                    </button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent className="w-56" align="end" forceMount>
                                     <DropdownMenuItem asChild>
-                                        <Link href={`/profiles/${user.username}`} className="cursor-pointer font-semibold">
-                                        <User className="mr-2 h-4 w-4" />
+                                        <Link href={buildLocalizedPathname(`/profiles/${user.username}`, locale)} className="cursor-pointer font-semibold">
+                                            <User className="mr-2 h-4 w-4" />
                                             {user.username}
                                         </Link>
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem asChild>
-                                        <Link href="/profile" className="cursor-pointer flex items-center">
+                                        <Link href={buildLocalizedPathname("/profile", locale)} className="flex cursor-pointer items-center">
                                             <Settings className="mr-2 h-4 w-4" />
-                                            <span>Profil Yönetimi</span>
+                                            <span>{t("nav.profileSettings")}</span>
                                         </Link>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem asChild>
-                                        <Link href="/wishlist" className="cursor-pointer flex items-center">
+                                        <Link href={buildLocalizedPathname("/wishlist", locale)} className="flex cursor-pointer items-center">
                                             <Gift className="mr-2 h-4 w-4" />
-                                            <span>İstek Listem</span>
+                                            <span>{t("nav.wishlist")}</span>
                                         </Link>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem asChild>
-                                        <Link href="/my-reports" className="cursor-pointer flex items-center">
+                                        <Link href={buildLocalizedPathname("/my-reports", locale)} className="flex cursor-pointer items-center">
                                             <FileText className="mr-2 h-4 w-4" />
-                                            <span>Raporlarım</span>
+                                            <span>{t("nav.myReports")}</span>
                                         </Link>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem className="cursor-pointer" onClick={handleLogout}>
                                         <LogOut className="mr-2 h-4 w-4" />
-                                        <span>Çıkış Yap</span>
+                                        <span>{t("nav.logout")}</span>
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
+
+                            <LanguageSwitcher />
                         </div>
                     ) : (
-                        <div className="flex items-center space-x-2 ml-2">
+                        <div className="ml-2 flex items-center space-x-2">
                             <Button
                                 variant="ghost"
-                                onClick={() => router.push(`/login?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`)}
+                                onClick={() =>
+                                    (window.location.href = `${buildLocalizedPathname("/login", locale)}?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`)
+                                }
                                 className="cursor-pointer"
                             >
                                 <LogIn className="mr-1 h-4 w-4" />
-                                Giriş Yap
+                                {t("nav.login")}
                             </Button>
                             <Button
-                                onClick={() => router.push(`/register?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`)}
+                                onClick={() =>
+                                    (window.location.href = `${buildLocalizedPathname("/register", locale)}?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`)
+                                }
                                 className="cursor-pointer"
                             >
                                 <UserPlus className="mr-1 h-4 w-4" />
-                                Kayıt Ol
+                                {t("nav.register")}
                             </Button>
+                            <LanguageSwitcher />
                         </div>
                     )}
                 </div>

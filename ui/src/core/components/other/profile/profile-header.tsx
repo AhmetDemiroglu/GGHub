@@ -343,8 +343,8 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                                                     src={`/assets/badges/level_${stats.currentLevel}.ico`}
                                                     alt={`Level ${stats.currentLevel}`}
                                                     fill
+                                                    sizes="32px"
                                                     className="object-contain"
-                                                    unoptimized={true}
                                                 />
                                             </div>
                                         </TooltipTrigger>

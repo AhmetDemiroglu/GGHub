@@ -7,21 +7,26 @@ import { Badge } from "@core/components/ui/badge";
 import { Star } from "lucide-react";
 import Link from "next/link";
 import { getImageUrl } from "@/core/lib/get-image-url";
+import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
+import { buildLocalizedPathname } from "@/i18n/config";
 
 interface RecentReviewsListProps {
     reviews: RecentReview[];
 }
 
 export const RecentReviewsList = ({ reviews }: RecentReviewsListProps) => {
+    const locale = useCurrentLocale();
+    const t = useI18n();
+
     return (
         <Card className="h-full flex flex-col">
             <CardHeader>
                 <div>
-                    <CardTitle>Son Eklenen İncelemeler</CardTitle>
-                    <CardDescription>En yeni 5 oyun incelemesi.</CardDescription>
+                    <CardTitle>{t("admin.recentReviewsTitle")}</CardTitle>
+                    <CardDescription>{t("admin.recentReviewsDescription")}</CardDescription>
                 </div>
             </CardHeader>
-            <CardContent className="flex-1 flex flex-col">
+            <CardContent className="flex flex-1 flex-col">
                 <div className="flex flex-1 flex-col gap-4">
                     {reviews.length > 0 ? (
                         reviews.map((review) => (
@@ -30,25 +35,22 @@ export const RecentReviewsList = ({ reviews }: RecentReviewsListProps) => {
                                     <AvatarImage src={getImageUrl(review.userProfileImageUrl)} alt={review.username} />
                                     <AvatarFallback>{review.username.charAt(0).toUpperCase()}</AvatarFallback>
                                 </Avatar>
-                                <div className="flex-1 min-w-0">
-                                    <Link href={`/profile/${review.username}`} className="text-sm font-medium truncate hover:underline">
+                                <div className="min-w-0 flex-1">
+                                    <Link href={buildLocalizedPathname(`/profiles/${review.username}`, locale)} className="truncate text-sm font-medium hover:underline">
                                         {review.username}
                                     </Link>
-                                    <Link
-                                        href={`/games/${review.slug || review.rawgId}`}
-                                        className="text-xs text-muted-foreground truncate block hover:underline"
-                                    >
+                                    <Link href={buildLocalizedPathname(`/games/${review.slug || review.rawgId}`, locale)} className="block truncate text-xs text-muted-foreground hover:underline">
                                         {review.gameName}
                                     </Link>
                                 </div>
-                                <Badge variant="outline" className="flex gap-1 items-center">
+                                <Badge variant="outline" className="flex items-center gap-1">
                                     <Star className="h-3 w-3" />
                                     {review.rating}
                                 </Badge>
                             </div>
                         ))
                     ) : (
-                        <p className="text-sm text-center text-muted-foreground">Yeni inceleme bulunmamaktadır.</p>
+                        <p className="text-center text-sm text-muted-foreground">{t("admin.noRecentReviews")}</p>
                     )}
                 </div>
             </CardContent>

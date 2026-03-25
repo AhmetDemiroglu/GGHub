@@ -16,17 +16,17 @@ import { RecentReviewsList } from "@/core/components/admin/recent-reviews-list";
 import { TopUsersCard } from "@/core/components/admin/top-users-card";
 import { TopListsCard } from "@/core/components/admin/top-lists-card";
 import { TopGamesCard } from "@/core/components/admin/top-games-card";
+import { useI18n } from "@/core/contexts/locale-context";
+
 export default function DashboardPage() {
+    const t = useI18n();
+
     const { data: statsData, isLoading: isLoadingStats } = useQuery<DashboardStats>({
         queryKey: ["adminDashboardStats"],
         queryFn: async () => (await getDashboardStats()).data,
     });
 
-    const {
-        data: reportsData,
-        isLoading: isLoadingReports,
-        isError: isErrorReports,
-    } = useQuery<PaginatedResponse<AdminReport>>({
+    const { data: reportsData, isLoading: isLoadingReports, isError: isErrorReports } = useQuery<PaginatedResponse<AdminReport>>({
         queryKey: ["adminDashboardReports"],
         queryFn: async () =>
             (
@@ -70,72 +70,51 @@ export default function DashboardPage() {
     if (isLoading) {
         return (
             <div>
-                <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-                <p className="text-muted-foreground">İstatistikler yükleniyor...</p>
+                <h2 className="text-3xl font-bold tracking-tight">{t("admin.dashboard")}</h2>
+                <p className="text-muted-foreground">{t("admin.loadingStats")}</p>
             </div>
         );
     }
 
     if (isErrorReports) {
-        console.error("Raporlar yüklenirken hata oluştu.");
         return (
             <div>
-                <h2 className="text-3xl font-bold tracking-tight">Hata</h2>
-                <p className="text-destructive">Veriler yüklenirken bir hata oluştu.</p>
+                <h2 className="text-3xl font-bold tracking-tight">{t("admin.loadErrorTitle")}</h2>
+                <p className="text-destructive">{t("admin.loadErrorDescription")}</p>
             </div>
         );
     }
 
     const pendingReports = reportsData?.items || [];
+
     return (
-        <div className="container flex flex-col gap-8 py-6 lg:py-8 px-6 lg:px-8">
+        <div className="container flex flex-col gap-8 px-6 py-6 lg:px-8 lg:py-8">
             <div>
-                <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-                <p className="text-muted-foreground">Bu bölümde platformun genel istatistiklerini inceleyebilirsiniz.</p>
+                <h2 className="text-3xl font-bold tracking-tight">{t("admin.dashboard")}</h2>
+                <p className="text-muted-foreground">{t("admin.dashboardDescription")}</p>
             </div>
-            {/* İstatistik Kartları */}
+
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <StatsCard title="Toplam Kullanıcı" value={statsData?.totalUsers ?? 0} icon={Users} />
-                <StatsCard title="Askıdaki Kullanıcılar" value={statsData?.bannedUsers ?? 0} icon={ShieldAlert} />
-                <StatsCard title="Bekleyen Raporlar" value={statsData?.pendingReports ?? 0} icon={Library} />
-                <StatsCard title="Toplam İnceleme" value={statsData?.totalReviews ?? 0} icon={Star} />
+                <StatsCard title={t("admin.totalUsers")} value={statsData?.totalUsers ?? 0} icon={Users} />
+                <StatsCard title={t("admin.bannedUsers")} value={statsData?.bannedUsers ?? 0} icon={ShieldAlert} />
+                <StatsCard title={t("admin.pendingReports")} value={statsData?.pendingReports ?? 0} icon={Library} />
+                <StatsCard title={t("admin.totalReviews")} value={statsData?.totalReviews ?? 0} icon={Star} />
             </div>
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                {/* Sol: Rapor Tablosu */}
-                <div>
-                    <RecentReports reports={pendingReports || []} />
-                </div>
 
-                {/* Sağ: Hızlı Arama Modülü */}
-                <div>
-                    <AdminQuickSearch />
-                </div>
-            </div>
-            {/* Son Aktiviteler */}
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                {/* Son Kullanıcılar */}
-                <div>
-                    <RecentUsersList users={recentUsersData || []} />
-                </div>
-
-                {/* Son İncelemeler */}
-                <div>
-                    <RecentReviewsList reviews={recentReviewsData || []} />
-                </div>
+                <RecentReports reports={pendingReports} />
+                <AdminQuickSearch />
             </div>
+
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <RecentUsersList users={recentUsersData || []} />
+                <RecentReviewsList reviews={recentReviewsData || []} />
+            </div>
+
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                {/* En İyi Kullanıcılar */}
-                <div>
-                    <TopUsersCard users={topUsersData || []} />
-                </div>
-                {/* En İyi Listeler */}
-                <div>
-                    <TopListsCard lists={topListsData || []} />
-                </div>
-                {/* En İyi Oyunlar */}
-                <div>
-                    <TopGamesCard games={topGamesData || []} />
-                </div>
+                <TopUsersCard users={topUsersData || []} />
+                <TopListsCard lists={topListsData || []} />
+                <TopGamesCard games={topGamesData || []} />
             </div>
         </div>
     );

@@ -28,6 +28,7 @@ export interface ListQueryParameters {
     pageSize: number;
     searchTerm?: string;
     category?: ListCategory;
+    followedByMe?: boolean;
 }
 export interface UserListForCreation {
     name: string;

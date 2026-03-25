@@ -1,9 +1,9 @@
-﻿using GGHub.Application.Dtos.Home;
+using GGHub.Application.Dtos.Home;
 
 namespace GGHub.Application.Interfaces
 {
     public interface IHomeService
     {
-        Task<HomeViewModel> GetHomeContentAsync(int? currentUserId);
+        Task<HomeViewModel> GetHomeContentAsync(int? currentUserId, bool preferTurkish);
     }
 }

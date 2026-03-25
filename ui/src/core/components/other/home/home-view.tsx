@@ -1,71 +1,83 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getHomeContent } from "@/api/home/home.api";
 import { getPersonalizedFeed } from "@/api/activity/activity.api";
-import { HomeContent } from "@/models/home/home.model";
+import { getHomeContent } from "@/api/home/home.api";
 import { Activity } from "@/models/activity/activity.model";
-import HeroSlider from "./hero-slider";
-import HomeBentoGrid from "./home-bento-grid";
-import HomeFeed from "./home-feed";
-import { Skeleton } from "@/core/components/ui/skeleton";
+import { HomeContent } from "@/models/home/home.model";
 import { useAuth } from "@/core/hooks/use-auth";
+import { useCurrentLocale } from "@/core/contexts/locale-context";
+import { Skeleton } from "@/core/components/ui/skeleton";
+import HeroSlider from "./hero-slider";
+import HomeRightSidebar from "./home-right-sidebar";
+import HomeSocialFeed from "./home-social-feed";
+import HomeStatsBar from "./home-stats-bar";
 
 export default function HomeView() {
-    const { user, isAuthenticated } = useAuth(); 
+    const locale = useCurrentLocale();
+    const { isAuthenticated, isLoading: authLoading } = useAuth();
     const [content, setContent] = useState<HomeContent | null>(null);
     const [feed, setFeed] = useState<Activity[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // Auth henüz yüklenmediyse fetch yapma — boş feed ve çift istek olmasın
+        if (authLoading) return;
+
+        let cancelled = false;
         const fetchData = async () => {
             try {
-                // 1. Vitrin verilerini çek
-                const homeData = await getHomeContent();
-                setContent(homeData);
-
-                // 2. Giriş yapmışsa Feed çek
-                if (isAuthenticated) {
-                    const feedData = await getPersonalizedFeed();
+                setLoading(true);
+                // Paralel fetch — her iki isteği aynı anda başlat
+                const [homeData, feedData] = await Promise.all([
+                    getHomeContent(),
+                    isAuthenticated ? getPersonalizedFeed() : Promise.resolve([]),
+                ]);
+                if (!cancelled) {
+                    setContent(homeData);
                     setFeed(feedData);
                 }
             } catch (error) {
                 console.error("Home data fetch error:", error);
             } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
             }
         };
 
         fetchData();
-    }, [isAuthenticated]);
+        return () => { cancelled = true; };
+    }, [isAuthenticated, authLoading, locale]);
 
-    if (loading) {
+    if (loading || authLoading) {
         return <HomeSkeleton />;
     }
 
-    if (!content) return null;
+    if (!content) {
+        return null;
+    }
 
     return (
-        <div className="space-y-6 md:space-y-8 pb-10 animate-in fade-in duration-500">
-            {/* 1. Hero Bölümü */}
+        <div className="animate-in space-y-5 pb-10 fade-in duration-500">
             <section>
                 <HeroSlider games={content.heroGames} />
             </section>
 
-            {/* 2. Ana İçerik Grid */}
-            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 md:gap-8">
+            {content.siteStats ? (
+                <section>
+                    <HomeStatsBar stats={content.siteStats} />
+                </section>
+            ) : null}
 
-                {/* Sol/Orta Kolon: Vitrin (Trendler & Leaderboard) - 3/4 Genişlik */}
-                <div className="xl:col-span-3">
-                    <HomeBentoGrid trending={content.trendingLocal} leaders={content.topGamers} />
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+                <div className="xl:col-span-8">
+                    <HomeSocialFeed activities={feed} isAuthenticated={isAuthenticated} />
                 </div>
 
-                {/* Sağ Kolon: Sosyal Akış (Feed) */}
-                <div className="xl:col-span-1 h-full min-h-[500px]">
-                    <div className="sticky top-4 h-[calc(100vh-100px)]">
-                        <HomeFeed activities={feed} isAuthenticated={isAuthenticated} />
+                <aside className="xl:col-span-4">
+                    <div className="sticky top-4">
+                        <HomeRightSidebar trending={content.trendingLocal} leaders={content.topGamers} />
                     </div>
-                </div>
+                </aside>
             </div>
         </div>
     );
@@ -73,16 +85,19 @@ export default function HomeView() {
 
 function HomeSkeleton() {
     return (
-        <div className="space-y-6">
-            <Skeleton className="w-full h-[400px] md:h-[500px] rounded-2xl" />
-            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-                <div className="xl:col-span-3 grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2 grid grid-cols-3 gap-4">
-                        {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-64 rounded-xl" />)}
-                    </div>
-                    <Skeleton className="h-96 rounded-xl" />
+        <div className="space-y-5">
+            <Skeleton className="h-[300px] w-full rounded-2xl md:h-[360px]" />
+            <Skeleton className="h-12 w-full rounded-xl" />
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+                <div className="space-y-3 xl:col-span-8">
+                    {[1, 2, 3, 4, 5].map((item) => (
+                        <Skeleton key={item} className="h-32 rounded-xl" />
+                    ))}
                 </div>
-                <Skeleton className="xl:col-span-1 h-96 rounded-xl" />
+                <div className="space-y-4 xl:col-span-4">
+                    <Skeleton className="h-64 rounded-xl" />
+                    <Skeleton className="h-48 rounded-xl" />
+                </div>
             </div>
         </div>
     );

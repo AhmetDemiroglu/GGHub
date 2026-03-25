@@ -226,7 +226,7 @@ namespace GGHub.WebAPI.Controllers
                 return StatusCode(500, new { success = false, message = "Sunucu hatası oluştu." });
             }
 
-            if (result == null)
+            if (result?.Score == null)
             {
                 return Ok(new
                 {
@@ -235,17 +235,17 @@ namespace GGHub.WebAPI.Controllers
                 });
             }
 
-            game.Metacritic = result.Score;
+            game.Metacritic = result.Score.Value;
             game.MetacriticUrl = result.Url;
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("[Admin] Metacritic synced for '{GameName}': {Score}", game.Name, result.Score);
+            _logger.LogInformation("[Admin] Metacritic synced for '{GameName}': {Score}", game.Name, result.Score.Value);
 
             return Ok(new
             {
                 success = true,
                 message = $"'{game.Name}' için Metacritic puanı güncellendi",
-                score = result.Score,
+                score = result.Score.Value,
                 url = result.Url
             });
         }

@@ -19,7 +19,11 @@ const nextConfig: NextConfig = {
             {
                 protocol: "https",
                 hostname: "media.rawg.io",
-                pathname: "/media/**", // RAWG'nin image path'i
+                pathname: "/media/**",
+            },
+            {
+                protocol: "https",
+                hostname: "i.pravatar.cc",
             },
         ],
     },

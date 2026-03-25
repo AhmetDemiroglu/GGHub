@@ -26,10 +26,16 @@ namespace GGHub.Infrastructure.Services
                 return null;
             }
 
-            var reviewCount = await _context.Reviews.CountAsync(r => r.UserId == userId);
-            var listCount = await _context.UserLists.CountAsync(l => l.UserId == userId);
-            var followerCount = await _context.Follows.CountAsync(f => f.FolloweeId == userId);
-            var followingCount = await _context.Follows.CountAsync(f => f.FollowerId == userId);
+            var counts = await _context.Users
+                .Where(u => u.Id == userId)
+                .Select(u => new
+                {
+                    ReviewCount = _context.Reviews.Count(r => r.UserId == userId),
+                    ListCount = _context.UserLists.Count(l => l.UserId == userId),
+                    FollowerCount = _context.Follows.Count(f => f.FolloweeId == userId),
+                    FollowingCount = _context.Follows.Count(f => f.FollowerId == userId)
+                })
+                .FirstOrDefaultAsync();
 
             return new ProfileDto
             {
@@ -49,10 +55,10 @@ namespace GGHub.Infrastructure.Services
                 ProfileVisibility = user.ProfileVisibility,
                 MessageSetting = user.MessageSetting,
                 IsDateOfBirthPublic = user.IsDateOfBirthPublic,
-                ReviewCount = reviewCount,
-                ListCount = listCount,
-                FollowerCount = followerCount,
-                FollowingCount = followingCount
+                ReviewCount = counts?.ReviewCount ?? 0,
+                ListCount = counts?.ListCount ?? 0,
+                FollowerCount = counts?.FollowerCount ?? 0,
+                FollowingCount = counts?.FollowingCount ?? 0
             };
         }
 
@@ -161,11 +167,16 @@ namespace GGHub.Infrastructure.Services
             var isFollowedBy = currentUserId.HasValue &&
                                 await _context.Follows.AnyAsync(f => f.FollowerId == profileUser.Id && f.FolloweeId == currentUserId.Value);
 
-            var followerCount = await _context.Follows.CountAsync(f => f.FolloweeId == profileUser.Id);
-            var followingCount = await _context.Follows.CountAsync(f => f.FollowerId == profileUser.Id);
-
-            var reviewCount = await _context.Reviews.CountAsync(r => r.UserId == profileUser.Id);
-            var listCount = await _context.UserLists.CountAsync(l => l.UserId == profileUser.Id);
+            var counts = await _context.Users
+                .Where(u => u.Id == profileUser.Id)
+                .Select(u => new
+                {
+                    FollowerCount = _context.Follows.Count(f => f.FolloweeId == profileUser.Id),
+                    FollowingCount = _context.Follows.Count(f => f.FollowerId == profileUser.Id),
+                    ReviewCount = _context.Reviews.Count(r => r.UserId == profileUser.Id),
+                    ListCount = _context.UserLists.Count(l => l.UserId == profileUser.Id)
+                })
+                .FirstOrDefaultAsync();
 
             return new ProfileDto
             {
@@ -187,10 +198,10 @@ namespace GGHub.Infrastructure.Services
                 MessageSetting = profileUser.MessageSetting,
                 IsFollowing = isFollowing,
                 IsFollowedBy = isFollowedBy,
-                FollowerCount = followerCount,
-                FollowingCount = followingCount,
-                ReviewCount = reviewCount,
-                ListCount = listCount
+                FollowerCount = counts?.FollowerCount ?? 0,
+                FollowingCount = counts?.FollowingCount ?? 0,
+                ReviewCount = counts?.ReviewCount ?? 0,
+                ListCount = counts?.ListCount ?? 0
             };
         }
         public async Task AnonymizeUserAsync(int userId)

@@ -177,28 +177,26 @@ namespace GGHub.Infrastructure.Services
                 .ToListAsync();
             activities.AddRange(lists);
 
-            var follows = await _context.Follows
+            var followDtos = await _context.Follows
                 .AsNoTracking()
                 .Where(f => followingIds.Contains(f.FollowerId))
-                .Include(f => f.Followee)
                 .OrderByDescending(f => f.CreatedAt)
                 .Take(limit)
-                .ToListAsync();
-
-            var followDtos = follows.Select(f => new ActivityDto
-            {
-                Id = 0,
-                Type = ActivityType.FollowUser,
-                OccurredAt = f.CreatedAt,
-                FollowData = new UserDto
+                .Select(f => new ActivityDto
                 {
-                    Id = f.FolloweeId,
-                    Username = f.Followee.Username,
-                    ProfileImageUrl = f.Followee.ProfileImageUrl,
-                    FirstName = f.Followee.FirstName,
-                    LastName = f.Followee.LastName
-                }
-            });
+                    Id = 0,
+                    Type = ActivityType.FollowUser,
+                    OccurredAt = f.CreatedAt,
+                    FollowData = new UserDto
+                    {
+                        Id = f.FolloweeId,
+                        Username = f.Followee.Username,
+                        ProfileImageUrl = f.Followee.ProfileImageUrl,
+                        FirstName = f.Followee.FirstName,
+                        LastName = f.Followee.LastName
+                    }
+                })
+                .ToListAsync();
             activities.AddRange(followDtos);
 
             return activities

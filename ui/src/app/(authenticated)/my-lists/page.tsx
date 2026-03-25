@@ -21,42 +21,43 @@ import { DataPagination } from "@core/components/other/data-pagination";
 import Link from "next/link";
 import { useAuth } from "@core/hooks/use-auth";
 import { AxiosError } from "axios";
+import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
+import { buildLocalizedPathname } from "@/i18n/config";
 
 const pageSizeOptions = [12, 24, 40];
-
 const MY_LISTS_TAB = "my-lists";
 const FOLLOWED_LISTS_TAB = "followed-lists";
 
-const categoryOptions = [
-    { value: "all", label: "Tüm Kategoriler" },
-    ...Object.keys(ListCategory)
-        .filter((v) => !isNaN(Number(v)))
-        .map((key) => {
-            const label = ListCategory[key as any];
-            return {
-                value: key,
-                label: label === "Other" ? "Diğer" : label,
-            };
-        }),
-];
-
-const visibilityOptions = [
-    { value: "all", label: "Tüm Görünümler" },
-    { value: "0", label: "Herkese Açık" },
-    { value: "1", label: "Sadece Takipçiler" },
-    { value: "2", label: "Özel" },
-];
-
 export default function MyListsPage() {
+    const locale = useCurrentLocale();
+    const t = useI18n();
     const [activeTab, setActiveTab] = useState<string>(MY_LISTS_TAB);
     const { user, isLoading } = useAuth();
+
+    const categoryOptions = [
+        { value: "all", label: t("lists.allCategories") },
+        ...Object.keys(ListCategory)
+            .filter((v) => !isNaN(Number(v)))
+            .map((key) => {
+                const label = String(ListCategory[Number(key) as ListCategory]);
+                return {
+                    value: key,
+                    label: label === "Other" ? t("lists.other") : t(`lists.categories.${label.toLowerCase()}`),
+                };
+            }),
+    ];
+
+    const visibilityOptions = [
+        { value: "all", label: t("lists.allVisibilities") },
+        { value: "0", label: t("lists.public") },
+        { value: "1", label: t("lists.followers") },
+        { value: "2", label: t("lists.private") },
+    ];
 
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("all");
     const debouncedSearchTerm = useDebounce(searchTerm, 300);
-
     const [selectedVisibility_MyLists, setSelectedVisibility_MyLists] = useState("all");
-
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [listToDelete, setListToDelete] = useState<UserList | null>(null);
     const [listToEdit, setListToEdit] = useState<UserList | null>(null);
@@ -107,83 +108,48 @@ export default function MyListsPage() {
     }, [debouncedSearchTerm, selectedCategory, selectedVisibility_MyLists]);
 
     const queryClient = useQueryClient();
+
     const createListMutation = useMutation({
         mutationFn: (newList: UserListForCreation) => listApi.createList(newList),
         onSuccess: (createdList) => {
             queryClient.invalidateQueries({ queryKey: ["my-lists"] });
-            toast.success(`'${createdList.name}' listesi başarıyla oluşturuldu.`);
+            toast.success(t("lists.createSuccess", { name: createdList.name }));
             setIsModalOpen(false);
         },
         onError: (error: unknown) => {
-            if (error instanceof AxiosError && (error.response as any).isRateLimitError) {
-                return;
-            }
-            toast.error(`Liste oluşturulamadı: ${(error as Error).message}`);
+            if (error instanceof AxiosError && (error.response as { isRateLimitError?: boolean } | undefined)?.isRateLimitError) return;
+            toast.error(t("lists.createError", { message: (error as Error).message }));
         },
     });
 
     const updateListMutation = useMutation({
         mutationFn: ({ listId, data }: { listId: number; data: UserListForUpdate }) => listApi.updateList(listId, data),
         onSuccess: (_, variables) => {
-            toast.success(`'${variables.data.name}' listesi başarıyla güncellendi.`);
+            toast.success(t("lists.updateSuccess", { name: variables.data.name }));
             queryClient.invalidateQueries({ queryKey: ["my-lists"] });
             queryClient.invalidateQueries({ queryKey: ["list-detail", variables.listId] });
             setIsModalOpen(false);
             setListToEdit(null);
         },
         onError: (error: unknown) => {
-            if (error instanceof AxiosError && (error.response as any).isRateLimitError) {
-                return;
-            }
-            toast.error(`Liste güncellenemedi: ${(error as Error).message}`);
+            if (error instanceof AxiosError && (error.response as { isRateLimitError?: boolean } | undefined)?.isRateLimitError) return;
+            toast.error(t("lists.updateError", { message: (error as Error).message }));
         },
     });
 
-    const handleFormSubmit = (values: UserListForCreation | UserListForUpdate) => {
-        if (listToEdit) {
-            updateListMutation.mutate({ listId: listToEdit.id, data: values });
-        } else {
-            createListMutation.mutate(values);
-        }
-    };
-
-    const handleEditClick = (list: UserList) => {
-        setListToEdit(list);
-        setIsModalOpen(true);
-    };
-
     const deleteListMutation = useMutation({
         mutationFn: (listId: number) => listApi.deleteList(listId),
-        onSuccess: (data, deletedListId) => {
-            toast.success(`'${listToDelete?.name || "Liste"}' başarıyla silindi.`);
-            queryClient.setQueryData<UserList[]>(["my-lists"], (oldData) => {
-                if (!oldData) {
-                    return oldData;
-                }
-                return oldData.filter((list) => list.id !== deletedListId);
-            });
-
+        onSuccess: (_, deletedListId) => {
+            toast.success(t("lists.deleteSuccess", { name: listToDelete?.name || "List" }));
+            queryClient.setQueryData<UserList[]>(["my-lists"], (oldData) => oldData?.filter((list) => list.id !== deletedListId) ?? oldData);
             setIsDeleteDialogOpen(false);
             setListToDelete(null);
         },
         onError: (error: unknown) => {
-            if (error instanceof AxiosError && (error.response as any).isRateLimitError) {
-                return;
-            }
-            toast.error(`Liste silinemedi: ${(error as Error).message}`);
+            if (error instanceof AxiosError && (error.response as { isRateLimitError?: boolean } | undefined)?.isRateLimitError) return;
+            toast.error(t("lists.deleteError", { message: (error as Error).message }));
         },
     });
-
-    const handleDeleteClick = (list: UserList) => {
-        setListToDelete(list);
-        setIsDeleteDialogOpen(true);
-    };
-
-    const handleConfirmDelete = () => {
-        if (listToDelete) {
-            deleteListMutation.mutate(listToDelete.id);
-        }
-    };
 
     const filteredMyLists = useMemo(() => {
         const lists = myLists ?? [];
@@ -194,23 +160,17 @@ export default function MyListsPage() {
             const categoryMatch = selectedCategory === "all" || list.category === Number(selectedCategory);
             const visibilityMatch = selectedVisibility_MyLists === "all" || list.visibility === Number(selectedVisibility_MyLists);
 
-            const typeMatch = list.type !== 1;
-
-            return searchMatch && categoryMatch && visibilityMatch && typeMatch;
+            return searchMatch && categoryMatch && visibilityMatch && list.type !== 1;
         });
     }, [myLists, debouncedSearchTerm, selectedCategory, selectedVisibility_MyLists]);
 
     const paginatedMyLists = useMemo(() => {
         const startIndex = (page_MyLists - 1) * pageSize_MyLists;
-        const endIndex = startIndex + pageSize_MyLists;
-        return filteredMyLists.slice(startIndex, endIndex);
+        return filteredMyLists.slice(startIndex, startIndex + pageSize_MyLists);
     }, [filteredMyLists, page_MyLists, pageSize_MyLists]);
 
-    const totalMyListsCount = filteredMyLists.length;
-
     if (myListsError || followedListsError) {
-        const errorMsg = myListsError?.message || followedListsError?.message;
-        return <div className="p-5 text-red-500">Listeler yüklenirken bir hata oluştu</div>;
+        return <div className="p-5 text-red-500">{t("lists.loadError")}</div>;
     }
 
     const isFormPending = createListMutation.isPending || updateListMutation.isPending;
@@ -220,52 +180,51 @@ export default function MyListsPage() {
             <div className="w-full h-full overflow-y-auto p-5 flex items-center justify-center">
                 <div className="flex flex-col items-center gap-3">
                     <Loader className="h-8 w-8 animate-spin text-primary" />
-                    <p className="text-sm text-muted-foreground">Yükleniyor...</p>
+                    <p className="text-sm text-muted-foreground">{t("lists.loading")}</p>
                 </div>
             </div>
         );
     }
+
     if (!user) {
-        return <UnauthorizedAccess title="Listelerinizi görüntülemek için giriş yapın" description="Oyun listelerinizi yönetmek için bir hesaba sahip olmalısınız." />;
+        return <UnauthorizedAccess title={t("lists.unauthorizedTitle")} description={t("lists.unauthorizedDescription")} />;
     }
+
+    const totalMyListsCount = filteredMyLists.length;
 
     return (
         <div className="w-full h-full p-5">
-            {/* Üst Kısım: Başlık ve Yeni Liste Butonu */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+            <div className="mb-4 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                 <div>
-                    <h1 className="text-3xl font-bold">Listelerim</h1>
-                    <p className="text-muted-foreground mt-2">Oluşturduğun ve takip ettiğin oyun listelerini yönet.</p>
+                    <h1 className="text-3xl font-bold">{t("lists.myListsTitle")}</h1>
+                    <p className="mt-2 text-muted-foreground">{t("lists.myListsDescription")}</p>
                 </div>
-                {activeTab === MY_LISTS_TAB && (
+                {activeTab === MY_LISTS_TAB ? (
                     <Button onClick={() => setIsModalOpen(true)} className="cursor-pointer">
                         <Plus className="mr-1 h-4 w-4" />
-                        Yeni Liste Oluştur
+                        {t("lists.createNew")}
                     </Button>
-                )}
+                ) : null}
             </div>
 
             <Separator />
 
-            {/* Tabs Yapısı */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-5">
-                    <TabsList className="grid w-full sm:w-auto grid-cols-2">
+                <div className="mb-5 flex flex-col items-center justify-between gap-4 sm:flex-row">
+                    <TabsList className="grid w-full grid-cols-2 sm:w-auto">
                         <TabsTrigger className="cursor-pointer" value={MY_LISTS_TAB}>
-                            Benim Listelerim
+                            {t("lists.myListsTab")}
                         </TabsTrigger>
                         <TabsTrigger className="cursor-pointer" value={FOLLOWED_LISTS_TAB}>
-                            Takip Ettiklerim
+                            {t("lists.followedListsTab")}
                         </TabsTrigger>
                     </TabsList>
 
-                    {/* Sağ Taraf: Arama ve Filtreler */}
-                    <div className="flex w-full sm:w-auto flex-col sm:flex-row items-center gap-2">
-                        <Input placeholder="Listelerde ara..." className="w-full sm:w-auto" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                        {/* Kategori Filtresi */}
+                    <div className="flex w-full flex-col items-center gap-2 sm:w-auto sm:flex-row">
+                        <Input placeholder={t("lists.searchPlaceholder")} className="w-full sm:w-auto" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                         <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                            <SelectTrigger className="w-full sm:w-auto min-w-[180px] cursor-pointer">
-                                <SelectValue placeholder="Kategori" />
+                            <SelectTrigger className="min-w-[180px] w-full cursor-pointer sm:w-auto">
+                                <SelectValue placeholder={t("lists.categoryPlaceholder")} />
                             </SelectTrigger>
                             <SelectContent>
                                 {categoryOptions.map((opt) => (
@@ -275,11 +234,10 @@ export default function MyListsPage() {
                                 ))}
                             </SelectContent>
                         </Select>
-                        {/* Görünürlük Filtresi */}
-                        {activeTab === MY_LISTS_TAB && (
+                        {activeTab === MY_LISTS_TAB ? (
                             <Select value={selectedVisibility_MyLists} onValueChange={setSelectedVisibility_MyLists}>
-                                <SelectTrigger className="w-full sm:w-auto min-w-[180px] cursor-pointer">
-                                    <SelectValue placeholder="Görünürlük" />
+                                <SelectTrigger className="min-w-[180px] w-full cursor-pointer sm:w-auto">
+                                    <SelectValue placeholder={t("lists.visibilityPlaceholder")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {visibilityOptions.map((opt) => (
@@ -289,25 +247,24 @@ export default function MyListsPage() {
                                     ))}
                                 </SelectContent>
                             </Select>
-                        )}
+                        ) : null}
                     </div>
                 </div>
 
-                {/* Tab İçerikleri */}
                 <TabsContent value={MY_LISTS_TAB}>
                     {myListsLoading ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                             {Array.from({ length: pageSize_MyLists }).map((_, index) => (
                                 <ListCardSkeleton key={index} />
                             ))}
                         </div>
                     ) : filteredMyLists.length === 0 ? (
-                        <div className="text-center text-muted-foreground py-12">
-                            {debouncedSearchTerm || selectedCategory !== "all" || selectedVisibility_MyLists !== "all" ? "Bu kriterlere uygun liste bulunamadı." : "Henüz hiç liste oluşturmamışsın."}
+                        <div className="py-12 text-center text-muted-foreground">
+                            {debouncedSearchTerm || selectedCategory !== "all" || selectedVisibility_MyLists !== "all" ? t("lists.noListsForCriteria") : t("lists.noMyLists")}
                         </div>
                     ) : (
                         <>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                                 {paginatedMyLists.map((list: UserList) => {
                                     const cardFooter = (
                                         <div className="flex justify-end gap-2">
@@ -315,51 +272,49 @@ export default function MyListsPage() {
                                                 variant="outline"
                                                 size="icon"
                                                 className="h-7 w-7 cursor-pointer"
-                                                aria-label="Listeyi düzenle"
+                                                aria-label={t("lists.editAria")}
                                                 onClick={(e) => {
                                                     e.preventDefault();
                                                     e.stopPropagation();
-                                                    handleEditClick(list);
+                                                    setListToEdit(list);
+                                                    setIsModalOpen(true);
                                                 }}
-                                                disabled={updateListMutation.isPending && listToEdit?.id === list.id}
                                             >
                                                 <Edit className="h-4 w-4" />
                                             </Button>
                                             <Button
                                                 variant="outline"
                                                 size="icon"
-                                                className="h-7 w-7 cursor-pointer text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive"
-                                                aria-label="Listeyi sil"
+                                                className="h-7 w-7 cursor-pointer border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                                aria-label={t("lists.deleteAria")}
                                                 onClick={(e) => {
                                                     e.preventDefault();
                                                     e.stopPropagation();
-                                                    handleDeleteClick(list);
+                                                    setListToDelete(list);
+                                                    setIsDeleteDialogOpen(true);
                                                 }}
-                                                disabled={deleteListMutation.isPending && listToDelete?.id === list.id}
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
                                         </div>
                                     );
+
                                     return (
-                                        <Link key={list.id} href={`/lists/${list.id}`} className="block cursor-pointer">
+                                        <Link key={list.id} href={buildLocalizedPathname(`/lists/${list.id}`, locale)} className="block cursor-pointer">
                                             <ListCard list={list} footer={cardFooter} />
                                         </Link>
                                     );
                                 })}
                             </div>
 
-                            {/* Sayfalama Kontrolleri */}
-                            {totalMyListsCount > 0 && (
-                                <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-                                    <div className="text-sm text-muted-foreground text-center sm:text-left order-1 sm:order-1">
-                                        Toplam {totalMyListsCount} listeden {paginatedMyLists.length} tanesi gösteriliyor.
-                                    </div>
+                            {totalMyListsCount > 0 ? (
+                                <div className="mt-8 flex flex-col items-center justify-between gap-4 sm:flex-row">
+                                    <div className="order-1 text-center text-sm text-muted-foreground sm:text-left">{t("lists.showingCount", { totalCount: totalMyListsCount, shownCount: paginatedMyLists.length })}</div>
                                     <div className="order-3 sm:order-2">
                                         <DataPagination page={page_MyLists} pageSize={pageSize_MyLists} totalCount={totalMyListsCount} onPageChange={setPage_MyLists} />
                                     </div>
-                                    <div className="flex items-center gap-2 order-2 sm:order-3">
-                                        <p className="text-sm text-muted-foreground whitespace-nowrap">Sayfa başına:</p>
+                                    <div className="order-2 flex items-center gap-2 sm:order-3">
+                                        <p className="whitespace-nowrap text-sm text-muted-foreground">{t("lists.perPage")}</p>
                                         <Select value={String(pageSize_MyLists)} onValueChange={(value) => setPageSize_MyLists(Number(value))}>
                                             <SelectTrigger className="w-20 cursor-pointer">
                                                 <SelectValue />
@@ -374,40 +329,37 @@ export default function MyListsPage() {
                                         </Select>
                                     </div>
                                 </div>
-                            )}
+                            ) : null}
                         </>
                     )}
                 </TabsContent>
 
                 <TabsContent value={FOLLOWED_LISTS_TAB}>
                     {followedListsLoading ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                             {Array.from({ length: pageSize_Followed }).map((_, index) => (
                                 <ListCardSkeleton key={index} />
                             ))}
                         </div>
                     ) : !followedListsResult || followedListsResult.items.length === 0 ? (
-                        <div className="text-center text-muted-foreground py-12">Takip ettiğin liste bulunamadı veya kriterlere uyan yok.</div>
+                        <div className="py-12 text-center text-muted-foreground">{t("lists.noFollowedLists")}</div>
                     ) : (
                         <>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                                 {followedListsResult.items.map((list) => (
-                                    <Link href={`/lists/${list.id}`} key={list.id} className="block">
+                                    <Link href={buildLocalizedPathname(`/lists/${list.id}`, locale)} key={list.id} className="block">
                                         <ListCard list={list} />
                                     </Link>
                                 ))}
                             </div>
 
-                            {/* Sayfalama Kontrolleri */}
-                            <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-                                <div className="text-sm text-muted-foreground text-center sm:text-left order-1 sm:order-1">
-                                    Toplam {followedListsResult.totalCount} listeden {followedListsResult.items.length} tanesi gösteriliyor.
-                                </div>
+                            <div className="mt-8 flex flex-col items-center justify-between gap-4 sm:flex-row">
+                                <div className="order-1 text-center text-sm text-muted-foreground sm:text-left">{t("lists.showingCount", { totalCount: followedListsResult.totalCount, shownCount: followedListsResult.items.length })}</div>
                                 <div className="order-3 sm:order-2">
                                     <DataPagination page={page_Followed} pageSize={pageSize_Followed} totalCount={followedListsResult.totalCount} onPageChange={setPage_Followed} />
                                 </div>
-                                <div className="flex items-center gap-2 order-2 sm:order-3">
-                                    <p className="text-sm text-muted-foreground whitespace-nowrap">Sayfa başına:</p>
+                                <div className="order-2 flex items-center gap-2 sm:order-3">
+                                    <p className="whitespace-nowrap text-sm text-muted-foreground">{t("lists.perPage")}</p>
                                     <Select value={String(pageSize_Followed)} onValueChange={(value) => setPageSize_Followed(Number(value))}>
                                         <SelectTrigger className="w-20 cursor-pointer">
                                             <SelectValue />
@@ -427,16 +379,19 @@ export default function MyListsPage() {
                 </TabsContent>
             </Tabs>
 
-            {/* Modallar */}
             <ListFormModal
                 isOpen={isModalOpen}
                 onClose={() => {
                     setIsModalOpen(false);
-                    if (!isFormPending) {
-                        setListToEdit(null);
+                    if (!isFormPending) setListToEdit(null);
+                }}
+                onSubmit={(values) => {
+                    if (listToEdit) {
+                        updateListMutation.mutate({ listId: listToEdit.id, data: values });
+                    } else {
+                        createListMutation.mutate(values);
                     }
                 }}
-                onSubmit={handleFormSubmit}
                 isPending={isFormPending}
                 defaultValues={listToEdit}
             />
@@ -444,11 +399,11 @@ export default function MyListsPage() {
                 isOpen={isDeleteDialogOpen}
                 onClose={() => {
                     setIsDeleteDialogOpen(false);
-                    if (!deleteListMutation.isPending) {
-                        setListToDelete(null);
-                    }
+                    if (!deleteListMutation.isPending) setListToDelete(null);
                 }}
-                onConfirm={handleConfirmDelete}
+                onConfirm={() => {
+                    if (listToDelete) deleteListMutation.mutate(listToDelete.id);
+                }}
                 isPending={deleteListMutation.isPending}
                 listName={listToDelete?.name}
             />

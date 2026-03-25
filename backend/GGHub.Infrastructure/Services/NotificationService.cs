@@ -10,9 +10,11 @@ namespace GGHub.Infrastructure.Services
     public class NotificationService : INotificationService
     {
         private readonly GGHubDbContext _context;
-        public NotificationService(GGHubDbContext context)
+        private readonly IHubNotificationService _hubNotificationService;
+        public NotificationService(GGHubDbContext context, IHubNotificationService hubNotificationService)
         {
             _context = context;
+            _hubNotificationService = hubNotificationService;
         }
         public async Task CreateNotificationAsync(int recipientUserId, string message, NotificationType type, string? link = null)
         {
@@ -25,6 +27,21 @@ namespace GGHub.Infrastructure.Services
             };
             await _context.Notifications.AddAsync(notification);
             await _context.SaveChangesAsync();
+
+            // Push real-time notification
+            var notificationDto = new NotificationDto
+            {
+                Id = notification.Id,
+                Message = notification.Message,
+                Link = notification.Link,
+                IsRead = false,
+                CreatedAt = notification.CreatedAt
+            };
+            await _hubNotificationService.SendNotificationAsync(recipientUserId, notificationDto);
+
+            // Update unread notification count
+            var unreadCount = await GetUnreadCountAsync(recipientUserId);
+            await _hubNotificationService.UpdateUnreadNotificationCountAsync(recipientUserId, unreadCount);
         }
         public async Task<IEnumerable<NotificationDto>> GetUserNotificationsAsync(int userId)
         {

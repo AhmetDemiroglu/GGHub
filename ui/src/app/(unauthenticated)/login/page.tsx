@@ -1,59 +1,60 @@
 "use client";
 
-import { useForm } from "react-hook-form";
-import { useEffect, useRef, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { Suspense, useEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { useMutation } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { AxiosError } from "axios";
+import { X } from "lucide-react";
 import { login as loginApi } from "@/api/auth/auth.api";
-import { useAuth } from "@core/hooks/use-auth";
 import { UserForLogin } from "@/models/auth/auth.model";
+import { useAuth } from "@core/hooks/use-auth";
 import { toast } from "sonner";
+import { buildLocalizedPathname } from "@/i18n/config";
+import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 import { Button } from "@/core/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/core/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/core/components/ui/form";
 import { Input } from "@/core/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/core/components/ui/card";
-import { X } from "lucide-react";
-import Link from "next/link";
-import { AxiosError } from "axios";
-
-const formSchema = z.object({
-    email: z.string().min(1, { message: "E-posta veya kullanıcı adı boş bırakılamaz." }),
-    password: z.string().min(1, { message: "Şifre boş bırakılamaz." }),
-});
 
 function LoginPageContent() {
+    const t = useI18n();
+    const locale = useCurrentLocale();
     const router = useRouter();
     const searchParams = useSearchParams();
     const { login: authLogin } = useAuth();
-    const returnUrl = useRef(searchParams.get("returnUrl") || "/");
+    const returnUrl = useRef(searchParams.get("returnUrl") || buildLocalizedPathname("/", locale));
+
+    const formSchema = z.object({
+        email: z.string().min(1, { message: t("auth.validation.emailOrUsernameRequired") }),
+        password: z.string().min(1, { message: t("auth.validation.passwordRequired") }),
+    });
 
     useEffect(() => {
         const isRegistered = searchParams.get("registered");
         const isVerified = searchParams.get("verified");
 
-        let toastId: string | number | undefined = undefined;
-
         if (isVerified === "true") {
-            toastId = toast.success("Hesap Doğrulandı!", {
-                description: "E-posta adresiniz başarıyla doğrulandı. Lütfen giriş yapın.",
+            toast.success(t("auth.accountVerifiedTitle"), {
+                description: t("auth.accountVerifiedDescription"),
             });
         } else if (isVerified === "false") {
-            toastId = toast.error("Doğrulama Başarısız", {
-                description: "Doğrulama linki geçersiz veya süresi dolmuş.",
+            toast.error(t("auth.accountVerificationFailedTitle"), {
+                description: t("auth.accountVerificationFailedDescription"),
             });
         } else if (isRegistered === "true") {
-            toastId = toast.success("Kayıt başarılı!", {
-                description: "Doğrulama linki e-posta adresinize gönderildi.",
+            toast.success(t("auth.registrationSuccessTitle"), {
+                description: t("auth.registrationSuccessDescription"),
             });
+        } else {
+            return;
         }
 
-        if (toastId !== undefined) {
-            router.replace("/login", { scroll: false });
-        }
-    }, [searchParams, router]);
+        router.replace(buildLocalizedPathname("/login", locale), { scroll: false });
+    }, [searchParams, router, locale, t]);
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -63,55 +64,45 @@ function LoginPageContent() {
     const { mutate, isPending } = useMutation({
         mutationFn: (data: UserForLogin) => loginApi(data),
         onSuccess: (response) => {
-            toast.success("Başarıyla giriş yapıldı!");
+            toast.success(t("auth.loginSuccess"));
             authLogin(response.data);
             router.push(returnUrl.current);
         },
         onError: (error: unknown) => {
-            if (error instanceof AxiosError && (error.response as any).isRateLimitError) {
+            if (error instanceof AxiosError && (error.response as { isRateLimitError?: boolean } | undefined)?.isRateLimitError) {
                 return;
             }
 
-            const axiosError = error as AxiosError<any>;
-            const errorMessage = axiosError?.response?.data?.message || (error as Error).message || "Bir hata oluştu. Lütfen tekrar deneyin.";
-            toast.error("Giriş Başarısız", {
+            const axiosError = error as AxiosError<{ message?: string }>;
+            const errorMessage = axiosError?.response?.data?.message || (error as Error).message || t("auth.loginDefaultError");
+            toast.error(t("auth.loginErrorTitle"), {
                 description: errorMessage,
             });
         },
     });
 
-    function onSubmit(values: z.infer<typeof formSchema>) {
-        mutate(values);
-    }
-
     return (
-        <div className="flex items-center justify-center min-h-screen">
-            <Card className="w-[400px] relative">
-                <Link href="/" aria-label="">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="cursor-pointer absolute top-4 right-4 h-6 w-6"
-                        onClick={() => router.back()}
-                        aria-label="Geri Dön"
-                    >
+        <div className="flex min-h-screen items-center justify-center">
+            <Card className="relative w-[400px]">
+                <Link href={buildLocalizedPathname("/", locale)} aria-label={t("auth.backToHome")}>
+                    <Button variant="ghost" size="icon" className="absolute right-4 top-4 h-6 w-6 cursor-pointer" onClick={() => router.back()} aria-label={t("common.back")}>
                         <X className="h-4 w-4" />
                     </Button>
                 </Link>
                 <CardHeader>
-                    <CardTitle>Giriş Yap</CardTitle>
+                    <CardTitle>{t("auth.loginTitle")}</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                        <form onSubmit={form.handleSubmit((values) => mutate(values))} className="space-y-4">
                             <FormField
                                 control={form.control}
                                 name="email"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>E-posta veya Kullanıcı Adı</FormLabel>
+                                        <FormLabel>{t("auth.loginEmailLabel")}</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="ornek@gghub.com veya kullanici_adi" {...field} />
+                                            <Input placeholder={t("auth.loginEmailPlaceholder")} {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -122,7 +113,7 @@ function LoginPageContent() {
                                 name="password"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Şifre</FormLabel>
+                                        <FormLabel>{t("auth.passwordLabel")}</FormLabel>
                                         <FormControl>
                                             <Input type="password" {...field} />
                                         </FormControl>
@@ -131,18 +122,18 @@ function LoginPageContent() {
                                 )}
                             />
                             <div className="text-right">
-                                <Link href="/forgot-password" className="text-sm text-muted-foreground hover:text-primary underline underline-offset-4">
-                                    Şifremi unuttum
+                                <Link href={buildLocalizedPathname("/forgot-password", locale)} className="text-sm text-muted-foreground underline underline-offset-4 hover:text-primary">
+                                    {t("auth.forgotPassword")}
                                 </Link>
                             </div>
 
                             <Button type="submit" className="w-full cursor-pointer" disabled={isPending}>
-                                {isPending ? "Giriş Yapılıyor..." : "Giriş Yap"}
+                                {isPending ? t("auth.loginPending") : t("auth.loginTitle")}
                             </Button>
                             <p className="text-left text-sm text-muted-foreground">
-                                Hesabın yok mu?
-                                <Link href="/register" className="underline font-bold underline-offset-4 hover:text-primary ml-1">
-                                    Kayıt Ol
+                                {t("auth.noAccount")}
+                                <Link href={buildLocalizedPathname("/register", locale)} className="ml-1 font-bold underline underline-offset-4 hover:text-primary">
+                                    {t("auth.createAccount")}
                                 </Link>
                             </p>
                         </form>
@@ -152,6 +143,7 @@ function LoginPageContent() {
         </div>
     );
 }
+
 export default function LoginPage() {
     return (
         <Suspense fallback={<div />}>

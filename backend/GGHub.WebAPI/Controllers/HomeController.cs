@@ -1,4 +1,4 @@
-﻿using GGHub.Application.Interfaces;
+using GGHub.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -24,7 +24,10 @@ namespace GGHub.WebAPI.Controllers
                 ? int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0")
                 : null;
 
-            var content = await _homeService.GetHomeContentAsync(userId);
+            var requestedLanguage = Request.Headers.AcceptLanguage.ToString();
+            var preferTurkish = requestedLanguage.StartsWith("tr", StringComparison.OrdinalIgnoreCase);
+
+            var content = await _homeService.GetHomeContentAsync(userId, preferTurkish);
             return Ok(content);
         }
     }

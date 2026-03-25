@@ -1,7 +1,6 @@
 "use client";
 
 import type { AdminReport } from "@/models/admin/admin.model";
-import { ReportStatus } from "@/models/report/report.model";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/core/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@core/components/ui/table";
 import { Badge } from "@/core/components/ui/badge";
@@ -9,43 +8,35 @@ import Link from "next/link";
 import { Button } from "@core/components/ui/button";
 import { translateReportStatus, getReportStatusVariant } from "@/core/lib/report.utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/core/components/ui/tooltip";
-
-const getStatusVariant = (status: ReportStatus) => {
-    switch (status) {
-        case ReportStatus.Open:
-            return "destructive";
-        case ReportStatus.Resolved:
-            return "default";
-        case ReportStatus.Ignored:
-            return "secondary";
-        default:
-            return "outline";
-    }
-};
+import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
+import { buildLocalizedPathname } from "@/i18n/config";
 
 interface RecentReportsProps {
     reports: AdminReport[];
 }
 
 export const RecentReports = ({ reports }: RecentReportsProps) => {
+    const locale = useCurrentLocale();
+    const t = useI18n();
+
     return (
         <Card className="h-full flex flex-col">
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                    <CardTitle>Bekleyen Raporlar</CardTitle>
-                    <CardDescription>Onay bekleyen son 5 rapor.</CardDescription>
+                    <CardTitle>{t("admin.recentReportsTitle")}</CardTitle>
+                    <CardDescription>{t("admin.recentReportsDescription")}</CardDescription>
                 </div>
                 <Button asChild variant="outline" size="sm">
-                    <Link href="/reports">Tümünü Gör</Link>
+                    <Link href={buildLocalizedPathname("/reports", locale)}>{t("admin.viewAll")}</Link>
                 </Button>
             </CardHeader>
             <CardContent className="flex-1">
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Kullanıcı</TableHead>
-                            <TableHead>Sebep</TableHead>
-                            <TableHead className="text-right">Durum</TableHead>
+                            <TableHead>{t("admin.tableUser")}</TableHead>
+                            <TableHead>{t("admin.tableReason")}</TableHead>
+                            <TableHead className="text-right">{t("admin.tableStatus")}</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -72,7 +63,7 @@ export const RecentReports = ({ reports }: RecentReportsProps) => {
                         ) : (
                             <TableRow>
                                 <TableCell colSpan={3} className="text-center">
-                                    Bekleyen rapor bulunmamaktadır.
+                                    {t("admin.noPendingReports")}
                                 </TableCell>
                             </TableRow>
                         )}

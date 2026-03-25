@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@core/componen
 import { Button } from "@core/components/ui/button";
 import { Input } from "@core/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@core/components/ui/avatar";
-import { Send, X } from "lucide-react";
+import { Send } from "lucide-react";
 import { sendMessage, getMessageThread } from "@/api/messages/messages.api";
 import { MessageDto, MessageForCreationDto } from "@/models/messages/message.model";
 import { useAuth } from "@core/hooks/use-auth";
@@ -13,10 +13,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/tr";
+import "dayjs/locale/en";
 import { getImageUrl } from "@/core/lib/get-image-url";
+import { useI18n, useCurrentLocale } from "@/core/contexts/locale-context";
 
 dayjs.extend(relativeTime);
-dayjs.locale("tr");
 
 interface MessageDialogProps {
     open: boolean;
@@ -30,20 +31,30 @@ export function MessageDialog({ open, onOpenChange, recipientUsername, recipient
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const { user } = useAuth();
     const queryClient = useQueryClient();
+    const t = useI18n();
+    const locale = useCurrentLocale();
     const avatarSrc = getImageUrl(recipientProfileImageUrl);
 
+    useEffect(() => {
+        dayjs.locale(locale === "tr" ? "tr" : "en");
+    }, [locale]);
+
+    // Initial fetch only - SignalR pushes real-time updates
     const { data: messages, isLoading } = useQuery<MessageDto[]>({
         queryKey: ["message-dialog", recipientUsername],
         queryFn: () => getMessageThread(recipientUsername),
         enabled: open,
-        refetchInterval: open ? 5000 : false,
     });
 
     const sendMutation = useMutation({
         mutationFn: (data: MessageForCreationDto) => sendMessage(data),
-        onSuccess: () => {
+        onSuccess: (sentMessage: MessageDto) => {
             setContent("");
-            queryClient.invalidateQueries({ queryKey: ["message-dialog", recipientUsername] });
+            queryClient.setQueryData<MessageDto[]>(["message-dialog", recipientUsername], (old) => {
+                if (!old) return [sentMessage];
+                if (old.some((m) => m.id === sentMessage.id)) return old;
+                return [sentMessage, ...old];
+            });
             scrollToBottom();
         },
     });
@@ -88,7 +99,7 @@ export function MessageDialog({ open, onOpenChange, recipientUsername, recipient
                         </Avatar>
                         <div>
                             <DialogTitle className="text-base">{recipientUsername}</DialogTitle>
-                            <p className="text-xs text-muted-foreground">Mesajlaşma</p>
+                            <p className="text-xs text-muted-foreground">{t("messages.title")}</p>
                         </div>
                     </div>
                 </DialogHeader>
@@ -97,7 +108,7 @@ export function MessageDialog({ open, onOpenChange, recipientUsername, recipient
                 <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
                     {isLoading ? (
                         <div className="flex items-center justify-center h-full">
-                            <p className="text-sm text-muted-foreground">Yükleniyor...</p>
+                            <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
                         </div>
                     ) : messages && messages.length > 0 ? (
                         messages
@@ -123,7 +134,7 @@ export function MessageDialog({ open, onOpenChange, recipientUsername, recipient
 
                                         {isOwnMessage && (
                                             <Avatar className="h-8 w-8 flex-shrink-0">
-                                                <AvatarImage src={getImageUrl(message.senderProfileImageUrl)} alt="Sen" />
+                                                <AvatarImage src={getImageUrl(message.senderProfileImageUrl)} alt={user?.username} />
                                                 <AvatarFallback className="text-xs">{user?.username?.charAt(0).toUpperCase()}</AvatarFallback>
                                             </Avatar>
                                         )}
@@ -132,7 +143,7 @@ export function MessageDialog({ open, onOpenChange, recipientUsername, recipient
                             })
                     ) : (
                         <div className="flex items-center justify-center h-full">
-                            <p className="text-sm text-muted-foreground">Henüz mesaj yok. İlk mesajı gönderin!</p>
+                            <p className="text-sm text-muted-foreground">{t("messages.noMessages")}</p>
                         </div>
                     )}
                     <div ref={messagesEndRef} />
@@ -141,7 +152,7 @@ export function MessageDialog({ open, onOpenChange, recipientUsername, recipient
                 {/* Input */}
                 <div className="px-6 py-4 border-t flex-shrink-0">
                     <div className="flex gap-2">
-                        <Input placeholder="Mesajınızı yazın..." value={content} onChange={(e) => setContent(e.target.value)} onKeyDown={handleKeyPress} disabled={sendMutation.isPending} />
+                        <Input placeholder={t("messages.typeMessage")} value={content} onChange={(e) => setContent(e.target.value)} onKeyDown={handleKeyPress} disabled={sendMutation.isPending} />
                         <Button onClick={handleSend} disabled={!content.trim() || sendMutation.isPending}>
                             <Send className="h-4 w-4" />
                         </Button>

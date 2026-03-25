@@ -11,6 +11,7 @@ import { usePathname } from "next/navigation";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/tr";
+import "dayjs/locale/en";
 import { MessageSquare, ChevronRight, ChevronLeft, Search, X, Loader } from "lucide-react";
 import { useState, useEffect } from "react";
 import { searchMessageableUsers } from "@/api/search/search.api";
@@ -20,14 +21,20 @@ import Link from "next/link";
 import { useAuth } from "@core/hooks/use-auth";
 import { UnauthorizedAccess } from "@core/components/other/unauthorized-access";
 import { getImageUrl } from "@/core/lib/get-image-url";
+import { useI18n, useCurrentLocale } from "@/core/contexts/locale-context";
 
 dayjs.extend(relativeTime);
-dayjs.locale("tr");
 
 export default function MessagesLayout({ children }: { children: React.ReactNode }) {
+    const t = useI18n();
+    const locale = useCurrentLocale();
     const { user, isLoading: isAuthLoading } = useAuth();
     const pathname = usePathname();
     const [sidebarExpanded, setSidebarExpanded] = useState(false);
+
+    useEffect(() => {
+        dayjs.locale(locale === "tr" ? "tr" : "en");
+    }, [locale]);
 
     useEffect(() => {
         const handleResize = () => {
@@ -49,10 +56,10 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
     const [isSearching, setIsSearching] = useState(false);
     const debouncedSearch = useDebounce(searchQuery, 500);
 
+    // Initial fetch only - SignalR pushes real-time conversation updates
     const { data: conversations, isLoading: isConversationsLoading } = useQuery<ConversationDto[]>({
         queryKey: ["conversations"],
         queryFn: getConversations,
-        refetchInterval: 10000,
         enabled: !!user,
     });
 
@@ -86,7 +93,7 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
         );
     }
     if (!user) {
-        return <UnauthorizedAccess title="Mesajlara erişim için giriş yapın" description="Mesajlaşma özelliğini kullanabilmek için bir hesaba sahip olmalısınız." />;
+        return <UnauthorizedAccess title={t("messages.loginRequired")} description={t("messages.loginRequiredDescription")} />;
     }
 
     return (
@@ -94,8 +101,8 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
             {/* Sol Sidebar - Conversations */}
             <div className={`${sidebarExpanded ? "w-80" : "w-20"} border-r bg-card flex flex-col transition-all duration-300`}>
                 {/* Header */}
-                <div className="p-4 border-b flex items-center justify-between flex-shrink-0">
-                    {sidebarExpanded && <h1 className="text-xl font-bold">Mesajlar</h1>}
+                <div className="p-4 border-b flex items-center justify-between shrink-0">
+                    {sidebarExpanded && <h1 className="text-xl font-bold">{t("messages.title")}</h1>}
                     <Button variant="ghost" size="icon" onClick={() => setSidebarExpanded(!sidebarExpanded)} className={!sidebarExpanded ? "mx-auto" : ""}>
                         {sidebarExpanded ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                     </Button>
@@ -105,7 +112,7 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
                 <div className="flex-1 overflow-y-auto">
                     {isConversationsLoading ? (
                         <div className="flex items-center justify-center p-8">
-                            <p className="text-sm text-muted-foreground">{sidebarExpanded ? "Yükleniyor..." : "..."}</p>
+                            <p className="text-sm text-muted-foreground">{sidebarExpanded ? t("common.loading") : "..."}</p>
                         </div>
                     ) : conversations && conversations.length > 0 ? (
                         <div className="divide-y">
@@ -121,7 +128,7 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
                                         className="flex items-center gap-3 p-4 cursor-pointer transition-colors hover:bg-accent/50"
                                         style={{ backgroundColor: active ? "hsl(var(--accent))" : undefined }}
                                     >
-                                        <Avatar className="h-10 w-10 flex-shrink-0">
+                                        <Avatar className="h-10 w-10 shrink-0">
                                             <AvatarImage src={avatarSrc} alt={conversation.partnerUsername} />
                                             <AvatarFallback>{conversation.partnerUsername.charAt(0).toUpperCase()}</AvatarFallback>
                                         </Avatar>
@@ -131,13 +138,13 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center justify-between mb-1">
                                                         <p className="font-semibold text-sm truncate">{conversation.partnerUsername}</p>
-                                                        <span className="text-xs text-muted-foreground flex-shrink-0">{timeAgo}</span>
+                                                        <span className="text-xs text-muted-foreground shrink-0">{timeAgo}</span>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground truncate">{conversation.lastMessage}</p>
                                                 </div>
 
                                                 {conversation.unreadCount > 0 && (
-                                                    <Badge variant="default" className="ml-2 flex-shrink-0">
+                                                    <Badge variant="default" className="ml-2 shrink-0">
                                                         {conversation.unreadCount}
                                                     </Badge>
                                                 )}
@@ -152,18 +159,18 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
                     ) : (
                         <div className="flex flex-col items-center justify-center p-8 text-center space-y-2">
                             <MessageSquare className={`${sidebarExpanded ? "h-12 w-12" : "h-8 w-8"} text-muted-foreground`} />
-                            {sidebarExpanded && <p className="text-sm text-muted-foreground">Henüz mesajlaşma geçmişiniz yok.</p>}
+                            {sidebarExpanded && <p className="text-sm text-muted-foreground">{t("messages.noConversations")}</p>}
                         </div>
                     )}
                 </div>
 
                 {/* Search Section */}
-                <div className="border-t p-4 flex-shrink-0 relative">
+                <div className="border-t p-4 shrink-0 relative">
                     {sidebarExpanded ? (
                         <div className="space-y-2">
                             <div className="relative">
                                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input placeholder="Kullanıcı ara..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 pr-9" />
+                                <Input placeholder={t("messages.searchUsers")} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 pr-9" />
                                 {searchQuery && (
                                     <Button
                                         variant="ghost"
@@ -183,7 +190,7 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
                             {searchQuery.length >= 2 && (
                                 <div className="absolute bottom-full left-4 right-4 mb-2 max-h-48 overflow-y-auto rounded-md border bg-card shadow-lg z-50">
                                     {isSearching ? (
-                                        <div className="p-4 text-center text-xs text-muted-foreground">Aranıyor...</div>
+                                        <div className="p-4 text-center text-xs text-muted-foreground">{t("messages.searching")}</div>
                                     ) : searchResults.length > 0 ? (
                                         <div className="divide-y">
                                             {searchResults.map((result) => {
@@ -198,26 +205,26 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
                                                             setSearchResults([]);
                                                         }}
                                                     >
-                                                        <Avatar className="h-8 w-8 flex-shrink-0">
+                                                        <Avatar className="h-8 w-8 shrink-0">
                                                             <AvatarImage src={avatarSrc} alt={result.title} />
                                                             <AvatarFallback className="text-xs">{result.title.charAt(0).toUpperCase()}</AvatarFallback>
                                                         </Avatar>
                                                         <div className="flex-1 min-w-0">
                                                             <p className="text-sm font-medium truncate">{result.title}</p>
-                                                            <p className="text-xs text-muted-foreground">Mesaj gönder</p>
+                                                            <p className="text-xs text-muted-foreground">{t("messages.sendMessage")}</p>
                                                         </div>
                                                     </Link>
                                                 );
                                             })}
                                         </div>
                                     ) : (
-                                        <div className="p-4 text-center text-xs text-muted-foreground">Kullanıcı bulunamadı</div>
+                                        <div className="p-4 text-center text-xs text-muted-foreground">{t("messages.userNotFound")}</div>
                                     )}
                                 </div>
                             )}
                         </div>
                     ) : (
-                        <Button variant="ghost" size="icon" className="w-full" onClick={() => setSidebarExpanded(true)} title="Kullanıcı ara">
+                        <Button variant="ghost" size="icon" className="w-full" onClick={() => setSidebarExpanded(true)} title={t("messages.searchUsers")}>
                             <Search className="h-5 w-5" />
                         </Button>
                     )}

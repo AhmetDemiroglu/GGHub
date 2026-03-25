@@ -103,6 +103,14 @@ namespace GGHub.Infrastructure.Persistence
                     .WithMany(p => p.MessagesReceived)
                     .HasForeignKey(d => d.RecipientId)
                     .OnDelete(DeleteBehavior.Restrict);
+
+                // Unread count sorgusu için (RecipientId + ReadAt + RecipientDeleted)
+                entity.HasIndex(m => new { m.RecipientId, m.ReadAt, m.RecipientDeleted })
+                    .HasDatabaseName("IX_Messages_RecipientId_ReadAt_RecipientDeleted");
+
+                // Conversations sorgusu için (SenderId + RecipientId + SentAt)
+                entity.HasIndex(m => new { m.SenderId, m.RecipientId, m.SentAt })
+                    .HasDatabaseName("IX_Messages_SenderId_RecipientId_SentAt");
             });
             modelBuilder.Entity<UserBlock>(entity =>
             {
@@ -118,6 +126,21 @@ namespace GGHub.Infrastructure.Persistence
                     .HasForeignKey(d => d.BlockedId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
+            // Notification unread count ve listeleme sorguları için indeksler
+            modelBuilder.Entity<Notification>(entity =>
+            {
+                entity.HasIndex(n => new { n.RecipientUserId, n.IsRead })
+                    .HasDatabaseName("IX_Notifications_RecipientUserId_IsRead");
+
+                entity.HasIndex(n => new { n.RecipientUserId, n.CreatedAt })
+                    .HasDatabaseName("IX_Notifications_RecipientUserId_CreatedAt");
+            });
+
+            // Follow FolloweeId indeksi (takipçi sayısı sorguları için)
+            modelBuilder.Entity<Follow>()
+                .HasIndex(f => f.FolloweeId)
+                .HasDatabaseName("IX_Follows_FolloweeId");
+
             modelBuilder.Entity<UserStats>()
                 .HasOne(us => us.User)
                 .WithOne(u => u.Stats)

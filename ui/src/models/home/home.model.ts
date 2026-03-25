@@ -28,9 +28,17 @@ export interface LeaderboardUser {
     rankChange: number;
 }
 
+export interface SiteStats {
+    totalGames: number;
+    totalUsers: number;
+    totalReviews: number;
+    totalLists: number;
+}
+
 export interface HomeContent {
     heroGames: HomeGame[];
     trendingLocal: HomeGame[];
     newReleases: HomeGame[];
     topGamers: LeaderboardUser[];
+    siteStats: SiteStats;
 }

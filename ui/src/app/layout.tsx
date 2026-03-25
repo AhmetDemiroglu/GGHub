@@ -1,33 +1,25 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import "./globals.css";
-import { ThemeProvider } from "@core/components/base/theme-provider";
-import { Providers } from "@core/components/base/providers";
-import { Toaster } from "@/core/components/ui/sonner";
-import { ThemeToggleButton } from "@core/components/base/theme-toggle-button";
-import NextTopLoader from "nextjs-toploader";
 import Script from "next/script";
-import GAListener from "./ga-listener";
 import { Suspense } from "react";
+import NextTopLoader from "nextjs-toploader";
+import { ThemeProvider } from "@core/components/base/theme-provider";
+import { ThemeToggleButton } from "@core/components/base/theme-toggle-button";
+import { Providers } from "@core/components/base/providers";
+import { LocaleProvider } from "@/core/contexts/locale-context";
+import { Toaster } from "@/core/components/ui/sonner";
+import { getMessages } from "@/i18n";
+import { resolveLocaleFromCookies } from "@/i18n/server";
+import GAListener from "./ga-listener";
+import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
     metadataBase: new URL("https://gghub.social"),
-
-    title: {
-        default: "GGHub",
-        template: "GGHub",
-    },
-
-    description: "Türkiye'nin Oyuncu Sosyal Platformu",
-
+    title: "GGHub",
+    description: "GGHub",
     applicationName: "GGHub",
-
-    alternates: {
-        canonical: "https://gghub.social",
-    },
-
     robots: {
         index: true,
         follow: true,
@@ -39,23 +31,24 @@ export const metadata: Metadata = {
             "max-video-preview": -1,
         },
     },
-
     icons: {
         icon: "/favicon.ico",
         shortcut: "/favicon.ico",
     },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-    const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
-    const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_ID;
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+    const locale = await resolveLocaleFromCookies();
+    const messages = getMessages(locale);
+    const gaId = process.env.NEXT_PUBLIC_GA_ID;
+    const clarityId = process.env.NEXT_PUBLIC_CLARITY_ID;
+
     return (
-        <html lang="tr" suppressHydrationWarning>
+        <html lang={locale} suppressHydrationWarning>
             <head>
-                {/* Google Analytics */}
-                {GA_ID && (
+                {gaId ? (
                     <>
-                        <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />
+                        <Script src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`} strategy="afterInteractive" />
                         <Script
                             id="ga-init"
                             strategy="afterInteractive"
@@ -64,15 +57,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                                     window.dataLayer = window.dataLayer || [];
                                     function gtag(){dataLayer.push(arguments);}
                                     gtag('js', new Date());
-                                    gtag('config', '${GA_ID}', { send_page_view: false });
+                                    gtag('config', '${gaId}', { send_page_view: false });
                                 `,
                             }}
                         />
                     </>
-                )}
+                ) : null}
 
-                {/* Microsoft Clarity */}
-                {CLARITY_ID && (
+                {clarityId ? (
                     <Script
                         id="clarity-init"
                         strategy="afterInteractive"
@@ -82,11 +74,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                                     c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
                                     t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
                                     y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-                                })(window, document, "clarity", "script", "${CLARITY_ID}");
+                                })(window, document, "clarity", "script", "${clarityId}");
                             `,
                         }}
                     />
-                )}
+                ) : null}
             </head>
             <body className={inter.className}>
                 <Suspense fallback={null}>
@@ -97,20 +89,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     initialPosition={0.08}
                     crawlSpeed={200}
                     height={4}
-                    crawl={true}
+                    crawl
                     showSpinner={false}
                     easing="ease"
                     speed={200}
                     shadow="0 0 30px #00D9FF, 0 0 60px #00D9FF, 0 0 90px #00D9FF, 0 0 120px #00D9FF, 0 0 150px #00D9FF"
                 />
-                <Providers>
-                    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-                        <div className="fixed bottom-4 right-4 z-100">
-                            <ThemeToggleButton />
-                        </div>
-                        {children}
-                    </ThemeProvider>
-                </Providers>
+                <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+                    <LocaleProvider locale={locale} messages={messages}>
+                        <Providers locale={locale} messages={messages}>
+                            <div className="fixed bottom-4 right-4 z-100">
+                                <ThemeToggleButton />
+                            </div>
+                            {children}
+                        </Providers>
+                    </LocaleProvider>
+                </ThemeProvider>
                 <Toaster richColors />
             </body>
         </html>

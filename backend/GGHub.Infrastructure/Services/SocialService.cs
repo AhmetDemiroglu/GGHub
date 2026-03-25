@@ -12,11 +12,13 @@ namespace GGHub.Infrastructure.Services
         private readonly GGHubDbContext _context;
         private readonly INotificationService _notificationService;
         private readonly IGamificationService _gamificationService;
-        public SocialService(GGHubDbContext context, INotificationService notificationService, IGamificationService gamificationService)
+        private readonly IHubNotificationService _hubNotificationService;
+        public SocialService(GGHubDbContext context, INotificationService notificationService, IGamificationService gamificationService, IHubNotificationService hubNotificationService)
         {
             _context = context;
             _notificationService = notificationService;
             _gamificationService = gamificationService;
+            _hubNotificationService = hubNotificationService;
         }
         public async Task<bool> FollowUserAsync(int followerId, string followeeUsername)
         {
@@ -126,33 +128,29 @@ namespace GGHub.Infrastructure.Services
                 .Where(f => !f.Follower.IsDeleted)
                 .ToListAsync();
 
-            var result = new List<UserDto>();
-            foreach (var follow in followers)
+            var followerIds = followers.Select(f => f.Follower.Id).ToList();
+
+            // Batch: current user'ın takip ettiği kişileri tek sorguda al
+            var followingSet = currentUserId.HasValue
+                ? (await _context.Follows
+                    .Where(f => f.FollowerId == currentUserId.Value && followerIds.Contains(f.FolloweeId))
+                    .Select(f => f.FolloweeId)
+                    .ToListAsync()).ToHashSet()
+                : new HashSet<int>();
+
+            var result = followers.Select(follow => new UserDto
             {
-                var isFollowing = currentUserId.HasValue &&
-                                 await _context.Follows.AnyAsync(f =>
-                                     f.FollowerId == currentUserId.Value &&
-                                     f.FolloweeId == follow.Follower.Id);
-
-                var canAccessProfile = follow.Follower.ProfileVisibility == ProfileVisibilitySetting.Public ||
-                      follow.Follower.Id == currentUserId ||
-                      (follow.Follower.ProfileVisibility == ProfileVisibilitySetting.Followers &&
-                       currentUserId.HasValue &&
-                       await _context.Follows.AnyAsync(f =>
-                           f.FollowerId == currentUserId.Value &&
-                           f.FolloweeId == follow.Follower.Id));
-
-                result.Add(new UserDto
-                {
-                    Id = follow.Follower.Id,
-                    Username = follow.Follower.Username,
-                    ProfileImageUrl = follow.Follower.ProfileImageUrl,
-                    FirstName = follow.Follower.FirstName,
-                    LastName = follow.Follower.LastName,
-                    IsFollowing = isFollowing,
-                    IsProfileAccessible = canAccessProfile
-                });
-            }
+                Id = follow.Follower.Id,
+                Username = follow.Follower.Username,
+                ProfileImageUrl = follow.Follower.ProfileImageUrl,
+                FirstName = follow.Follower.FirstName,
+                LastName = follow.Follower.LastName,
+                IsFollowing = followingSet.Contains(follow.Follower.Id),
+                IsProfileAccessible = follow.Follower.ProfileVisibility == ProfileVisibilitySetting.Public ||
+                    follow.Follower.Id == currentUserId ||
+                    (follow.Follower.ProfileVisibility == ProfileVisibilitySetting.Followers &&
+                     followingSet.Contains(follow.Follower.Id))
+            }).ToList();
 
             return result;
         }
@@ -168,33 +166,29 @@ namespace GGHub.Infrastructure.Services
                 .Where(f => !f.Followee.IsDeleted)
                 .ToListAsync();
 
-            var result = new List<UserDto>();
-            foreach (var follow in following)
+            var followeeIds = following.Select(f => f.Followee.Id).ToList();
+
+            // Batch: current user'ın takip ettiği kişileri tek sorguda al
+            var followingSet = currentUserId.HasValue
+                ? (await _context.Follows
+                    .Where(f => f.FollowerId == currentUserId.Value && followeeIds.Contains(f.FolloweeId))
+                    .Select(f => f.FolloweeId)
+                    .ToListAsync()).ToHashSet()
+                : new HashSet<int>();
+
+            var result = following.Select(follow => new UserDto
             {
-                var isFollowing = currentUserId.HasValue &&
-                                 await _context.Follows.AnyAsync(f =>
-                                     f.FollowerId == currentUserId.Value &&
-                                     f.FolloweeId == follow.Followee.Id);
-
-                var canAccessProfile = follow.Followee.ProfileVisibility == ProfileVisibilitySetting.Public ||
-                      follow.Followee.Id == currentUserId ||
-                      (follow.Followee.ProfileVisibility == ProfileVisibilitySetting.Followers &&
-                       currentUserId.HasValue &&
-                       await _context.Follows.AnyAsync(f =>
-                           f.FollowerId == currentUserId.Value &&
-                           f.FolloweeId == follow.Followee.Id));
-
-                result.Add(new UserDto
-                {
-                    Id = follow.Followee.Id,
-                    Username = follow.Followee.Username,
-                    ProfileImageUrl = follow.Followee.ProfileImageUrl,
-                    FirstName = follow.Followee.FirstName,
-                    LastName = follow.Followee.LastName,
-                    IsFollowing = isFollowing,
-                    IsProfileAccessible = canAccessProfile
-                });
-            }
+                Id = follow.Followee.Id,
+                Username = follow.Followee.Username,
+                ProfileImageUrl = follow.Followee.ProfileImageUrl,
+                FirstName = follow.Followee.FirstName,
+                LastName = follow.Followee.LastName,
+                IsFollowing = followingSet.Contains(follow.Followee.Id),
+                IsProfileAccessible = follow.Followee.ProfileVisibility == ProfileVisibilitySetting.Public ||
+                    follow.Followee.Id == currentUserId ||
+                    (follow.Followee.ProfileVisibility == ProfileVisibilitySetting.Followers &&
+                     followingSet.Contains(follow.Followee.Id))
+            }).ToList();
 
             return result;
         }
@@ -240,45 +234,70 @@ namespace GGHub.Infrastructure.Services
 
             var sender = await _context.Users.FindAsync(senderId);
 
-            return new MessageDto
+            var result = new MessageDto
             {
                 Id = message.Id,
                 SenderId = senderId,
                 SenderUsername = sender!.Username,
+                SenderProfileImageUrl = sender.ProfileImageUrl,
                 RecipientId = recipient.Id,
                 RecipientUsername = recipient.Username,
+                RecipientProfileImageUrl = recipient.ProfileImageUrl,
                 Content = message.Content,
                 SentAt = message.SentAt,
                 ReadAt = message.ReadAt
             };
+
+            // Push real-time events to recipient
+            await _hubNotificationService.SendMessageAsync(recipient.Id, result);
+
+            // Update unread message count for recipient
+            var recipientUnreadCount = await GetUnreadMessageCountAsync(recipient.Id);
+            await _hubNotificationService.UpdateUnreadMessageCountAsync(recipient.Id, recipientUnreadCount);
+
+            // Update conversation list for both sender and recipient
+            var senderConversation = new ConversationDto
+            {
+                PartnerId = recipient.Id,
+                PartnerUsername = recipient.Username,
+                PartnerProfileImageUrl = recipient.ProfileImageUrl,
+                LastMessage = message.Content,
+                LastMessageSentAt = message.SentAt,
+                UnreadCount = 0
+            };
+            await _hubNotificationService.UpdateConversationAsync(senderId, senderConversation);
+
+            var recipientConversation = new ConversationDto
+            {
+                PartnerId = senderId,
+                PartnerUsername = sender.Username,
+                PartnerProfileImageUrl = sender.ProfileImageUrl,
+                LastMessage = message.Content,
+                LastMessageSentAt = message.SentAt,
+                UnreadCount = recipientUnreadCount
+            };
+            await _hubNotificationService.UpdateConversationAsync(recipient.Id, recipientConversation);
+
+            return result;
         }
         public async Task<IEnumerable<ConversationDto>> GetConversationsAsync(int userId)
         {
-            var messages = await _context.Messages
-                .Include(m => m.Sender)
-                .Include(m => m.Recipient)
-                .Where(m => m.SenderId == userId || m.RecipientId == userId)
-                .OrderByDescending(m => m.SentAt)
-                .ToListAsync();
-
-            var conversations = messages
+            // DB tarafında gruplama — tüm mesajları belleğe çekmek yerine
+            var conversations = await _context.Messages
+                .Where(m => (m.SenderId == userId && !m.SenderDeleted) ||
+                            (m.RecipientId == userId && !m.RecipientDeleted))
                 .GroupBy(m => m.SenderId == userId ? m.RecipientId : m.SenderId)
-                .Select(g =>
+                .Select(g => new ConversationDto
                 {
-                    var lastMessage = g.First();
-                    var partner = lastMessage.SenderId == userId ? lastMessage.Recipient : lastMessage.Sender;
-
-                    return new ConversationDto
-                    {
-                        PartnerId = partner.Id,
-                        PartnerUsername = partner.Username,
-                        PartnerProfileImageUrl = partner.ProfileImageUrl,
-                        LastMessage = lastMessage.Content,
-                        LastMessageSentAt = lastMessage.SentAt,
-                        UnreadCount = g.Count(m => m.RecipientId == userId && m.ReadAt == null)
-                    };
+                    PartnerId = g.Key,
+                    PartnerUsername = _context.Users.Where(u => u.Id == g.Key).Select(u => u.Username).FirstOrDefault() ?? "",
+                    PartnerProfileImageUrl = _context.Users.Where(u => u.Id == g.Key).Select(u => u.ProfileImageUrl).FirstOrDefault(),
+                    LastMessage = g.OrderByDescending(m => m.SentAt).Select(m => m.Content).FirstOrDefault() ?? "",
+                    LastMessageSentAt = g.Max(m => m.SentAt),
+                    UnreadCount = g.Count(m => m.RecipientId == userId && m.ReadAt == null)
                 })
-                .OrderByDescending(c => c.LastMessageSentAt);
+                .OrderByDescending(c => c.LastMessageSentAt)
+                .ToListAsync();
 
             return conversations;
         }
@@ -320,6 +339,17 @@ namespace GGHub.Infrastructure.Services
                     message.ReadAt = DateTime.UtcNow;
                 }
                 await _context.SaveChangesAsync();
+
+                // Notify the sender that their messages have been read
+                var reader = await _context.Users.FindAsync(userId);
+                if (reader != null)
+                {
+                    await _hubNotificationService.MessageReadAsync(partner.Id, reader.Username);
+                }
+
+                // Update unread message count for the reader
+                var readerUnreadCount = await GetUnreadMessageCountAsync(userId);
+                await _hubNotificationService.UpdateUnreadMessageCountAsync(userId, readerUnreadCount);
             }
 
             return messages;

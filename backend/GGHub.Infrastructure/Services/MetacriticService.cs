@@ -1,26 +1,24 @@
-﻿using GGHub.Application.Interfaces;
+using GGHub.Application.Interfaces;
 using Microsoft.Extensions.Logging;
-using System.Text.RegularExpressions;
-using System.Web;
+using System.Text.Json;
 
 namespace GGHub.Infrastructure.Services
 {
     public class MetacriticService : IMetacriticService
     {
+        public const string StatusSuccess = "success";
+        public const string StatusNoResults = "no_results";
+        public const string StatusNoScore = "no_score";
+        public const string StatusTimeout = "timeout";
+        public const string StatusHttpError = "http_error";
+        public const string StatusParseError = "parse_error";
+        public const string StatusException = "exception";
+
         private readonly HttpClient _httpClient;
         private readonly ILogger<MetacriticService> _logger;
         private static readonly object _rateLimitLock = new();
         private static DateTime _lastRequestTime = DateTime.MinValue;
-        private const int REQUEST_DELAY_MS = 3000; 
-
-        private readonly string[] _userAgents = new[]
-        {
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0",
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/122.0.0.0 Safari/537.36"
-        };
+        private const int RequestDelayMs = 3000;
 
         public MetacriticService(IHttpClientFactory httpClientFactory, ILogger<MetacriticService> logger)
         {
@@ -36,56 +34,62 @@ namespace GGHub.Infrastructure.Services
             try
             {
                 var searchQuery = Uri.EscapeDataString(gameName);
-                var searchUrl = $"https://www.metacritic.com/search/{searchQuery}/?page=1&category=13";
-
-                using var request = new HttpRequestMessage(HttpMethod.Get, searchUrl);
-
-                var randomAgent = _userAgents[Random.Shared.Next(_userAgents.Length)];
-                request.Headers.TryAddWithoutValidation("User-Agent", randomAgent);
-                request.Headers.TryAddWithoutValidation("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
-                request.Headers.TryAddWithoutValidation("Accept-Language", "en-US,en;q=0.9");
-                request.Headers.TryAddWithoutValidation("Referer", "https://www.google.com/");
+                var searchUrl = $"https://backend.metacritic.com/finder/metacritic/search/{searchQuery}/web?offset=0&limit=30&mcoTypeId=13&sortBy=&sortDirection=DESC&componentName=search&componentDisplayName=Search&componentType=SearchResults";
 
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
 
                 try
                 {
-                    using var response = await _httpClient.SendAsync(request, cts.Token);
+                    using var response = await _httpClient.GetAsync(searchUrl, cts.Token);
 
                     _logger.LogDebug("[Metacritic] Status: {StatusCode} for {Url}", response.StatusCode, searchUrl);
 
                     if (!response.IsSuccessStatusCode)
                     {
                         _logger.LogWarning("[Metacritic] Failed: {StatusCode} for '{GameName}'", response.StatusCode, gameName);
-                        return null;
+                        return new MetacriticResult { DebugInfo = StatusHttpError };
                     }
 
-                    var html = await response.Content.ReadAsStringAsync(cts.Token);
-                    var results = ParseSearchResults(html);
+                    var json = await response.Content.ReadAsStringAsync(cts.Token);
+                    var parsedResults = ParseSearchResults(json);
 
-                    if (!results.Any())
+                    if (!parsedResults.Any())
                     {
-                        _logger.LogWarning("[Metacritic] HTML received but Regex found nothing for '{GameName}'. Len: {Len}", gameName, html.Length);
-                        return null;
+                        _logger.LogWarning("[Metacritic] Search returned no results for '{GameName}'. Len: {Len}", gameName, json.Length);
+                        return new MetacriticResult { DebugInfo = StatusNoResults };
                     }
 
-                    var bestMatch = FindBestMatch(results, gameName, releaseDate);
+                    var bestMatch = FindBestMatch(parsedResults, releaseDate);
 
-                    if (bestMatch != null)
-                        _logger.LogInformation("[Metacritic] Found '{GameName}': {Score}", gameName, bestMatch.Score);
+                    if (bestMatch == null)
+                    {
+                        _logger.LogWarning("[Metacritic] Could not choose a match for '{GameName}'.", gameName);
+                        return new MetacriticResult { DebugInfo = StatusParseError };
+                    }
+
+                    if (bestMatch.Score.HasValue)
+                    {
+                        _logger.LogInformation("[Metacritic] Found '{GameName}': {Score}", gameName, bestMatch.Score.Value);
+                        bestMatch.DebugInfo = StatusSuccess;
+                    }
+                    else
+                    {
+                        _logger.LogInformation("[Metacritic] Found result but no metascore for '{GameName}'.", gameName);
+                        bestMatch.DebugInfo = StatusNoScore;
+                    }
 
                     return bestMatch;
                 }
                 catch (OperationCanceledException)
                 {
                     _logger.LogError("[Metacritic] TIMEOUT (30s limit) for '{GameName}'. Server did not respond in time.", gameName);
-                    return null;
+                    return new MetacriticResult { DebugInfo = StatusTimeout };
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[Metacritic] General Error for '{GameName}'", gameName);
-                return null;
+                return new MetacriticResult { DebugInfo = StatusException };
             }
         }
 
@@ -96,53 +100,97 @@ namespace GGHub.Infrastructure.Services
             lock (_rateLimitLock)
             {
                 var elapsed = DateTime.UtcNow - _lastRequestTime;
-                if (elapsed.TotalMilliseconds < REQUEST_DELAY_MS)
+                if (elapsed.TotalMilliseconds < RequestDelayMs)
                 {
-                    delayNeeded = REQUEST_DELAY_MS - (int)elapsed.TotalMilliseconds;
+                    delayNeeded = RequestDelayMs - (int)elapsed.TotalMilliseconds;
                 }
                 _lastRequestTime = DateTime.UtcNow.AddMilliseconds(delayNeeded);
             }
-            if (delayNeeded > 0) await Task.Delay(delayNeeded);
+
+            if (delayNeeded > 0)
+            {
+                await Task.Delay(delayNeeded);
+            }
         }
 
-        private List<MetacriticResult> ParseSearchResults(string html)
+        private List<MetacriticResult> ParseSearchResults(string json)
         {
             var results = new List<MetacriticResult>();
-            var itemPattern = new Regex(
-                @"<a\s+href=""(/game/[^""]+)""\s+data-testid=""search-result-item""[^>]*>.*?" +
-                @"data-testid=""product-release-date""[^>]*>\s*([^<]+)\s*</span>.*?" +
-                @"data-testid=""product-metascore""[^>]*>.*?<span[^>]*>(\d+)</span>",
-                RegexOptions.Singleline | RegexOptions.IgnoreCase
-            );
 
-            var matches = itemPattern.Matches(html);
-            foreach (Match match in matches)
+            try
             {
-                if (match.Groups.Count >= 4 && int.TryParse(match.Groups[3].Value.Trim(), out int score))
+                using var document = JsonDocument.Parse(json);
+                if (!document.RootElement.TryGetProperty("data", out var dataElement) ||
+                    !dataElement.TryGetProperty("items", out var itemsElement) ||
+                    itemsElement.ValueKind != JsonValueKind.Array)
                 {
+                    return results;
+                }
+
+                foreach (var item in itemsElement.EnumerateArray())
+                {
+                    var relativeUrl = string.Empty;
+                    int? score = null;
+
+                    if (item.TryGetProperty("criticScoreSummary", out var scoreSummaryElement) &&
+                        scoreSummaryElement.ValueKind == JsonValueKind.Object)
+                    {
+                        if (scoreSummaryElement.TryGetProperty("url", out var urlElement))
+                        {
+                            relativeUrl = urlElement.GetString() ?? string.Empty;
+                        }
+
+                        if (scoreSummaryElement.TryGetProperty("score", out var scoreElement) &&
+                            scoreElement.ValueKind == JsonValueKind.Number &&
+                            scoreElement.TryGetInt32(out var parsedScore))
+                        {
+                            score = parsedScore;
+                        }
+                    }
+
+                    if (string.IsNullOrWhiteSpace(relativeUrl))
+                    {
+                        continue;
+                    }
+
+                    var parsedReleaseDate = item.TryGetProperty("releaseDate", out var releaseDateElement)
+                        ? releaseDateElement.GetString()
+                        : null;
+
                     results.Add(new MetacriticResult
                     {
                         Score = score,
-                        Url = $"https://www.metacritic.com{match.Groups[1].Value.Trim()}",
-                        ReleaseDate = match.Groups[2].Value.Trim()
+                        Url = $"https://www.metacritic.com{relativeUrl}",
+                        ReleaseDate = parsedReleaseDate
                     });
                 }
             }
+            catch (JsonException)
+            {
+                return results;
+            }
+
             return results;
         }
 
-        private MetacriticResult? FindBestMatch(List<MetacriticResult> results, string gameName, string? releaseDate)
+        private MetacriticResult? FindBestMatch(List<MetacriticResult> results, string? releaseDate)
         {
-            if (!results.Any()) return null;
-            if (string.IsNullOrEmpty(releaseDate) || !DateTime.TryParse(releaseDate, out DateTime targetDate))
+            if (!results.Any())
+            {
+                return null;
+            }
+
+            if (string.IsNullOrEmpty(releaseDate) || !DateTime.TryParse(releaseDate, out var targetDate))
+            {
                 return results.First();
+            }
 
             MetacriticResult? bestMatch = null;
-            int bestDaysDiff = int.MaxValue;
+            var bestDaysDiff = int.MaxValue;
 
             foreach (var result in results)
             {
-                if (TryParseMetacriticDate(result.ReleaseDate, out DateTime resultDate))
+                if (TryParseMetacriticDate(result.ReleaseDate, out var resultDate))
                 {
                     var daysDiff = Math.Abs((resultDate - targetDate).Days);
                     if (daysDiff < bestDaysDiff)
@@ -152,15 +200,25 @@ namespace GGHub.Infrastructure.Services
                     }
                 }
             }
+
             return (bestMatch != null && bestDaysDiff <= 365) ? bestMatch : results.First();
         }
 
         private bool TryParseMetacriticDate(string? dateStr, out DateTime result)
         {
             result = DateTime.MinValue;
-            if (string.IsNullOrEmpty(dateStr)) return false;
-            var formats = new[] { "MMM d, yyyy", "MMMM d, yyyy", "MMM dd, yyyy", "MMMM dd, yyyy" };
-            return DateTime.TryParseExact(dateStr.Trim(), formats, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out result);
+            if (string.IsNullOrEmpty(dateStr))
+            {
+                return false;
+            }
+
+            var formats = new[] { "yyyy-MM-dd", "MMM d, yyyy", "MMMM d, yyyy", "MMM dd, yyyy", "MMMM dd, yyyy" };
+            return DateTime.TryParseExact(
+                dateStr.Trim(),
+                formats,
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None,
+                out result);
         }
     }
 }

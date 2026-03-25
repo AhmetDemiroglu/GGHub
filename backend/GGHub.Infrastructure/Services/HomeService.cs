@@ -1,8 +1,9 @@
-﻿using GGHub.Application.Dtos;
+using GGHub.Application.Dtos;
 using GGHub.Application.Dtos.Home;
 using GGHub.Application.Interfaces;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using System.Text.Json;
 
 namespace GGHub.Infrastructure.Services
@@ -11,34 +12,49 @@ namespace GGHub.Infrastructure.Services
     {
         private readonly GGHubDbContext _context;
         private readonly IGameService _gameService;
+        private readonly IMemoryCache _cache;
+        private static readonly Random _random = new();
 
-
-        public HomeService(GGHubDbContext context, IGameService gameService)
+        public HomeService(GGHubDbContext context, IGameService gameService, IMemoryCache cache)
         {
             _context = context;
             _gameService = gameService;
+            _cache = cache;
         }
 
-        public async Task<HomeViewModel> GetHomeContentAsync(int? currentUserId)
+        public async Task<HomeViewModel> GetHomeContentAsync(int? currentUserId, bool preferTurkish)
         {
             var viewModel = new HomeViewModel();
             var twoYearsAgo = DateTime.UtcNow.AddYears(-2).ToString("yyyy-MM-dd");
 
-            var heroCandidates = await _context.Games
+            // Hero adaylarını cache'den al (tüm listeyi her istekte DB'den çekmeyi önler)
+            var heroCandidateIds = await _cache.GetOrCreateAsync("hero-candidate-ids", async entry =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30);
+                return await _context.Games
+                    .AsNoTracking()
+                    .Where(g => g.Released != null
+                                && g.BackgroundImage != null
+                                && string.Compare(g.Released, twoYearsAgo) >= 0
+                                && g.Metacritic != null && g.Metacritic >= 75
+                                && g.Rating != null && g.Rating >= 3.80
+                                && (g.AverageRating == 0 || g.AverageRating >= 7.0))
+                    .Select(g => g.Id)
+                    .ToListAsync();
+            });
+
+            // Rastgele 5 ID seç (bellekte shuffle, DB'de değil)
+            var selectedIds = heroCandidateIds!
+                .OrderBy(_ => _random.Next())
+                .Take(5)
+                .ToList();
+
+            var heroGames = await _context.Games
                 .AsNoTracking()
-                .Where(g => g.Released != null
-                            && g.BackgroundImage != null
-                            && string.Compare(g.Released, twoYearsAgo) >= 0
-
-                            && (g.Metacritic != null && g.Metacritic >= 75)
-                            && (g.Rating != null && g.Rating >= 3.80)
-
-                            && (g.AverageRating == 0 || g.AverageRating >= 7.0))
+                .Where(g => selectedIds.Contains(g.Id))
                 .ToListAsync();
 
-            viewModel.HeroGames = heroCandidates
-                .OrderBy(x => Guid.NewGuid())
-                .Take(5)
+            viewModel.HeroGames = heroGames
                 .Select(g =>
                 {
                     var platforms = !string.IsNullOrEmpty(g.PlatformsJson)
@@ -57,31 +73,32 @@ namespace GGHub.Infrastructure.Services
                         RawgRating = g.Rating,
                         GghubRating = g.AverageRating,
                         GghubRatingCount = g.RatingCount,
-                        Description = !string.IsNullOrEmpty(g.DescriptionTr) ? g.DescriptionTr : null,
+                        Description = ResolveDescription(g.Description, g.DescriptionTr, preferTurkish),
                         Platforms = platforms ?? new List<PlatformDto>()
                     };
                 })
                 .ToList();
 
-            // 2. TRENDING LOCAL (Yükselenler)
-            var sevenDaysAgo = DateTime.UtcNow.AddDays(-7);
-
-            var trendingGameIds = await _context.Reviews
-                .AsNoTracking()
-                .Where(r => r.CreatedAt >= sevenDaysAgo)
-                .GroupBy(r => r.GameId)
-                .Select(g => new
-                {
-                    GameId = g.Key,
-                    RecentReviewCount = g.Count(),
-                    RecentAvgRating = g.Average(r => r.Rating)
-                })
-                .Where(x => x.RecentReviewCount >= 1 && x.RecentAvgRating >= 7.0)
-                .OrderByDescending(x => x.RecentReviewCount)
-                .ThenByDescending(x => x.RecentAvgRating)
-                .Take(10)
-                .Select(x => x.GameId)
-                .ToListAsync();
+            // Trending oyunları da cache'le (5 dk) — sık değişmez
+            var trendingGameIds = await _cache.GetOrCreateAsync("trending-game-ids", async entry =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5);
+                return await _context.Reviews
+                    .AsNoTracking()
+                    .GroupBy(r => r.GameId)
+                    .Select(g => new
+                    {
+                        GameId = g.Key,
+                        RecentReviewCount = g.Count(),
+                        RecentAvgRating = g.Average(r => r.Rating)
+                    })
+                    .Where(x => x.RecentReviewCount >= 1 && x.RecentAvgRating >= 7.0)
+                    .OrderByDescending(x => x.RecentReviewCount)
+                    .ThenByDescending(x => x.RecentAvgRating)
+                    .Take(10)
+                    .Select(x => x.GameId)
+                    .ToListAsync();
+            }) ?? new List<int>();
 
             var trending = await _context.Games
                 .AsNoTracking()
@@ -96,40 +113,62 @@ namespace GGHub.Infrastructure.Services
                     MetacriticScore = g.Metacritic,
                     RawgRating = g.Rating,
                     GghubRating = g.AverageRating,
-                    GghubRatingCount = g.RatingCount
+                    GghubRatingCount = g.RatingCount,
+                    Description = ResolveDescription(g.Description, g.DescriptionTr, preferTurkish)
                 })
                 .ToListAsync();
 
-            trending = trendingGameIds
+            viewModel.TrendingLocal = trendingGameIds
                 .Select(id => trending.FirstOrDefault(g => g.Id == id))
                 .Where(g => g != null)
                 .ToList()!;
 
-            viewModel.TrendingLocal = trending;
+            viewModel.TopGamers = await _cache.GetOrCreateAsync("top-gamers", async entry =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(15);
+                return await _context.UserStats
+                    .AsNoTracking()
+                    .Include(s => s.User)
+                    .OrderByDescending(s => s.CurrentXp)
+                    .Take(10)
+                    .Select(s => new LeaderboardDto
+                    {
+                        UserId = s.UserId,
+                        Username = s.User.Username,
+                        ProfileImageUrl = s.User.ProfileImageUrl,
+                        Level = s.CurrentLevel,
+                        Xp = s.CurrentXp,
+                        LevelName = _context.Levels
+                            .Where(l => l.LevelNumber == s.CurrentLevel)
+                            .Select(l => l.Name)
+                            .FirstOrDefault() ?? "Gamer"
+                    })
+                    .ToListAsync();
+            }) ?? new List<LeaderboardDto>();
 
-            // 3. LEADERBOARD
-            var topGamers = await _context.UserStats
-                .AsNoTracking()
-                .Include(s => s.User)
-                .OrderByDescending(s => s.CurrentXp)
-                .Take(5)
-                .Select(s => new LeaderboardDto
+            viewModel.SiteStats = await _cache.GetOrCreateAsync("site-stats", async entry =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
+                return new SiteStatsDto
                 {
-                    UserId = s.UserId,
-                    Username = s.User.Username,
-                    ProfileImageUrl = s.User.ProfileImageUrl,
-                    Level = s.CurrentLevel,
-                    Xp = s.CurrentXp,
-                    LevelName = _context.Levels
-                        .Where(l => l.LevelNumber == s.CurrentLevel)
-                        .Select(l => l.Name)
-                        .FirstOrDefault() ?? "Gamer"
-                })
-                .ToListAsync();
-
-            viewModel.TopGamers = topGamers;
+                    TotalGames = await _context.Games.CountAsync(),
+                    TotalUsers = await _context.Users.CountAsync(),
+                    TotalReviews = await _context.Reviews.CountAsync(),
+                    TotalLists = await _context.UserLists.CountAsync()
+                };
+            });
 
             return viewModel;
+        }
+
+        private static string? ResolveDescription(string? descriptionEn, string? descriptionTr, bool preferTurkish)
+        {
+            if (preferTurkish)
+            {
+                return !string.IsNullOrWhiteSpace(descriptionTr) ? descriptionTr : descriptionEn;
+            }
+
+            return !string.IsNullOrWhiteSpace(descriptionEn) ? descriptionEn : descriptionTr;
         }
     }
 }
