@@ -1,10 +1,9 @@
-﻿using GGHub.Application.Dtos;
+using GGHub.Application.Dtos;
 using GGHub.Application.Interfaces;
+using GGHub.Infrastructure.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System;
 using System.Security.Claims;
-using System.Threading.Tasks;
 
 namespace GGHub.WebAPI.Controllers
 {
@@ -56,11 +55,12 @@ namespace GGHub.WebAPI.Controllers
             catch (KeyNotFoundException ex) { return NotFound(ex.Message); }
             catch (UnauthorizedAccessException ex)
             {
-                if (currentUserId == null)
+                if (currentUserId == null)
                 {
                     return Unauthorized(new { message = ex.Message });
                 }
-                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
         }
 
@@ -82,6 +82,7 @@ namespace GGHub.WebAPI.Controllers
                 return Forbid(ex.Message);
             }
         }
+
         [HttpPut("{commentId}")]
         public async Task<IActionResult> UpdateComment(int commentId, [FromBody] UserListCommentForUpdateDto dto)
         {
@@ -89,8 +90,12 @@ namespace GGHub.WebAPI.Controllers
             try
             {
                 var success = await _commentService.UpdateCommentAsync(commentId, userId, dto);
-                if (success) return NoContent();
-                return BadRequest("Yorum güncellenemedi.");
+                if (success)
+                {
+                    return NoContent();
+                }
+
+                return BadRequest(AppText.Get("comments.updateFailed"));
             }
             catch (KeyNotFoundException ex) { return NotFound(ex.Message); }
             catch (UnauthorizedAccessException ex)
@@ -98,6 +103,7 @@ namespace GGHub.WebAPI.Controllers
                 return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
         }
+
         [HttpDelete("{commentId}")]
         public async Task<IActionResult> DeleteComment(int commentId)
         {
@@ -105,8 +111,12 @@ namespace GGHub.WebAPI.Controllers
             try
             {
                 var success = await _commentService.DeleteCommentAsync(commentId, userId);
-                if (success) return NoContent();
-                return BadRequest("Yorum silinemedi.");
+                if (success)
+                {
+                    return NoContent();
+                }
+
+                return BadRequest(AppText.Get("comments.deleteFailed"));
             }
             catch (KeyNotFoundException ex) { return NotFound(ex.Message); }
             catch (UnauthorizedAccessException ex)
@@ -114,6 +124,7 @@ namespace GGHub.WebAPI.Controllers
                 return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
         }
+
         [HttpPost("{commentId}/vote")]
         public async Task<IActionResult> VoteOnComment(int commentId, [FromBody] UserListCommentVoteDto dto)
         {
@@ -121,8 +132,12 @@ namespace GGHub.WebAPI.Controllers
             try
             {
                 var success = await _commentService.VoteOnCommentAsync(commentId, userId, dto);
-                if (success) return Ok();
-                return BadRequest("Oylama işlemi başarısız.");
+                if (success)
+                {
+                    return Ok();
+                }
+
+                return BadRequest(AppText.Get("comments.voteFailed"));
             }
             catch (KeyNotFoundException ex) { return NotFound(ex.Message); }
             catch (UnauthorizedAccessException ex)

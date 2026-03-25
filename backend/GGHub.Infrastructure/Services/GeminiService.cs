@@ -13,7 +13,7 @@ namespace GGHub.Infrastructure.Services
         public GeminiService(HttpClient httpClient, IConfiguration configuration)
         {
             _httpClient = httpClient;
-            _apiKey = configuration["Gemini:ApiKey"] ?? throw new ArgumentNullException("Gemini API Key bulunamadı.");
+            _apiKey = configuration["Gemini:ApiKey"] ?? throw new ArgumentNullException(GGHub.Infrastructure.Localization.AppText.Get("config.geminiApiKeyMissing"));
         }
 
         public async Task<string> TranslateHtmlDescriptionAsync(string englishText)

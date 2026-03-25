@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import {
     AlertDialog,
-    AlertDialogAction,
     AlertDialogCancel,
     AlertDialogContent,
     AlertDialogDescription,
@@ -20,6 +19,7 @@ import { Button } from "@/core/components/ui/button";
 
 import { reportComment, reportList, reportReview, reportUser } from "@/api/report/report.api";
 import type { ReportForCreation } from "@/models/report/report.model";
+import { useI18n } from "@/core/contexts/locale-context";
 
 export type ReportableEntityType = "Review" | "User" | "List" | "Comment";
 
@@ -31,6 +31,7 @@ interface ReportDialogProps {
 }
 
 export const ReportDialog = ({ isOpen, onOpenChange, entityType, entityId }: ReportDialogProps) => {
+    const t = useI18n();
     const [reason, setReason] = React.useState("");
     const getReportMutationFn = () => {
         switch (entityType) {
@@ -43,21 +44,21 @@ export const ReportDialog = ({ isOpen, onOpenChange, entityType, entityId }: Rep
             case "Comment":
                 return (data: ReportForCreation) => reportComment(entityId, data);
             default:
-                throw new Error("Geçersiz rapor türü");
+                throw new Error(t("report.dialog.invalidType"));
         }
     };
 
     const { mutate: reportMutate, isPending } = useMutation({
         mutationFn: getReportMutationFn(),
         onSuccess: () => {
-            toast.success("Raporunuz başarıyla gönderildi.");
+            toast.success(t("report.dialog.success"));
             setReason("");
             onOpenChange(false);
         },
     });
     const handleSubmit = () => {
         if (reason.length < 10) {
-            toast.error("Lütfen en az 10 karakterlik bir sebep girin.");
+            toast.error(t("report.dialog.minReasonError"));
             return;
         }
         reportMutate({ reason });
@@ -68,21 +69,30 @@ export const ReportDialog = ({ isOpen, onOpenChange, entityType, entityId }: Rep
         }
         onOpenChange(open);
     };
-    const title = entityType === "User" ? "Kullanıcıyı Raporla" : entityType === "List" ? "Listeyi Raporla" : entityType === "Comment" ? "Yorumu Raporla" : "İncelemeyi Raporla";
+    const titleKey =
+        entityType === "User"
+            ? "report.dialog.title.user"
+            : entityType === "List"
+              ? "report.dialog.title.list"
+              : entityType === "Comment"
+                ? "report.dialog.title.comment"
+                : "report.dialog.title.review";
 
     return (
         <AlertDialog open={isOpen} onOpenChange={handleOpenChange}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertDialogTitle>{title}</AlertDialogTitle>
-                    <AlertDialogDescription>Lütfen bu içeriği neden rapor ettiğinizi açıklayın. Uygunsuz davranışlar ve içerikler moderatörlerimiz tarafından incelenecektir.</AlertDialogDescription>
+                    <AlertDialogTitle>{t(titleKey)}</AlertDialogTitle>
+                    <AlertDialogDescription>{t("report.dialog.description")}</AlertDialogDescription>
                 </AlertDialogHeader>
 
                 <div className="grid w-full gap-1.5 py-2">
-                    <Label htmlFor="reason">Rapor Nedeni (En az 10 karakter)</Label>
+                    <Label htmlFor="reason">
+                        {t("report.dialog.reasonLabel")} <span className="text-muted-foreground">{t("report.dialog.reasonLabelSuffix")}</span>
+                    </Label>
                     <Textarea
                         id="reason"
-                        placeholder="Bu içeriğin platform kurallarını ihlal ettiğini düşünüyorum çünkü..."
+                        placeholder={t("report.dialog.reasonPlaceholder")}
                         value={reason}
                         onChange={(e) => setReason(e.target.value)}
                         disabled={isPending}
@@ -91,10 +101,10 @@ export const ReportDialog = ({ isOpen, onOpenChange, entityType, entityId }: Rep
                 </div>
 
                 <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isPending}>İptal</AlertDialogCancel>
+                    <AlertDialogCancel disabled={isPending}>{t("common.cancel")}</AlertDialogCancel>
                     <Button onClick={handleSubmit} disabled={isPending || reason.length < 10} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer">
                         {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Gönder
+                        {t("common.submit")}
                     </Button>
                 </AlertDialogFooter>
             </AlertDialogContent>

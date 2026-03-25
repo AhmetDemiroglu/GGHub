@@ -2,6 +2,7 @@
 using GGHub.Application.DTOs.Common;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Enums;
+using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -217,7 +218,7 @@ namespace GGHub.Infrastructure.Services
         {
             if (userId == adminUserId)
             {
-                throw new InvalidOperationException("Adminler kendilerini askıya alamaz.");
+                throw new InvalidOperationException(AppText.Get("admin.cannotBanSelf"));
             }
 
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
@@ -256,7 +257,7 @@ namespace GGHub.Infrastructure.Services
         {
             if (userId == adminUserId)
             {
-                throw new InvalidOperationException("Adminler kendi rollerini değiştiremez.");
+                throw new InvalidOperationException(AppText.Get("admin.cannotChangeOwnRole"));
             }
 
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
@@ -267,7 +268,7 @@ namespace GGHub.Infrastructure.Services
 
             if (dto.NewRole != "Admin" && dto.NewRole != "User")
             {
-                throw new InvalidOperationException("Geçersiz rol değeri. Rol 'Admin' veya 'User' olmalıdır.");
+                throw new InvalidOperationException(AppText.Get("admin.invalidRole"));
             }
 
             user.Role = dto.NewRole;

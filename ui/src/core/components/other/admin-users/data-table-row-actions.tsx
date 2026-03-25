@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Row } from "@tanstack/react-table";
-import { Menu, Eye, Ban, CheckCircle, UserX } from "lucide-react";
+import { Menu, Eye, Ban, CheckCircle } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -21,17 +21,21 @@ import { Button } from "@/core/components/ui/button";
 import type { AdminUserSummary, BanUserRequest } from "@/models/admin/admin.model";
 import { banUser, unbanUser } from "@/api/admin/admin.api";
 import { queryClient } from "@core/components/base/providers";
+import { useI18n } from "@/core/contexts/locale-context";
 
 interface DataTableRowActionsProps<TData> {
     row: Row<TData>;
 }
+
 type BanMutationVariables = {
     userId: number;
     data: BanUserRequest;
 };
+
 type UnbanMutationVariables = number;
 
 export function DataTableRowActions<TData>({ row }: DataTableRowActionsProps<TData>) {
+    const t = useI18n();
     const user = row.original as AdminUserSummary;
 
     const [isBanAlertOpen, setIsBanAlertOpen] = React.useState(false);
@@ -44,7 +48,7 @@ export function DataTableRowActions<TData>({ row }: DataTableRowActionsProps<TDa
     const { mutate: banUserMutate, isPending: isBanning } = useMutation({
         mutationFn: (variables: BanMutationVariables) => banUser(variables.userId, variables.data),
         onSuccess: () => {
-            toast.success(`Kullanıcı (${user.username}) askıya alındı.`);
+            toast.success(t("admin.userActions.bannedToast", { username: user.username }));
             invalidateUsersQuery();
         },
     });
@@ -52,14 +56,15 @@ export function DataTableRowActions<TData>({ row }: DataTableRowActionsProps<TDa
     const { mutate: unbanUserMutate, isPending: isUnbanning } = useMutation({
         mutationFn: (userId: UnbanMutationVariables) => unbanUser(userId),
         onSuccess: () => {
-            toast.success(`Kullanıcı (${user.username}) aktifleştirildi.`);
+            toast.success(t("admin.userActions.unbannedToast", { username: user.username }));
             invalidateUsersQuery();
         },
     });
+
     const confirmBan = () => {
         banUserMutate({
             userId: user.id,
-            data: { reason: "Admin tarafından banlandı." },
+            data: { reason: t("admin.userActions.banReason") },
         });
     };
 
@@ -71,7 +76,6 @@ export function DataTableRowActions<TData>({ row }: DataTableRowActionsProps<TDa
 
     return (
         <>
-            {/* 1. Eylemler Menüsü */}
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-8 w-2 p-0 cursor-pointer" disabled={isPending}>
@@ -79,12 +83,12 @@ export function DataTableRowActions<TData>({ row }: DataTableRowActionsProps<TDa
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Eylemler</DropdownMenuLabel>
+                    <DropdownMenuLabel>{t("admin.userActions.actions")}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
                         <Link href={`/users/${user.id}`}>
                             <Eye className="mr-2 h-4 w-4" />
-                            Detayları Görüntüle
+                            {t("admin.userActions.viewDetails")}
                         </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -92,43 +96,41 @@ export function DataTableRowActions<TData>({ row }: DataTableRowActionsProps<TDa
                     {user.isBanned ? (
                         <DropdownMenuItem onClick={() => setIsUnbanAlertOpen(true)} disabled={isPending}>
                             <CheckCircle className="mr-2 h-4 w-4" />
-                            Banı Kaldır
+                            {t("admin.userActions.unbanUser")}
                         </DropdownMenuItem>
                     ) : (
                         <DropdownMenuItem onClick={() => setIsBanAlertOpen(true)} disabled={isPending} variant="destructive">
                             <Ban className="mr-2 h-4 w-4" />
-                            Kullanıcıyı Banla
+                            {t("admin.userActions.banUser")}
                         </DropdownMenuItem>
                     )}
                 </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* 2. YENİ: Banlama Onay Diyalogu */}
             <AlertDialog open={isBanAlertOpen} onOpenChange={setIsBanAlertOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
-                        <AlertDialogDescription>Bu işlem, '{user.username}' kullanıcısını askıya alacak ve platforma girişini engelleyecektir. Devam etmek istiyor musunuz?</AlertDialogDescription>
+                        <AlertDialogTitle>{t("admin.userActions.confirmBanTitle")}</AlertDialogTitle>
+                        <AlertDialogDescription>{t("admin.userActions.confirmBanDescription", { username: user.username })}</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>İptal</AlertDialogCancel>
+                        <AlertDialogCancel>{t("admin.userActions.cancel")}</AlertDialogCancel>
                         <AlertDialogAction onClick={confirmBan} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                            Evet, Askıya Al
+                            {t("admin.userActions.confirmBan")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* 3. YENİ: Ban Kaldırma Onay Diyalogu */}
             <AlertDialog open={isUnbanAlertOpen} onOpenChange={setIsUnbanAlertOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
-                        <AlertDialogDescription>Bu işlem, '{user.username}' kullanıcısının hesabını aktifleştirecek ve platforma giriş yapmasına izin verecektir.</AlertDialogDescription>
+                        <AlertDialogTitle>{t("admin.userActions.confirmUnbanTitle")}</AlertDialogTitle>
+                        <AlertDialogDescription>{t("admin.userActions.confirmUnbanDescription", { username: user.username })}</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>İptal</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmUnban}>Evet, Aktifleştir</AlertDialogAction>
+                        <AlertDialogCancel>{t("admin.userActions.cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmUnban}>{t("admin.userActions.confirmUnban")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

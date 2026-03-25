@@ -1,4 +1,5 @@
-﻿using GGHub.Application.Interfaces;
+using GGHub.Application.Interfaces;
+using GGHub.Infrastructure.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -17,7 +18,6 @@ namespace GGHub.WebAPI.Controllers
             _notificationService = notificationService;
         }
 
-        // Kullanıcının bildirimlerini getir
         [HttpGet]
         public async Task<IActionResult> GetNotifications()
         {
@@ -26,7 +26,6 @@ namespace GGHub.WebAPI.Controllers
             return Ok(notifications);
         }
 
-        // Okunmamış bildirim sayısı
         [HttpGet("unread-count")]
         public async Task<IActionResult> GetUnreadCount()
         {
@@ -35,19 +34,20 @@ namespace GGHub.WebAPI.Controllers
             return Ok(new { count });
         }
 
-        // Tek bildirimi okundu işaretle
         [HttpPut("{id}/mark-read")]
         public async Task<IActionResult> MarkAsRead(int id)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             var success = await _notificationService.MarkAsReadAsync(id, userId);
 
-            if (!success) return NotFound("Bildirim bulunamadı.");
+            if (!success)
+            {
+                return NotFound(AppText.Get("notifications.notificationNotFound"));
+            }
 
             return Ok();
         }
 
-        // Tüm bildirimleri okundu işaretle
         [HttpPut("mark-all-read")]
         public async Task<IActionResult> MarkAllAsRead()
         {

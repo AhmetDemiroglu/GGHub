@@ -3,6 +3,7 @@ using GGHub.Application.DTOs.Common;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
 using GGHub.Core.Enums;
+using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -30,7 +31,7 @@ namespace GGHub.Infrastructure.Services
 
             if (existingList)
             {
-                throw new InvalidOperationException("Bu isimde bir listeniz zaten mevcut.");
+                throw new InvalidOperationException(AppText.Get("lists.nameAlreadyExists"));
             }
 
             var userList = new UserList
@@ -57,12 +58,12 @@ namespace GGHub.Infrastructure.Services
             var list = await _context.UserLists.FirstOrDefaultAsync(l => l.Id == listId);
             if (list == null)
             {
-                throw new KeyNotFoundException("Liste bulunamadı.");
+                throw new KeyNotFoundException(AppText.Get("lists.notFound"));
             }
 
             if (list.UserId != userId)
             {
-                throw new UnauthorizedAccessException("Bu liste üzerinde işlem yapma yetkiniz yok.");
+                throw new UnauthorizedAccessException(AppText.Get("lists.permissionDenied"));
             }
 
             var game = await _gameService.GetOrCreateGameByRawgIdAsync(rawgGameId);
@@ -72,7 +73,7 @@ namespace GGHub.Infrastructure.Services
 
             if (gameAlreadyInList)
             {
-                throw new InvalidOperationException("Bu oyun bu listede zaten mevcut.");
+                throw new InvalidOperationException(AppText.Get("lists.gameAlreadyExists"));
             }
 
             if (list.Type == UserListType.Favorites)
@@ -80,7 +81,7 @@ namespace GGHub.Infrastructure.Services
                 var currentCount = await _context.UserListGames.CountAsync(ulg => ulg.UserListId == listId);
                 if (currentCount >= 5)
                 {
-                    throw new InvalidOperationException("Favori listesine en fazla 5 oyun ekleyebilirsiniz.");
+                    throw new InvalidOperationException(AppText.Get("lists.favoritesLimit"));
                 }
             }
 
@@ -99,7 +100,7 @@ namespace GGHub.Infrastructure.Services
 
             if (followers.Any())
             {
-                var notificationMessage = $"Takip ettiğin '{list.Name}' listesine yeni bir oyun eklendi.";
+                var notificationMessage = AppText.Get("lists.newGameAddedNotification", new Dictionary<string, object?> { ["name"] = list.Name });
                 foreach (var follower in followers)
                 {
                     if (follower.FollowerUserId != list.UserId)
@@ -201,24 +202,24 @@ namespace GGHub.Infrastructure.Services
                 .FirstOrDefaultAsync();
 
             if (listMeta == null)
-                throw new KeyNotFoundException("Liste bulunamadı.");
+                throw new KeyNotFoundException(AppText.Get("lists.notFound"));
 
             if (!currentUserId.HasValue)
             {
                 if (listMeta.Visibility != ListVisibilitySetting.Public)
-                    throw new UnauthorizedAccessException("Bu listeyi görüntülemek için giriş yapmalısınız.");
+                    throw new UnauthorizedAccessException(AppText.Get("lists.loginRequiredToView"));
             }
             else if (listMeta.UserId != currentUserId.Value)
             {
                 if (listMeta.Visibility == ListVisibilitySetting.Private)
-                    throw new UnauthorizedAccessException("Bu listeyi görme yetkiniz yok.");
+                    throw new UnauthorizedAccessException(AppText.Get("lists.viewPermissionDenied"));
 
                 if (listMeta.Visibility == ListVisibilitySetting.Followers)
                 {
                     var isFollowingOwner = await _context.Follows
                         .AnyAsync(f => f.FollowerId == currentUserId.Value && f.FolloweeId == listMeta.UserId);
                     if (!isFollowingOwner)
-                        throw new UnauthorizedAccessException("Bu listeyi sadece sahibinin takipçileri görebilir.");
+                        throw new UnauthorizedAccessException(AppText.Get("lists.followersOnlyView"));
                 }
             }
 
@@ -442,12 +443,12 @@ namespace GGHub.Infrastructure.Services
 
             if (list == null)
             {
-                throw new KeyNotFoundException("Liste bulunamadı.");
+                throw new KeyNotFoundException(AppText.Get("lists.notFound"));
             }
 
             if (list.UserId != userId)
             {
-                throw new UnauthorizedAccessException("Bu liste üzerinde işlem yapma yetkiniz yok.");
+                throw new UnauthorizedAccessException(AppText.Get("lists.permissionDenied"));
             }
 
             var nameExists = await _context.UserLists
@@ -457,7 +458,7 @@ namespace GGHub.Infrastructure.Services
 
             if (nameExists)
             {
-                throw new InvalidOperationException("Bu isimde başka bir listeniz zaten mevcut.");
+                throw new InvalidOperationException(AppText.Get("lists.otherNameAlreadyExists"));
             }
 
             list.Name = dto.Name;
@@ -474,12 +475,12 @@ namespace GGHub.Infrastructure.Services
 
             if (list == null)
             {
-                throw new KeyNotFoundException("Silinecek liste bulunamadı.");
+                throw new KeyNotFoundException(AppText.Get("lists.deleteNotFound"));
             }
 
             if (list.UserId != userId)
             {
-                throw new UnauthorizedAccessException("Bu liste üzerinde işlem yapma yetkiniz yok.");
+                throw new UnauthorizedAccessException(AppText.Get("lists.permissionDenied"));
             }
 
             _context.UserLists.Remove(list);
@@ -504,8 +505,8 @@ namespace GGHub.Infrastructure.Services
                 wishlist = new UserList
                 {
                     UserId = userId,
-                    Name = "İstek Listem",
-                    Description = "Takip ettiğim oyunlar",
+                    Name = AppText.Get("lists.defaultWishlistName"),
+                    Description = AppText.Get("lists.defaultWishlistDescription"),
                     Category = ListCategory.Other,
                     Type = UserListType.Wishlist,
                     Visibility = ListVisibilitySetting.Private,
@@ -663,8 +664,8 @@ namespace GGHub.Infrastructure.Services
                 favoritesList = new UserList
                 {
                     UserId = userId,
-                    Name = "Favori Oyunlarım",
-                    Description = "En sevdiğim, vitrinlik oyunlar.",
+                    Name = AppText.Get("lists.defaultFavoritesName"),
+                    Description = AppText.Get("lists.defaultFavoritesDescription"),
                     Category = ListCategory.Other,
                     Type = UserListType.Favorites,
                     Visibility = ListVisibilitySetting.Public,
@@ -688,7 +689,7 @@ namespace GGHub.Infrastructure.Services
             {
                 if (favoritesList.UserListGames.Count >= 5)
                 {
-                    throw new InvalidOperationException("Favori listesine en fazla 5 oyun ekleyebilirsiniz.");
+                    throw new InvalidOperationException(AppText.Get("lists.favoritesLimit"));
                 }
 
                 await _context.UserListGames.AddAsync(new UserListGame

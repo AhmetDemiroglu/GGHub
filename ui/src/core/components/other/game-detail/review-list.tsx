@@ -1,14 +1,14 @@
 import { getGameReviews, voteReview, deleteReview, updateReview } from "@/api/review/review.api";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient } from "@core/components/base/providers";
-import { Loader2, MessageSquare, Plus } from "lucide-react";
+import { Loader2, MessageSquare, Plus, Search, SortAsc } from "lucide-react";
 import React, { useState } from "react";
 import { toast } from "sonner";
 import { ReviewCard } from "./review-card";
 import { useAuth } from "@/core/hooks/use-auth";
 import { Input } from "@core/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@core/components/ui/select";
-import { Search, SortAsc } from "lucide-react";
+import { useI18n } from "@/core/contexts/locale-context";
 
 interface ReviewListProps {
     gameId: number;
@@ -18,8 +18,8 @@ interface ReviewListProps {
 }
 
 export const ReviewList = ({ gameId, gameName, gameSlug, onAddReview }: ReviewListProps) => {
+    const t = useI18n();
     const { isAuthenticated } = useAuth();
-
     const [searchQuery, setSearchQuery] = useState("");
     const [sortBy, setSortBy] = useState("newest");
 
@@ -29,36 +29,31 @@ export const ReviewList = ({ gameId, gameName, gameSlug, onAddReview }: ReviewLi
     });
 
     const { mutate: submitVote } = useMutation({
-        mutationFn: ({ reviewId, value }: { reviewId: number; value: number }) =>
-            voteReview(reviewId, { value }),
+        mutationFn: ({ reviewId, value }: { reviewId: number; value: number }) => voteReview(reviewId, { value }),
         onSuccess: () => {
-            toast.success("Geri bildiriminiz alındı");
+            toast.success(t("reviewList.voteSuccess"));
         },
-        onError: (error: any) => {
-        }
     });
 
     const { mutate: mutateDelete } = useMutation({
         mutationFn: (reviewId: number) => deleteReview(reviewId),
         onSuccess: () => {
-            toast.success("İnceleme silindi");
+            toast.success(t("reviewList.deleteSuccess"));
             queryClient.invalidateQueries({ queryKey: ["game-reviews", gameId] });
             queryClient.invalidateQueries({ queryKey: ["game", gameSlug] });
             queryClient.invalidateQueries({ queryKey: ["game", gameId.toString()] });
             queryClient.invalidateQueries({ queryKey: ["my-review", gameId] });
         },
-        onError: () => toast.error("Silme işlemi başarısız")
+        onError: () => toast.error(t("reviewList.deleteError")),
     });
 
     const { mutate: mutateUpdate } = useMutation({
-        mutationFn: ({ id, content }: { id: number, content: string }) =>
-            updateReview(id, { content, rating: 0 })
-        ,
+        mutationFn: ({ id, content }: { id: number; content: string }) => updateReview(id, { content, rating: 0 }),
         onSuccess: () => {
-            toast.success("İnceleme güncellendi");
+            toast.success(t("reviewList.updateSuccess"));
             queryClient.invalidateQueries({ queryKey: ["game-reviews", gameId] });
         },
-        onError: () => toast.error("Güncelleme başarısız")
+        onError: () => toast.error(t("reviewList.updateError")),
     });
 
     const filteredReviews = React.useMemo(() => {
@@ -67,10 +62,7 @@ export const ReviewList = ({ gameId, gameName, gameSlug, onAddReview }: ReviewLi
 
         if (searchQuery) {
             const query = searchQuery.toLowerCase();
-            result = result.filter(r =>
-                r.content.toLowerCase().includes(query) ||
-                r.user.username.toLowerCase().includes(query)
-            );
+            result = result.filter((r) => r.content.toLowerCase().includes(query) || r.user.username.toLowerCase().includes(query));
         }
 
         switch (sortBy) {
@@ -93,10 +85,10 @@ export const ReviewList = ({ gameId, gameName, gameSlug, onAddReview }: ReviewLi
 
     const handleDelete = (id: number) => mutateDelete(id);
     const handleUpdate = (id: number, content: string) => {
-        const originalReview = reviews?.find(r => r.id === id);
+        const originalReview = reviews?.find((r) => r.id === id);
         if (originalReview) {
             updateReview(id, { rating: originalReview.rating, content }).then(() => {
-                toast.success("Güncellendi");
+                toast.success(t("reviewList.updateSaved"));
                 queryClient.invalidateQueries({ queryKey: ["game-reviews", gameId] });
             });
         }
@@ -104,7 +96,7 @@ export const ReviewList = ({ gameId, gameName, gameSlug, onAddReview }: ReviewLi
 
     const handleVote = (reviewId: number, value: number) => {
         if (!isAuthenticated) {
-            toast.error("Giriş Yapmalısınız");
+            toast.error(t("reviewList.loginRequired"));
             return;
         }
         submitVote({ reviewId, value });
@@ -124,16 +116,13 @@ export const ReviewList = ({ gameId, gameName, gameSlug, onAddReview }: ReviewLi
                 <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
                     <MessageSquare size={32} className="text-muted-foreground" />
                 </div>
-                <h3 className="text-xl font-bold text-foreground mb-2">Henüz İnceleme Yok</h3>
+                <h3 className="text-xl font-bold text-foreground mb-2">{t("reviewList.emptyTitle")}</h3>
                 <p className="text-muted-foreground max-w-md mx-auto mb-6">
-                    <span className="font-semibold text-foreground">{gameName}</span> hakkında ilk incelemeyi sen yaz ve topluluğa yön ver!
+                    <span className="font-semibold text-foreground">{t("reviewList.emptyDescription", { gameName })}</span>
                 </p>
-                <button
-                    onClick={onAddReview}
-                    className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg font-bold hover:bg-primary/90 transition-all flex items-center gap-2 cursor-pointer"
-                >
+                <button onClick={onAddReview} className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg font-bold hover:bg-primary/90 transition-all flex items-center gap-2 cursor-pointer">
                     <MessageSquare size={18} />
-                    İlk İncelemeyi Yaz
+                    {t("reviewList.writeFirst")}
                 </button>
             </div>
         );
@@ -141,70 +130,46 @@ export const ReviewList = ({ gameId, gameName, gameSlug, onAddReview }: ReviewLi
 
     return (
         <div className="space-y-6">
-            {/* Header ve Filtreler */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                    <h3 className="text-2xl font-bold text-foreground flex items-center gap-3"> {/* text-white -> text-foreground */}
-                        İncelemeler
-                        <span className="text-sm font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full border border-border">
-                            {filteredReviews.length}
-                        </span>
+                    <h3 className="text-2xl font-bold text-foreground flex items-center gap-3">
+                        {t("reviewList.title")}
+                        <span className="text-sm font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full border border-border">{filteredReviews.length}</span>
                     </h3>
 
-                    <button
-                        onClick={onAddReview}
-                        className="text-xs font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                        <Plus size={14} /> İnceleme Yaz
+                    <button onClick={onAddReview} className="text-xs font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer">
+                        <Plus size={14} /> {t("reviewList.write")}
                     </button>
                 </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto">
-                    {/* Arama */}
                     <div className="relative flex-1 md:w-64">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="İncelemelerde ara..."
-                            className="pl-9 bg-card/50 border-zinc-800"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
+                        <Input placeholder={t("reviewList.searchPlaceholder")} className="pl-9 bg-card/50 border-zinc-800" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                     </div>
 
-                    {/* Sıralama */}
                     <Select value={sortBy} onValueChange={setSortBy}>
                         <SelectTrigger className="w-[180px] bg-card/50 border-zinc-800">
                             <div className="flex items-center gap-2">
                                 <SortAsc className="h-4 w-4 text-muted-foreground" />
-                                <SelectValue placeholder="Sıralama" />
+                                <SelectValue placeholder={t("reviewList.sortPlaceholder")} />
                             </div>
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="newest">En Yeniler</SelectItem>
-                            <SelectItem value="helpful">En Yararlılar</SelectItem>
-                            <SelectItem value="highest">En Yüksek Puan</SelectItem>
-                            <SelectItem value="lowest">En Düşük Puan</SelectItem>
+                            <SelectItem value="newest">{t("reviewList.sortNewest")}</SelectItem>
+                            <SelectItem value="helpful">{t("reviewList.sortHelpful")}</SelectItem>
+                            <SelectItem value="highest">{t("reviewList.sortHighest")}</SelectItem>
+                            <SelectItem value="lowest">{t("reviewList.sortLowest")}</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
             </div>
 
-            {/* Liste */}
             <div className="grid gap-6">
                 {filteredReviews.length > 0 ? (
-                    filteredReviews.map((review) => (
-                        <ReviewCard
-                            key={review.id}
-                            review={review}
-                            onVote={handleVote}
-                            onDelete={handleDelete}
-                            onUpdate={handleUpdate}
-                        />
-                    ))
+                    filteredReviews.map((review) => <ReviewCard key={review.id} review={review} onVote={handleVote} onDelete={handleDelete} onUpdate={handleUpdate} />)
                 ) : (
-                    <div className="text-center py-12 text-muted-foreground">
-                        {searchQuery ? "Aradığınız kriterlere uygun inceleme bulunamadı." : "Henüz inceleme yok."}
-                    </div>
+                    <div className="text-center py-12 text-muted-foreground">{searchQuery ? t("reviewList.noResults") : t("reviewList.empty")}</div>
                 )}
             </div>
         </div>

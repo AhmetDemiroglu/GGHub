@@ -7,19 +7,19 @@ import { getImageUrl } from "@/core/lib/get-image-url";
 import { Badge } from "@/core/components/ui/badge";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { DataTableRowActions } from "./data-table-row-actions";
+import { format } from "date-fns";
+import type { Locale } from "date-fns";
 
-export const columns: ColumnDef<AdminUserSummary>[] = [
-    // 1: Eylemler
+type TranslateFn = (key: string, values?: Record<string, string | number>) => string;
+
+export const createUserColumns = (t: TranslateFn, dateLocale: Locale): ColumnDef<AdminUserSummary>[] => [
     {
         id: "actions",
-        cell: ({ row }) => {
-            return <DataTableRowActions row={row} />;
-        },
+        cell: ({ row }) => <DataTableRowActions row={row} />,
     },
-    // 2: Kullanıcı (Avatar + İsim + E-posta)
     {
         accessorKey: "username",
-        header: "Kullanıcı",
+        header: t("admin.columns.user"),
         cell: ({ row }) => {
             const user = row.original;
             return (
@@ -36,51 +36,35 @@ export const columns: ColumnDef<AdminUserSummary>[] = [
             );
         },
     },
-
-    // 3: Rol (Admin/User)
     {
         accessorKey: "role",
-        header: "Rol",
+        header: t("admin.columns.role"),
         cell: ({ row }) => {
             const role = row.original.role;
             return <Badge variant={role === "Admin" ? "default" : "secondary"}>{role}</Badge>;
         },
     },
-
-    // 4: Durum (Banlı/Aktif)
     {
         accessorKey: "isBanned",
-        header: "Durum",
+        header: t("admin.columns.status"),
         cell: ({ row }) => {
             const isBanned = row.original.isBanned;
             return isBanned ? (
                 <Badge variant="destructive" className="flex items-center gap-1.5">
                     <XCircle className="h-3.5 w-3.5" />
-                    Askıda
+                    {t("admin.columns.banned")}
                 </Badge>
             ) : (
                 <Badge variant="outline" className="flex items-center gap-1.5 text-green-600">
                     <CheckCircle2 className="h-3.5 w-3.5" />
-                    Aktif
+                    {t("admin.columns.active")}
                 </Badge>
             );
         },
     },
-
-    // 5: Katılma Tarihi
     {
         accessorKey: "createdAt",
-        header: "Katılma Tarihi",
-        cell: ({ row }) => {
-            return (
-                <span>
-                    {new Date(row.original.createdAt).toLocaleDateString("tr-TR", {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                    })}
-                </span>
-            );
-        },
+        header: t("admin.columns.joinDate"),
+        cell: ({ row }) => <span>{format(new Date(row.original.createdAt), "d MMMM yyyy", { locale: dateLocale })}</span>,
     },
 ];

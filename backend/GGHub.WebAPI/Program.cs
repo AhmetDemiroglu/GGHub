@@ -7,6 +7,7 @@ using GGHub.Infrastructure.Settings;
 using GGHub.WebAPI.Hubs;
 using GGHub.WebAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -17,6 +18,7 @@ using System.Text;
 using System.IO.Compression;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
+using System.Globalization;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -223,6 +225,7 @@ builder.Services.Configure<GzipCompressionProviderOptions>(options =>
 builder.Services.AddMemoryCache();
 
 builder.Services.AddControllers();
+builder.Services.AddLocalization();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -253,6 +256,23 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var app = builder.Build();
+
+var supportedCultures = new[]
+{
+    new CultureInfo("en-US"),
+    new CultureInfo("tr"),
+};
+
+var localizationOptions = new RequestLocalizationOptions
+{
+    DefaultRequestCulture = new RequestCulture("en-US"),
+    SupportedCultures = supportedCultures,
+    SupportedUICultures = supportedCultures,
+};
+localizationOptions.RequestCultureProviders = new List<IRequestCultureProvider>
+{
+    new AcceptLanguageHeaderRequestCultureProvider(),
+};
 
 using (var scope = app.Services.CreateScope())
 {
@@ -317,6 +337,7 @@ if (app.Environment.IsDevelopment())
 app.UseResponseCompression();
 
 app.UseCors(MyAllowSpecificOrigins);
+app.UseRequestLocalization(localizationOptions);
 
 if (app.Environment.IsProduction())
 {

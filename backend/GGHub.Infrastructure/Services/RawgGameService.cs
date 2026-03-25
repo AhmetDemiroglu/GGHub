@@ -4,6 +4,7 @@ using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
 using GGHub.Core.Enums;
 using GGHub.Infrastructure.Dtos;
+using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence; 
 using GGHub.Infrastructure.Settings;
 using Microsoft.EntityFrameworkCore; 
@@ -275,7 +276,7 @@ namespace GGHub.Infrastructure.Services
                 catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
                     if (gameInDb != null) return gameInDb;
-                    if (rawgDto == null) throw new Exception($"RAWG API'sinde {rawgId} ID'li oyun bulunamadı.");
+                    if (rawgDto == null) throw new Exception(AppText.Get("rawg.gameNotFoundById", new Dictionary<string, object?> { ["rawgId"] = rawgId }));
                 }
             }
 

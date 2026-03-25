@@ -1,9 +1,8 @@
-﻿using GGHub.Application.Dtos;
+using GGHub.Application.Dtos;
 using GGHub.Application.Interfaces;
-using GGHub.Infrastructure.Services;
+using GGHub.Infrastructure.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace GGHub.WebAPI.Controllers
@@ -14,15 +13,17 @@ namespace GGHub.WebAPI.Controllers
     public class UserListsController : ControllerBase
     {
         private readonly IUserListService _userListService;
-        private readonly INotificationService _notificationService;
-        private readonly IGameService _gameService;
         private readonly ISocialService _socialService;
         private readonly IProfileService _profileService;
-        public UserListsController(IUserListService userListService, INotificationService notificationService, IGameService gameService, ISocialService socialService, IProfileService profileService)
+
+        public UserListsController(
+            IUserListService userListService,
+            INotificationService notificationService,
+            IGameService gameService,
+            ISocialService socialService,
+            IProfileService profileService)
         {
             _userListService = userListService;
-            _notificationService = notificationService;
-            _gameService = gameService;
             _socialService = socialService;
             _profileService = profileService;
         }
@@ -42,6 +43,7 @@ namespace GGHub.WebAPI.Controllers
                 return BadRequest(ex.Message);
             }
         }
+
         [HttpPost("/api/user-lists/{listId}/games")]
         public async Task<IActionResult> AddGameToList(int listId, AddGameToListDto addGameDto)
         {
@@ -65,13 +67,15 @@ namespace GGHub.WebAPI.Controllers
                 return BadRequest(ex.Message);
             }
         }
+
         [HttpGet("/api/user-lists")]
-        public async Task<IActionResult> GetMyLists([FromQuery] int? gameId = null) 
+        public async Task<IActionResult> GetMyLists([FromQuery] int? gameId = null)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             var lists = await _userListService.GetListsForUserAsync(userId, gameId);
             return Ok(lists);
         }
+
         [HttpGet("{listId}/my-detail")]
         public async Task<IActionResult> GetMyListDetail(int listId)
         {
@@ -80,7 +84,7 @@ namespace GGHub.WebAPI.Controllers
 
             if (list == null)
             {
-                return NotFound("Liste bulunamadı veya bu listeyi görme yetkiniz yok.");
+                return NotFound(AppText.Get("lists.notFoundOrUnauthorized"));
             }
 
             return Ok(list);
@@ -112,6 +116,7 @@ namespace GGHub.WebAPI.Controllers
                 {
                     return Unauthorized(new { message = ex.Message });
                 }
+
                 return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
         }
@@ -137,17 +142,18 @@ namespace GGHub.WebAPI.Controllers
             var targetUserProfile = await _profileService.GetProfileByUsernameAsync(username);
             if (targetUserProfile == null)
             {
-                return NotFound("Kullanıcı bulunamadı.");
+                return NotFound(AppText.Get("common.userNotFound"));
             }
-            int targetUserId = targetUserProfile.Id;
+
+            var targetUserId = targetUserProfile.Id;
 
             var currentUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (currentUserIdClaim == null)
             {
                 return Unauthorized();
             }
-            int currentUserId = int.Parse(currentUserIdClaim.Value);
 
+            var currentUserId = int.Parse(currentUserIdClaim.Value);
             var result = await _userListService.GetFollowedListsByUserAsync(targetUserId, currentUserId, queryParams);
             return Ok(result);
         }
@@ -160,8 +166,8 @@ namespace GGHub.WebAPI.Controllers
             {
                 return Unauthorized();
             }
-            int currentUserId = int.Parse(currentUserIdClaim.Value);
 
+            var currentUserId = int.Parse(currentUserIdClaim.Value);
             var result = await _userListService.GetFollowedListsByUserAsync(currentUserId, currentUserId, queryParams);
             return Ok(result);
         }
@@ -170,7 +176,6 @@ namespace GGHub.WebAPI.Controllers
         public async Task<IActionResult> RemoveGameFromList(int listId, int gameId)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-
             var success = await _userListService.RemoveGameFromListAsync(listId, gameId, userId);
 
             if (!success)
@@ -180,12 +185,13 @@ namespace GGHub.WebAPI.Controllers
 
             return NoContent();
         }
+
         [HttpPost("{listId}/follow")]
         public async Task<IActionResult> FollowList(int listId)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             var success = await _socialService.FollowListAsync(userId, listId);
-            return success ? Ok() : BadRequest("Geçersiz işlem.");
+            return success ? Ok() : BadRequest(AppText.Get("common.invalidAction"));
         }
 
         [HttpDelete("{listId}/follow")]
@@ -193,9 +199,9 @@ namespace GGHub.WebAPI.Controllers
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             var success = await _socialService.UnfollowListAsync(userId, listId);
-            return success ? NoContent() : BadRequest("Geçersiz işlem.");
-
+            return success ? NoContent() : BadRequest(AppText.Get("common.invalidAction"));
         }
+
         [HttpPut("{listId}")]
         public async Task<IActionResult> UpdateList(int listId, [FromBody] UserListForUpdateDto listDto)
         {
@@ -208,7 +214,8 @@ namespace GGHub.WebAPI.Controllers
                 {
                     return NoContent();
                 }
-                return BadRequest("Liste güncellenemedi.");
+
+                return BadRequest(AppText.Get("lists.updateFailed"));
             }
             catch (KeyNotFoundException ex)
             {
@@ -236,7 +243,8 @@ namespace GGHub.WebAPI.Controllers
                 {
                     return NoContent();
                 }
-                return BadRequest("Liste silinemedi.");
+
+                return BadRequest(AppText.Get("lists.deleteFailed"));
             }
             catch (KeyNotFoundException ex)
             {
@@ -247,16 +255,21 @@ namespace GGHub.WebAPI.Controllers
                 return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
         }
+
         [HttpPost("wishlist/{gameId}")]
         [Authorize]
         public async Task<IActionResult> ToggleWishlist(int gameId)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-
             var isAdded = await _userListService.ToggleWishlistAsync(userId, gameId);
 
-            return Ok(new { IsAdded = isAdded, Message = isAdded ? "İstek listesine eklendi" : "İstek listesinden çıkarıldı" });
+            return Ok(new
+            {
+                IsAdded = isAdded,
+                Message = AppText.Get(isAdded ? "lists.wishlistAdded" : "lists.wishlistRemoved"),
+            });
         }
+
         [HttpGet("wishlist/{gameId}/status")]
         [Authorize]
         public async Task<IActionResult> GetWishlistStatus(int gameId)
@@ -280,7 +293,7 @@ namespace GGHub.WebAPI.Controllers
 
             if (currentUserId == null)
             {
-                return Unauthorized(new { message = "Giriş yapılmalı." });
+                return Unauthorized(new { message = AppText.Get("lists.loginRequired") });
             }
 
             var wishlist = await _userListService.GetWishlistForUserAsync(currentUserId.Value);
@@ -295,7 +308,7 @@ namespace GGHub.WebAPI.Controllers
             if (User.Identity != null && User.Identity.IsAuthenticated)
             {
                 var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-                if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int parsedId))
+                if (userIdClaim != null && int.TryParse(userIdClaim.Value, out var parsedId))
                 {
                     currentUserId = parsedId;
                 }
@@ -314,7 +327,11 @@ namespace GGHub.WebAPI.Controllers
             try
             {
                 var isAdded = await _userListService.ToggleFavoriteAsync(userId, gameId);
-                return Ok(new { IsAdded = isAdded, Message = isAdded ? "Favorilere eklendi" : "Favorilerden çıkarıldı" });
+                return Ok(new
+                {
+                    IsAdded = isAdded,
+                    Message = AppText.Get(isAdded ? "lists.favoriteAdded" : "lists.favoriteRemoved"),
+                });
             }
             catch (InvalidOperationException ex)
             {
@@ -339,5 +356,4 @@ namespace GGHub.WebAPI.Controllers
             return Ok(list);
         }
     }
-
 }

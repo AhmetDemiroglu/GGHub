@@ -4,52 +4,38 @@ import { ColumnDef } from "@tanstack/react-table";
 import type { AdminReport } from "@/models/admin/admin.model";
 import { Badge } from "@/core/components/ui/badge";
 import { format } from "date-fns";
-import { tr } from "date-fns/locale";
+import type { Locale } from "date-fns";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/core/components/ui/tooltip";
-import { translateReportStatus, getReportStatusVariant, translateEntityType } from "@/core/lib/report.utils";
+import { getReportStatusVariant } from "@/core/lib/report.utils";
 import Link from "next/link";
 import { Eye } from "lucide-react";
 import { Button } from "@/core/components/ui/button";
 
-export const columns: ColumnDef<AdminReport>[] = [
-    // 1. Sütun: Tarih
+type TranslateFn = (key: string, values?: Record<string, string | number>) => string;
+
+export const createReportColumns = (t: TranslateFn, dateLocale: Locale): ColumnDef<AdminReport>[] => [
     {
         accessorKey: "reportedAt",
-        header: "Tarih",
-        cell: ({ row }) => {
-            return (
-                <span className="whitespace-nowrap">
-                    {format(new Date(row.original.reportedAt), "dd MMM yyyy, HH:mm", {
-                        locale: tr,
-                    })}
-                </span>
-            );
-        },
+        header: t("admin.columns.reportDate"),
+        cell: ({ row }) => <span className="whitespace-nowrap">{format(new Date(row.original.reportedAt), "dd MMM yyyy, HH:mm", { locale: dateLocale })}</span>,
     },
-
-    // 2. Sütun: Tür
     {
         accessorKey: "entityType",
-        header: "Tür",
-        cell: ({ row }) => <Badge variant="outline">{translateEntityType(row.original.entityType)}</Badge>,
+        header: t("admin.columns.reportType"),
+        cell: ({ row }) => <Badge variant="outline">{t(`admin.entityTypes.${row.original.entityType.toLowerCase()}`)}</Badge>,
     },
-
-    // 3. Sütun: Raporlayan
     {
         accessorKey: "reporterUsername",
-        header: "Raporlayan",
+        header: t("admin.columns.reporter"),
         cell: ({ row }) => (
-            // Raporlayan kullanıcının detayına gitmek için link
             <Link href={`/users/${row.original.reporterId}`} className="hover:underline text-primary font-medium">
                 {row.original.reporterUsername}
             </Link>
         ),
     },
-
-    // 4. Sütun: Sebep (Tooltip ile)
     {
         accessorKey: "reason",
-        header: "Sebep",
+        header: t("admin.columns.reason"),
         cell: ({ row }) => (
             <TooltipProvider>
                 <Tooltip delayDuration={0}>
@@ -63,28 +49,22 @@ export const columns: ColumnDef<AdminReport>[] = [
             </TooltipProvider>
         ),
     },
-
-    // 5. Sütun: Durum
     {
         accessorKey: "status",
-        header: "Durum",
-        cell: ({ row }) => <Badge variant={getReportStatusVariant(row.original.status)}>{translateReportStatus(row.original.status)}</Badge>,
+        header: t("admin.columns.status"),
+        cell: ({ row }) => <Badge variant={getReportStatusVariant(row.original.status)}>{t(`report.status.${row.original.status === 0 ? "open" : row.original.status === 1 ? "resolved" : "ignored"}`)}</Badge>,
     },
-
-    // 6. Sütun: Eylemler (Detay Butonu)
     {
         id: "actions",
-        cell: ({ row }) => {
-            return (
-                <div className="text-right">
-                    <Button variant="ghost" size="sm" asChild>
-                        <Link href={`/reports/${row.original.reportId}`}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            İncele
-                        </Link>
-                    </Button>
-                </div>
-            );
-        },
+        cell: ({ row }) => (
+            <div className="text-right">
+                <Button variant="ghost" size="sm" asChild>
+                    <Link href={`/reports/${row.original.reportId}`}>
+                        <Eye className="mr-2 h-4 w-4" />
+                        {t("admin.columns.inspect")}
+                    </Link>
+                </Button>
+            </div>
+        ),
     },
 ];

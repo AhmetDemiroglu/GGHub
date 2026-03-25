@@ -1,6 +1,7 @@
 ﻿using GGHub.Application.Dtos;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Enums;
+using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -237,7 +238,7 @@ namespace GGHub.Infrastructure.Services
                 var userProfile = await GetProfileAsync(userId);
                 if (userProfile == null)
                 {
-                    throw new KeyNotFoundException("Kullanıcı bulunamadı.");
+                    throw new KeyNotFoundException(AppText.Get("common.userNotFound"));
                 }
 
                 var userReviews = await _context.Reviews

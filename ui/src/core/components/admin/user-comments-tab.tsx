@@ -8,14 +8,19 @@ import { getCommentsForUser } from "@/api/admin/admin.api";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/core/components/ui/table";
 import Link from "next/link";
 import { format } from "date-fns";
-import { tr } from "date-fns/locale";
+import { enUS, tr } from "date-fns/locale";
 import { ExternalLink, HatGlasses } from "lucide-react";
+import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 
 interface UserCommentsTabProps {
     userId: number;
 }
 
 export const UserCommentsTab = ({ userId }: UserCommentsTabProps) => {
+    const t = useI18n();
+    const locale = useCurrentLocale();
+    const dateLocale = locale === "tr" ? tr : enUS;
+
     const {
         data: comments,
         isLoading,
@@ -27,15 +32,15 @@ export const UserCommentsTab = ({ userId }: UserCommentsTabProps) => {
     });
 
     if (isLoading) {
-        return <p className="text-center text-muted-foreground">Kullanıcının yorumları yükleniyor...</p>;
+        return <p className="text-center text-muted-foreground">{t("admin.userCommentsLoading")}</p>;
     }
 
     if (isError) {
-        return <p className="text-destructive">Yorumlar yüklenirken bir hata oluştu.</p>;
+        return <p className="text-destructive">{t("admin.userCommentsError")}</p>;
     }
 
     if (!comments || comments.length === 0) {
-        return <p className="text-center text-muted-foreground">Bu kullanıcının yaptığı herhangi bir yorum bulunmamaktadır.</p>;
+        return <p className="text-center text-muted-foreground">{t("admin.userCommentsEmpty")}</p>;
     }
 
     return (
@@ -43,10 +48,10 @@ export const UserCommentsTab = ({ userId }: UserCommentsTabProps) => {
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Yorum</TableHead>
-                        <TableHead>Yorum Yapılan Liste</TableHead>
-                        <TableHead>Tarih</TableHead>
-                        <TableHead className="text-right">Eylem</TableHead>
+                        <TableHead>{t("admin.userCommentsColumns.comment")}</TableHead>
+                        <TableHead>{t("admin.userCommentsColumns.list")}</TableHead>
+                        <TableHead>{t("admin.userCommentsColumns.date")}</TableHead>
+                        <TableHead className="text-right">{t("admin.userCommentsColumns.action")}</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -64,7 +69,7 @@ export const UserCommentsTab = ({ userId }: UserCommentsTabProps) => {
                             <TableCell className="font-medium">{comment.listName}</TableCell>
                             <TableCell>
                                 {format(new Date(comment.createdAt), "dd MMM yyyy", {
-                                    locale: tr,
+                                    locale: dateLocale,
                                 })}
                             </TableCell>
                             <TableCell className="text-right">
@@ -75,12 +80,12 @@ export const UserCommentsTab = ({ userId }: UserCommentsTabProps) => {
                                         className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline cursor-pointer"
                                     >
                                         <ExternalLink className="h-3.5 w-3.5" />
-                                        Listeyi Gör
+                                        {t("admin.userCommentsViewList")}
                                     </Link>
                                 ) : (
                                     <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground italic">
                                         <HatGlasses className="h-3.5 w-3.5" />
-                                        Gizli İçerik
+                                        {t("admin.userCommentsHiddenContent")}
                                     </span>
                                 )}
                             </TableCell>

@@ -2,6 +2,7 @@
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
 using GGHub.Core.Enums;
+using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -25,17 +26,17 @@ namespace GGHub.Infrastructure.Services
 
             if (list == null)
             {
-                throw new KeyNotFoundException("Liste bulunamadı.");
+                throw new KeyNotFoundException(AppText.Get("lists.notFound"));
             }
 
             if (list.UserId == userId)
             {
-                throw new InvalidOperationException("Kendi listenizi puanlayamazsınız.");
+                throw new InvalidOperationException(AppText.Get("ratings.cannotRateOwnList"));
             }
 
             if (list.Visibility == ListVisibilitySetting.Private)
             {
-                throw new UnauthorizedAccessException("Bu listeyi görme (ve puanlama) yetkiniz yok.");
+                throw new UnauthorizedAccessException(AppText.Get("ratings.viewPermissionDenied"));
             }
 
             if (list.Visibility == ListVisibilitySetting.Followers)
@@ -45,7 +46,7 @@ namespace GGHub.Infrastructure.Services
 
                 if (!isFollowingOwner)
                 {
-                    throw new UnauthorizedAccessException("Bu listeyi sadece sahibinin takipçileri puanlayabilir.");
+                    throw new UnauthorizedAccessException(AppText.Get("ratings.followersOnly"));
                 }
             }
 

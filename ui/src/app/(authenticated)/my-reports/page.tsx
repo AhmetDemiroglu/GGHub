@@ -7,29 +7,47 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/core/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/core/components/ui/tooltip";
 import { format } from "date-fns";
-import { tr } from "date-fns/locale";
-import { translateReportStatus, getReportStatusVariant } from "@/core/lib/report.utils";
+import { enUS, tr } from "date-fns/locale";
+import { getReportStatusVariant } from "@/core/lib/report.utils";
 import { ReportResultDialog } from "@/core/components/admin/report-result-dialog";
 import { useState } from "react";
 import { MessageSquareText, Clock } from "lucide-react";
 import { Button } from "@/core/components/ui/button";
+import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 
-const translateEntityType = (type: string) => {
+const getEntityTypeLabel = (t: ReturnType<typeof useI18n>, type: string) => {
     switch (type) {
         case "Comment":
-            return "Yorum";
+            return t("report.entityTypes.comment");
         case "Review":
-            return "İnceleme";
+            return t("report.entityTypes.review");
         case "List":
-            return "Liste";
+            return t("report.entityTypes.list");
         case "User":
-            return "Kullanıcı";
+            return t("report.entityTypes.user");
         default:
             return type;
     }
 };
 
+const getReportStatusLabel = (t: ReturnType<typeof useI18n>, status: ReportStatus) => {
+    switch (status) {
+        case ReportStatus.Open:
+            return t("report.status.open");
+        case ReportStatus.Resolved:
+            return t("report.status.resolved");
+        case ReportStatus.Ignored:
+            return t("report.status.ignored");
+        default:
+            return t("report.status.unknown");
+    }
+};
+
 export default function MyReportsPage() {
+    const t = useI18n();
+    const locale = useCurrentLocale();
+    const dateLocale = locale === "tr" ? tr : enUS;
+
     const {
         data: reports,
         isLoading,
@@ -54,8 +72,8 @@ export default function MyReportsPage() {
         <div className="w-full h-full p-5">
             <div className="flex flex-col gap-8">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Raporlarım</h2>
-                    <p className="text-muted-foreground">Oluşturduğunuz raporların durumunu buradan takip edebilirsiniz.</p>
+                    <h2 className="text-3xl font-bold tracking-tight">{t("nav.myReports")}</h2>
+                    <p className="text-muted-foreground">{t("admin.reportsPageDescription")}</p>
                 </div>
 
                 <TooltipProvider>
@@ -63,30 +81,30 @@ export default function MyReportsPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Tarih</TableHead>
-                                    <TableHead>Raporlanan Tür</TableHead>
-                                    <TableHead>Sebep (Önizleme)</TableHead>
-                                    <TableHead className="text-right">Durum</TableHead>
-                                    <TableHead className="text-right">Detay</TableHead>
+                                    <TableHead>{t("admin.userReportsColumns.date")}</TableHead>
+                                    <TableHead>{t("admin.userReportsColumns.entityType")}</TableHead>
+                                    <TableHead>{t("admin.userReportsColumns.reason")}</TableHead>
+                                    <TableHead className="text-right">{t("admin.userReportsColumns.status")}</TableHead>
+                                    <TableHead className="text-right">{t("admin.userReportsColumns.action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {isLoading ? (
                                     <TableRow>
-                                        <TableCell colSpan={4} className="h-24 text-center">
-                                            Raporlar yükleniyor...
+                                        <TableCell colSpan={5} className="h-24 text-center">
+                                            {t("admin.reportsPageLoading")}
                                         </TableCell>
                                     </TableRow>
                                 ) : isError ? (
                                     <TableRow>
-                                        <TableCell colSpan={4} className="h-24 text-center text-destructive">
-                                            Raporlar yüklenirken bir hata oluştu.
+                                        <TableCell colSpan={5} className="h-24 text-center text-destructive">
+                                            {t("admin.reportsPageError")}
                                         </TableCell>
                                     </TableRow>
                                 ) : !reports || reports.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={4} className="h-24 text-center">
-                                            Henüz oluşturulmuş bir raporunuz bulunmamaktadır.
+                                        <TableCell colSpan={5} className="h-24 text-center">
+                                            {t("admin.userReportsEmpty")}
                                         </TableCell>
                                     </TableRow>
                                 ) : (
@@ -94,10 +112,10 @@ export default function MyReportsPage() {
                                         <TableRow key={report.id}>
                                             <TableCell>
                                                 {format(new Date(report.createdAt), "dd MMM yyyy", {
-                                                    locale: tr,
+                                                    locale: dateLocale,
                                                 })}
                                             </TableCell>
-                                            <TableCell className="font-medium">{translateEntityType(report.entityType)}</TableCell>
+                                            <TableCell className="font-medium">{getEntityTypeLabel(t, report.entityType)}</TableCell>
 
                                             <TableCell className="max-w-sm truncate">
                                                 <Tooltip delayDuration={0}>
@@ -109,12 +127,12 @@ export default function MyReportsPage() {
                                             </TableCell>
 
                                             <TableCell className="text-right">
-                                                <Badge variant={getReportStatusVariant(report.status)}>{translateReportStatus(report.status)}</Badge>
+                                                <Badge variant={getReportStatusVariant(report.status)}>{getReportStatusLabel(t, report.status)}</Badge>
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 {report.status === ReportStatus.Open ? (
-                                                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="İnceleniyor">
-                                                        <Clock className="h-3.5 w-3.5" /> İnceleniyor
+                                                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title={t("report.status.open")}>
+                                                        <Clock className="h-3.5 w-3.5" /> {t("report.status.open")}
                                                     </span>
                                                 ) : (
                                                     <Button
@@ -124,7 +142,7 @@ export default function MyReportsPage() {
                                                         onClick={() => handleViewResult(report)}
                                                     >
                                                         <MessageSquareText className="mr-1.5 h-3.5 w-3.5" />
-                                                        Sonucu Gör
+                                                        {t("admin.userReportsViewReport")}
                                                     </Button>
                                                 )}
                                             </TableCell>
@@ -135,11 +153,7 @@ export default function MyReportsPage() {
                         </Table>
                     </div>
                 </TooltipProvider>
-                <ReportResultDialog
-                    isOpen={isResultDialogOpen}
-                    onOpenChange={setIsResultDialogOpen}
-                    report={selectedReport}
-                />
+                <ReportResultDialog isOpen={isResultDialogOpen} onOpenChange={setIsResultDialogOpen} report={selectedReport} />
             </div>
         </div>
     );

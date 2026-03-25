@@ -4,6 +4,7 @@ export type AppLocale = (typeof locales)[number];
 
 export const defaultLocale: AppLocale = "en-US";
 export const localeCookieName = "gghub-locale";
+export const localeManualCookieName = "gghub-locale-manual";
 export const localeStorageKey = "gghub-locale";
 
 export const countryToLocale = (countryCode?: string | null): AppLocale => {

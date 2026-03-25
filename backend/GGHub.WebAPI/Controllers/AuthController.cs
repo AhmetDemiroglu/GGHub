@@ -1,10 +1,10 @@
-﻿using GGHub.Application.Dtos;
+using GGHub.Application.Dtos;
 using GGHub.Application.Interfaces;
+using GGHub.Infrastructure.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
-using static Org.BouncyCastle.Math.EC.ECCurve;
 
 namespace GGHub.WebAPI.Controllers
 {
@@ -15,6 +15,7 @@ namespace GGHub.WebAPI.Controllers
     {
         private readonly IAuthService _authService;
         private readonly IConfiguration _config;
+
         public AuthController(IAuthService authService, IConfiguration config)
         {
             _authService = authService;
@@ -26,16 +27,16 @@ namespace GGHub.WebAPI.Controllers
         {
             try
             {
-                var user = await _authService.Register(userForRegisterDto);
-                return Ok(new { message = "Kayıt başarılı. Lütfen e-posta adresinizi doğrulayın." });
+                await _authService.Register(userForRegisterDto);
+                return Ok(new { message = AppText.Get("auth.registerSuccess") });
             }
             catch (InvalidOperationException ex)
             {
                 return BadRequest(new { message = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { message = "Kayıt sırasında bir hata oluştu." });
+                return StatusCode(500, new { message = AppText.Get("auth.registerError") });
             }
         }
 
@@ -49,7 +50,7 @@ namespace GGHub.WebAPI.Controllers
 
                 if (response == null)
                 {
-                    return Unauthorized(new { message = "E-posta veya şifre hatalı." });
+                    return Unauthorized(new { message = AppText.Get("auth.loginInvalid") });
                 }
 
                 return Ok(response);
@@ -58,21 +59,24 @@ namespace GGHub.WebAPI.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { message = "Giriş sırasında bir hata oluştu." });
+                return StatusCode(500, new { message = AppText.Get("auth.loginError") });
             }
         }
+
         [HttpPost("refresh")]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto refreshTokenDto)
         {
-            var result = await _authService.RefreshTokenAsync(refreshTokenDto.RefreshToken); 
+            var result = await _authService.RefreshTokenAsync(refreshTokenDto.RefreshToken);
             if (result == null)
             {
-                return Unauthorized("Geçersiz Refresh Token.");
+                return Unauthorized(new { message = AppText.Get("auth.invalidRefreshToken") });
             }
+
             return Ok(result);
         }
+
         [HttpGet("verify-email")]
         [AllowAnonymous]
         public async Task<IActionResult> VerifyEmail([FromQuery] string token)
@@ -87,6 +91,7 @@ namespace GGHub.WebAPI.Controllers
 
             return Redirect($"{frontendBaseUrl}/login?verified=true");
         }
+
         [HttpPost("forgot-password")]
         [AllowAnonymous]
         public async Task<IActionResult> ForgotPassword(PasswordResetRequestDto requestDto)
@@ -94,11 +99,11 @@ namespace GGHub.WebAPI.Controllers
             try
             {
                 await _authService.RequestPasswordResetAsync(requestDto.Email);
-                return Ok(new { message = "Eğer bu e-posta kayıtlıysa, şifre sıfırlama kodu gönderildi." });
+                return Ok(new { message = AppText.Get("auth.forgotPasswordSuccess") });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { message = "Bir hata oluştu. Lütfen tekrar deneyin." });
+                return StatusCode(500, new { message = AppText.Get("auth.genericRetry") });
             }
         }
 
@@ -112,16 +117,17 @@ namespace GGHub.WebAPI.Controllers
 
                 if (!success)
                 {
-                    return BadRequest(new { message = "Geçersiz veya süresi dolmuş kod." });
+                    return BadRequest(new { message = AppText.Get("auth.resetPasswordInvalid") });
                 }
 
-                return Ok(new { message = "Şifreniz başarıyla güncellendi." });
+                return Ok(new { message = AppText.Get("auth.passwordUpdated") });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { message = "Bir hata oluştu. Lütfen tekrar deneyin." });
+                return StatusCode(500, new { message = AppText.Get("auth.genericRetry") });
             }
         }
+
         [HttpPost("change-password")]
         [Authorize]
         public async Task<IActionResult> ChangePassword(ChangePasswordDto changePasswordDto)
@@ -130,9 +136,9 @@ namespace GGHub.WebAPI.Controllers
             {
                 var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
                 {
-                    return Unauthorized(new { message = "Geçersiz kullanıcı bilgisi." });
+                    return Unauthorized(new { message = AppText.Get("auth.invalidUserInfo") });
                 }
 
                 var success = await _authService.ChangePasswordAsync(
@@ -143,18 +149,18 @@ namespace GGHub.WebAPI.Controllers
 
                 if (!success)
                 {
-                    return BadRequest(new { message = "Mevcut şifre hatalı." });
+                    return BadRequest(new { message = AppText.Get("auth.currentPasswordInvalid") });
                 }
 
-                return Ok(new { message = "Şifreniz başarıyla güncellendi. Tüm oturumlarınız sonlandırıldı." });
+                return Ok(new { message = AppText.Get("auth.passwordUpdatedSessionsRevoked") });
             }
             catch (InvalidOperationException ex)
             {
                 return BadRequest(new { message = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { message = "Şifre değiştirme sırasında bir hata oluştu." });
+                return StatusCode(500, new { message = AppText.Get("auth.changePasswordError") });
             }
         }
     }

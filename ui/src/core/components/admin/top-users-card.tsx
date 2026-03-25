@@ -6,24 +6,25 @@ import { Avatar, AvatarImage, AvatarFallback } from "@core/components/ui/avatar"
 import { Users } from "lucide-react";
 import Link from "next/link";
 import { getImageUrl } from "@/core/lib/get-image-url";
+import { useI18n } from "@/core/contexts/locale-context";
 
 interface TopUsersCardProps {
     users: TopUser[];
 }
 
 export const TopUsersCard = ({ users }: TopUsersCardProps) => {
+    const t = useI18n();
+
     return (
         <Card className="h-full flex flex-col">
-            {/* <-- Stretch Kuralı */}
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <Users className="h-5 w-5" />
-                    En Çok Takip Edilen Kullanıcılar
+                    {t("admin.topUsersTitle")}
                 </CardTitle>
-                <CardDescription>Platformun en popüler 5 üyesi.</CardDescription>
+                <CardDescription>{t("admin.topUsersDescription")}</CardDescription>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col">
-                {/* <-- Stretch Kuralı */}
                 <div className="flex flex-1 flex-col gap-4">
                     {users.length > 0 ? (
                         users.map((user) => (
@@ -34,12 +35,12 @@ export const TopUsersCard = ({ users }: TopUsersCardProps) => {
                                 </Avatar>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium truncate">{user.username}</p>
-                                    <p className="text-xs text-muted-foreground truncate">{user.followerCount} Takipçi</p>
+                                    <p className="text-xs text-muted-foreground truncate">{t("admin.topUsersFollowers", { count: user.followerCount })}</p>
                                 </div>
                             </Link>
                         ))
                     ) : (
-                        <p className="flex-1 flex items-center justify-center text-sm text-center text-muted-foreground">Veri bulunamadı.</p>
+                        <p className="flex-1 flex items-center justify-center text-sm text-center text-muted-foreground">{t("admin.topUsersNoData")}</p>
                     )}
                 </div>
             </CardContent>

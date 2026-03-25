@@ -4,7 +4,6 @@ import Script from "next/script";
 import { Suspense } from "react";
 import NextTopLoader from "nextjs-toploader";
 import { ThemeProvider } from "@core/components/base/theme-provider";
-import { ThemeToggleButton } from "@core/components/base/theme-toggle-button";
 import { Providers } from "@core/components/base/providers";
 import { LocaleProvider } from "@/core/contexts/locale-context";
 import { Toaster } from "@/core/components/ui/sonner";
@@ -98,9 +97,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
                     <LocaleProvider locale={locale} messages={messages}>
                         <Providers locale={locale} messages={messages}>
-                            <div className="fixed bottom-4 right-4 z-100">
-                                <ThemeToggleButton />
-                            </div>
                             {children}
                         </Providers>
                     </LocaleProvider>

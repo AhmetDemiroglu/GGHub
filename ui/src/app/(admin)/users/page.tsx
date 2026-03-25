@@ -6,15 +6,17 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { PaginationState, SortingState } from "@tanstack/react-table";
 import { DateRange } from "react-day-picker";
 import { format } from "date-fns";
+import { enUS, tr } from "date-fns/locale";
 import { getUsers } from "@/api/admin/admin.api";
 import type { UserFilterParams } from "@/models/admin/admin.model";
-import { columns } from "@core/components/other/admin-users/column";
+import { createUserColumns } from "@core/components/other/admin-users/column";
 import { DataTable } from "@/core/components/admin/data-table";
 import { DatePicker } from "@/core/components/ui/date-picker";
 import { Input } from "@/core/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/core/components/ui/select";
 import { Button } from "@/core/components/ui/button";
 import { BrushCleaning } from "lucide-react";
+import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 
 function useDebounce<T>(value: T, delay: number): T {
     const [debouncedValue, setDebouncedValue] = React.useState(value);
@@ -30,6 +32,9 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export default function UsersPage() {
+    const t = useI18n();
+    const locale = useCurrentLocale();
+    const dateLocale = locale === "tr" ? tr : enUS;
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -56,6 +61,7 @@ export default function UsersPage() {
     });
 
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
+    const columns = createUserColumns(t, dateLocale);
 
     React.useEffect(() => {
         const params = new URLSearchParams(searchParams);
@@ -127,34 +133,34 @@ export default function UsersPage() {
     return (
         <div className="container flex flex-col gap-8 py-6 lg:py-8 px-6 lg:px-8">
             <div>
-                <h2 className="text-3xl font-bold tracking-tight">Kullanıcı Yönetimi</h2>
-                <p className="text-muted-foreground">Platformdaki tüm kullanıcıları arayın, filtreleyin ve yönetin.</p>
+                <h2 className="text-3xl font-bold tracking-tight">{t("admin.usersPageTitle")}</h2>
+                <p className="text-muted-foreground">{t("admin.usersPageDescription")}</p>
             </div>
             <div className="flex flex-wrap items-center gap-4">
-                <Input placeholder="Kullanıcı adı veya e-posta..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full sm:w-auto sm:max-w-xs" />
+                <Input placeholder={t("admin.usersPageSearchPlaceholder")} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full sm:w-auto sm:max-w-xs" />
                 <Select value={statusFilter} onValueChange={(value: string) => setStatusFilter(value as UserFilterParams["statusFilter"])}>
                     <SelectTrigger className="w-full sm:w-[180px]">
-                        <SelectValue placeholder="Durum Seçin" />
+                        <SelectValue placeholder={t("admin.usersPageStatusPlaceholder")} />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="All">Tüm Durumlar</SelectItem>
-                        <SelectItem value="Active">Aktif</SelectItem>
-                        <SelectItem value="Banned">Askıda (Banlı)</SelectItem>
+                        <SelectItem value="All">{t("admin.usersPageAllStatuses")}</SelectItem>
+                        <SelectItem value="Active">{t("admin.usersPageActive")}</SelectItem>
+                        <SelectItem value="Banned">{t("admin.usersPageBanned")}</SelectItem>
                     </SelectContent>
                 </Select>
                 <div className="flex w-full flex-col gap-4 sm:w-auto sm:flex-row sm:gap-2">
-                    <DatePicker date={dateRange?.from} onDateChange={(date) => setDateRange((prev) => ({ from: date, to: prev?.to }))} placeholder="Başlangıç Tarihi" className="w-full" />
-                    <DatePicker date={dateRange?.to} onDateChange={(date) => setDateRange((prev) => ({ from: prev?.from, to: date }))} placeholder="Bitiş Tarihi" className="w-full" />
+                    <DatePicker date={dateRange?.from} onDateChange={(date) => setDateRange((prev) => ({ from: date, to: prev?.to }))} placeholder={t("admin.usersPageStartDate")} className="w-full" />
+                    <DatePicker date={dateRange?.to} onDateChange={(date) => setDateRange((prev) => ({ from: prev?.from, to: date }))} placeholder={t("admin.usersPageEndDate")} className="w-full" />
                 </div>
 
-                <Button variant="ghost" onClick={clearFilters} className="sm:ml-auto border-2 cursor-pointer">
+                <Button variant="ghost" onClick={clearFilters} className="sm:ml-auto border-2 cursor-pointer" aria-label={t("admin.usersPageClearFilters")}>
                     <BrushCleaning className="h-4 w-4" />
                 </Button>
             </div>
             {isLoading && tableData.length === 0 ? (
-                <p>Yükleniyor...</p>
+                <p>{t("admin.usersPageLoading")}</p>
             ) : isError ? (
-                <p className="text-destructive">Kullanıcılar yüklenirken bir hata oluştu.</p>
+                <p className="text-destructive">{t("admin.usersPageError")}</p>
             ) : (
                 <DataTable
                     columns={columns}

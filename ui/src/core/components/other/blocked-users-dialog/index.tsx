@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@core/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@core/components/ui/avatar";
@@ -11,9 +10,9 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/tr";
 import { getImageUrl } from "@/core/lib/get-image-url";
+import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 
 dayjs.extend(relativeTime);
-dayjs.locale("tr");
 
 interface BlockedUsersDialogProps {
     isOpen: boolean;
@@ -21,6 +20,10 @@ interface BlockedUsersDialogProps {
 }
 
 export function BlockedUsersDialog({ isOpen, onClose }: BlockedUsersDialogProps) {
+    const t = useI18n();
+    const locale = useCurrentLocale();
+    dayjs.locale(locale === "tr" ? "tr" : "en");
+
     const queryClient = useQueryClient();
 
     const { data: blockedUsers, isLoading } = useQuery({
@@ -33,10 +36,10 @@ export function BlockedUsersDialog({ isOpen, onClose }: BlockedUsersDialogProps)
         mutationFn: (username: string) => unblockUser(username),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["blocked-users"] });
-            toast.success("Engel kaldırıldı.");
+            toast.success(t("profile.blockedUsersDialog.success"));
         },
         onError: () => {
-            toast.error("Engel kaldırılırken bir hata oluştu.");
+            toast.error(t("profile.blockedUsersDialog.error"));
         },
     });
 
@@ -48,15 +51,15 @@ export function BlockedUsersDialog({ isOpen, onClose }: BlockedUsersDialogProps)
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Engellenen Kullanıcılar</DialogTitle>
-                    <DialogDescription>Engellediğiniz kullanıcıları buradan yönetebilirsiniz</DialogDescription>
+                    <DialogTitle>{t("profile.blockedUsersDialog.title")}</DialogTitle>
+                    <DialogDescription>{t("profile.blockedUsersDialog.description")}</DialogDescription>
                 </DialogHeader>
 
                 <div className="max-h-96 overflow-y-auto space-y-2">
                     {isLoading ? (
-                        <div className="text-center py-8 text-muted-foreground">Yükleniyor...</div>
+                        <div className="text-center py-8 text-muted-foreground">{t("profile.blockedUsersDialog.loading")}</div>
                     ) : blockedUsers && blockedUsers.length > 0 ? (
-                        blockedUsers.map((user) => {                            
+                        blockedUsers.map((user) => {
                             const displayName = user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username;
                             const timeAgo = dayjs(user.blockedAt).fromNow();
 
@@ -70,18 +73,18 @@ export function BlockedUsersDialog({ isOpen, onClose }: BlockedUsersDialogProps)
                                         <div>
                                             <p className="font-medium">{displayName}</p>
                                             <p className="text-xs text-muted-foreground">@{user.username}</p>
-                                            <p className="text-xs text-muted-foreground italic">{timeAgo} engellendi</p>
+                                            <p className="text-xs text-muted-foreground italic">{t("profile.blockedUsersDialog.blockedAt", { timeAgo })}</p>
                                         </div>
                                     </div>
 
                                     <Button className="cursor-pointer" size="sm" variant="outline" onClick={() => handleUnblock(user.username)} disabled={unblockMutation.isPending}>
-                                        Engeli Kaldır
+                                        {t("profile.blockedUsersDialog.unblock")}
                                     </Button>
                                 </div>
                             );
                         })
                     ) : (
-                        <div className="text-center py-8 text-muted-foreground">Engellenmiş kullanıcı yok</div>
+                        <div className="text-center py-8 text-muted-foreground">{t("profile.blockedUsersDialog.noUsers")}</div>
                     )}
                 </div>
             </DialogContent>

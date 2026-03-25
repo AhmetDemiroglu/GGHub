@@ -1,19 +1,19 @@
-﻿using GGHub.Core.Enums;
+using GGHub.Application.Localization;
+using GGHub.Core.Enums;
 using System.ComponentModel.DataAnnotations;
 
 namespace GGHub.Application.Dtos
 {
     public class UserListForUpdateDto
     {
-        [Required(ErrorMessage = "Liste adı zorunludur.")]
-        [StringLength(100, MinimumLength = 3, ErrorMessage = "Liste adı 3 ila 100 karakter arasında olmalıdır.")]
+        [Required(ErrorMessageResourceType = typeof(AppValidationText), ErrorMessageResourceName = nameof(AppValidationText.ListNameRequired))]
+        [StringLength(100, MinimumLength = 3, ErrorMessageResourceType = typeof(AppValidationText), ErrorMessageResourceName = nameof(AppValidationText.ListNameLength))]
         public string Name { get; set; }
 
-        [StringLength(500, ErrorMessage = "Açıklama en fazla 500 karakter olabilir.")]
+        [StringLength(500, ErrorMessageResourceType = typeof(AppValidationText), ErrorMessageResourceName = nameof(AppValidationText.ListDescriptionLength))]
         public string? Description { get; set; }
 
         public ListVisibilitySetting Visibility { get; set; }
-
         public ListCategory Category { get; set; }
     }
 }

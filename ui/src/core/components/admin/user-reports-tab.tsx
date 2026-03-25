@@ -9,43 +9,48 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/core
 import { Badge } from "@/core/components/ui/badge";
 import Link from "next/link";
 import { format } from "date-fns";
-import { tr } from "date-fns/locale";
+import { enUS, tr } from "date-fns/locale";
 import { FileSearch } from "lucide-react";
-import { translateReportStatus, getReportStatusVariant } from "@/core/lib/report.utils";
+import { getReportStatusVariant } from "@/core/lib/report.utils";
+import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 
 interface UserReportsTabProps {
     userId: number;
 }
 
-const translateEntityType = (type: string) => {
+const getEntityTypeLabel = (t: ReturnType<typeof useI18n>, type: string) => {
     switch (type) {
         case "Comment":
-            return "Yorum";
+            return t("admin.entityTypes.comment");
         case "Review":
-            return "İnceleme";
+            return t("admin.entityTypes.review");
         case "List":
-            return "Liste";
+            return t("admin.entityTypes.list");
         case "User":
-            return "Kullanıcı";
+            return t("admin.entityTypes.user");
         default:
             return type;
     }
 };
 
-const getStatusVariant = (status: ReportStatus) => {
+const getStatusLabel = (t: ReturnType<typeof useI18n>, status: ReportStatus) => {
     switch (status) {
         case ReportStatus.Open:
-            return "destructive";
+            return t("report.status.open");
         case ReportStatus.Resolved:
-            return "default";
+            return t("report.status.resolved");
         case ReportStatus.Ignored:
-            return "secondary";
+            return t("report.status.ignored");
         default:
-            return "outline";
+            return t("report.status.unknown");
     }
 };
 
 export const UserReportsTab = ({ userId }: UserReportsTabProps) => {
+    const t = useI18n();
+    const locale = useCurrentLocale();
+    const dateLocale = locale === "tr" ? tr : enUS;
+
     const {
         data: reports,
         isLoading,
@@ -57,15 +62,15 @@ export const UserReportsTab = ({ userId }: UserReportsTabProps) => {
     });
 
     if (isLoading) {
-        return <p className="text-center text-muted-foreground">Kullanıcının raporları yükleniyor...</p>;
+        return <p className="text-center text-muted-foreground">{t("admin.userReportsLoading")}</p>;
     }
 
     if (isError) {
-        return <p className="text-destructive">Raporlar yüklenirken bir hata oluştu.</p>;
+        return <p className="text-destructive">{t("admin.userReportsError")}</p>;
     }
 
     if (!reports || reports.length === 0) {
-        return <p className="text-center text-muted-foreground">Bu kullanıcının yaptığı herhangi bir rapor bulunmamaktadır.</p>;
+        return <p className="text-center text-muted-foreground">{t("admin.userReportsEmpty")}</p>;
     }
 
     return (
@@ -74,11 +79,11 @@ export const UserReportsTab = ({ userId }: UserReportsTabProps) => {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Tarih</TableHead>
-                            <TableHead>Raporlanan İçerik</TableHead>
-                            <TableHead>Sebep</TableHead>
-                            <TableHead>Durum</TableHead>
-                            <TableHead className="text-right">Eylem</TableHead>
+                            <TableHead>{t("admin.userReportsColumns.date")}</TableHead>
+                            <TableHead>{t("admin.userReportsColumns.entityType")}</TableHead>
+                            <TableHead>{t("admin.userReportsColumns.reason")}</TableHead>
+                            <TableHead>{t("admin.userReportsColumns.status")}</TableHead>
+                            <TableHead className="text-right">{t("admin.userReportsColumns.action")}</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -86,10 +91,10 @@ export const UserReportsTab = ({ userId }: UserReportsTabProps) => {
                             <TableRow key={report.reportId}>
                                 <TableCell>
                                     {format(new Date(report.reportedAt), "dd MMM yyyy", {
-                                        locale: tr,
+                                        locale: dateLocale,
                                     })}
                                 </TableCell>
-                                <TableCell className="font-medium">{translateEntityType(report.entityType)}</TableCell>
+                                <TableCell className="font-medium">{getEntityTypeLabel(t, report.entityType)}</TableCell>
 
                                 <TableCell className="max-w-xs truncate">
                                     <Tooltip delayDuration={0}>
@@ -101,12 +106,12 @@ export const UserReportsTab = ({ userId }: UserReportsTabProps) => {
                                 </TableCell>
 
                                 <TableCell>
-                                    <Badge variant={getReportStatusVariant(report.status)}>{translateReportStatus(report.status)}</Badge>
+                                    <Badge variant={getReportStatusVariant(report.status)}>{getStatusLabel(t, report.status)}</Badge>
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <Link href={`/reports/${report.reportId}`} className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
                                         <FileSearch className="h-3.5 w-3.5" />
-                                        Raporu İncele
+                                        {t("admin.userReportsViewReport")}
                                     </Link>
                                 </TableCell>
                             </TableRow>

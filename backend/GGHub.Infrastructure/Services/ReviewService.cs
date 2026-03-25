@@ -2,6 +2,7 @@
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
 using GGHub.Core.Enums;
+using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -30,7 +31,7 @@ namespace GGHub.Infrastructure.Services
 
             if (existingReview != null)
             {
-                throw new InvalidOperationException("Bu oyuna zaten bir yorum yapmışsınız.");
+                throw new InvalidOperationException(AppText.Get("reviews.alreadyReviewed"));
             }
 
             var review = new Review
@@ -148,12 +149,12 @@ namespace GGHub.Infrastructure.Services
             var review = await _context.Reviews.FindAsync(reviewId);
             if (review == null)
             {
-                throw new KeyNotFoundException("Oylanacak yorum bulunamadı.");
+                throw new KeyNotFoundException(AppText.Get("reviews.reviewNotFoundForVote"));
             }
 
             if (review.UserId == userId)
             {
-                throw new InvalidOperationException("Kendi yorumunuzu oylayamazsınız.");
+                throw new InvalidOperationException(AppText.Get("reviews.cannotVoteOwnReview"));
             }
 
             var existingVote = await _context.ReviewVotes
@@ -189,7 +190,7 @@ namespace GGHub.Infrastructure.Services
 
                 if (game != null)
                 {
-                    var message = $"{voter.Username}, incelemene {(value == 1 ? "olumlu" : "olumsuz")} oy verdi.";
+                    var message = AppText.Get(value == 1 ? "reviews.reviewVoteNotificationPositive" : "reviews.reviewVoteNotificationNegative", new Dictionary<string, object?> { ["username"] = voter.Username });
                     var gameIdentifier = !string.IsNullOrEmpty(game.Slug) ? game.Slug : game.RawgId.ToString();
                     var link = $"/games/{gameIdentifier}#review-{review.Id}";
 

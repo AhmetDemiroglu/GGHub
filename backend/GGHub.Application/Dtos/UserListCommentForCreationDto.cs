@@ -1,12 +1,14 @@
-﻿using System.ComponentModel.DataAnnotations;
+using GGHub.Application.Localization;
+using System.ComponentModel.DataAnnotations;
 
 namespace GGHub.Application.Dtos
 {
     public class UserListCommentForCreationDto
     {
-        [Required(ErrorMessage = "Yorum içeriği boş olamaz.")]
-        [StringLength(1000, MinimumLength = 1, ErrorMessage = "Yorum 1 ila 1000 karakter arasında olmalıdır.")]
+        [Required(ErrorMessageResourceType = typeof(AppValidationText), ErrorMessageResourceName = nameof(AppValidationText.CommentContentRequired))]
+        [StringLength(1000, MinimumLength = 1, ErrorMessageResourceType = typeof(AppValidationText), ErrorMessageResourceName = nameof(AppValidationText.CommentContentLength))]
         public string Content { get; set; }
+
         public int? ParentCommentId { get; set; }
     }
 }

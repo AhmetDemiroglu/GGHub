@@ -1,14 +1,15 @@
-﻿using GGHub.Application.Dtos;
+using GGHub.Application.Dtos;
 using GGHub.Application.Interfaces;
+using GGHub.Infrastructure.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims; 
+using System.Security.Claims;
 
 namespace GGHub.WebAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] 
+    [Authorize]
     public class ReportController : ControllerBase
     {
         private readonly IReportService _reportService;
@@ -17,15 +18,18 @@ namespace GGHub.WebAPI.Controllers
         {
             _reportService = reportService;
         }
+
         private int GetCurrentUserId()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var userId))
             {
-                throw new UnauthorizedAccessException("Kullanıcı kimliği bulunamadı.");
+                throw new UnauthorizedAccessException(AppText.Get("report.currentUserMissing"));
             }
+
             return userId;
         }
+
         [HttpPost("review/{reviewId}")]
         public async Task<IActionResult> ReportReview(int reviewId, ReportForCreationDto reportDto)
         {
@@ -33,7 +37,7 @@ namespace GGHub.WebAPI.Controllers
             {
                 var userId = GetCurrentUserId();
                 await _reportService.ReportReviewAsync(reviewId, userId, reportDto);
-                return Ok(new { message = "İnceleme başarıyla raporlandı." });
+                return Ok(new { message = AppText.Get("report.reviewReported") });
             }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
             catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
@@ -46,7 +50,7 @@ namespace GGHub.WebAPI.Controllers
             {
                 var userId = GetCurrentUserId();
                 await _reportService.ReportUserAsync(reportedUserId, userId, reportDto);
-                return Ok(new { message = "Kullanıcı başarıyla raporlandı." });
+                return Ok(new { message = AppText.Get("report.userReported") });
             }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
             catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
@@ -59,7 +63,7 @@ namespace GGHub.WebAPI.Controllers
             {
                 var userId = GetCurrentUserId();
                 await _reportService.ReportListAsync(listId, userId, reportDto);
-                return Ok(new { message = "Liste başarıyla raporlandı." });
+                return Ok(new { message = AppText.Get("report.listReported") });
             }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
             catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
@@ -72,7 +76,7 @@ namespace GGHub.WebAPI.Controllers
             {
                 var userId = GetCurrentUserId();
                 await _reportService.ReportCommentAsync(commentId, userId, reportDto);
-                return Ok(new { message = "Yorum başarıyla raporlandı." });
+                return Ok(new { message = AppText.Get("report.commentReported") });
             }
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
             catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }

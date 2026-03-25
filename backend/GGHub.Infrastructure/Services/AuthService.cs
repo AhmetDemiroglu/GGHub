@@ -1,6 +1,7 @@
 ﻿using GGHub.Application.Dtos;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
+using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using GGHub.Infrastructure.Utilities;
 using Microsoft.EntityFrameworkCore;
@@ -18,15 +19,14 @@ namespace GGHub.Infrastructure.Services
     {
         private readonly GGHubDbContext _context;
         private readonly IConfiguration _config;
-        private readonly IEmailService _emailService;
         private readonly ILogger<AuthService> _logger;
         private readonly IEmailQueue _emailQueue;
-        private readonly IGamificationService _gamificationService; 
+        private readonly IGamificationService _gamificationService;
+
         public AuthService(GGHubDbContext context, IConfiguration config, IEmailService emailService, ILogger<AuthService> logger, IEmailQueue emailQueue, IGamificationService gamificationService)
         {
             _context = context;
             _config = config;
-            _emailService = emailService;
             _logger = logger;
             _emailQueue = emailQueue;
             _gamificationService = gamificationService;
@@ -45,12 +45,12 @@ namespace GGHub.Infrastructure.Services
 
             if (!user.IsEmailVerified)
             {
-                throw new InvalidOperationException("Giriş yapmadan önce e-posta adresinizi doğrulamanız gerekmektedir.");
+                throw new InvalidOperationException(AppText.Get("auth.verifyEmailRequired"));
             }
 
             if (user.IsBanned)
             {
-                throw new InvalidOperationException("Hesabınız askıya alınmıştır. Lütfen yönetici ile iletişime geçin.");
+                throw new InvalidOperationException(AppText.Get("auth.accountSuspended"));
             }
 
             var accessToken = CreateToken(user);
@@ -76,7 +76,7 @@ namespace GGHub.Infrastructure.Services
             var user = await _context.Users.FirstOrDefaultAsync(u => u.EmailVerificationToken == token);
             if (user == null)
             {
-                return false; 
+                return false;
             }
 
             user.IsEmailVerified = true;
@@ -126,9 +126,9 @@ namespace GGHub.Infrastructure.Services
             {
                 if (existingUserByEmail.IsBanned)
                 {
-                    throw new InvalidOperationException("Bu e-posta adresi ile ilişkili hesap askıya alınmıştır.");
+                    throw new InvalidOperationException(AppText.Get("auth.emailAccountSuspended"));
                 }
-                throw new InvalidOperationException("Bu e-posta adresi zaten kullanılıyor.");
+                throw new InvalidOperationException(AppText.Get("auth.emailAlreadyInUse"));
             }
 
             var existingUserByUsername = await _context.Users
@@ -138,9 +138,9 @@ namespace GGHub.Infrastructure.Services
             {
                 if (existingUserByUsername.IsBanned)
                 {
-                    throw new InvalidOperationException("Bu kullanıcı adı ile ilişkili hesap askıya alınmıştır.");
+                    throw new InvalidOperationException(AppText.Get("auth.usernameAccountSuspended"));
                 }
-                throw new InvalidOperationException("Bu kullanıcı adı zaten kullanılıyor.");
+                throw new InvalidOperationException(AppText.Get("auth.usernameAlreadyInUse"));
             }
 
             CreatePasswordHash(userForRegisterDto.Password, out byte[] passwordHash, out byte[] passwordSalt);
@@ -163,7 +163,7 @@ namespace GGHub.Infrastructure.Services
             _emailQueue.EnqueueEmail(new EmailJob
             {
                 ToAddress = user.Email,
-                Subject = "GGHub Hesap Doğrulama",
+                Subject = AppText.Get("auth.emailVerificationSubject"),
                 Body = emailBody
             });
 
@@ -196,7 +196,7 @@ namespace GGHub.Infrastructure.Services
             _emailQueue.EnqueueEmail(new EmailJob
             {
                 ToAddress = user.Email,
-                Subject = "GGHub - Şifre Sıfırlama Kodu",
+                Subject = AppText.Get("auth.passwordResetSubject"),
                 Body = emailBody
             });
 
@@ -247,7 +247,7 @@ namespace GGHub.Infrastructure.Services
 
             if (currentPassword == newPassword)
             {
-                throw new InvalidOperationException("Yeni şifre mevcut şifre ile aynı olamaz.");
+                throw new InvalidOperationException(AppText.Get("auth.samePassword"));
             }
 
             CreatePasswordHash(newPassword, out byte[] passwordHash, out byte[] passwordSalt);
@@ -271,7 +271,7 @@ namespace GGHub.Infrastructure.Services
             _emailQueue.EnqueueEmail(new EmailJob
             {
                 ToAddress = user.Email,
-                Subject = "GGHub - Şifre Değişikliği Bildirimi",
+                Subject = AppText.Get("auth.passwordChangedSubject"),
                 Body = emailBody
             });
 

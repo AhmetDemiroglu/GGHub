@@ -3,6 +3,7 @@ using GGHub.Application.DTOs.Common;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
 using GGHub.Core.Enums;
+using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore; 
 
@@ -20,26 +21,26 @@ namespace GGHub.Infrastructure.Services
         private async Task CheckListVisibility(int listId, int? userId)
         {
             var list = await _context.UserLists.AsNoTracking().FirstOrDefaultAsync(l => l.Id == listId);
-            if (list == null) throw new KeyNotFoundException("Liste bulunamadı.");
+            if (list == null) throw new KeyNotFoundException(AppText.Get("lists.notFound"));
 
             if (!userId.HasValue)
             {
                 if (list.Visibility != ListVisibilitySetting.Public)
-                    throw new UnauthorizedAccessException("Bu listeyi görüntülemek için giriş yapmalısınız.");
+                    throw new UnauthorizedAccessException(AppText.Get("lists.loginRequiredToView"));
                 return;
             }
 
             if (list.UserId == userId.Value) return;
 
             if (list.Visibility == ListVisibilitySetting.Private)
-                throw new UnauthorizedAccessException("Bu listeyi görme (ve yorum yapma) yetkiniz yok.");
+                throw new UnauthorizedAccessException(AppText.Get("comments.viewPermissionDenied"));
 
             if (list.Visibility == ListVisibilitySetting.Followers)
             {
                 var isFollowingOwner = await _context.Follows
                     .AnyAsync(f => f.FollowerId == userId.Value && f.FolloweeId == list.UserId);
                 if (!isFollowingOwner)
-                    throw new UnauthorizedAccessException("Bu listeyi sadece sahibinin takipçileri görebilir.");
+                    throw new UnauthorizedAccessException(AppText.Get("lists.followersOnlyView"));
             }
         }
 
@@ -51,7 +52,7 @@ namespace GGHub.Infrastructure.Services
                 var parentCommentExists = await _context.UserListComments
                     .AnyAsync(c => c.Id == dto.ParentCommentId.Value && c.UserListId == listId);
                 if (!parentCommentExists)
-                    throw new InvalidOperationException("Cevap yazılmak istenen ana yorum bulunamadı.");
+                    throw new InvalidOperationException(AppText.Get("comments.parentNotFound"));
             }
 
             var user = await _context.Users.FindAsync(userId);
@@ -74,8 +75,8 @@ namespace GGHub.Infrastructure.Services
         public async Task<bool> UpdateCommentAsync(int commentId, int userId, UserListCommentForUpdateDto dto)
         {
             var comment = await _context.UserListComments.FindAsync(commentId);
-            if (comment == null) throw new KeyNotFoundException("Yorum bulunamadı.");
-            if (comment.UserId != userId) throw new UnauthorizedAccessException("Bu yorumu düzenleme yetkiniz yok.");
+            if (comment == null) throw new KeyNotFoundException(AppText.Get("comments.notFound"));
+            if (comment.UserId != userId) throw new UnauthorizedAccessException(AppText.Get("comments.editPermissionDenied"));
 
             comment.Content = dto.Content;
             comment.UpdatedAt = DateTime.UtcNow;
@@ -85,8 +86,8 @@ namespace GGHub.Infrastructure.Services
         public async Task<bool> DeleteCommentAsync(int commentId, int userId)
         {
             var comment = await _context.UserListComments.FindAsync(commentId);
-            if (comment == null) throw new KeyNotFoundException("Yorum bulunamadı.");
-            if (comment.UserId != userId) throw new UnauthorizedAccessException("Bu yorumu silme yetkiniz yok.");
+            if (comment == null) throw new KeyNotFoundException(AppText.Get("comments.notFound"));
+            if (comment.UserId != userId) throw new UnauthorizedAccessException(AppText.Get("comments.deletePermissionDenied"));
 
             _context.UserListComments.Remove(comment);
             var success = await _context.SaveChangesAsync() > 0;
@@ -159,15 +160,15 @@ namespace GGHub.Infrastructure.Services
         public async Task<bool> VoteOnCommentAsync(int commentId, int userId, UserListCommentVoteDto dto)
         {
             var comment = await _context.UserListComments.FindAsync(commentId);
-            if (comment == null) throw new KeyNotFoundException("Yorum bulunamadı.");
+            if (comment == null) throw new KeyNotFoundException(AppText.Get("comments.notFound"));
 
             await CheckListVisibility(comment.UserListId, userId);
 
             if (comment.UserId == userId)
-                throw new InvalidOperationException("Kendi yorumunuzu oylayamazsınız.");
+                throw new InvalidOperationException(AppText.Get("comments.cannotVoteOwnComment"));
 
             if (dto.Value == 0) 
-                throw new InvalidOperationException("Oy değeri 1 veya -1 olmalıdır.");
+                throw new InvalidOperationException(AppText.Get("comments.invalidVoteValue"));
 
             var existingVote = await _context.UserListCommentVotes
                 .FirstOrDefaultAsync(v => v.UserListCommentId == commentId && v.UserId == userId);
@@ -206,7 +207,7 @@ namespace GGHub.Infrastructure.Services
 
             if (comment == null)
             {
-                throw new KeyNotFoundException("Yorum bulunamadı.");
+                throw new KeyNotFoundException(AppText.Get("comments.notFound"));
             }
 
             await CheckListVisibility(comment.UserListId, currentUserId);

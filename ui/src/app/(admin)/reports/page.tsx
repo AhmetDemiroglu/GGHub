@@ -6,17 +6,18 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { PaginationState, SortingState } from "@tanstack/react-table";
 import { DateRange } from "react-day-picker";
 import { format } from "date-fns";
+import { enUS, tr } from "date-fns/locale";
 import { BrushCleaning } from "lucide-react";
 import { getReports } from "@/api/admin/admin.api";
 import type { ReportFilterParams } from "@/models/admin/admin.model";
 import { ReportStatus } from "@/models/report/report.model";
-import { translateEntityType } from "@/core/lib/report.utils";
+import { createReportColumns } from "@/core/components/other/admin-reports/column";
 import { DataTable } from "@/core/components/admin/data-table";
-import { columns } from "@/core/components/other/admin-reports/column";
 import { DatePicker } from "@/core/components/ui/date-picker";
 import { Input } from "@/core/components/ui/input";
 import { Button } from "@/core/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/core/components/ui/select";
+import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 
 function useDebounce<T>(value: T, delay: number): T {
     const [debouncedValue, setDebouncedValue] = React.useState(value);
@@ -27,7 +28,39 @@ function useDebounce<T>(value: T, delay: number): T {
     return debouncedValue;
 }
 
+const getReportStatusLabel = (t: ReturnType<typeof useI18n>, status: ReportStatus | "All") => {
+    if (status === "All") return t("admin.reportsPageAllStatuses");
+    switch (status) {
+        case ReportStatus.Open:
+            return t("admin.reportsPageOpen");
+        case ReportStatus.Resolved:
+            return t("admin.reportsPageResolved");
+        case ReportStatus.Ignored:
+            return t("admin.reportsPageIgnored");
+        default:
+            return t("report.status.unknown");
+    }
+};
+
+const getEntityTypeLabel = (t: ReturnType<typeof useI18n>, type: string) => {
+    switch (type) {
+        case "Review":
+            return t("admin.entityTypes.review");
+        case "Comment":
+            return t("admin.entityTypes.comment");
+        case "List":
+            return t("admin.entityTypes.list");
+        case "User":
+            return t("admin.entityTypes.user");
+        default:
+            return type;
+    }
+};
+
 export default function ReportsPage() {
+    const t = useI18n();
+    const locale = useCurrentLocale();
+    const dateLocale = locale === "tr" ? tr : enUS;
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -61,6 +94,7 @@ export default function ReportsPage() {
     });
 
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
+    const columns = createReportColumns(t, dateLocale);
 
     React.useEffect(() => {
         const params = new URLSearchParams(searchParams);
@@ -126,72 +160,72 @@ export default function ReportsPage() {
     return (
         <div className="container flex flex-col gap-8 py-6 lg:py-8 px-6 lg:px-8">
             <div>
-                <h2 className="text-3xl font-bold tracking-tight">Rapor Yönetimi</h2>
-                <p className="text-muted-foreground">Platformdaki tüm içerik raporlarını inceleyin ve yönetin.</p>
+                <h2 className="text-3xl font-bold tracking-tight">{t("admin.reportsPageTitle")}</h2>
+                <p className="text-muted-foreground">{t("admin.reportsPageDescription")}</p>
             </div>
 
             <div className="flex flex-wrap items-center gap-4 justify-between">
                 <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                    <Input placeholder="Sebep veya kullanıcı ara..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full sm:w-[240px]" />
+                    <Input placeholder={t("admin.reportsPageSearchPlaceholder")} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full sm:w-[240px]" />
 
                     <Select value={statusFilter.toString()} onValueChange={(val) => setStatusFilter(val === "All" ? "All" : Number(val))}>
                         <SelectTrigger className="w-full sm:w-[160px] cursor-pointer">
-                            <SelectValue placeholder="Durum" />
+                            <SelectValue placeholder={t("admin.reportsPageStatusPlaceholder")} />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="All" className="cursor-pointer">
-                                Tüm Durumlar
+                                {t("admin.reportsPageAllStatuses")}
                             </SelectItem>
                             <SelectItem value={ReportStatus.Open.toString()} className="cursor-pointer">
-                                Açık
+                                {t("admin.reportsPageOpen")}
                             </SelectItem>
                             <SelectItem value={ReportStatus.Resolved.toString()} className="cursor-pointer">
-                                Çözüldü
+                                {t("admin.reportsPageResolved")}
                             </SelectItem>
                             <SelectItem value={ReportStatus.Ignored.toString()} className="cursor-pointer">
-                                Reddedildi
+                                {t("admin.reportsPageIgnored")}
                             </SelectItem>
                         </SelectContent>
                     </Select>
 
                     <Select value={entityTypeFilter} onValueChange={setEntityTypeFilter}>
                         <SelectTrigger className="w-full sm:w-[160px] cursor-pointer">
-                            <SelectValue placeholder="Tür" />
+                            <SelectValue placeholder={t("admin.reportsPageTypePlaceholder")} />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="All" className="cursor-pointer">
-                                Tüm Türler
+                                {t("admin.reportsPageAllTypes")}
                             </SelectItem>
                             <SelectItem value="Review" className="cursor-pointer">
-                                {translateEntityType("Review")}
+                                {getEntityTypeLabel(t, "Review")}
                             </SelectItem>
                             <SelectItem value="Comment" className="cursor-pointer">
-                                {translateEntityType("Comment")}
+                                {getEntityTypeLabel(t, "Comment")}
                             </SelectItem>
                             <SelectItem value="List" className="cursor-pointer">
-                                {translateEntityType("List")}
+                                {getEntityTypeLabel(t, "List")}
                             </SelectItem>
                             <SelectItem value="User" className="cursor-pointer">
-                                {translateEntityType("User")}
+                                {getEntityTypeLabel(t, "User")}
                             </SelectItem>
                         </SelectContent>
                     </Select>
 
                     <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                        <DatePicker date={dateRange?.from} onDateChange={(date) => setDateRange((prev) => ({ from: date, to: prev?.to }))} placeholder="Başlangıç Tarihi" className="w-full sm:w-[180px]" />
-                        <DatePicker date={dateRange?.to} onDateChange={(date) => setDateRange((prev) => ({ from: prev?.from, to: date }))} placeholder="Bitiş Tarihi" className="w-full sm:w-[180px]" />
-                    </div>
+                        <DatePicker date={dateRange?.from} onDateChange={(date) => setDateRange((prev) => ({ from: date, to: prev?.to }))} placeholder={t("admin.reportsPageStartDate")} className="w-full sm:w-[180px]" />
+                        <DatePicker date={dateRange?.to} onDateChange={(date) => setDateRange((prev) => ({ from: prev?.from, to: date }))} placeholder={t("admin.reportsPageEndDate")} className="w-full sm:w-[180px]" />
+                        </div>
                 </div>
 
-                <Button variant="ghost" onClick={clearFilters} className="sm:ml-auto border-2 cursor-pointer">
+                <Button variant="ghost" onClick={clearFilters} className="sm:ml-auto border-2 cursor-pointer" aria-label={t("admin.reportsPageClearFilters")}>
                     <BrushCleaning className="h-4 w-4" />
                 </Button>
             </div>
 
             {isLoading && tableData.length === 0 ? (
-                <p className="text-center text-muted-foreground">Raporlar yükleniyor...</p>
+                <p className="text-center text-muted-foreground">{t("admin.reportsPageLoading")}</p>
             ) : isError ? (
-                <p className="text-center text-destructive">Raporlar yüklenirken bir hata oluştu.</p>
+                <p className="text-center text-destructive">{t("admin.reportsPageError")}</p>
             ) : (
                 <DataTable
                     columns={columns}

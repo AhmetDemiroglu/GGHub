@@ -8,7 +8,7 @@ import { useAuth } from "@core/hooks/use-auth";
 import { useRouter } from "next/navigation";
 import { Button } from "@/core/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/core/components/ui/card";
-import { Download, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Download, Trash2, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/core/components/ui/collapsible";
 import {
     AlertDialog,
@@ -20,8 +20,12 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/core/components/ui/alert-dialog";
+import { buildLocalizedPathname } from "@/i18n/config";
+import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 
 export function DangerZone() {
+    const t = useI18n();
+    const locale = useCurrentLocale();
     const [isOpen, setIsOpen] = useState(false);
     const [isAlertOpen, setIsAlertOpen] = useState(false);
     const { logout } = useAuth();
@@ -36,7 +40,7 @@ export function DangerZone() {
             link.href = url;
 
             const contentDisposition = response.headers["content-disposition"];
-            let fileName = "gghub-verilerim.json";
+            let fileName = t("profile.dangerZone.exportFileName");
             if (contentDisposition) {
                 const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
                 if (fileNameMatch && fileNameMatch.length > 1) {
@@ -51,10 +55,10 @@ export function DangerZone() {
             link.remove();
             window.URL.revokeObjectURL(url);
 
-            toast.success("Verilerin başarıyla indirildi.");
+            toast.success(t("profile.dangerZone.exportSuccess"));
         },
         onError: (error) => {
-            toast.error("Veriler indirilirken bir hata oluştu.", {
+            toast.error(t("profile.dangerZone.exportError"), {
                 description: error.message,
             });
         },
@@ -63,12 +67,12 @@ export function DangerZone() {
     const { mutate: deleteAccount, isPending: isDeleting } = useMutation({
         mutationFn: deleteMyAccount,
         onSuccess: () => {
-            toast.success("Hesabınız başarıyla silindi. Sizi özleyeceğiz!");
+            toast.success(t("profile.dangerZone.deleteSuccess"));
             logout();
-            router.push("/");
+            router.push(buildLocalizedPathname("/", locale));
         },
         onError: (error) => {
-            toast.error("Hesap silinirken bir hata oluştu.", {
+            toast.error(t("profile.dangerZone.deleteError"), {
                 description: error.message,
             });
         },
@@ -81,8 +85,8 @@ export function DangerZone() {
                     <CardHeader className="cursor-pointer p-4 md:p-6">
                         <div className="flex items-start md:items-center justify-between gap-3">
                             <div className="text-left flex-1 min-w-0">
-                                <CardTitle className="text-base md:text-lg text-destructive">Tehlikeli Bölge</CardTitle>
-                                <CardDescription className="text-xs md:text-sm mt-1">Bu alandaki işlemler geri alınamaz. Lütfen dikkatli olun.</CardDescription>
+                                <CardTitle className="text-base md:text-lg text-destructive">{t("profile.dangerZone.title")}</CardTitle>
+                                <CardDescription className="text-xs md:text-sm mt-1">{t("profile.dangerZone.description")}</CardDescription>
                             </div>
                             {isOpen ? <ChevronUp className="h-5 w-5 text-destructive flex-shrink-0" /> : <ChevronDown className="h-5 w-5 text-destructive flex-shrink-0" />}
                         </div>
@@ -92,22 +96,22 @@ export function DangerZone() {
                     <CardContent className="space-y-4 p-4 md:p-6">
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4 rounded-lg border border-dashed border-destructive p-3 md:p-4">
                             <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-sm md:text-base">Verilerini Dışa Aktar</h3>
-                                <p className="text-xs md:text-sm text-muted-foreground mt-1">Profil bilgilerin, listelerin ve yorumların dahil tüm verilerinin bir kopyasını indir.</p>
+                                <h3 className="font-semibold text-sm md:text-base">{t("profile.dangerZone.exportTitle")}</h3>
+                                <p className="text-xs md:text-sm text-muted-foreground mt-1">{t("profile.dangerZone.exportDescription")}</p>
                             </div>
                             <Button className="cursor-pointer w-full md:w-auto" variant="outline" onClick={() => exportData()} disabled={isExporting}>
-                                {isExporting ? "İndiriliyor..." : <Download className="mr-2 h-4 w-4" />}
-                                {isExporting ? "" : "İndir"}
+                                {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                                {isExporting ? t("profile.dangerZone.exporting") : t("profile.dangerZone.exportButton")}
                             </Button>
                         </div>
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4 rounded-lg border border-dashed border-destructive p-3 md:p-4">
                             <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-sm md:text-base">Hesabını Kalıcı Olarak Sil</h3>
-                                <p className="text-xs md:text-sm text-muted-foreground mt-1">Bu işlem hesabını ve tüm verilerini anonimleştirir. Bu işlemin geri dönüşü yoktur.</p>
+                                <h3 className="font-semibold text-sm md:text-base">{t("profile.dangerZone.deleteTitle")}</h3>
+                                <p className="text-xs md:text-sm text-muted-foreground mt-1">{t("profile.dangerZone.deleteDescription")}</p>
                             </div>
                             <Button className="cursor-pointer w-full md:w-auto" variant="destructive" onClick={() => setIsAlertOpen(true)} disabled={isDeleting}>
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                Hesabımı Sil
+                                {t("profile.dangerZone.deleteButton")}
                             </Button>
                         </div>
                     </CardContent>
@@ -116,15 +120,13 @@ export function DangerZone() {
             <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Bu işlem kalıcıdır ve geri alınamaz. Hesabınız ve tüm verileriniz anonimleştirilecektir. Devam etmek istediğinizden emin misiniz?
-                        </AlertDialogDescription>
+                        <AlertDialogTitle>{t("profile.dangerZone.confirmTitle")}</AlertDialogTitle>
+                        <AlertDialogDescription>{t("profile.dangerZone.confirmDescription")}</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="cursor-pointer">İptal</AlertDialogCancel>
+                        <AlertDialogCancel className="cursor-pointer">{t("profile.dangerZone.cancelButton")}</AlertDialogCancel>
                         <AlertDialogAction onClick={() => deleteAccount()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer">
-                            Evet, Hesabımı Sil
+                            {t("profile.dangerZone.confirmDelete")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

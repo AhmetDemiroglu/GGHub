@@ -5,7 +5,7 @@ import { AuthGuard } from "@/core/components/base/auth-guard";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/core/components/ui/card";
 import { Skeleton } from "@/core/components/ui/skeleton";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/core/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
 import { Pencil, Eye, EyeOff, X } from "lucide-react";
@@ -16,8 +16,11 @@ import { ProfilePhotoUploader } from "@/core/components/other/profile-photo-uplo
 import { DangerZone } from "@/core/components/other/danger-zone";
 import { ChangePasswordCard } from "@/core/components/other/change-password-card";
 import { getImageUrl } from "@/core/lib/get-image-url";
+import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 
 export default function ProfilePage() {
+    const t = useI18n();
+    const locale = useCurrentLocale();
     const [isEditing, setIsEditing] = useState(false);
     const [isPhotoUploaderOpen, setIsPhotoUploaderOpen] = useState(false);
 
@@ -25,6 +28,24 @@ export default function ProfilePage() {
         queryKey: ["my-profile"],
         queryFn: getMyProfile,
     });
+
+    const visibilityMap = useMemo<Record<number, string>>(
+        () => ({
+            0: t("profilePage.public"),
+            1: t("profilePage.followersOnly"),
+            2: t("profilePage.onlyMe"),
+        }),
+        [t]
+    );
+
+    const messageSettingMap = useMemo<Record<number, string>>(
+        () => ({
+            0: t("profilePage.everyone"),
+            1: t("profilePage.followingOnly"),
+            2: t("profilePage.nobody"),
+        }),
+        [t]
+    );
 
     if (isLoading) {
         return (
@@ -49,8 +70,8 @@ export default function ProfilePage() {
             <AuthGuard>
                 <Card className="w-full max-w-2xl">
                     <CardHeader>
-                        <CardTitle>Hata</CardTitle>
-                        <CardDescription>Profil bilgileri yüklenirken bir sorun oluştu.</CardDescription>
+                        <CardTitle>{t("profilePage.errorTitle")}</CardTitle>
+                        <CardDescription>{t("profilePage.errorDescription")}</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <p className="text-red-500">{error.message}</p>
@@ -63,74 +84,64 @@ export default function ProfilePage() {
     if (!data) {
         return null;
     }
-    const visibilityMap: { [key: number]: string } = {
-        0: "Herkese Açık",
-        1: "Sadece Takipçiler",
-        2: "Sadece Ben",
-    };
 
-    const messageSettingMap: { [key: number]: string } = {
-        0: "Herkes",
-        1: "Sadece Takip Ettiklerim",
-        2: "Hiç Kimse",
-    };
+    const formatDate = (value: string | Date) => new Date(value).toLocaleDateString(locale === "tr" ? "tr-TR" : "en-US");
+
+    const visibilityText = (isPublic: boolean) => (isPublic ? t("profilePage.public") : t("profilePage.hidden"));
 
     const ProfileReadOnlyView = ({ data }: { data: Profile }) => (
         <>
             <div className="space-y-2">
                 <p>
-                    <strong>İsim:</strong> {data.firstName || "Belirtilmemiş"}
+                    <strong>{t("profilePage.firstName")}:</strong> {data.firstName || t("profilePage.unspecified")}
                 </p>
                 <p>
-                    <strong>Soyisim:</strong> {data.lastName || "Belirtilmemiş"}
+                    <strong>{t("profilePage.lastName")}:</strong> {data.lastName || t("profilePage.unspecified")}
                 </p>
                 <p>
-                    <strong>Bio:</strong> {data.bio || "Bio eklenmemiş."}
+                    <strong>{t("profilePage.bio")}:</strong> {data.bio || t("profilePage.bioMissing")}
                 </p>
 
-                {/* Doğum Tarihi */}
                 <div className="flex items-center space-x-2">
                     <p>
-                        <strong>Doğum Tarihi:</strong> {data.dateOfBirth ? new Date(data.dateOfBirth).toLocaleDateString("tr-TR") : "Belirtilmemiş"}
+                        <strong>{t("profilePage.dateOfBirth")}:</strong> {data.dateOfBirth ? formatDate(data.dateOfBirth) : t("profilePage.unspecified")}
                     </p>
                     {data.dateOfBirth && (
                         <TooltipProvider delayDuration={100}>
                             <Tooltip>
                                 <TooltipTrigger>{data.isDateOfBirthPublic ? <Eye className="h-4 w-4 text-green-500" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}</TooltipTrigger>
                                 <TooltipContent>
-                                    <p>{data.isDateOfBirthPublic ? "Herkese Açık" : "Gizli"}</p>
+                                    <p>{visibilityText(data.isDateOfBirthPublic)}</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
                     )}
                 </div>
 
-                {/* E-posta Satırı */}
                 <div className="flex items-center space-x-2">
                     <p>
-                        <strong>E-posta:</strong> {data.email}
+                        <strong>{t("profilePage.email")}:</strong> {data.email}
                     </p>
                     <TooltipProvider delayDuration={100}>
                         <Tooltip>
                             <TooltipTrigger>{data.isEmailPublic ? <Eye className="h-4 w-4 text-green-500" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}</TooltipTrigger>
                             <TooltipContent>
-                                <p>{data.isEmailPublic ? "Herkese Açık" : "Gizli"}</p>
+                                <p>{visibilityText(data.isEmailPublic)}</p>
                             </TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
                 </div>
 
-                {/* Telefon Numarası Satırı */}
                 {data.phoneNumber && (
                     <div className="flex items-center space-x-2">
                         <p>
-                            <strong>Telefon:</strong> {data.phoneNumber}
+                            <strong>{t("profilePage.phone")}:</strong> {data.phoneNumber}
                         </p>
                         <TooltipProvider delayDuration={100}>
                             <Tooltip>
                                 <TooltipTrigger>{data.isPhoneNumberPublic ? <Eye className="h-4 w-4 text-green-500" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}</TooltipTrigger>
                                 <TooltipContent>
-                                    <p>{data.isPhoneNumberPublic ? "Herkese Açık" : "Gizli"}</p>
+                                    <p>{visibilityText(data.isPhoneNumberPublic)}</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
@@ -138,25 +149,26 @@ export default function ProfilePage() {
                 )}
             </div>
             <p className="mt-2">
-                <strong>Profil Görünürlüğü:</strong> {visibilityMap[data.profileVisibility] ?? "Bilinmiyor"}
+                <strong>{t("profilePage.profileVisibility")}:</strong> {visibilityMap[data.profileVisibility] ?? t("profilePage.unknown")}
             </p>
             <p className="mt-2">
-                <strong>Kimler Mesaj Atabilir:</strong> {messageSettingMap[data.messageSetting] ?? "Bilinmiyor"}
+                <strong>{t("profilePage.messageSetting")}:</strong> {messageSettingMap[data.messageSetting] ?? t("profilePage.unknown")}
             </p>
             <div className="flex justify-end-safe text-sm italic">
                 <p className="mb-0">
-                    <strong>Üyelik Tarihi:</strong> <span className="font-light">{new Date(data.createdAt).toLocaleDateString("tr-TR")}</span>
+                    <strong>{t("profilePage.membershipDate")}:</strong> <span className="font-light">{formatDate(data.createdAt)}</span>
                 </p>
             </div>
         </>
     );
+
     return (
         <AuthGuard>
             <div className="w-full h-full p-5 md:p-5 max-w-4xl mx-auto">
                 <div className="space-y-4">
                     <div>
-                        <h1 className="text-3xl font-bold">Profil Yönetimi</h1>
-                        <p className="text-muted-foreground mt-2">Kişisel bilgilerinizi, gizlilik ayarlarınızı ve daha fazlasını buradan yönetin.</p>
+                        <h1 className="text-3xl font-bold">{t("profilePage.title")}</h1>
+                        <p className="text-muted-foreground mt-2">{t("profilePage.description")}</p>
                     </div>
 
                     <Card>
@@ -166,7 +178,7 @@ export default function ProfilePage() {
                                     <div className="relative shrink-0">
                                         <button onClick={() => setIsPhotoUploaderOpen(true)} className="rounded-full">
                                             <Avatar className="h-14 w-14 md:h-16 md:w-16 cursor-pointer">
-                                                <AvatarImage src={getImageUrl(data?.profileImageUrl)} alt={data.username} />
+                                                <AvatarImage src={getImageUrl(data.profileImageUrl)} alt={data.username} />
                                                 <AvatarFallback>{data.username.charAt(0).toUpperCase()}</AvatarFallback>
                                             </Avatar>
                                         </button>

@@ -1,6 +1,7 @@
 ﻿using GGHub.Application.Dtos;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities; 
+using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
@@ -18,7 +19,7 @@ namespace GGHub.Infrastructure.Services
         {
             if (reportedUserId.HasValue && reportedUserId.Value == reporterUserId)
             {
-                throw new InvalidOperationException("Kendi içeriğinizi veya profilinizi raporlayamazsınız.");
+                throw new InvalidOperationException(AppText.Get("report.cannotReportOwnContent"));
             }
             var existingReport = await _context.ContentReports.AnyAsync(r =>
                 r.EntityType == entityType &&
@@ -27,7 +28,7 @@ namespace GGHub.Infrastructure.Services
             );
             if (existingReport)
             {
-                throw new InvalidOperationException("Bu içeriği zaten raporladınız.");
+                throw new InvalidOperationException(AppText.Get("report.alreadyReported"));
             }
 
             var report = new ContentReport
@@ -44,7 +45,7 @@ namespace GGHub.Infrastructure.Services
         public async Task ReportReviewAsync(int reviewId, int reporterUserId, ReportForCreationDto reportDto)
         {
             var review = await _context.Reviews.FindAsync(reviewId);
-            if (review == null) throw new KeyNotFoundException("Raporlanacak yorum bulunamadı.");
+            if (review == null) throw new KeyNotFoundException(AppText.Get("report.reviewNotFound"));
             await CheckAndCreateReportAsync("Review", reviewId, reporterUserId, reportDto, review.UserId);
 
             await _context.SaveChangesAsync();
@@ -52,7 +53,7 @@ namespace GGHub.Infrastructure.Services
         public async Task ReportUserAsync(int reportedUserId, int reporterUserId, ReportForCreationDto reportDto)
         {
             var user = await _context.Users.FindAsync(reportedUserId);
-            if (user == null) throw new KeyNotFoundException("Raporlanacak kullanıcı bulunamadı.");
+            if (user == null) throw new KeyNotFoundException(AppText.Get("report.userNotFound"));
 
             await CheckAndCreateReportAsync("User", reportedUserId, reporterUserId, reportDto, reportedUserId);
 
@@ -61,7 +62,7 @@ namespace GGHub.Infrastructure.Services
         public async Task ReportListAsync(int listId, int reporterUserId, ReportForCreationDto reportDto)
         {
             var list = await _context.UserLists.FindAsync(listId);
-            if (list == null) throw new KeyNotFoundException("Raporlanacak liste bulunamadı.");
+            if (list == null) throw new KeyNotFoundException(AppText.Get("report.listNotFound"));
 
             await CheckAndCreateReportAsync("List", listId, reporterUserId, reportDto, list.UserId);
 
@@ -70,7 +71,7 @@ namespace GGHub.Infrastructure.Services
         public async Task ReportCommentAsync(int commentId, int reporterUserId, ReportForCreationDto reportDto)
         {
             var comment = await _context.UserListComments.FindAsync(commentId);
-            if (comment == null) throw new KeyNotFoundException("Raporlanacak liste yorumu bulunamadı.");
+            if (comment == null) throw new KeyNotFoundException(AppText.Get("report.commentNotFound"));
 
             await CheckAndCreateReportAsync("Comment", commentId, reporterUserId, reportDto, comment.UserId);
 

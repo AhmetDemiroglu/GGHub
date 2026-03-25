@@ -6,12 +6,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/core/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
 import { getFollowers, getFollowing, followUser, unfollowUser } from "@/api/social/social.api";
-import { useRouter } from "next/navigation";
 import { Button } from "@/core/components/ui/button";
 import { toast } from "sonner";
 import { useAuth } from "@core/hooks/use-auth";
 import Link from "next/link";
 import { getImageUrl } from "@/core/lib/get-image-url";
+import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
+import { buildLocalizedPathname } from "@/i18n/config";
 
 interface User {
     id: number;
@@ -30,7 +31,8 @@ interface FollowersModalProps {
 }
 
 export function FollowersModal({ isOpen, onClose, username, defaultTab = "followers" }: FollowersModalProps) {
-    const router = useRouter();
+    const t = useI18n();
+    const locale = useCurrentLocale();
     const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState(defaultTab);
 
@@ -57,17 +59,17 @@ export function FollowersModal({ isOpen, onClose, username, defaultTab = "follow
                 .then(() => {
                     queryClient.invalidateQueries({ queryKey: ["followers", username] });
                     queryClient.invalidateQueries({ queryKey: ["following", username] });
-                    toast.success("Takip bırakıldı");
+                    toast.success(t("profile.followersModal.unfollowSuccess"));
                 })
-                .catch(() => toast.error("Bir hata oluştu"));
+                .catch(() => toast.error(t("profile.followersModal.error")));
         } else {
             followUser(targetUsername)
                 .then(() => {
                     queryClient.invalidateQueries({ queryKey: ["followers", username] });
                     queryClient.invalidateQueries({ queryKey: ["following", username] });
-                    toast.success("Takip edildi");
+                    toast.success(t("profile.followersModal.followSuccess"));
                 })
-                .catch(() => toast.error("Bir hata oluştu"));
+                .catch(() => toast.error(t("profile.followersModal.error")));
         }
     };
 
@@ -76,27 +78,27 @@ export function FollowersModal({ isOpen, onClose, username, defaultTab = "follow
             <DialogContent className="max-w-md">
                 <DialogHeader>
                     <DialogTitle>@{username}</DialogTitle>
-                    <DialogDescription>Takipçiler ve takip edilenler</DialogDescription>
+                    <DialogDescription>{t("profile.followersModal.description")}</DialogDescription>
                 </DialogHeader>
 
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "followers" | "following")}>
                     <TabsList className="grid w-full grid-cols-2">
                         <TabsTrigger value="followers" className="cursor-pointer">
-                            Takipçiler
+                            {t("profile.followersModal.followersTab")}
                         </TabsTrigger>
                         <TabsTrigger value="following" className="cursor-pointer">
-                            Takip Edilenler
+                            {t("profile.followersModal.followingTab")}
                         </TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="followers" className="max-h-96 overflow-y-auto space-y-2">
                         {followersLoading ? (
-                            <div className="text-center py-8 text-muted-foreground">Yükleniyor...</div>
+                            <div className="text-center py-8 text-muted-foreground">{t("profile.followersModal.loading")}</div>
                         ) : followers && followers.length > 0 ? (
                             followers.map((user: User) => (
                                 <div key={user.id} className="flex items-center justify-between p-3 hover:bg-accent rounded-lg">
                                     {user.isProfileAccessible ? (
-                                        <Link href={`/profiles/${user.username}`} className="flex items-center gap-3 cursor-pointer" onClick={onClose}>
+                                        <Link href={buildLocalizedPathname(`/profiles/${user.username}`, locale)} className="flex items-center gap-3 cursor-pointer" onClick={onClose}>
                                             <Avatar className="h-10 w-10">
                                                 <AvatarImage src={getImageUrl(user?.profileImageUrl)} alt={user.username} />
                                                 <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
@@ -115,7 +117,7 @@ export function FollowersModal({ isOpen, onClose, username, defaultTab = "follow
                                             <div>
                                                 <p className="font-medium">{user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username}</p>
                                                 <p className="text-xs text-muted-foreground">@{user.username}</p>
-                                                <p className="text-xs text-indigo-600 mt-0.5">Gizli Profil</p>
+                                                <p className="text-xs text-indigo-600 mt-0.5">{t("profile.followersModal.hiddenProfile")}</p>
                                             </div>
                                         </div>
                                     )}
@@ -130,24 +132,24 @@ export function FollowersModal({ isOpen, onClose, username, defaultTab = "follow
                                                 handleFollowToggle(user.username, user.isFollowing);
                                             }}
                                         >
-                                            {user.isFollowing ? "Takip Ediliyor" : "Takip Et"}
+                                            {user.isFollowing ? t("profile.followersModal.following") : t("profile.followersModal.follow")}
                                         </Button>
                                     )}
                                 </div>
                             ))
                         ) : (
-                            <div className="text-center py-8 text-muted-foreground">Henüz takipçi yok</div>
+                            <div className="text-center py-8 text-muted-foreground">{t("profile.followersModal.noFollowers")}</div>
                         )}
                     </TabsContent>
 
                     <TabsContent value="following" className="max-h-96 overflow-y-auto space-y-2">
                         {followingLoading ? (
-                            <div className="text-center py-8 text-muted-foreground">Yükleniyor...</div>
+                            <div className="text-center py-8 text-muted-foreground">{t("profile.followersModal.loading")}</div>
                         ) : following && following.length > 0 ? (
                             following.map((user: User) => (
                                 <div key={user.id} className="flex items-center justify-between p-3 hover:bg-accent rounded-lg">
                                     {user.isProfileAccessible ? (
-                                        <Link href={`/profiles/${user.username}`} className="flex items-center gap-3 cursor-pointer" onClick={onClose}>
+                                        <Link href={buildLocalizedPathname(`/profiles/${user.username}`, locale)} className="flex items-center gap-3 cursor-pointer" onClick={onClose}>
                                             <Avatar className="h-10 w-10">
                                                 <AvatarImage src={getImageUrl(user?.profileImageUrl)} alt={user.username} />
                                                 <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
@@ -166,7 +168,7 @@ export function FollowersModal({ isOpen, onClose, username, defaultTab = "follow
                                             <div>
                                                 <p className="font-medium">{user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username}</p>
                                                 <p className="text-xs text-muted-foreground">@{user.username}</p>
-                                                <p className="text-xs text-indigo-600 mt-0.5">Gizli Profil</p>
+                                                <p className="text-xs text-indigo-600 mt-0.5">{t("profile.followersModal.hiddenProfile")}</p>
                                             </div>
                                         </div>
                                     )}
@@ -180,13 +182,13 @@ export function FollowersModal({ isOpen, onClose, username, defaultTab = "follow
                                                 handleFollowToggle(user.username, user.isFollowing);
                                             }}
                                         >
-                                            {user.isFollowing ? "Takip Ediliyor" : "Takip Et"}
+                                            {user.isFollowing ? t("profile.followersModal.following") : t("profile.followersModal.follow")}
                                         </Button>
                                     )}
                                 </div>
                             ))
                         ) : (
-                            <div className="text-center py-8 text-muted-foreground">Henüz kimse takip edilmiyor</div>
+                            <div className="text-center py-8 text-muted-foreground">{t("profile.followersModal.noFollowing")}</div>
                         )}
                     </TabsContent>
                 </Tabs>

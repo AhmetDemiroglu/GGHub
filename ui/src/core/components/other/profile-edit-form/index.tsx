@@ -1,12 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
 import * as z from "zod";
-import { Profile } from "@/models/profile/profile.model";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { updateMyProfile } from "@/api/profile/profile.api";
 import { toast } from "sonner";
 import { Button } from "@/core/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/core/components/ui/form";
@@ -16,21 +14,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/cor
 import { Switch } from "@/core/components/ui/switch";
 import { DatePicker } from "@/core/components/ui/date-picker";
 import { PrivacySettingsForm } from "@/core/components/other/privacy-settings-form";
-
-const formSchema = z.object({
-    firstName: z.string().nullable(),
-    lastName: z.string().nullable(),
-    bio: z.string().nullable(),
-    isEmailPublic: z.boolean(),
-    isPhoneNumberPublic: z.boolean(),
-    isDateOfBirthPublic: z.boolean(),
-    phoneNumber: z.string().nullable(),
-    dateOfBirth: z.date().nullable(),
-    status: z.string().nullable(),
-    profileImageUrl: z.string().nullable(),
-});
-
-type FormData = z.infer<typeof formSchema>;
+import { useI18n } from "@/core/contexts/locale-context";
+import { Profile } from "@/models/profile/profile.model";
+import { updateMyProfile } from "@/api/profile/profile.api";
 
 interface ProfileEditFormProps {
     initialData: Profile;
@@ -38,7 +24,24 @@ interface ProfileEditFormProps {
 }
 
 export function ProfileEditForm({ initialData, onSave }: ProfileEditFormProps) {
+    const t = useI18n();
     const queryClient = useQueryClient();
+
+    const formSchema = z.object({
+        firstName: z.string().nullable(),
+        lastName: z.string().nullable(),
+        bio: z.string().nullable(),
+        isEmailPublic: z.boolean(),
+        isPhoneNumberPublic: z.boolean(),
+        isDateOfBirthPublic: z.boolean(),
+        phoneNumber: z.string().nullable(),
+        dateOfBirth: z.date().nullable(),
+        status: z.string().nullable(),
+        profileImageUrl: z.string().nullable(),
+    });
+
+    type FormData = z.infer<typeof formSchema>;
+
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -54,16 +57,16 @@ export function ProfileEditForm({ initialData, onSave }: ProfileEditFormProps) {
             profileImageUrl: initialData.profileImageUrl || null,
         },
     });
+
     const { mutate, isPending } = useMutation({
         mutationFn: updateMyProfile,
-        onSuccess: (updatedProfile) => {
-            toast.success("Profil başarıyla güncellendi!");
-
+        onSuccess: () => {
+            toast.success(t("profile.editForm.success"));
             queryClient.invalidateQueries({ queryKey: ["my-profile"] });
             onSave();
         },
         onError: (error) => {
-            toast.error("Profil güncellenirken bir hata oluştu.", {
+            toast.error(t("profile.editForm.error"), {
                 description: error.message,
             });
         },
@@ -82,7 +85,7 @@ export function ProfileEditForm({ initialData, onSave }: ProfileEditFormProps) {
             status: initialData.status || "",
             profileImageUrl: initialData.profileImageUrl || null,
         });
-    }, [initialData, form.reset]);
+    }, [initialData, form]);
 
     function onSubmit(values: FormData) {
         const { dateOfBirth } = values;
@@ -91,7 +94,6 @@ export function ProfileEditForm({ initialData, onSave }: ProfileEditFormProps) {
         if (dateOfBirth) {
             const userTimezoneOffset = dateOfBirth.getTimezoneOffset() * 60000;
             const correctedDate = new Date(dateOfBirth.getTime() - userTimezoneOffset);
-
             correctedValues.dateOfBirth = correctedDate;
         }
 
@@ -101,8 +103,8 @@ export function ProfileEditForm({ initialData, onSave }: ProfileEditFormProps) {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Profili Düzenle</CardTitle>
-                <CardDescription>Değişikliklerinizi yapın ve kaydedin.</CardDescription>
+                <CardTitle>{t("profile.editForm.title")}</CardTitle>
+                <CardDescription>{t("profile.editForm.description")}</CardDescription>
             </CardHeader>
             <CardContent className="p-4 md:p-6">
                 <Form {...form}>
@@ -112,9 +114,9 @@ export function ProfileEditForm({ initialData, onSave }: ProfileEditFormProps) {
                             name="firstName"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>İsim</FormLabel>
+                                    <FormLabel>{t("profile.editForm.firstName")}</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="İsminiz" {...field} value={field.value ?? ""} />
+                                        <Input placeholder={t("profile.editForm.firstNamePlaceholder")} {...field} value={field.value ?? ""} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -125,9 +127,9 @@ export function ProfileEditForm({ initialData, onSave }: ProfileEditFormProps) {
                             name="lastName"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Soyisim</FormLabel>
+                                    <FormLabel>{t("profile.editForm.lastName")}</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Soyisminiz" {...field} value={field.value ?? ""} />
+                                        <Input placeholder={t("profile.editForm.lastNamePlaceholder")} {...field} value={field.value ?? ""} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -138,9 +140,9 @@ export function ProfileEditForm({ initialData, onSave }: ProfileEditFormProps) {
                             name="status"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Durum</FormLabel>
+                                    <FormLabel>{t("profile.editForm.status")}</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Durumunuz (örn: Oyunda)" {...field} value={field.value ?? ""} />
+                                        <Input placeholder={t("profile.editForm.statusPlaceholder")} {...field} value={field.value ?? ""} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -151,7 +153,7 @@ export function ProfileEditForm({ initialData, onSave }: ProfileEditFormProps) {
                             name="dateOfBirth"
                             render={({ field }) => (
                                 <FormItem className="flex flex-col">
-                                    <FormLabel>Doğum Tarihi</FormLabel>
+                                    <FormLabel>{t("profile.editForm.dateOfBirth")}</FormLabel>
                                     <FormControl>
                                         <DatePicker date={field.value} onDateChange={field.onChange} />
                                     </FormControl>
@@ -165,8 +167,8 @@ export function ProfileEditForm({ initialData, onSave }: ProfileEditFormProps) {
                             render={({ field }) => (
                                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                                     <div className="space-y-0.5">
-                                        <FormLabel>Doğum Tarihini Profilde Göster</FormLabel>
-                                        <FormDescription>İşaretlenirse, doğum tarihiniz herkese açık profilinizde görünür.</FormDescription>
+                                        <FormLabel>{t("profile.editForm.showDateOfBirth")}</FormLabel>
+                                        <FormDescription>{t("profile.editForm.showDateOfBirthDescription")}</FormDescription>
                                     </div>
                                     <FormControl>
                                         <Switch checked={field.value} onCheckedChange={field.onChange} className="cursor-pointer" />
@@ -179,9 +181,9 @@ export function ProfileEditForm({ initialData, onSave }: ProfileEditFormProps) {
                             name="bio"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Bio</FormLabel>
+                                    <FormLabel>{t("profile.editForm.bio")}</FormLabel>
                                     <FormControl>
-                                        <Textarea placeholder="Kendinizden bahsedin..." className="resize-none" {...field} value={field.value ?? ""} />
+                                        <Textarea placeholder={t("profile.editForm.bioPlaceholder")} className="resize-none" {...field} value={field.value ?? ""} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -192,9 +194,9 @@ export function ProfileEditForm({ initialData, onSave }: ProfileEditFormProps) {
                             name="phoneNumber"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Telefon Numarası</FormLabel>
+                                    <FormLabel>{t("profile.editForm.phoneNumber")}</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Telefon numaranız" {...field} value={field.value ?? ""} />
+                                        <Input placeholder={t("profile.editForm.phoneNumberPlaceholder")} {...field} value={field.value ?? ""} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -206,8 +208,8 @@ export function ProfileEditForm({ initialData, onSave }: ProfileEditFormProps) {
                             render={({ field }) => (
                                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                                     <div className="space-y-0.5">
-                                        <FormLabel>Telefon Numarasını Profilde Göster</FormLabel>
-                                        <FormDescription>İşaretlenirse, telefon numaranız herkese açık profilinizde görünür.</FormDescription>
+                                        <FormLabel>{t("profile.editForm.showPhoneNumber")}</FormLabel>
+                                        <FormDescription>{t("profile.editForm.showPhoneNumberDescription")}</FormDescription>
                                     </div>
                                     <FormControl>
                                         <Switch checked={field.value} onCheckedChange={field.onChange} className="cursor-pointer" />
@@ -221,8 +223,8 @@ export function ProfileEditForm({ initialData, onSave }: ProfileEditFormProps) {
                             render={({ field }) => (
                                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                                     <div className="space-y-0.5">
-                                        <FormLabel>E-postayı Profilde Göster</FormLabel>
-                                        <FormDescription>İşaretlenirse, e-posta adresiniz herkese açık profilinizde görünür.</FormDescription>
+                                        <FormLabel>{t("profile.editForm.showEmail")}</FormLabel>
+                                        <FormDescription>{t("profile.editForm.showEmailDescription")}</FormDescription>
                                     </div>
                                     <FormControl>
                                         <Switch checked={field.value} onCheckedChange={field.onChange} className="cursor-pointer" />
@@ -233,7 +235,7 @@ export function ProfileEditForm({ initialData, onSave }: ProfileEditFormProps) {
                         <PrivacySettingsForm initialData={initialData} />
 
                         <Button className="cursor-pointer" type="submit" disabled={isPending}>
-                            {isPending ? "Kaydediliyor..." : "Değişiklikleri Kaydet"}
+                            {isPending ? t("profile.editForm.saving") : t("profile.editForm.save")}
                         </Button>
                     </form>
                 </Form>

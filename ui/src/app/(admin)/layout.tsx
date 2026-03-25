@@ -61,7 +61,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                                 <span className="sr-only">{t("admin.menuOpen")}</span>
                             </Button>
                         </SheetTrigger>
-                        <SheetContent side="left" className="w-[240px] p-0">
+                        <SheetContent side="left" className="w-60 p-0">
                             <VisuallyHidden>
                                 <SheetTitle>{t("admin.mainMenu")}</SheetTitle>
                                 <SheetDescription>{t("admin.mainMenu")}</SheetDescription>
@@ -75,7 +75,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </header>
 
             <div className="flex flex-1 overflow-hidden">
-                <aside className="hidden w-[240px] flex-col border-r bg-background md:flex">
+                <aside className="hidden w-60 flex-col border-r bg-background md:flex">
                     <div className="flex-1 overflow-y-auto">
                         <div className="h-full px-6 py-6 lg:py-8">
                             <AdminSidebarNav user={user} />

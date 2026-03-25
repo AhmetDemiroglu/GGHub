@@ -1,7 +1,7 @@
 import { Game } from "@/models/gaming/game.model";
 import React, { useState } from "react";
 import { PlatformIcons } from "@/core/components/other/platform-icons";
-import { Calendar, Plus, Gift, Share2, MoreHorizontal, Loader2, Trash2, Check, ListPlus } from "lucide-react";
+import { Calendar, Plus, Gift, Share2, Loader2, Trash2 } from "lucide-react";
 import { GameRatingBar } from "./game-rating-bar";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { checkWishlistStatus, toggleWishlist } from "@/api/list/list.api";
@@ -11,17 +11,18 @@ import { GameAddToListDialog } from "./game-add-to-list-dialog";
 import { getMyReview } from "@/api/review/review.api";
 import { FavoriteButton } from "./favorite-button";
 import { AdminGameRefreshButton } from "./admin-game-refresh-button";
+import { useI18n } from "@/core/contexts/locale-context";
+
 interface GameHeroProps {
     game: Game;
     onOpenReviewModal: () => void;
 }
 
 export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
+    const t = useI18n();
     const { isAuthenticated, user } = useAuth();
     const queryClient = useQueryClient();
-
     const isAdmin = user?.role === "Admin";
-
     const [isListDialogOpen, setIsListDialogOpen] = useState(false);
 
     const { data: wishlistStatus, isLoading: isStatusLoading } = useQuery({
@@ -36,21 +37,21 @@ export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
             queryClient.setQueryData(["wishlist-status", game.id], { isInWishlist: data.isAdded });
 
             toast.success(data.message, {
-                description: data.isAdded ? "Oyun istek listenize eklendi." : "Oyun istek listenizden çıkarıldı."
+                description: data.isAdded ? t("reviewList.wishlistAdded") : t("reviewList.wishlistRemoved"),
             });
         },
-        onError: (error) => {
-            toast.error("İşlem başarısız oldu", {
-                description: "Lütfen giriş yaptığınızdan emin olun."
+        onError: () => {
+            toast.error(t("reviewList.wishlistErrorTitle"), {
+                description: t("reviewList.wishlistErrorDescription"),
             });
-        }
+        },
     });
 
     const { data: myReview } = useQuery({
         queryKey: ["my-review", game.rawgId],
         queryFn: () => getMyReview(game.rawgId),
         enabled: !!isAuthenticated,
-        retry: false
+        retry: false,
     });
 
     const isAdded = wishlistStatus?.isInWishlist ?? false;
@@ -58,7 +59,7 @@ export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
 
     const handleWishlistClick = () => {
         if (!isAuthenticated) {
-            toast.error("Giriş Yapmalısınız", { description: "Bu işlem için üye girişi gereklidir." });
+            toast.error(t("reviewList.wishlistLoginTitle"), { description: t("reviewList.wishlistLoginDescription") });
             return;
         }
         mutateWishlist();
@@ -68,19 +69,16 @@ export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
         const url = window.location.href;
         try {
             await navigator.clipboard.writeText(url);
-            toast.success("Link Kopyalandı", { description: "Oyun bağlantısı panoya kopyalandı." });
-        } catch (err) {
-            toast.error("Kopyalama Başarısız");
+            toast.success(t("reviewList.shareSuccessTitle"), { description: t("reviewList.shareSuccessDescription") });
+        } catch {
+            toast.error(t("reviewList.shareErrorTitle"));
         }
     };
 
-    const releaseDate = game.released
-        ? new Date(game.released).toLocaleDateString("tr-TR", { month: "long", day: "numeric", year: "numeric" })
-        : null;
+    const releaseDate = game.released ? new Date(game.released).toLocaleDateString("tr-TR", { month: "long", day: "numeric", year: "numeric" }) : null;
 
     return (
         <div className="relative w-full min-h-[550px] overflow-hidden rounded-3xl shadow-2xl bg-background border border-white/5">
-            {/* Arka Plan Görseli & Overlay */}
             <div
                 className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-1000 hover:scale-105"
                 style={{ backgroundImage: `url(${game.backgroundImage || "/placeholder-game.jpg"})` }}
@@ -89,10 +87,7 @@ export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
                 <div className="absolute inset-0 bg-linear-to-r from-background via-background/50 to-transparent" />
             </div>
 
-            {/* İçerik Alanı */}s
             <div className="relative h-full flex flex-col justify-end pt-62 pb-0 md:px-12 md:pb-10 lg:px-16 lg:pb-12 z-10">
-
-                {/* Meta Veriler */}
                 <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-white/80 mb-4">
                     {releaseDate && (
                         <div className="flex items-center gap-1.5 bg-black/30 px-3 py-1.5 rounded-full backdrop-blur-md border border-white/10">
@@ -101,7 +96,6 @@ export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
                         </div>
                     )}
 
-                    {/* Platform İkonları Entegrasyonu */}
                     {game.platforms && game.platforms.length > 0 && (
                         <div className="flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-full backdrop-blur-md border border-white/10">
                             <PlatformIcons platforms={game.platforms} />
@@ -109,22 +103,14 @@ export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
                     )}
                 </div>
 
-                {/* Büyük Başlık */}
-                <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-white mb-8 leading-[0.9] tracking-tight drop-shadow-2xl">
-                    {game.name}
-                </h1>
+                <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-white mb-8 leading-[0.9] tracking-tight drop-shadow-2xl">{game.name}</h1>
 
-                {/* Ana Aksiyon Alanı (Grid) */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:items-end">
-
-                    {/* Sol Taraf: Butonlar */}
                     <div className="lg:col-span-7 flex flex-wrap gap-3">
-
-                        {/* Add to List */}
                         <button
                             onClick={() => {
                                 if (!isAuthenticated) {
-                                    toast.error("Giriş Yapmalısınız");
+                                    toast.error(t("reviewList.loginRequired"));
                                     return;
                                 }
                                 setIsListDialogOpen(true);
@@ -135,21 +121,19 @@ export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
                                 <Plus size={20} strokeWidth={3} />
                             </div>
                             <div className="flex flex-col items-start leading-none">
-                                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">EKLE</span>
-                                <span className="text-lg font-bold">Liste Seç</span>
+                                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{t("reviewList.addAction")}</span>
+                                <span className="text-lg font-bold">{t("reviewList.selectList")}</span>
                             </div>
                         </button>
 
-
-
-                        {/* İstek Listesine Ekle */}
                         <button
                             onClick={handleWishlistClick}
                             disabled={isButtonLoading}
-                            className={`flex items-center gap-3 border px-6 py-3.5 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${isAdded
-                                ? "bg-red-500/20 text-red-400 border-red-500/50 hover:bg-red-500/30"
-                                : "bg-white/5 text-white border-white/10 hover:bg-white/10 hover:border-white/20"
-                                }`}
+                            className={`flex items-center gap-3 border px-6 py-3.5 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${
+                                isAdded
+                                    ? "bg-red-500/20 text-red-400 border-red-500/50 hover:bg-red-500/30"
+                                    : "bg-white/5 text-white border-white/10 hover:bg-white/10 hover:border-white/20"
+                            }`}
                         >
                             {isButtonLoading ? (
                                 <Loader2 size={20} className="animate-spin text-zinc-400" />
@@ -161,17 +145,13 @@ export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
 
                             <div className="flex flex-col items-start leading-none">
                                 <span className={`text-[10px] font-bold uppercase tracking-wider ${isAdded ? "text-red-400" : "text-white/40"}`}>
-                                    {isAdded ? "ÇIKAR" : "EKLE"}
+                                    {isAdded ? t("reviewList.removeAction") : t("reviewList.addAction")}
                                 </span>
-                                <span className="text-base font-bold mt-1">İstek Listem</span>
+                                <span className="text-base font-bold mt-1">{t("reviewList.wishlistName")}</span>
                             </div>
                         </button>
 
-                        {/* More Actions */}
-                        <FavoriteButton
-                            gameId={game.rawgId}
-                            className="h-[70px] w-[58px] rounded-xl flex items-center justify-center bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20"
-                        />
+                        <FavoriteButton gameId={game.rawgId} className="h-[70px] w-[58px] rounded-xl flex items-center justify-center bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20" />
                         <button
                             onClick={handleShare}
                             className="flex items-center justify-center w-14 bg-white/5 text-white border border-white/10 rounded-xl hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer backdrop-blur-md"
@@ -186,20 +166,11 @@ export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
                         )}
                     </div>
 
-                    {/* Sağ Taraf: Rating Bar */}
                     <div className="lg:col-span-5 lg:flex lg:justify-end">
-                        <GameRatingBar
-                            rating={game.gghubRating || 0}
-                            onRateClick={onOpenReviewModal}
-                            actionLabel={myReview ? "Puanını Düzenle" : "Puan vermek için tıkla"}
-                        />
+                        <GameRatingBar rating={game.gghubRating || 0} onRateClick={onOpenReviewModal} actionLabel={myReview ? t("reviewList.rateEdit") : t("reviewList.ratePrompt")} />
                     </div>
                 </div>
-                <GameAddToListDialog
-                    isOpen={isListDialogOpen}
-                    onClose={() => setIsListDialogOpen(false)}
-                    gameId={game.rawgId}
-                />
+                <GameAddToListDialog isOpen={isListDialogOpen} onClose={() => setIsListDialogOpen(false)} gameId={game.rawgId} />
             </div>
         </div>
     );

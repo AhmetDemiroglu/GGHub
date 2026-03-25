@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getFollowers, getFollowing, followUser, unfollowUser } from "@/api/social/social.api";
-import { Loader2, UserMinus, UserPlus, Users, UserCheck } from "lucide-react";
+import { Loader2, UserPlus, Users, UserCheck } from "lucide-react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
 import { getImageUrl } from "@/core/lib/get-image-url";
@@ -11,8 +11,8 @@ import { Button } from "@/core/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/core/components/ui/tabs";
 import { toast } from "sonner";
 import { useAuth } from "@/core/hooks/use-auth";
+import { useI18n } from "@/core/contexts/locale-context";
 
-// Modal'daki ile aynı interface (Social API dönüş tipi)
 interface SocialUser {
     id: number;
     username: string;
@@ -28,6 +28,7 @@ interface ProfileNetworkProps {
 }
 
 export default function ProfileNetwork({ username }: ProfileNetworkProps) {
+    const t = useI18n();
     const { user: currentUser } = useAuth();
     const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState<"followers" | "following">("followers");
@@ -49,9 +50,9 @@ export default function ProfileNetwork({ username }: ProfileNetworkProps) {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["followers", username] });
             queryClient.invalidateQueries({ queryKey: ["following", username] });
-            toast.success("Kullanıcı takip edildi");
+            toast.success(t("profile.network.followSuccess"));
         },
-        onError: () => toast.error("İşlem başarısız")
+        onError: () => toast.error(t("profile.network.error")),
     });
 
     const unfollowMutation = useMutation({
@@ -59,16 +60,17 @@ export default function ProfileNetwork({ username }: ProfileNetworkProps) {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["followers", username] });
             queryClient.invalidateQueries({ queryKey: ["following", username] });
-            toast.success("Takip bırakıldı");
+            toast.success(t("profile.network.unfollowSuccess"));
         },
-        onError: () => toast.error("İşlem başarısız")
+        onError: () => toast.error(t("profile.network.error")),
     });
 
     const handleFollowToggle = (targetUsername: string, isFollowing: boolean) => {
         if (!currentUser) {
-            toast.error("Giriş yapmalısınız");
+            toast.error(t("profile.network.loginRequired"));
             return;
         }
+
         if (isFollowing) {
             unfollowMutation.mutate(targetUsername);
         } else {
@@ -76,7 +78,7 @@ export default function ProfileNetwork({ username }: ProfileNetworkProps) {
         }
     };
 
-    const UserList = ({ users, isLoading, emptyMessage }: { users?: SocialUser[], isLoading: boolean, emptyMessage: string }) => {
+    const UserList = ({ users, isLoading, emptyMessage }: { users?: SocialUser[]; isLoading: boolean; emptyMessage: string }) => {
         if (isLoading) {
             return (
                 <div className="flex justify-center py-12">
@@ -122,12 +124,12 @@ export default function ProfileNetwork({ username }: ProfileNetworkProps) {
                                 {user.isFollowing ? (
                                     <>
                                         <UserCheck className="h-4 w-4 md:mr-2" />
-                                        <span className="hidden md:inline">Takip Ediliyor</span>
+                                        <span className="hidden md:inline">{t("profile.network.following")}</span>
                                     </>
                                 ) : (
                                     <>
                                         <UserPlus className="h-4 w-4 md:mr-2" />
-                                        <span className="hidden md:inline">Takip Et</span>
+                                        <span className="hidden md:inline">{t("profile.network.follow")}</span>
                                     </>
                                 )}
                             </Button>
@@ -142,19 +144,19 @@ export default function ProfileNetwork({ username }: ProfileNetworkProps) {
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "followers" | "following")} className="w-full">
             <TabsList className="w-full justify-start h-auto bg-muted/50 rounded-lg mb-2 inline-flex">
                 <TabsTrigger value="followers" className="px-6 py-2 rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm cursor-pointer">
-                    Takipçiler
+                    {t("profile.network.followersTab")}
                 </TabsTrigger>
                 <TabsTrigger value="following" className="px-6 py-2 rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm cursor-pointer">
-                    Takip Edilenler
+                    {t("profile.network.followingTab")}
                 </TabsTrigger>
             </TabsList>
 
             <TabsContent value="followers" className="mt-0 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
-                <UserList users={followers as SocialUser[]} isLoading={followersLoading} emptyMessage="Henüz takipçi yok." />
+                <UserList users={followers as SocialUser[]} isLoading={followersLoading} emptyMessage={t("profile.network.noFollowers")} />
             </TabsContent>
 
             <TabsContent value="following" className="mt-0 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
-                <UserList users={following as SocialUser[]} isLoading={followingLoading} emptyMessage="Henüz kimse takip edilmiyor." />
+                <UserList users={following as SocialUser[]} isLoading={followingLoading} emptyMessage={t("profile.network.noFollowing")} />
             </TabsContent>
         </Tabs>
     );

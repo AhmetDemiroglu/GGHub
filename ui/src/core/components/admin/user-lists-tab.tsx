@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/core/components/ui/badge";
 import { Eye, Users, Lock, Star, ExternalLink, HatGlasses } from "lucide-react";
 import Link from "next/link";
+import { useI18n } from "@/core/contexts/locale-context";
 
 const getVisibilityIcon = (visibility: ListVisibilitySetting) => {
     switch (visibility) {
@@ -22,11 +23,26 @@ const getVisibilityIcon = (visibility: ListVisibilitySetting) => {
     }
 };
 
+const getVisibilityLabel = (t: ReturnType<typeof useI18n>, visibility: ListVisibilitySetting) => {
+    switch (visibility) {
+        case ListVisibilitySetting.Public:
+            return t("admin.userListsVisibility.public");
+        case ListVisibilitySetting.Followers:
+            return t("admin.userListsVisibility.followers");
+        case ListVisibilitySetting.Private:
+            return t("admin.userListsVisibility.private");
+        default:
+            return String(visibility);
+    }
+};
+
 interface UserListsTabProps {
     userId: number;
 }
 
 export const UserListsTab = ({ userId }: UserListsTabProps) => {
+    const t = useI18n();
+
     const {
         data: lists,
         isLoading,
@@ -38,15 +54,15 @@ export const UserListsTab = ({ userId }: UserListsTabProps) => {
     });
 
     if (isLoading) {
-        return <p className="text-center text-muted-foreground">Kullanıcının listeleri yükleniyor...</p>;
+        return <p className="text-center text-muted-foreground">{t("admin.userListsLoading")}</p>;
     }
 
     if (isError) {
-        return <p className="text-destructive">Listeler yüklenirken bir hata oluştu.</p>;
+        return <p className="text-destructive">{t("admin.userListsError")}</p>;
     }
 
     if (!lists || lists.length === 0) {
-        return <p className="text-center text-muted-foreground">Bu kullanıcının oluşturduğu herhangi bir liste bulunmamaktadır.</p>;
+        return <p className="text-center text-muted-foreground">{t("admin.userListsEmpty")}</p>;
     }
 
     return (
@@ -54,12 +70,12 @@ export const UserListsTab = ({ userId }: UserListsTabProps) => {
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Liste Adı</TableHead>
-                        <TableHead>Görünürlük</TableHead>
-                        <TableHead>Puan</TableHead>
-                        <TableHead>Takipçi</TableHead>
-                        <TableHead>Oyun Sayısı</TableHead>
-                        <TableHead className="text-right">Eylem</TableHead>
+                        <TableHead>{t("admin.userListsColumns.listName")}</TableHead>
+                        <TableHead>{t("admin.userListsColumns.visibility")}</TableHead>
+                        <TableHead>{t("admin.userListsColumns.rating")}</TableHead>
+                        <TableHead>{t("admin.userListsColumns.followers")}</TableHead>
+                        <TableHead>{t("admin.userListsColumns.gameCount")}</TableHead>
+                        <TableHead className="text-right">{t("admin.userListsColumns.action")}</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -69,7 +85,7 @@ export const UserListsTab = ({ userId }: UserListsTabProps) => {
                             <TableCell>
                                 <Badge variant="outline" className="flex w-fit items-center gap-1.5">
                                     {getVisibilityIcon(list.visibility)}
-                                    {ListVisibilitySetting[list.visibility]}
+                                    {getVisibilityLabel(t, list.visibility)}
                                 </Badge>
                             </TableCell>
                             <TableCell>
@@ -84,12 +100,12 @@ export const UserListsTab = ({ userId }: UserListsTabProps) => {
                                 {list.visibility === ListVisibilitySetting.Public ? (
                                     <Link href={`/lists/${list.id}`} target="_blank" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
                                         <ExternalLink className="h-3.5 w-3.5" />
-                                        Listeyi Gör
+                                        {t("admin.userListsViewList")}
                                     </Link>
                                 ) : (
                                     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground italic">
                                         <HatGlasses className="h-3.5 w-3.5" />
-                                        Gizli İçerik
+                                        {t("admin.userListsHiddenContent")}
                                     </span>
                                 )}
                             </TableCell>

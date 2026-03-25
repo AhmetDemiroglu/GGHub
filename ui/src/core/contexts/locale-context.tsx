@@ -40,6 +40,7 @@ export function LocaleProvider({ children, locale, messages }: { children: React
             t: (key, values) => translate(activeMessages, key, values),
             persistLocale: (nextLocale) => {
                 document.cookie = `gghub-locale=${nextLocale}; path=/; max-age=31536000; samesite=lax`;
+                document.cookie = `gghub-locale-manual=1; path=/; max-age=31536000; samesite=lax`;
                 localStorage.setItem(localeStorageKey, nextLocale);
                 setActiveLocale(nextLocale);
                 setActiveMessages(getMessages(nextLocale));

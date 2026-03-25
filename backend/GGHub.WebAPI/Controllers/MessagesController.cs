@@ -1,5 +1,6 @@
-﻿using GGHub.Application.Dtos;
+using GGHub.Application.Dtos;
 using GGHub.Application.Interfaces;
+using GGHub.Infrastructure.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -8,7 +9,7 @@ namespace GGHub.WebAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] 
+    [Authorize]
     public class MessagesController : ControllerBase
     {
         private readonly ISocialService _socialService;
@@ -28,7 +29,7 @@ namespace GGHub.WebAPI.Controllers
                 var createdMessage = await _socialService.SendMessageAsync(senderId, messageDto);
                 if (createdMessage == null)
                 {
-                    return NotFound("Alıcı kullanıcı bulunamadı.");
+                    return NotFound(AppText.Get("messages.recipientNotFound"));
                 }
 
                 return StatusCode(201, createdMessage);
@@ -38,6 +39,7 @@ namespace GGHub.WebAPI.Controllers
                 return BadRequest(ex.Message);
             }
         }
+
         [HttpGet("conversations")]
         public async Task<IActionResult> GetConversations()
         {
@@ -45,6 +47,7 @@ namespace GGHub.WebAPI.Controllers
             var conversations = await _socialService.GetConversationsAsync(userId);
             return Ok(conversations);
         }
+
         [HttpGet("thread/{partnerUsername}")]
         public async Task<IActionResult> GetMessageThread(string partnerUsername)
         {
@@ -59,6 +62,7 @@ namespace GGHub.WebAPI.Controllers
                 return NotFound(ex.Message);
             }
         }
+
         [HttpGet("unread-count")]
         public async Task<IActionResult> GetUnreadMessageCount()
         {

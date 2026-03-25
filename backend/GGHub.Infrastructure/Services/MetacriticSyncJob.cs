@@ -1,4 +1,5 @@
 using GGHub.Application.Interfaces;
+using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -67,10 +68,40 @@ namespace GGHub.Infrastructure.Services
         {
             List<int> gameIdsToSync;
             var now = DateTime.UtcNow;
+            int totalGames;
+            int gamesWithMetacritic;
+            int pendingMetacritic;
+            int neverTried;
+            int noScoreCooldown;
+            int noResultsCooldown;
+            int transientCooldown;
 
             using (var scope = _serviceProvider.CreateScope())
             {
                 var context = scope.ServiceProvider.GetRequiredService<GGHubDbContext>();
+
+                totalGames = await context.Games.CountAsync(stoppingToken);
+                gamesWithMetacritic = await context.Games.CountAsync(g => g.Metacritic != null, stoppingToken);
+                pendingMetacritic = await context.Games.CountAsync(g => g.Metacritic == null && !string.IsNullOrEmpty(g.Name), stoppingToken);
+                neverTried = await context.Games.CountAsync(g => g.Metacritic == null && !string.IsNullOrEmpty(g.Name) && g.MetacriticUrl == null, stoppingToken);
+                noScoreCooldown = await context.Games.CountAsync(
+                    g => g.Metacritic == null &&
+                         !string.IsNullOrEmpty(g.Name) &&
+                         g.MetacriticUrl == BuildStatusMarker(MetacriticService.StatusNoScore),
+                    stoppingToken);
+                noResultsCooldown = await context.Games.CountAsync(
+                    g => g.Metacritic == null &&
+                         !string.IsNullOrEmpty(g.Name) &&
+                         g.MetacriticUrl == BuildStatusMarker(MetacriticService.StatusNoResults),
+                    stoppingToken);
+                transientCooldown = await context.Games.CountAsync(
+                    g => g.Metacritic == null &&
+                         !string.IsNullOrEmpty(g.Name) &&
+                         (g.MetacriticUrl == BuildStatusMarker(MetacriticService.StatusTimeout) ||
+                          g.MetacriticUrl == BuildStatusMarker(MetacriticService.StatusHttpError) ||
+                          g.MetacriticUrl == BuildStatusMarker(MetacriticService.StatusParseError) ||
+                          g.MetacriticUrl == BuildStatusMarker(MetacriticService.StatusException)),
+                    stoppingToken);
 
                 gameIdsToSync = await context.Games
                     .Where(g => g.Metacritic == null && !string.IsNullOrEmpty(g.Name))
@@ -88,10 +119,19 @@ namespace GGHub.Infrastructure.Services
                     .ToListAsync(stoppingToken);
             }
 
+            var summary =
+                $"[MetacriticSync] Snapshot | Total: {totalGames}, WithScore: {gamesWithMetacritic}, Pending: {pendingMetacritic}, " +
+                $"NeverTried: {neverTried}, NoScoreCooldown: {noScoreCooldown}, NoResultsCooldown: {noResultsCooldown}, " +
+                $"TransientCooldown: {transientCooldown}, EligibleNow: {gameIdsToSync.Count}";
+
+            _logger.LogInformation(summary);
+            LogToFile(summary);
+
             if (gameIdsToSync.Count == 0)
             {
-                _logger.LogInformation("[MetacriticSync] No games eligible for sync right now.");
-                LogToFile("[MetacriticSync] No games eligible for sync right now.");
+                const string noEligibleMessage = "[MetacriticSync] No games eligible for sync right now.";
+                _logger.LogInformation(noEligibleMessage);
+                LogToFile(noEligibleMessage);
                 return;
             }
 
@@ -124,7 +164,7 @@ namespace GGHub.Infrastructure.Services
 
                     if (completedTask == timeoutTask)
                     {
-                        throw new TimeoutException("No response within 30 seconds.");
+                        throw new TimeoutException(AppText.Get("metacritic.noResponse30Seconds"));
                     }
 
                     var result = await serviceTask;

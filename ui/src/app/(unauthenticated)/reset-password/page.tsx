@@ -14,20 +14,23 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/cor
 import { X, Lock, KeyRound } from "lucide-react";
 import Link from "next/link";
 import { AxiosError } from "axios";
-
-const formSchema = z
-    .object({
-        token: z.string().length(6, { message: "Kod 6 haneli olmalıdır." }),
-        newPassword: z.string().min(6, { message: "Şifre en az 6 karakter olmalıdır." }),
-        confirmPassword: z.string().min(6, { message: "Şifre en az 6 karakter olmalıdır." }),
-    })
-    .refine((data) => data.newPassword === data.confirmPassword, {
-        message: "Şifreler eşleşmiyor.",
-        path: ["confirmPassword"],
-    });
+import { useI18n } from "@/core/contexts/locale-context";
 
 export default function ResetPasswordPage() {
+    const t = useI18n();
     const router = useRouter();
+
+    const formSchema = z
+        .object({
+            token: z.string().length(6, { message: t("auth.resetPasswordCodeLengthError") }),
+            newPassword: z.string().min(6, { message: t("auth.resetPasswordPasswordLengthError") }),
+            confirmPassword: z.string().min(6, { message: t("auth.resetPasswordPasswordLengthError") }),
+        })
+        .refine((data) => data.newPassword === data.confirmPassword, {
+            message: t("auth.resetPasswordPasswordMismatch"),
+            path: ["confirmPassword"],
+        });
+
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: { token: "", newPassword: "", confirmPassword: "" },
@@ -36,8 +39,8 @@ export default function ResetPasswordPage() {
     const { mutate, isPending } = useMutation({
         mutationFn: resetPassword,
         onSuccess: () => {
-            toast.success("Şifre Güncellendi!", {
-                description: "Şifreniz başarıyla güncellendi. Giriş yapabilirsiniz.",
+            toast.success(t("auth.resetPasswordSuccessTitle"), {
+                description: t("auth.resetPasswordSuccessDescription"),
             });
             router.push("/login");
         },
@@ -46,9 +49,9 @@ export default function ResetPasswordPage() {
                 return;
             }
 
-            const axiosError = error as AxiosError<any>;
-            const errorMessage = axiosError?.response?.data?.message || (error as Error).message || "Bir hata oluştu. Lütfen tekrar deneyin.";
-            toast.error("İşlem Başarısız", {
+            const axiosError = error as AxiosError<{ message?: string }>;
+            const errorMessage = axiosError?.response?.data?.message || (error as Error).message || t("auth.resetPasswordErrorDescription");
+            toast.error(t("auth.resetPasswordErrorTitle"), {
                 description: errorMessage,
             });
         },
@@ -64,14 +67,14 @@ export default function ResetPasswordPage() {
     return (
         <div className="flex items-center justify-center min-h-screen">
             <Card className="w-[400px] relative">
-                <Link href="/login" aria-label="Giriş Sayfasına Dön">
+                <Link href="/login" aria-label={t("auth.backToLogin")}>
                     <Button variant="ghost" size="icon" className="absolute top-4 right-4 h-6 w-6">
                         <X className="h-4 w-4" />
                     </Button>
                 </Link>
                 <CardHeader>
-                    <CardTitle>Şifre Sıfırla</CardTitle>
-                    <CardDescription>E-postanıza gönderilen 6 haneli kodu girin ve yeni şifrenizi belirleyin.</CardDescription>
+                    <CardTitle>{t("auth.resetPasswordTitle")}</CardTitle>
+                    <CardDescription>{t("auth.resetPasswordDescription")}</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Form {...form}>
@@ -81,11 +84,11 @@ export default function ResetPasswordPage() {
                                 name="token"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Doğrulama Kodu</FormLabel>
+                                        <FormLabel>{t("auth.resetPasswordCodeLabel")}</FormLabel>
                                         <FormControl>
                                             <div className="relative">
                                                 <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                                <Input placeholder="_ _ _ _ _ _" className="pl-10 text-center tracking-widest text-lg font-mono" maxLength={6} {...field} />
+                                                <Input placeholder={t("auth.resetPasswordCodePlaceholder")} className="pl-10 text-center tracking-widest text-lg font-mono" maxLength={6} {...field} />
                                             </div>
                                         </FormControl>
                                         <FormMessage />
@@ -97,7 +100,7 @@ export default function ResetPasswordPage() {
                                 name="newPassword"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Yeni Şifre</FormLabel>
+                                        <FormLabel>{t("auth.resetPasswordNewPasswordLabel")}</FormLabel>
                                         <FormControl>
                                             <div className="relative">
                                                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -113,7 +116,7 @@ export default function ResetPasswordPage() {
                                 name="confirmPassword"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Yeni Şifre (Tekrar)</FormLabel>
+                                        <FormLabel>{t("auth.resetPasswordConfirmPasswordLabel")}</FormLabel>
                                         <FormControl>
                                             <div className="relative">
                                                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -125,11 +128,11 @@ export default function ResetPasswordPage() {
                                 )}
                             />
                             <Button type="submit" className="w-full cursor-pointer" disabled={isPending}>
-                                {isPending ? "Güncelleniyor..." : "Şifreyi Güncelle"}
+                                {isPending ? t("common.loading") : t("auth.resetPasswordButton")}
                             </Button>
                             <p className="text-center text-sm text-muted-foreground">
                                 <Link href="/forgot-password" className="underline font-bold underline-offset-4 hover:text-primary">
-                                    Yeni kod gönder
+                                    {t("auth.resetPasswordNewCode")}
                                 </Link>
                             </p>
                         </form>

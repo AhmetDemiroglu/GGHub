@@ -8,7 +8,7 @@ import { cn } from "@/core/lib/utils";
 
 function TurkishFlag({ className, style }: { className?: string; style?: React.CSSProperties }) {
     return (
-        <span className="inline-flex h-6 w-6 overflow-hidden rounded-full">
+        <span className="inline-flex h-5 w-5 overflow-hidden rounded-full">
             <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" className={className} style={style}>
                 <mask id="tr-mask">
                     <circle cx="256" cy="256" r="256" fill="white" />
@@ -26,7 +26,7 @@ function TurkishFlag({ className, style }: { className?: string; style?: React.C
 
 function USFlag({ className, style }: { className?: string; style?: React.CSSProperties }) {
     return (
-        <span className="inline-flex h-6 w-6 overflow-hidden rounded-full">
+        <span className="inline-flex h-5 w-5 overflow-hidden rounded-full">
             <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" className={className} style={style}>
                 <mask id="us-mask">
                     <circle cx="256" cy="256" r="256" fill="white" />
@@ -87,16 +87,16 @@ export function LanguageSwitcher() {
 
     return (
         <div
-            className="relative flex items-center gap-1 rounded-full bg-muted p-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.04)] dark:shadow-[inset_0_2px_4px_rgba(255,255,255,0.04)]"
+            className="relative flex items-center gap-0.5 rounded-full bg-muted p-0.5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.04)] dark:shadow-[inset_0_2px_4px_rgba(255,255,255,0.04)]"
             role="radiogroup"
             aria-label={t("nav.language")}
         >
             {/* Sliding indicator */}
             <div
                 className={cn(
-                    "absolute top-1 left-1 h-8 w-8 rounded-full bg-card transition-transform duration-400 ease-bouncy",
+                    "absolute top-0.5 left-0.5 h-7 w-7 rounded-full bg-card transition-transform duration-400 ease-bouncy",
                     "shadow-[0_2px_8px_rgba(0,0,0,0.12)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.3)]",
-                    isEnglish && "translate-x-9"
+                    isEnglish && "translate-x-8"
                 )}
             />
 
@@ -107,11 +107,11 @@ export function LanguageSwitcher() {
                 aria-checked={!isEnglish}
                 aria-label="Türkçe"
                 onClick={() => changeLocale("tr")}
-                className="group relative z-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border-none bg-transparent p-0"
+                className="group relative z-2 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border-none bg-transparent p-0"
             >
                 <TurkishFlag
                     className={cn(
-                        "h-6 w-6 transition-all duration-400",
+                        "h-5 w-5 transition-all duration-400",
                         !isEnglish
                             ? "scale-100 grayscale-0 opacity-100"
                             : "scale-[0.85] grayscale opacity-40 group-hover:scale-[0.95] group-hover:grayscale-40 group-hover:opacity-80"
@@ -127,11 +127,11 @@ export function LanguageSwitcher() {
                 aria-checked={isEnglish}
                 aria-label="English"
                 onClick={() => changeLocale("en-US")}
-                className="group relative z-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border-none bg-transparent p-0"
+                className="group relative z-2 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border-none bg-transparent p-0"
             >
                 <USFlag
                     className={cn(
-                        "h-6 w-6 transition-all duration-400",
+                        "h-5 w-5 transition-all duration-400",
                         isEnglish
                             ? "scale-100 grayscale-0 opacity-100"
                             : "scale-[0.85] grayscale opacity-40 group-hover:scale-[0.95] group-hover:grayscale-40 group-hover:opacity-80"

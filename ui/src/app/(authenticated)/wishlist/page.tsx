@@ -13,9 +13,10 @@ import { getMyWishlist, toggleWishlist } from "@/api/list/list.api";
 import logoSrc from "@core/assets/logo.png";
 import rawgLogoSrc from "@core/assets/rawg_logo.png";
 import metacriticLogoSrc from "@core/assets/metacritic_logo.png";
-
+import { useI18n } from "@/core/contexts/locale-context";
 
 export default function WishlistPage() {
+    const t = useI18n();
     const queryClient = useQueryClient();
     const [visibleCount, setVisibleCount] = useState(8);
     const [removingId, setRemovingId] = useState<number | null>(null);
@@ -43,18 +44,14 @@ export default function WishlistPage() {
     return (
         <div className="w-full h-full p-5">
             <div className="space-y-4">
-                {/* Başlık */}
                 <div>
                     <h1 className="text-3xl font-bold flex items-center gap-2">
                         <Gift className="h-6 w-6 text-pink-500" />
-                        <span>İstek Listem</span>
+                        <span>{t("wishlistPage.title")}</span>
                     </h1>
-                    <p className="text-muted-foreground mt-2">
-                        Takip ettiğin ve oynamayı planladığın oyunlar. Daha çok müzik listesi gibi, hızlı göz atma alanı.
-                    </p>
+                    <p className="text-muted-foreground mt-2">{t("wishlistPage.description")}</p>
                 </div>
 
-                {/* Loading skeleton */}
                 {isLoading && (
                     <div className="space-y-3">
                         {Array.from({ length: 6 }).map((_, i) => (
@@ -70,36 +67,22 @@ export default function WishlistPage() {
                     </div>
                 )}
 
-                {/* Hata durumu */}
-                {!isLoading && isError && (
-                    <p className="text-sm text-destructive">İstek listen yüklenirken bir hata oluştu.</p>
-                )}
+                {!isLoading && isError && <p className="text-sm text-destructive">{t("wishlistPage.loadError")}</p>}
 
-                {/* Boş durum */}
                 {!isLoading && !isError && games.length === 0 && (
                     <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-                        <p>Henüz istek listene eklenmiş oyun yok.</p>
-                        <p className="mt-1">
-                            Oyun detayı ve keşfet sayfalarından listene ekleme yapabilirsin.
-                        </p>
+                        <p>{t("wishlistPage.emptyTitle")}</p>
+                        <p className="mt-1">{t("wishlistPage.emptyDescription")}</p>
                     </div>
                 )}
 
-                {/* Liste – 2’li grid + fadeout + Daha Fazla Göster */}
                 {!isLoading && !isError && games.length > 0 && (
                     <>
                         <div className="relative">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 {visibleGames.map((game) => {
-                                    const cover =
-                                        game.coverImage ??
-                                        game.backgroundImage ??
-                                        "/images/placeholders/game-cover.png";
-
-                                    const slugOrId =
-                                        game.slug ??
-                                        (game.rawgId ? String(game.rawgId) : game.id ? String(game.id) : "");
-
+                                    const cover = game.coverImage ?? game.backgroundImage ?? "/images/placeholders/game-cover.png";
+                                    const slugOrId = game.slug ?? (game.rawgId ? String(game.rawgId) : game.id ? String(game.id) : "");
                                     const year = game.released ? game.released.slice(0, 4) : undefined;
 
                                     return (
@@ -107,106 +90,68 @@ export default function WishlistPage() {
                                             key={`${game.id}-${game.rawgId}-${game.slug}`}
                                             className="flex items-center gap-3 rounded-lg border bg-card/60 px-3 py-2 hover:bg-card transition"
                                         >
-                                            {/* Küçük kapak görseli */}
                                             <div className="relative h-14 w-14 overflow-hidden rounded-md bg-muted flex-shrink-0">
                                                 {slugOrId ? (
                                                     <Link href={`/games/${slugOrId}`}>
-                                                        <Image
-                                                            src={cover}
-                                                            alt={game.name ?? ""}
-                                                            fill
-                                                            sizes="56px"
-                                                            className="object-cover"
-                                                        />
+                                                        <Image src={cover} alt={game.name ?? ""} fill sizes="56px" className="object-cover" />
                                                     </Link>
                                                 ) : (
-                                                    <Image
-                                                        src={cover}
-                                                        alt={game.name ?? ""}
-                                                        fill
-                                                        sizes="56px"
-                                                        className="object-cover"
-                                                    />
+                                                    <Image src={cover} alt={game.name ?? ""} fill sizes="56px" className="object-cover" />
                                                 )}
                                             </div>
 
-                                            {/* Oyun bilgileri */}
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2">
                                                     {slugOrId ? (
-                                                        <Link
-                                                            href={`/games/${slugOrId}`}
-                                                            className="font-medium text-sm hover:underline truncate"
-                                                        >
+                                                        <Link href={`/games/${slugOrId}`} className="font-medium text-sm hover:underline truncate">
                                                             {game.name}
                                                         </Link>
                                                     ) : (
-                                                        <span className="font-medium text-sm truncate">
-                                                            {game.name}
-                                                        </span>
+                                                        <span className="font-medium text-sm truncate">{game.name}</span>
                                                     )}
                                                 </div>
                                                 <div className="mt-0.5 text-xs text-muted-foreground">
                                                     {year && <span>{year} • </span>}
-                                                    <span>İstek listende</span>
+                                                    <span>{t("wishlistPage.inWishlist")}</span>
                                                 </div>
-                                                {/* Rating Badges */}
                                                 <div className="flex items-center gap-2 flex-wrap mt-1">
-
-                                                    {/* RAWG Rating */}
                                                     {game.rating ? (
                                                         <div
                                                             className="px-2 py-1 rounded-md bg-blue-500/10 text-blue-400 font-bold text-[10px] border border-blue-500/20 flex items-center gap-1.5 tabular-nums"
                                                             title="RAWG Rating"
                                                         >
-                                                            <img
-                                                                src={rawgLogoSrc.src}
-                                                                alt="RAWG"
-                                                                className="w-3 h-3 object-contain opacity-80"
-                                                            />
+                                                            <img src={rawgLogoSrc.src} alt="RAWG" className="w-3 h-3 object-contain opacity-80" />
                                                             {game.rating.toFixed(1)}
                                                         </div>
                                                     ) : null}
 
-                                                    {/* Metacritic */}
                                                     {game.metacritic ? (
                                                         <div
                                                             className="px-2 py-1 rounded-md bg-green-500/10 text-green-400 font-bold text-[10px] border border-green-500/20 flex items-center gap-1.5 tabular-nums"
                                                             title="Metacritic"
                                                         >
-                                                            <img
-                                                                src={metacriticLogoSrc.src}
-                                                                alt="Metacritic"
-                                                                className="w-3 h-3 object-contain opacity-80"
-                                                            />
+                                                            <img src={metacriticLogoSrc.src} alt="Metacritic" className="w-3 h-3 object-contain opacity-80" />
                                                             {game.metacritic}
                                                         </div>
                                                     ) : null}
 
-                                                    {/* GGHub Rating */}
                                                     <div
                                                         className="px-2 py-1 rounded-md bg-purple-500/10 text-purple-400 font-bold text-[10px] border border-purple-500/20 flex items-center gap-1.5 tabular-nums"
-                                                        title="GGHub Puanı"
+                                                        title={t("wishlistPage.gghubRating")}
                                                     >
-                                                        <img
-                                                            src={logoSrc.src}
-                                                            alt="GGHub"
-                                                            className="w-3 h-3 object-contain opacity-80"
-                                                        />
-                                                        {game.gghubRating && game.gghubRating > 0
-                                                            ? game.gghubRating.toFixed(1)
-                                                            : "-"}
+                                                        <img src={logoSrc.src} alt="GGHub" className="w-3 h-3 object-contain opacity-80" />
+                                                        {game.gghubRating && game.gghubRating > 0 ? game.gghubRating.toFixed(1) : "-"}
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            {/* Kalp – toggleWishlist + animasyon */}
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                className={`cursor-pointer text-destructive transition-transform duration-150 hover:scale-110 active:scale-95 ${removingId === game.rawgId ? "scale-90 opacity-60" : ""
-                                                    }`}
-                                                aria-label="İstek listesinden kaldır"
+                                                className={`cursor-pointer text-destructive transition-transform duration-150 hover:scale-110 active:scale-95 ${
+                                                    removingId === game.rawgId ? "scale-90 opacity-60" : ""
+                                                }`}
+                                                aria-label={t("wishlistPage.removeAria")}
                                                 disabled={isPending && removingId === game.rawgId}
                                                 onClick={(e) => {
                                                     e.preventDefault();
@@ -216,32 +161,20 @@ export default function WishlistPage() {
                                                     handleToggleWishlist(game.rawgId);
                                                 }}
                                             >
-                                                <Gift
-                                                    className={`h-4 w-4 ${removingId === game.rawgId ? "animate-pulse fill-current" : "fill-current"
-                                                        }`}
-                                                />
+                                                <Gift className={`h-4 w-4 ${removingId === game.rawgId ? "animate-pulse fill-current" : "fill-current"}`} />
                                             </Button>
                                         </div>
                                     );
                                 })}
                             </div>
 
-                            {/* Fade out efekti */}
-                            {hasMore && (
-                                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background to-transparent" />
-                            )}
+                            {hasMore && <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background to-transparent" />}
                         </div>
 
-                        {/* Daha Fazla Göster butonu */}
                         {hasMore && (
                             <div className="flex justify-center mt-4">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-xs font-semibold cursor-pointer "
-                                    onClick={() => setVisibleCount((prev) => prev + 8)}
-                                >
-                                    Daha Fazla Göster
+                                <Button variant="outline" size="sm" className="text-xs font-semibold cursor-pointer " onClick={() => setVisibleCount((prev) => prev + 8)}>
+                                    {t("wishlistPage.showMore")}
                                 </Button>
                             </div>
                         )}

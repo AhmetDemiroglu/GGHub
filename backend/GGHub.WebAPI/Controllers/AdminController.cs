@@ -1,6 +1,7 @@
-﻿using GGHub.Application.Dtos;
+using GGHub.Application.Dtos;
 using GGHub.Application.Dtos.Admin;
 using GGHub.Application.Interfaces;
+using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -22,22 +23,25 @@ namespace GGHub.WebAPI.Controllers
         public AdminController(IAdminService adminService, IMetacriticService metacriticService, GGHubDbContext context, ILogger<AdminController> logger)
         {
             _adminService = adminService;
-            _metacriticService = metacriticService; 
-            _context = context;                    
-            _logger = logger;                       
+            _metacriticService = metacriticService;
+            _context = context;
+            _logger = logger;
         }
+
         [HttpGet("test")]
         [ApiExplorerSettings(IgnoreApi = true)]
         public IActionResult AdminOnlyTest()
         {
-            return Ok("Tebrikler, bu mesajı sadece adminler görebilir!");
+            return Ok(AppText.Get("admin.testMessage"));
         }
+
         [HttpGet("reports")]
         public async Task<IActionResult> GetReports([FromQuery] ReportFilterParams filterParams)
         {
             var result = await _adminService.GetContentReportsAsync(filterParams);
             return Ok(result);
         }
+
         [HttpPost("reports/{reportId}/respond")]
         public async Task<IActionResult> RespondToReport(int reportId, [FromBody] ReportResponseDto dto)
         {
@@ -46,11 +50,12 @@ namespace GGHub.WebAPI.Controllers
 
             if (!success)
             {
-                return NotFound(new { message = "Rapor bulunamadı." });
+                return NotFound(new { message = AppText.Get("admin.reportNotFound") });
             }
 
-            return Ok(new { message = "Yanıt kaydedildi ve rapor kapatıldı." });
+            return Ok(new { message = AppText.Get("admin.reportResponseSaved") });
         }
+
         [HttpPut("reports/{reportId}/status")]
         public async Task<IActionResult> UpdateReportStatus(int reportId, UpdateReportStatusDto statusDto)
         {
@@ -58,28 +63,35 @@ namespace GGHub.WebAPI.Controllers
 
             if (!success)
             {
-                return NotFound(new { message = "Rapor bulunamadı." });
+                return NotFound(new { message = AppText.Get("admin.reportNotFound") });
             }
 
-            return Ok(new { message = "Rapor durumu başarıyla güncellendi." });
+            return Ok(new { message = AppText.Get("admin.reportStatusUpdated") });
         }
+
         [HttpGet("reports/{id}")]
         public async Task<IActionResult> GetReportDetail(int id)
         {
             var report = await _adminService.GetReportDetailAsync(id);
-            if (report == null) return NotFound();
+            if (report == null)
+            {
+                return NotFound();
+            }
+
             return Ok(report);
         }
+
         [HttpGet("dashboard-stats")]
         public async Task<IActionResult> GetDashboardStats()
         {
             var stats = await _adminService.GetDashboardStatisticsAsync();
             return Ok(stats);
         }
+
         [HttpGet("recent-users")]
         public async Task<IActionResult> GetRecentUsers(int count = 5)
         {
-            var users = await _adminService.GetRecentUsersAsync(count > 10 ? 10 : count); 
+            var users = await _adminService.GetRecentUsersAsync(count > 10 ? 10 : count);
             return Ok(users);
         }
 
@@ -89,6 +101,7 @@ namespace GGHub.WebAPI.Controllers
             var reviews = await _adminService.GetRecentReviewsAsync(count > 10 ? 10 : count);
             return Ok(reviews);
         }
+
         [HttpGet("users")]
         public async Task<IActionResult> GetUsers([FromQuery] UserFilterParams filterParams)
         {
@@ -102,8 +115,9 @@ namespace GGHub.WebAPI.Controllers
             var user = await _adminService.GetUserDetailsAsync(userId);
             if (user == null)
             {
-                return NotFound(new { message = "Kullanıcı bulunamadı." });
+                return NotFound(new { message = AppText.Get("admin.userNotFound") });
             }
+
             return Ok(user);
         }
 
@@ -117,9 +131,10 @@ namespace GGHub.WebAPI.Controllers
 
                 if (!success)
                 {
-                    return NotFound(new { message = "Kullanıcı bulunamadı." });
+                    return NotFound(new { message = AppText.Get("admin.userNotFound") });
                 }
-                return Ok(new { message = "Kullanıcı başarıyla askıya alındı." });
+
+                return Ok(new { message = AppText.Get("admin.userBanned") });
             }
             catch (InvalidOperationException ex)
             {
@@ -135,9 +150,10 @@ namespace GGHub.WebAPI.Controllers
 
             if (!success)
             {
-                return NotFound(new { message = "Kullanıcı bulunamadı veya zaten banlı değil." });
+                return NotFound(new { message = AppText.Get("admin.userNotFoundOrNotBanned") });
             }
-            return Ok(new { message = "Kullanıcı yasağı başarıyla kaldırıldı." });
+
+            return Ok(new { message = AppText.Get("admin.userUnbanned") });
         }
 
         [HttpPut("users/{userId}/role")]
@@ -150,9 +166,10 @@ namespace GGHub.WebAPI.Controllers
 
                 if (!success)
                 {
-                    return NotFound(new { message = "Kullanıcı bulunamadı." });
+                    return NotFound(new { message = AppText.Get("admin.userNotFound") });
                 }
-                return Ok(new { message = "Kullanıcı rolü başarıyla güncellendi." });
+
+                return Ok(new { message = AppText.Get("admin.userRoleUpdated") });
             }
             catch (InvalidOperationException ex)
             {
@@ -195,12 +212,7 @@ namespace GGHub.WebAPI.Controllers
 
             if (game == null)
             {
-                return NotFound(new { message = "Oyun bulunamadı" });
-            }
-
-            if (game == null)
-            {
-                return NotFound(new { message = "Oyun bulunamadı" });
+                return NotFound(new { message = AppText.Get("admin.gameNotFound") });
             }
 
             MetacriticResult? result = null;
@@ -208,7 +220,7 @@ namespace GGHub.WebAPI.Controllers
             try
             {
                 result = await _metacriticService.GetMetacriticScoreAsync(game.Name, game.Released)
-                                                 .WaitAsync(TimeSpan.FromSeconds(15));
+                    .WaitAsync(TimeSpan.FromSeconds(15));
             }
             catch (TimeoutException)
             {
@@ -217,13 +229,13 @@ namespace GGHub.WebAPI.Controllers
                 return Ok(new
                 {
                     success = false,
-                    message = $"'{game.Name}' için işlem zaman aşımına uğradı (Metacritic yanıt vermedi)."
+                    message = AppText.Get("admin.syncTimeout", new Dictionary<string, object?> { ["name"] = game.Name }),
                 });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[Admin] Sync Error for '{GameName}'", game.Name);
-                return StatusCode(500, new { success = false, message = "Sunucu hatası oluştu." });
+                return StatusCode(500, new { success = false, message = AppText.Get("admin.serverError") });
             }
 
             if (result?.Score == null)
@@ -231,7 +243,7 @@ namespace GGHub.WebAPI.Controllers
                 return Ok(new
                 {
                     success = false,
-                    message = $"'{game.Name}' için Metacritic puanı bulunamadı"
+                    message = AppText.Get("admin.metacriticScoreNotFound", new Dictionary<string, object?> { ["name"] = game.Name }),
                 });
             }
 
@@ -244,9 +256,9 @@ namespace GGHub.WebAPI.Controllers
             return Ok(new
             {
                 success = true,
-                message = $"'{game.Name}' için Metacritic puanı güncellendi",
+                message = AppText.Get("admin.metacriticScoreUpdated", new Dictionary<string, object?> { ["name"] = game.Name }),
                 score = result.Score.Value,
-                url = result.Url
+                url = result.Url,
             });
         }
 
@@ -258,7 +270,7 @@ namespace GGHub.WebAPI.Controllers
 
             if (!System.IO.File.Exists(logPath))
             {
-                return Ok("Henüz bir log dosyası oluşmadı.");
+                return Ok(AppText.Get("admin.syncLogMissing"));
             }
 
             var lines = System.IO.File.ReadAllLines(logPath);
@@ -273,10 +285,10 @@ namespace GGHub.WebAPI.Controllers
 
             if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var userId))
             {
-                throw new UnauthorizedAccessException("Yetkili kullanıcı kimliği token'da bulunamadı.");
+                throw new UnauthorizedAccessException(AppText.Get("admin.authorizedUserMissing"));
             }
+
             return userId;
         }
     }
-
 }

@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { buildLocalizedPathname, countryToLocale, defaultLocale, isLocale, localeCookieName, normalizeLocale } from "@/i18n/config";
+import { buildLocalizedPathname, countryToLocale, defaultLocale, isLocale, localeCookieName, localeManualCookieName, normalizeLocale } from "@/i18n/config";
 
 const publicFilePattern = /\.(.*)$/;
 
 const resolveLocale = (request: NextRequest) => {
-    const cookieLocale = normalizeLocale(request.cookies.get(localeCookieName)?.value);
-    if (cookieLocale) {
-        return cookieLocale;
+    // Kullanıcı language switcher ile bilinçli seçim yaptıysa, cookie'yi koru
+    const isManualSelection = request.cookies.get(localeManualCookieName)?.value === "1";
+    if (isManualSelection) {
+        const cookieLocale = normalizeLocale(request.cookies.get(localeCookieName)?.value);
+        if (cookieLocale) {
+            return cookieLocale;
+        }
     }
 
     // 1. Geolocation header'ları (Vercel, Cloudflare, vb.)

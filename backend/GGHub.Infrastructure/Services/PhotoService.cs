@@ -2,6 +2,7 @@
 using Amazon.S3.Model;
 using Amazon.S3.Transfer;
 using GGHub.Application.Interfaces;
+using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
@@ -26,30 +27,30 @@ namespace GGHub.Infrastructure.Services
             _s3Client = s3Client;
 
             _bucketName = configuration["R2:BucketName"]
-                ?? throw new ArgumentNullException("R2:BucketName configuration is missing");
+                ?? throw new ArgumentNullException(AppText.Get("photo.bucketConfigMissing"));
 
             _publicR2Url = configuration["R2:PublicUrl"]
-                ?? throw new ArgumentNullException("R2:PublicUrl configuration is missing");
+                ?? throw new ArgumentNullException(AppText.Get("photo.publicUrlConfigMissing"));
         }
 
         public async Task<string> UploadProfilePhotoAsync(int userId, IFormFile file)
         {
             var user = await _context.Users.FindAsync(userId);
             if (user == null)
-                throw new KeyNotFoundException("Kullanıcı bulunamadı.");
+                throw new KeyNotFoundException(AppText.Get("photo.userNotFound"));
 
             if (file == null || file.Length == 0)
-                throw new ArgumentException("Dosya boş olamaz.");
+                throw new ArgumentException(AppText.Get("photo.fileEmpty"));
 
             var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
 
             var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
 
             if (string.IsNullOrEmpty(extension) || !allowedExtensions.Contains(extension))
-                throw new ArgumentException($"Geçersiz dosya formatı. Gelen format: '{extension}'. Sadece JPG, PNG, GIF, WEBP desteklenir.");
+                throw new ArgumentException(AppText.Get("photo.invalidFormat", new Dictionary<string, object?> { ["extension"] = extension }));
 
             if (file.Length > 5 * 1024 * 1024) 
-                throw new ArgumentException("Dosya boyutu 5MB'dan büyük olamaz.");
+                throw new ArgumentException(AppText.Get("photo.fileTooLarge"));
 
             var fileName = $"profiles/{userId}-{Guid.NewGuid()}{extension}";
             var transferUtility = new TransferUtility(_s3Client);

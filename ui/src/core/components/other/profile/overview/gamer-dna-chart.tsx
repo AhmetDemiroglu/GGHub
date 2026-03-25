@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/core/components/ui/c
 import { Dna, Share2 } from "lucide-react";
 import { Button } from "@/core/components/ui/button";
 import { toast } from "sonner";
+import { useI18n } from "@/core/contexts/locale-context";
 
 interface GamerDNAChartProps {
     data: GenreStat[];
@@ -13,11 +14,13 @@ interface GamerDNAChartProps {
 }
 
 export default function GamerDNAChart({ data, username }: GamerDNAChartProps) {
+    const t = useI18n();
+
     const handleShare = () => {
         const url = window.location.href;
-        const displayName = username || "Kullanıcı";
-        navigator.clipboard.writeText(`🎮 ${displayName} adlı oyuncunun Gamer DNA'sına bak: ${url}`);
-        toast.success("Profil linki kopyalandı!");
+        const displayName = username || t("profile.gamerDna.defaultUserName");
+        navigator.clipboard.writeText(t("profile.gamerDna.shareText", { displayName, url }));
+        toast.success(t("profile.gamerDna.shareSuccess"));
     };
 
     if (!data || data.length < 3) {
@@ -25,11 +28,11 @@ export default function GamerDNAChart({ data, username }: GamerDNAChartProps) {
             <Card className="h-full border-border/50 bg-card/50">
                 <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
-                        <Dna className="h-4 w-4" /> Gamer DNA
+                        <Dna className="h-4 w-4" /> {t("profile.gamerDna.title")}
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex items-center justify-center h-[200px] text-xs text-muted-foreground text-center px-4">
-                    Yeterli veri yok. İnceleme yaparak veya listeler oluşturarak DNA'nızı oluşturun.
+                    {t("profile.gamerDna.noData")}
                 </CardContent>
             </Card>
         );
@@ -42,10 +45,16 @@ export default function GamerDNAChart({ data, username }: GamerDNAChartProps) {
                     <div className="p-1.5 bg-primary/10 rounded-md">
                         <Dna className="h-4 w-4 text-primary" />
                     </div>
-                    Gamer DNA
+                    {t("profile.gamerDna.title")}
                 </CardTitle>
 
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary cursor-pointer" onClick={handleShare} title="DNA'nı Paylaş">
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-primary cursor-pointer"
+                    onClick={handleShare}
+                    title={t("profile.gamerDna.shareButtonTitle")}
+                >
                     <Share2 className="h-3.5 w-3.5" />
                 </Button>
             </CardHeader>
@@ -57,16 +66,8 @@ export default function GamerDNAChart({ data, username }: GamerDNAChartProps) {
 
                         <PolarAngleAxis
                             dataKey="name"
-                            tick={({ payload, x, y, textAnchor, stroke, radius }) => (
-                                <text
-                                    x={x}
-                                    y={y}
-                                    textAnchor={textAnchor}
-                                    stroke="none"
-                                    fill="currentColor"
-                                    className="text-[10px] font-bold fill-muted-foreground uppercase tracking-widest"
-                                    dy={2}
-                                >
+                            tick={({ payload, x, y, textAnchor }) => (
+                                <text x={x} y={y} textAnchor={textAnchor} stroke="none" fill="currentColor" className="text-[10px] font-bold fill-muted-foreground uppercase tracking-widest" dy={2}>
                                     {payload.value}
                                 </text>
                             )}
@@ -75,7 +76,7 @@ export default function GamerDNAChart({ data, username }: GamerDNAChartProps) {
                         <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
 
                         <Radar
-                            name="Etkileşim"
+                            name={t("profile.gamerDna.chartLabel")}
                             dataKey="percentage"
                             className="fill-primary/50 stroke-primary"
                             strokeWidth={2.5}
@@ -89,10 +90,10 @@ export default function GamerDNAChart({ data, username }: GamerDNAChartProps) {
                                 borderRadius: "6px",
                                 fontSize: "11px",
                                 padding: "4px 8px",
-                                color: "hsl(var(--foreground))"
+                                color: "hsl(var(--foreground))",
                             }}
                             itemStyle={{ color: "hsl(var(--primary))", fontWeight: "bold" }}
-                            formatter={(value: number) => [`%${value}`, "Oran"]}
+                            formatter={(value: number) => [`%${value}`, t("profile.gamerDna.tooltipLabel")]}
                         />
                     </RadarChart>
                 </ResponsiveContainer>

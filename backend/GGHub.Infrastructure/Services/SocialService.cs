@@ -2,6 +2,7 @@
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
 using GGHub.Core.Enums;
+using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -48,7 +49,7 @@ namespace GGHub.Infrastructure.Services
                 var follower = await _context.Users.FindAsync(followerId);
                 if (follower != null)
                 {
-                    var message = $"{follower.Username} seni takip etmeye başladı.";
+                    var message = AppText.Get("social.followNotification", new Dictionary<string, object?> { ["username"] = follower.Username });
                     await _notificationService.CreateNotificationAsync(followee.Id, message, NotificationType.Follow, $"/profiles/{follower.Username}");
                     
                     await _gamificationService.AddXpAsync(followerId, 20, "UserFollowed");
@@ -102,7 +103,7 @@ namespace GGHub.Infrastructure.Services
                 var follower = await _context.Users.FindAsync(userId);
                 if (follower != null)
                 {
-                    var message = $"{follower.Username}, '{listToFollow.Name}' adlı listen takip etmeye başladı.";
+                    var message = AppText.Get("social.listFollowNotification", new Dictionary<string, object?> { ["username"] = follower.Username, ["listName"] = listToFollow.Name });
                     await _notificationService.CreateNotificationAsync(listToFollow.UserId, message, NotificationType.ListFollow, $"/lists/{listToFollow.Id}");
                 }
             }
@@ -202,16 +203,16 @@ namespace GGHub.Infrastructure.Services
 
             if (isBlocked)
             {
-                throw new InvalidOperationException("Bu kullanıcıya mesaj gönderemezsiniz veya bu kullanıcıyı engellediğiniz için mesaj gönderemezsiniz.");
+                throw new InvalidOperationException(AppText.Get("messages.cannotMessageBlockedUser"));
             }
 
             if (senderId == recipient.Id)
             {
-                throw new InvalidOperationException("Kendinize mesaj gönderemezsiniz.");
+                throw new InvalidOperationException(AppText.Get("messages.cannotMessageSelf"));
             }
 
             if (recipient.MessageSetting == Core.Enums.MessagePrivacySetting.None)
-                throw new InvalidOperationException("Bu kullanıcı mesaj kabul etmiyor.");
+                throw new InvalidOperationException(AppText.Get("messages.userNotAcceptingMessages"));
 
             if (recipient.MessageSetting == Core.Enums.MessagePrivacySetting.Following)
             {
@@ -219,7 +220,7 @@ namespace GGHub.Infrastructure.Services
                     .AnyAsync(f => f.FollowerId == recipient.Id && f.FolloweeId == senderId);
 
                 if (!isSenderFollowedByRecipient)
-                    throw new InvalidOperationException("Bu kullanıcı sadece takip ettiği kişilerden mesaj kabul ediyor.");
+                    throw new InvalidOperationException(AppText.Get("messages.followingOnly"));
             }
 
             var message = new Message
@@ -306,7 +307,7 @@ namespace GGHub.Infrastructure.Services
             var partner = await _context.Users.FirstOrDefaultAsync(u => u.Username == partnerUsername);
             if (partner == null)
             {
-                throw new KeyNotFoundException("Konuşulacak kullanıcı bulunamadı.");
+                throw new KeyNotFoundException(AppText.Get("messages.threadUserNotFound"));
             }
 
             var messages = await _context.Messages

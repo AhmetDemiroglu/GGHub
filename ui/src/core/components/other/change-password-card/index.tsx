@@ -15,25 +15,29 @@ import { Input } from "@/core/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/core/components/ui/card";
 import { Lock, Eye, EyeOff, ChevronDown, ChevronUp } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/core/components/ui/collapsible";
-
-const formSchema = z
-    .object({
-        currentPassword: z.string().min(6, { message: "Mevcut şifrenizi girin." }),
-        newPassword: z.string().min(6, { message: "Yeni şifre en az 6 karakter olmalıdır." }),
-        confirmPassword: z.string().min(6),
-    })
-    .refine((data) => data.newPassword === data.confirmPassword, {
-        message: "Şifreler eşleşmiyor.",
-        path: ["confirmPassword"],
-    });
+import { buildLocalizedPathname } from "@/i18n/config";
+import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 
 export function ChangePasswordCard() {
+    const t = useI18n();
+    const locale = useCurrentLocale();
     const router = useRouter();
     const { logout } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+    const formSchema = z
+        .object({
+            currentPassword: z.string().min(6, { message: t("profile.changePassword.currentPasswordRequired") }),
+            newPassword: z.string().min(6, { message: t("profile.changePassword.newPasswordRequired") }),
+            confirmPassword: z.string().min(6, { message: t("profile.changePassword.confirmPasswordRequired") }),
+        })
+        .refine((data) => data.newPassword === data.confirmPassword, {
+            message: t("profile.changePassword.passwordsMustMatch"),
+            path: ["confirmPassword"],
+        });
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -43,15 +47,15 @@ export function ChangePasswordCard() {
     const { mutate, isPending } = useMutation({
         mutationFn: changePassword,
         onSuccess: () => {
-            toast.success("Şifre Güncellendi!", {
-                description: "Tüm oturumlarınız sonlandırıldı. Lütfen tekrar giriş yapın.",
+            toast.success(t("profile.changePassword.successTitle"), {
+                description: t("profile.changePassword.successDescription"),
             });
             logout();
-            router.push("/login");
+            router.push(buildLocalizedPathname("/login", locale));
         },
         onError: (error: any) => {
-            const errorMessage = error?.response?.data?.message || "Bir hata oluştu. Lütfen tekrar deneyin.";
-            toast.error("Şifre Değiştirilemedi", {
+            const errorMessage = error?.response?.data?.message || t("profile.changePassword.errorDescription");
+            toast.error(t("profile.changePassword.errorTitle"), {
                 description: errorMessage,
             });
         },
@@ -71,8 +75,8 @@ export function ChangePasswordCard() {
                     <CardHeader className="cursor-pointer p-4 md:p-6">
                         <div className="flex items-start md:items-center justify-between gap-3">
                             <div className="text-left flex-1 min-w-0">
-                                <CardTitle className="text-base md:text-lg">Şifre Değiştir</CardTitle>
-                                <CardDescription className="text-xs md:text-sm mt-1">Hesabınızın güvenliği için düzenli olarak şifrenizi değiştirin.</CardDescription>
+                                <CardTitle className="text-base md:text-lg">{t("profile.changePassword.title")}</CardTitle>
+                                <CardDescription className="text-xs md:text-sm mt-1">{t("profile.changePassword.description")}</CardDescription>
                             </div>
                             {isOpen ? <ChevronUp className="h-5 w-5 text-muted-foreground flex-shrink-0" /> : <ChevronDown className="h-5 w-5 text-muted-foreground flex-shrink-0" />}
                         </div>
@@ -87,7 +91,7 @@ export function ChangePasswordCard() {
                                     name="currentPassword"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Mevcut Şifre</FormLabel>
+                                            <FormLabel>{t("profile.changePassword.currentPasswordLabel")}</FormLabel>
                                             <FormControl>
                                                 <div className="relative">
                                                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -110,7 +114,7 @@ export function ChangePasswordCard() {
                                     name="newPassword"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Yeni Şifre</FormLabel>
+                                            <FormLabel>{t("profile.changePassword.newPasswordLabel")}</FormLabel>
                                             <FormControl>
                                                 <div className="relative">
                                                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -133,7 +137,7 @@ export function ChangePasswordCard() {
                                     name="confirmPassword"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Yeni Şifre (Tekrar)</FormLabel>
+                                            <FormLabel>{t("profile.changePassword.confirmPasswordLabel")}</FormLabel>
                                             <FormControl>
                                                 <div className="relative">
                                                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -153,9 +157,9 @@ export function ChangePasswordCard() {
                                 />
                                 <div className="pt-2">
                                     <Button type="submit" className="w-full cursor-pointer" disabled={isPending} variant="destructive">
-                                        {isPending ? "Güncelleniyor..." : "Şifreyi Değiştir"}
+                                        {isPending ? t("profile.changePassword.saving") : t("profile.changePassword.submit")}
                                     </Button>
-                                    <p className="text-xs text-muted-foreground mt-2 text-center">Şifrenizi değiştirdiğinizde tüm cihazlardaki oturumlarınız sonlandırılacaktır.</p>
+                                    <p className="text-xs text-muted-foreground mt-2 text-center">{t("profile.changePassword.note")}</p>
                                 </div>
                             </form>
                         </Form>

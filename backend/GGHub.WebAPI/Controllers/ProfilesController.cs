@@ -1,4 +1,5 @@
-﻿using GGHub.Application.Interfaces;
+using GGHub.Application.Interfaces;
+using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,6 +20,7 @@ public class ProfilesController : ControllerBase
         _profileService = profileService;
         _context = context;
     }
+
     [HttpGet("{username}")]
     [AllowAnonymous]
     public async Task<IActionResult> GetProfile(string username)
@@ -37,7 +39,7 @@ public class ProfilesController : ControllerBase
     {
         var followerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var success = await _socialService.FollowUserAsync(followerId, username);
-        return success ? Ok() : BadRequest("Kullanıcı bulunamadı veya geçersiz işlem.");
+        return success ? Ok() : BadRequest(AppText.Get("profiles.userNotFoundOrInvalidAction"));
     }
 
     [HttpDelete("{username}/follow")]
@@ -46,8 +48,9 @@ public class ProfilesController : ControllerBase
     {
         var followerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var success = await _socialService.UnfollowUserAsync(followerId, username);
-        return success ? NoContent() : BadRequest("Kullanıcı bulunamadı veya geçersiz işlem.");
+        return success ? NoContent() : BadRequest(AppText.Get("profiles.userNotFoundOrInvalidAction"));
     }
+
     [HttpGet("{username}/followers")]
     public async Task<IActionResult> GetFollowers(string username)
     {
@@ -69,13 +72,14 @@ public class ProfilesController : ControllerBase
         var following = await _socialService.GetFollowingAsync(username, currentUserId);
         return Ok(following);
     }
+
     [HttpPost("{username}/block")]
     [Authorize]
     public async Task<IActionResult> Block(string username)
     {
         var blockerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var success = await _socialService.BlockUserAsync(blockerId, username);
-        return success ? Ok() : BadRequest("Geçersiz işlem.");
+        return success ? Ok() : BadRequest(AppText.Get("profiles.invalidAction"));
     }
 
     [HttpDelete("{username}/block")]
@@ -84,14 +88,17 @@ public class ProfilesController : ControllerBase
     {
         var blockerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var success = await _socialService.UnblockUserAsync(blockerId, username);
-        return success ? NoContent() : BadRequest("Geçersiz işlem.");
+        return success ? NoContent() : BadRequest(AppText.Get("profiles.invalidAction"));
     }
+
     [HttpGet("blocked-users")]
     public async Task<IActionResult> GetBlockedUsers()
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
             return Unauthorized();
+        }
 
         var blockedUsers = await _socialService.GetBlockedUsersAsync(userId);
         return Ok(blockedUsers);
@@ -101,15 +108,16 @@ public class ProfilesController : ControllerBase
     public async Task<IActionResult> CheckBlockStatus(string username)
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
             return Unauthorized();
+        }
 
-        // Target user'ı bul
-        var targetUser = await _context.Users
-            .FirstOrDefaultAsync(u => u.Username == username && !u.IsDeleted);
-
+        var targetUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == username && !u.IsDeleted);
         if (targetUser == null)
-            return NotFound("Kullanıcı bulunamadı.");
+        {
+            return NotFound(AppText.Get("common.userNotFound"));
+        }
 
         var isBlockedByMe = await _socialService.IsBlockedByMeAsync(userId, targetUser.Id);
         var isBlockingMe = await _socialService.IsBlockingMeAsync(userId, targetUser.Id);
@@ -117,7 +125,7 @@ public class ProfilesController : ControllerBase
         return Ok(new
         {
             isBlockedByMe,
-            isBlockingMe
+            isBlockingMe,
         });
     }
 }

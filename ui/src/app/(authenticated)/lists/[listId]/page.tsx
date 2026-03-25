@@ -1,4 +1,5 @@
 "use client";
+
 import type { UserListDetail, UserListForUpdate } from "@/models/list/list.model";
 import { ListFormModal } from "@core/components/other/lists/list-form-modal";
 import { useState, useMemo, useCallback } from "react";
@@ -18,8 +19,10 @@ import { AddGameToListModal } from "@core/components/other/lists/add-game-to-lis
 import { ListCommentSection } from "@/core/components/other/lists/list-comment-section";
 import { AxiosError } from "axios";
 import { ReportDialog } from "@core/components/base/report-dialog";
+import { useI18n } from "@/core/contexts/locale-context";
 
 export default function ListDetailPage() {
+    const t = useI18n();
     const params = useParams();
     const listId = Number(params.listId);
 
@@ -28,10 +31,8 @@ export default function ListDetailPage() {
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [listToEdit, setListToEdit] = useState<UserListDetail | null>(null);
-
     const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false);
     const [visibleGameRows, setVisibleGameRows] = useState(2);
-
     const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
 
     const { data: listDetail, isLoading } = useQuery<UserListDetail>({
@@ -66,16 +67,16 @@ export default function ListDetailPage() {
     const submitRatingMutation = useMutation({
         mutationFn: (rating: number) => listRatingApi.submitListRating(listId, { value: rating }),
         onSuccess: (_, newRating) => {
-            toast.success(`Puanınız (${newRating}) kaydedildi.`);
+            toast.success(t("listDetail.ratingSaved", { rating: newRating }));
             queryClient.invalidateQueries({ queryKey: ["my-list-rating", listId, user?.id] });
             queryClient.invalidateQueries({ queryKey: ["list-detail", listId] });
             queryClient.invalidateQueries({ queryKey: ["my-lists"] });
         },
         onError: (error: unknown) => {
-            if (error instanceof AxiosError && (error.response as any).isRateLimitError) {
+            if (error instanceof AxiosError && (error.response as { isRateLimitError?: boolean } | undefined)?.isRateLimitError) {
                 return;
             }
-            toast.error(`Puan kaydedilemedi: ${(error as Error).message}`);
+            toast.error(t("listDetail.ratingSaveError", { message: (error as Error).message }));
         },
     });
 
@@ -89,17 +90,17 @@ export default function ListDetailPage() {
     const updateListMutation = useMutation({
         mutationFn: ({ listId, data }: { listId: number; data: UserListForUpdate }) => listApi.updateList(listId, data),
         onSuccess: (_, variables) => {
-            toast.success(`'${variables.data.name}' listesi başarıyla güncellendi.`);
+            toast.success(t("listDetail.listUpdated", { name: variables.data.name }));
             queryClient.invalidateQueries({ queryKey: ["list-detail", variables.listId] });
             queryClient.invalidateQueries({ queryKey: ["my-lists"] });
             setIsModalOpen(false);
             setListToEdit(null);
         },
         onError: (error: unknown) => {
-            if (error instanceof AxiosError && (error.response as any).isRateLimitError) {
+            if (error instanceof AxiosError && (error.response as { isRateLimitError?: boolean } | undefined)?.isRateLimitError) {
                 return;
             }
-            toast.error(`Liste güncellenemedi: ${(error as Error).message}`);
+            toast.error(t("listDetail.listUpdateError", { message: (error as Error).message }));
         },
     });
 
@@ -109,30 +110,26 @@ export default function ListDetailPage() {
             await queryClient.cancelQueries({ queryKey: ["list-detail", listId] });
 
             const previousData = queryClient.getQueryData(["list-detail", listId]);
-
-            queryClient.setQueryData(["list-detail", listId], (old: any) => {
-                if (!old) return old;
-                return old;
-            });
+            queryClient.setQueryData(["list-detail", listId], (old: unknown) => old);
 
             return { previousData };
         },
         onSuccess: () => {
-            toast.success("Oyun listeye eklendi.");
+            toast.success(t("listDetail.gameAdded"));
             queryClient.refetchQueries({ queryKey: ["list-detail", listId] });
         },
-        onError: (error: unknown, gameId, context) => {
+        onError: (error: unknown, _gameId, context) => {
             if (context?.previousData) {
                 queryClient.setQueryData(["list-detail", listId], context.previousData);
             }
+
             if (error instanceof AxiosError) {
-                if ((error.response as any)?.isRateLimitError) return;
+                if ((error.response as { isRateLimitError?: boolean } | undefined)?.isRateLimitError) {
+                    return;
+                }
 
                 const backendMessage = error.response?.data?.message || error.response?.data;
-                const displayMessage = typeof backendMessage === 'string'
-                    ? backendMessage
-                    : error.message;
-
+                const displayMessage = typeof backendMessage === "string" ? backendMessage : error.message;
                 toast.error(displayMessage);
             }
         },
@@ -144,12 +141,12 @@ export default function ListDetailPage() {
     const removeGameMutation = useMutation({
         mutationFn: (gameId: number) => listApi.removeGameFromList(listId, gameId),
         onSuccess: () => {
-            toast.success("Oyun listeden çıkarıldı.");
+            toast.success(t("listDetail.gameRemoved"));
             queryClient.invalidateQueries({ queryKey: ["list-detail", listId] });
             queryClient.invalidateQueries({ queryKey: ["my-lists"] });
         },
         onError: (error: unknown) => {
-            if (error instanceof AxiosError && (error.response as any).isRateLimitError) {
+            if (error instanceof AxiosError && (error.response as { isRateLimitError?: boolean } | undefined)?.isRateLimitError) {
                 return;
             }
             toast.error(`${(error as Error).message}`);
@@ -160,36 +157,36 @@ export default function ListDetailPage() {
         (gameId: number) => {
             removeGameMutation.mutate(gameId);
         },
-        [removeGameMutation.mutate]
+        [removeGameMutation]
     );
 
     const followMutation = useMutation({
         mutationFn: () => listApi.followList(listId),
         onSuccess: () => {
-            toast.success(`'${listDetail?.name || "Liste"}' takip edildi.`);
+            toast.success(t("listDetail.followSuccess", { name: listDetail?.name || t("listDetail.fallbackListName") }));
             queryClient.invalidateQueries({ queryKey: ["list-detail", listId] });
             queryClient.invalidateQueries({ queryKey: ["followed-lists-by-me"] });
         },
         onError: (error: unknown) => {
-            if (error instanceof AxiosError && (error.response as any).isRateLimitError) {
+            if (error instanceof AxiosError && (error.response as { isRateLimitError?: boolean } | undefined)?.isRateLimitError) {
                 return;
             }
-            toast.error(`Takip etme başarısız: ${(error as Error).message}`);
+            toast.error(t("listDetail.followError", { message: (error as Error).message }));
         },
     });
 
     const unfollowMutation = useMutation({
         mutationFn: () => listApi.unfollowList(listId),
         onSuccess: () => {
-            toast.success(`'${listDetail?.name || "Liste"}' takipten çıkıldı.`);
+            toast.success(t("listDetail.unfollowSuccess", { name: listDetail?.name || t("listDetail.fallbackListName") }));
             queryClient.invalidateQueries({ queryKey: ["list-detail", listId] });
             queryClient.invalidateQueries({ queryKey: ["followed-lists-by-me"] });
         },
         onError: (error: unknown) => {
-            if (error instanceof AxiosError && (error.response as any).isRateLimitError) {
+            if (error instanceof AxiosError && (error.response as { isRateLimitError?: boolean } | undefined)?.isRateLimitError) {
                 return;
             }
-            toast.error(`Takipten çıkma başarısız: ${(error as Error).message}`);
+            toast.error(t("listDetail.unfollowError", { message: (error as Error).message }));
         },
     });
 
@@ -198,40 +195,41 @@ export default function ListDetailPage() {
             updateListMutation.mutate({ listId: listToEdit.id, data: values });
         }
     };
+
     const handleEditClick = () => {
         if (listDetail) {
             setListToEdit(listDetail);
             setIsModalOpen(true);
         } else {
-            toast.error("Liste verisi henüz yüklenmedi, lütfen tekrar deneyin.");
+            toast.error(t("listDetail.listDataNotLoaded"));
         }
     };
 
     const handleFollow = useCallback(() => {
         if (!user) {
-            toast.error("Liste takip etmek için giriş yapmalısınız.");
+            toast.error(t("listDetail.loginRequiredToFollow"));
             return;
         }
         followMutation.mutate();
-    }, [followMutation, user]);
+    }, [followMutation, t, user]);
 
     const handleUnfollow = useCallback(() => {
         if (!user) {
-            toast.error("Bu işlem için giriş yapmalısınız.");
+            toast.error(t("listDetail.loginRequiredAction"));
             return;
         }
         unfollowMutation.mutate();
-    }, [unfollowMutation, user]);
+    }, [t, unfollowMutation, user]);
 
     if (isLoading) {
         return (
             <div className="w-full h-full p-5">
                 <div className="animate-pulse">
-                    <div className="h-20 w-3/4 bg-muted rounded mb-6"></div>
+                    <div className="h-20 w-3/4 bg-muted rounded mb-6" />
                 </div>
                 <Separator className="my-6" />
                 <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-bold">Listedeki Oyunlar</h2>
+                    <h2 className="text-2xl font-bold">{t("listDetail.loadingGames")}</h2>
                     <span>(</span>
                     <Loader className="h-6 w-6 animate-spin" />
                     <span>)</span>
@@ -246,7 +244,7 @@ export default function ListDetailPage() {
     }
 
     if (!listDetail) {
-        return <div>Liste bulunamadı.</div>;
+        return <div>{t("listDetail.notFound")}</div>;
     }
 
     const isFormPending = updateListMutation.isPending;
@@ -257,22 +255,22 @@ export default function ListDetailPage() {
             {isOwner && (
                 <>
                     <Button className="cursor-pointer" onClick={() => setIsAddGameModalOpen(true)}>
-                        <ListPlus className="mr-0 sm:mr-1 h-4 w-4" /> <span className="hidden sm:inline">Oyun</span> Ekle
+                        <ListPlus className="mr-0 sm:mr-1 h-4 w-4" /> <span>{t("listDetail.addGame")}</span>
                     </Button>
-                    <Button variant="outline" className="cursor-pointer" onClick={handleEditClick} disabled={isFormPending} title="Listeyi düzenle">
-                        <Edit className="mr-1 h-4 w-4" /> Düzenle
+                    <Button variant="outline" className="cursor-pointer" onClick={handleEditClick} disabled={isFormPending} title={t("listDetail.editTitle")}>
+                        <Edit className="mr-1 h-4 w-4" /> {t("listDetail.edit")}
                     </Button>
                 </>
             )}
             {!isOwner && user && (
                 <>
                     {listDetail.isFollowing ? (
-                        <Button variant="outline" onClick={handleUnfollow} disabled={unfollowMutation.isPending} title="Takipten Çık" className="cursor-pointer">
-                            <BookmarkMinus className="mr-0 h-4 w-4" /> Takipten Çık
+                        <Button variant="outline" onClick={handleUnfollow} disabled={unfollowMutation.isPending} title={t("listDetail.unfollowTitle")} className="cursor-pointer">
+                            <BookmarkMinus className="mr-0 h-4 w-4" /> {t("listDetail.unfollow")}
                         </Button>
                     ) : (
-                        <Button variant="default" className="cursor-pointer" onClick={handleFollow} disabled={followMutation.isPending} title="Takip Et">
-                            <BookmarkPlus className="mr-0 h-4 w-4" /> Takip Et
+                        <Button variant="default" className="cursor-pointer" onClick={handleFollow} disabled={followMutation.isPending} title={t("listDetail.followTitle")}>
+                            <BookmarkPlus className="mr-0 h-4 w-4" /> {t("listDetail.follow")}
                         </Button>
                     )}
 
@@ -280,10 +278,10 @@ export default function ListDetailPage() {
                         variant="outline"
                         className="cursor-pointer text-destructive hover:bg-destructive/10 hover:text-destructive"
                         onClick={() => setIsReportDialogOpen(true)}
-                        title="Listeyi Raporla"
+                        title={t("listDetail.reportTitle")}
                     >
                         <Flag className="h-4 w-4" />
-                        <span className="sm:inline ml-1">Raporla</span>
+                        <span className="sm:inline ml-1">{t("listDetail.report")}</span>
                     </Button>
                 </>
             )}
@@ -301,12 +299,11 @@ export default function ListDetailPage() {
                 currentUserId={currentUserId}
             />
             <Separator className="my-6" />
-            <h2 className="text-2xl font-bold mb-4">Listedeki Oyunlar ({listDetail.games.length})</h2>
+            <h2 className="text-2xl font-bold mb-4">{t("listDetail.gamesTitle", { count: listDetail.games.length })}</h2>
             {listDetail.games.length === 0 ? (
-                <div className="text-center text-muted-foreground py-12">Bu listede henüz hiç oyun yok.</div>
+                <div className="text-center text-muted-foreground py-12">{t("listDetail.empty")}</div>
             ) : (
                 <div className="relative">
-                    {/* Oyun Grid'i */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3">
                         {displayedGames.map((game) => (
                             <ListGameCard key={game.rawgId} game={game} showRemoveButton={isOwner} onRemove={handleRemoveGame} />
@@ -317,8 +314,10 @@ export default function ListDetailPage() {
                         <>
                             <div className="absolute bottom-0 left-0 right-0 h-40 bg-linear-to-t from-background via-background/80 to-transparent pointer-events-none" />
                             <div className="relative flex flex-col items-center gap-3 mt-6">
-                                <span className="text-sm text-muted-foreground font-medium">Daha Fazla Oyun Göster ({listDetail.games.length - visibleGamesCount} adet)</span>
-                                <button onClick={() => setVisibleGameRows((prev) => prev + ROWS_PER_LOAD)} className="group relative cursor-pointer" aria-label="Daha fazla oyun göster">
+                                <span className="text-sm text-muted-foreground font-medium">
+                                    {t("listDetail.showMoreGames", { count: listDetail.games.length - visibleGamesCount })}
+                                </span>
+                                <button onClick={() => setVisibleGameRows((prev) => prev + ROWS_PER_LOAD)} className="group relative cursor-pointer" aria-label={t("listDetail.showMoreGamesAria")}>
                                     <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse" />
                                     <div className="relative w-5 h-5 rounded-full border-2 border-primary/40 hover:border-primary bg-background/50 backdrop-blur-sm flex items-center justify-center transition-all duration-300 animate-bounce hover:animate-none group-hover:shadow-lg group-hover:shadow-primary/25">
                                         <ArrowDown className="h-3 w-3 text-primary" />

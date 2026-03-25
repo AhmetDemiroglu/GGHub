@@ -8,13 +8,18 @@ import { Badge } from "@/core/components/ui/badge";
 import { Star, BowArrow } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { tr } from "date-fns/locale";
+import { enUS, tr } from "date-fns/locale";
+import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 
 interface UserReviewsTabProps {
     userId: number;
 }
 
 export const UserReviewsTab = ({ userId }: UserReviewsTabProps) => {
+    const t = useI18n();
+    const locale = useCurrentLocale();
+    const dateLocale = locale === "tr" ? tr : enUS;
+
     const {
         data: reviews,
         isLoading,
@@ -26,15 +31,15 @@ export const UserReviewsTab = ({ userId }: UserReviewsTabProps) => {
     });
 
     if (isLoading) {
-        return <p className="text-center text-muted-foreground">Kullanıcının incelemeleri yükleniyor...</p>;
+        return <p className="text-center text-muted-foreground">{t("admin.userReviewsLoading")}</p>;
     }
 
     if (isError) {
-        return <p className="text-destructive">İncelemeler yüklenirken bir hata oluştu.</p>;
+        return <p className="text-destructive">{t("admin.userReviewsError")}</p>;
     }
 
     if (!reviews || reviews.length === 0) {
-        return <p className="text-center text-muted-foreground">Bu kullanıcının yaptığı herhangi bir inceleme bulunmamaktadır.</p>;
+        return <p className="text-center text-muted-foreground">{t("admin.userReviewsEmpty")}</p>;
     }
 
     return (
@@ -42,11 +47,11 @@ export const UserReviewsTab = ({ userId }: UserReviewsTabProps) => {
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Oyun</TableHead>
-                        <TableHead>Puan</TableHead>
-                        <TableHead>İnceleme (Önizleme)</TableHead>
-                        <TableHead>Tarih</TableHead>
-                        <TableHead className="text-right">Eylem</TableHead>
+                        <TableHead>{t("admin.userReviewsColumns.game")}</TableHead>
+                        <TableHead>{t("admin.userReviewsColumns.rating")}</TableHead>
+                        <TableHead>{t("admin.userReviewsColumns.review")}</TableHead>
+                        <TableHead>{t("admin.userReviewsColumns.date")}</TableHead>
+                        <TableHead className="text-right">{t("admin.userReviewsColumns.action")}</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -62,7 +67,7 @@ export const UserReviewsTab = ({ userId }: UserReviewsTabProps) => {
                             <TableCell className="max-w-sm truncate">{review.content}</TableCell>
                             <TableCell>
                                 {format(new Date(review.createdAt), "dd MMM yyyy", {
-                                    locale: tr,
+                                    locale: dateLocale,
                                 })}
                             </TableCell>
                             <TableCell className="text-right">
@@ -72,7 +77,7 @@ export const UserReviewsTab = ({ userId }: UserReviewsTabProps) => {
                                     className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
                                 >
                                     <BowArrow className="h-3.5 w-3.5" />
-                                    Oyunu Gör
+                                    {t("admin.userReviewsViewGame")}
                                 </Link>
                             </TableCell>
                         </TableRow>

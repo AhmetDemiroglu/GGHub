@@ -14,16 +14,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/cor
 import { X, Mail } from "lucide-react";
 import Link from "next/link";
 import { AxiosError } from "axios";
-
-const formSchema = z.object({
-    email: z
-        .string()
-        .min(1, { message: "E-posta alanı boş bırakılamaz." })
-        .refine((val) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(val), { message: "Lütfen geçerli bir e-posta adresi girin" }),
-});
+import { useI18n } from "@/core/contexts/locale-context";
 
 export default function ForgotPasswordPage() {
+    const t = useI18n();
     const router = useRouter();
+    const formSchema = z.object({
+        email: z
+            .string()
+            .min(1, { message: t("auth.forgotPasswordEmailRequired") })
+            .refine((val) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(val), { message: t("auth.forgotPasswordEmailInvalid") }),
+    });
+
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: { email: "" },
@@ -32,8 +34,8 @@ export default function ForgotPasswordPage() {
     const { mutate, isPending } = useMutation({
         mutationFn: requestPasswordReset,
         onSuccess: () => {
-            toast.success("Kod Gönderildi!", {
-                description: "E-posta adresinize şifre sıfırlama kodu gönderildi.",
+            toast.success(t("auth.forgotPasswordSuccessTitle"), {
+                description: t("auth.forgotPasswordSuccessDescription"),
             });
             router.push("/reset-password");
         },
@@ -42,9 +44,9 @@ export default function ForgotPasswordPage() {
                 return;
             }
 
-            const axiosError = error as AxiosError<any>;
-            const errorMessage = axiosError?.response?.data?.message || (error as Error).message || "Bir hata oluştu. Lütfen tekrar deneyin.";
-            toast.error("İstek Başarısız", {
+            const axiosError = error as AxiosError<{ message?: string }>;
+            const errorMessage = axiosError?.response?.data?.message || (error as Error).message || t("auth.forgotPasswordErrorDescription");
+            toast.error(t("auth.forgotPasswordErrorTitle"), {
                 description: errorMessage,
             });
         },
@@ -57,14 +59,14 @@ export default function ForgotPasswordPage() {
     return (
         <div className="flex items-center justify-center min-h-screen">
             <Card className="w-[400px] relative">
-                <Link href="/login" aria-label="Giriş Sayfasına Dön">
+                <Link href="/login" aria-label={t("auth.backToLogin")}>
                     <Button variant="ghost" size="icon" className="absolute top-4 right-4 h-6 w-6">
                         <X className="h-4 w-4" />
                     </Button>
                 </Link>
                 <CardHeader>
-                    <CardTitle>Şifremi Unuttum</CardTitle>
-                    <CardDescription>E-posta adresinize şifre sıfırlama kodu göndereceğiz.</CardDescription>
+                    <CardTitle>{t("auth.forgotPasswordTitle")}</CardTitle>
+                    <CardDescription>{t("auth.forgotPasswordCardDescription")}</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Form {...form}>
@@ -74,11 +76,11 @@ export default function ForgotPasswordPage() {
                                 name="email"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>E-posta</FormLabel>
+                                        <FormLabel>{t("auth.forgotPasswordEmailLabel")}</FormLabel>
                                         <FormControl>
                                             <div className="relative">
                                                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                                <Input placeholder="ornek@gghub.com" className="pl-10" {...field} />
+                                                <Input placeholder={t("auth.forgotPasswordEmailPlaceholder")} className="pl-10" {...field} />
                                             </div>
                                         </FormControl>
                                         <FormMessage />
@@ -86,11 +88,11 @@ export default function ForgotPasswordPage() {
                                 )}
                             />
                             <Button type="submit" className="w-full cursor-pointer" disabled={isPending}>
-                                {isPending ? "Gönderiliyor..." : "Kod Gönder"}
+                                {isPending ? t("auth.forgotPasswordSubmitPending") : t("auth.forgotPasswordSubmit")}
                             </Button>
                             <p className="text-center text-sm text-muted-foreground">
                                 <Link href="/login" className="underline font-bold underline-offset-4 hover:text-primary">
-                                    Giriş sayfasına dön
+                                    {t("auth.backToLogin")}
                                 </Link>
                             </p>
                         </form>

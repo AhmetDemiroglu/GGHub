@@ -9,6 +9,7 @@ import "dayjs/locale/tr";
 import { ReviewDetailDialog } from "./review-detail-dialog";
 import { Review } from "@/models/review/review.model";
 import placeholderGame from "@/core/assets/placeholder.png";
+import { useI18n } from "@/core/contexts/locale-context";
 
 dayjs.locale("tr");
 
@@ -17,6 +18,7 @@ interface ProfileReviewsProps {
 }
 
 export default function ProfileReviews({ username }: ProfileReviewsProps) {
+    const t = useI18n();
     const [selectedReview, setSelectedReview] = useState<Review | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -44,10 +46,8 @@ export default function ProfileReviews({ username }: ProfileReviewsProps) {
                 <div className="bg-muted/50 p-4 rounded-full mb-4">
                     <MessageSquare className="h-8 w-8 text-muted-foreground/50" />
                 </div>
-                <h3 className="text-lg font-semibold text-foreground">Henüz inceleme yok</h3>
-                <p className="text-muted-foreground mt-2 max-w-sm">
-                    Bu kullanıcı henüz hiçbir oyun için inceleme yazmamış.
-                </p>
+                <h3 className="text-lg font-semibold text-foreground">{t("profileReviews.emptyTitle")}</h3>
+                <p className="text-muted-foreground mt-2 max-w-sm">{t("profileReviews.emptyDescription")}</p>
             </div>
         );
     }
@@ -56,9 +56,7 @@ export default function ProfileReviews({ username }: ProfileReviewsProps) {
         <>
             <div className="grid gap-4">
                 {reviews.map((review) => {
-                    const imageSrc = review.game?.coverImage
-                        || review.game?.backgroundImage
-                        || placeholderGame.src;
+                    const imageSrc = review.game?.coverImage || review.game?.backgroundImage || placeholderGame.src;
 
                     return (
                         <div
@@ -66,38 +64,29 @@ export default function ProfileReviews({ username }: ProfileReviewsProps) {
                             onClick={() => handleReviewClick(review)}
                             className="group relative flex flex-row overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md hover:border-primary/30 cursor-pointer h-40 md:h-48"
                         >
-                            {/* Sol Taraf: Oyun Kapağı */}
                             <div className="w-28 md:w-36 shrink-0 bg-muted relative overflow-hidden">
                                 <img
                                     src={imageSrc}
-                                    alt={review.game?.name || "Oyun"}
+                                    alt={review.game?.name || t("profileReviews.fallbackAlt")}
                                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                                 />
 
-                                {/* Puan Badge */}
                                 <div className="absolute top-2 left-2 bg-black/80 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 rounded flex items-center gap-1 shadow-sm">
                                     <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
                                     {review.rating}
                                 </div>
                             </div>
 
-                            {/* Sağ Taraf: İçerik */}
                             <div className="flex-1 flex flex-col p-4 min-w-0">
                                 <div className="flex justify-between items-start gap-2 mb-2">
-                                    <h3 className="font-bold text-base md:text-lg truncate group-hover:text-primary transition-colors">
-                                        {review.game?.name}
-                                    </h3>
-                                    <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:block">
-                                        {dayjs(review.createdAt).format("D MMM YYYY")}
-                                    </span>
+                                    <h3 className="font-bold text-base md:text-lg truncate group-hover:text-primary transition-colors">{review.game?.name}</h3>
+                                    <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:block">{dayjs(review.createdAt).format("D MMM YYYY")}</span>
                                 </div>
 
-                                <p className="text-sm text-muted-foreground line-clamp-3 md:line-clamp-4 flex-1">
-                                    {review.content}
-                                </p>
+                                <p className="text-sm text-muted-foreground line-clamp-3 md:line-clamp-4 flex-1">{review.content}</p>
 
                                 <div className="flex items-center justify-end mt-auto pt-2 gap-2 text-xs font-medium text-primary">
-                                    <span>Detayı Görüntüle</span>
+                                    <span>{t("profileReviews.viewDetail")}</span>
                                     <CircleArrowRight className="h-3.5 w-3.5 animate-bounce-x" />
                                 </div>
                             </div>
@@ -106,11 +95,7 @@ export default function ProfileReviews({ username }: ProfileReviewsProps) {
                 })}
             </div>
 
-            <ReviewDetailDialog
-                isOpen={isDialogOpen}
-                onClose={() => setIsDialogOpen(false)}
-                review={selectedReview}
-            />
+            <ReviewDetailDialog isOpen={isDialogOpen} onClose={() => setIsDialogOpen(false)} review={selectedReview} />
         </>
     );
 }

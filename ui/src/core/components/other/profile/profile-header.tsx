@@ -1,5 +1,7 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PublicProfile } from "@/models/profile/profile.model";
 import dayjs from "dayjs";
 import "dayjs/locale/tr";
@@ -8,9 +10,7 @@ import { Button } from "@/core/components/ui/button";
 import { Badge } from "@/core/components/ui/badge";
 import { Separator } from "@/core/components/ui/separator";
 import { Calendar, Mail, Phone, UserPlus, UserMinus, Settings, MessageSquareMore, MessageSquareLock, Ban, ShieldOff, Flag } from "lucide-react";
-import { useState, useEffect } from "react";
 import { ReportDialog } from "@core/components/base/report-dialog";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { followUser, unfollowUser, blockUser, unblockUser } from "@/api/social/social.api";
 import { toast } from "sonner";
 import Image from "next/image";
@@ -23,10 +23,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@core/
 import { BlockedUsersDialog } from "@core/components/other/blocked-users-dialog";
 import { useAuth } from "@core/hooks/use-auth";
 import { getImageUrl } from "@/core/lib/get-image-url";
-import { useQuery } from "@tanstack/react-query";
 import { getUserGamificationStats } from "@/api/gamification/gamification.api";
-
-dayjs.locale("tr");
+import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
+import { buildLocalizedPathname } from "@/i18n/config";
 
 interface ProfileHeaderProps {
     profile: PublicProfile;
@@ -34,6 +33,10 @@ interface ProfileHeaderProps {
 }
 
 export default function ProfileHeader({ profile, isOwnProfile = false }: ProfileHeaderProps) {
+    const t = useI18n();
+    const locale = useCurrentLocale();
+    dayjs.locale(locale === "tr" ? "tr" : "en");
+
     const { user } = useAuth();
     const [isFollowing, setIsFollowing] = useState(profile.isFollowing || false);
     const [isBlocked, setIsBlocked] = useState(profile.isBlockedByMe || false);
@@ -65,10 +68,10 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
             setIsFollowing(true);
             setFollowerCount((prev) => prev + 1);
             queryClient.invalidateQueries({ queryKey: ["profile", profile.username] });
-            toast.success("Kullanıcı takip edildi!");
+            toast.success(t("profile.header.followSuccess"));
         },
         onError: () => {
-            toast.error("Takip edilirken bir hata oluştu.");
+            toast.error(t("profile.header.followError"));
         },
     });
 
@@ -78,18 +81,19 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
             setIsFollowing(false);
             setFollowerCount((prev) => prev - 1);
             queryClient.invalidateQueries({ queryKey: ["profile", profile.username] });
-            toast.success("Takip bırakıldı.");
+            toast.success(t("profile.header.unfollowSuccess"));
         },
         onError: () => {
-            toast.error("Takip bırakılırken bir hata oluştu.");
+            toast.error(t("profile.header.unfollowError"));
         },
     });
 
     const handleFollow = () => {
         if (!user) {
-            toast.error("Takip etmek için giriş yapmalısınız.");
+            toast.error(t("profile.header.loginRequiredFollow"));
             return;
         }
+
         if (isFollowing) {
             unfollowMutation.mutate();
         } else {
@@ -102,10 +106,10 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
         onSuccess: () => {
             setIsBlocked(true);
             queryClient.invalidateQueries({ queryKey: ["profile", profile.username] });
-            toast.success("Kullanıcı engellendi.");
+            toast.success(t("profile.header.blockSuccess"));
         },
         onError: () => {
-            toast.error("Engellenirken bir hata oluştu.");
+            toast.error(t("profile.header.blockError"));
         },
     });
 
@@ -114,10 +118,10 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
         onSuccess: () => {
             setIsBlocked(false);
             queryClient.invalidateQueries({ queryKey: ["profile", profile.username] });
-            toast.success("Engel kaldırıldı.");
+            toast.success(t("profile.header.unblockSuccess"));
         },
         onError: () => {
-            toast.error("Engel kaldırılırken bir hata oluştu.");
+            toast.error(t("profile.header.unblockError"));
         },
     });
 
@@ -146,14 +150,14 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
         return (
             <div className="w-full rounded-lg overflow-hidden bg-card text-card-foreground shadow-md">
                 <div className="h-48 md:h-56 w-full relative">
-                    <Image src={gameBanner} alt="GGHub Banner" fill className="object-cover object-[center_15%] sm:object-[center_25%] md:object-[center_35%]" priority />
+                    <Image src={gameBanner} alt={t("profile.header.bannerAlt")} fill className="object-cover object-[center_15%] sm:object-[center_25%] md:object-[center_35%]" priority />
                     <div className="absolute inset-0 bg-background/70" />
                 </div>
 
                 <div className="p-4 md:p-6">
                     <div className="flex flex-col sm:flex-row justify-between sm:items-start -mt-20 md:-mt-24">
                         <Avatar className="h-28 w-28 md:h-36 md:w-36 border-4 border-card shadow-lg">
-                            <AvatarImage src={avatarSrc} alt={`${displayName} profil resmi`} />
+                            <AvatarImage src={avatarSrc} alt={t("profile.header.profileImageAlt", { name: displayName })} />
                             <AvatarFallback className="text-5xl">{profile.username.charAt(0).toUpperCase()}</AvatarFallback>
                         </Avatar>
 
@@ -162,12 +166,19 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                                 <TooltipProvider>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
-                                            <Button onClick={handleBlock} variant="outline" size="sm" className="cursor-pointer" disabled={blockMutation.isPending || unblockMutation.isPending}>
+                                            <Button
+                                                onClick={handleBlock}
+                                                variant="outline"
+                                                size="sm"
+                                                className="cursor-pointer"
+                                                disabled={blockMutation.isPending || unblockMutation.isPending}
+                                                aria-label={t("profile.header.unblockTooltip")}
+                                            >
                                                 <ShieldOff className="h-4 w-4" />
                                             </Button>
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                            <p>Engeli Kaldır</p>
+                                            <p>{t("profile.header.unblockTooltip")}</p>
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
@@ -183,15 +194,15 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
 
                         {profile.isBlockedByMe && (
                             <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 mt-4">
-                                <p className="text-sm text-destructive font-medium">Bu kullanıcıyı engellediniz</p>
-                                <p className="text-xs text-muted-foreground mt-1">Bu kullanıcının profilini görüntüleyemezsiniz ve kullanıcı sizinle iletişim kuramaz.</p>
+                                <p className="text-sm text-destructive font-medium">{t("profile.header.blockedByYouTitle")}</p>
+                                <p className="text-xs text-muted-foreground mt-1">{t("profile.header.blockedByYouDescription")}</p>
                             </div>
                         )}
 
                         {profile.isBlockingMe && (
                             <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 mt-4">
-                                <p className="text-sm text-destructive font-medium">Bu kullanıcı sizi engelledi</p>
-                                <p className="text-xs text-muted-foreground mt-1">Bu kullanıcının profilini görüntüleyemezsiniz.</p>
+                                <p className="text-sm text-destructive font-medium">{t("profile.header.blockedByThemTitle")}</p>
+                                <p className="text-xs text-muted-foreground mt-1">{t("profile.header.blockedByThemDescription")}</p>
                             </div>
                         )}
                     </div>
@@ -200,7 +211,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
 
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Calendar className="h-4 w-4" />
-                        <span>GGHub&apos;a {dayjs(profile.createdAt).format("MMMM YYYY")} tarihinde katıldı</span>
+                        <span>{t("profile.header.joinedAt", { appName: t("common.appName"), date: dayjs(profile.createdAt).format("MMMM YYYY") })}</span>
                     </div>
                 </div>
             </div>
@@ -210,13 +221,13 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
     return (
         <div className="w-full rounded-lg overflow-hidden bg-card text-card-foreground shadow-md">
             <div className="h-48 md:h-56 w-full relative">
-                <Image src={gameBanner} alt="GGHub Banner" fill className="object-cover object-[center_15%] sm:object-[center_25%] md:object-[center_35%]" priority />
+                <Image src={gameBanner} alt={t("profile.header.bannerAlt")} fill className="object-cover object-[center_15%] sm:object-[center_25%] md:object-[center_35%]" priority />
                 <div className="absolute inset-0 bg-background/70" />
             </div>
             <div className="p-4 md:p-6">
                 <div className="flex flex-col sm:flex-row justify-between sm:items-start -mt-20 md:-mt-24">
                     <Avatar className="h-28 w-28 md:h-36 md:w-36 border-4 border-card shadow-lg">
-                        <AvatarImage src={avatarSrc} alt={`${displayName} profil resmi`} />
+                        <AvatarImage src={avatarSrc} alt={t("profile.header.profileImageAlt", { name: displayName })} />
                         <AvatarFallback className="text-5xl">{profile.username.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
 
@@ -224,19 +235,19 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                         {isOwnProfile ? (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" size="sm" className="gap-2 cursor-pointer">
+                                    <Button variant="outline" size="sm" className="gap-2 cursor-pointer" aria-label={t("profile.header.settings")}>
                                         <Settings className="h-4 w-4" />
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                     <DropdownMenuItem asChild>
-                                        <Link href="/profile" className="cursor-pointer">
-                                            Profili Düzenle
+                                        <Link href={buildLocalizedPathname("/profile", locale)} className="cursor-pointer">
+                                            {t("profile.header.editProfile")}
                                         </Link>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem asChild>
                                         <div className="cursor-pointer" onClick={() => setBlockedUsersDialogOpen(true)}>
-                                            Engellenenleri Görüntüle
+                                            {t("profile.header.viewBlockedUsers")}
                                         </div>
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
@@ -253,12 +264,12 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                                     {isFollowing ? (
                                         <>
                                             <UserMinus className="h-4 w-4" />
-                                            Takibi Bırak
+                                            {t("profile.header.unfollow")}
                                         </>
                                     ) : (
                                         <>
                                             <UserPlus className="h-4 w-4" />
-                                            Takip Et
+                                            {t("profile.header.follow")}
                                         </>
                                     )}
                                 </Button>
@@ -269,7 +280,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                                     className="cursor-pointer"
                                     onClick={() => {
                                         if (!user) {
-                                            toast.error("Mesaj göndermek için giriş yapmalısınız.");
+                                            toast.error(t("profile.header.loginRequiredMessage"));
                                             return;
                                         }
                                         setMessageDialogOpen(true);
@@ -279,12 +290,12 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                                     {canSendMessage() ? (
                                         <>
                                             <MessageSquareMore className="h-4 w-4" />
-                                            Mesaj Gönder
+                                            {t("profile.header.messageOpen")}
                                         </>
                                     ) : (
                                         <>
                                             <MessageSquareLock className="h-4 w-4" />
-                                            Mesaj Kapalı
+                                            {t("profile.header.messageClosed")}
                                         </>
                                     )}
                                 </Button>
@@ -295,7 +306,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                                             <Button
                                                 onClick={() => {
                                                     if (!user) {
-                                                        toast.error("Bu işlem için giriş yapmalısınız.");
+                                                        toast.error(t("profile.header.loginRequiredBlock"));
                                                         return;
                                                     }
                                                     handleBlock();
@@ -304,12 +315,13 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                                                 size="sm"
                                                 className="cursor-pointer"
                                                 disabled={blockMutation.isPending || unblockMutation.isPending || !user}
+                                                aria-label={isBlocked ? t("profile.header.unblockTooltip") : t("profile.header.blockTooltip")}
                                             >
                                                 {isBlocked ? <ShieldOff className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
                                             </Button>
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                            <p>{isBlocked ? "Engeli Kaldır" : "Bu kullanıcıyı engelle"}</p>
+                                            <p>{isBlocked ? t("profile.header.unblockTooltip") : t("profile.header.blockTooltip")}</p>
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
@@ -318,10 +330,11 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                                         variant="outline"
                                         className="cursor-pointer text-destructive hover:bg-destructive/10 hover:text-destructive"
                                         onClick={() => setIsReportDialogOpen(true)}
-                                        title="Kullanıcıyı Raporla"
+                                        title={t("profile.header.reportButton")}
+                                        aria-label={t("profile.header.reportButton")}
                                     >
                                         <Flag className="h-4 w-4" />
-                                        <span className="sm:inline ml-1">Raporla</span>
+                                        <span className="sm:inline ml-1">{t("profile.header.reportButton")}</span>
                                     </Button>
                                 )}
                             </>
@@ -330,7 +343,6 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                 </div>
 
                 <div className="mt-4 space-y-2">
-                    {/* 1. Satır: İsim ve Level Rozeti */}
                     <div>
                         <div className="flex items-center gap-2">
                             <h1 className="text-2xl font-bold">{displayName}</h1>
@@ -341,7 +353,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                                             <div className="relative h-8 w-8 cursor-help hover:scale-110 transition-transform">
                                                 <Image
                                                     src={`/assets/badges/level_${stats.currentLevel}.ico`}
-                                                    alt={`Level ${stats.currentLevel}`}
+                                                    alt={t("profile.header.levelImageAlt", { level: stats.currentLevel })}
                                                     fill
                                                     sizes="32px"
                                                     className="object-contain"
@@ -349,7 +361,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                                             </div>
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                            <p>{stats.levelName} (Lvl {stats.currentLevel})</p>
+                                            <p>{t("profile.header.levelTooltip", { levelName: stats.levelName, levelShort: t("home.levelShort"), level: stats.currentLevel })}</p>
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
@@ -358,41 +370,39 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                         <p className="text-muted-foreground">@{profile.username}</p>
                     </div>
 
-                    {/* 2. Satır: Durum (Varsa) */}
                     {profile.status && (
                         <div className="flex items-center gap-2 pt-1">
-                            <Badge variant="secondary" className="text-xs">Durum</Badge>
+                            <Badge variant="secondary" className="text-xs">
+                                {t("profile.header.statusBadge")}
+                            </Badge>
                             <p className="text-sm text-muted-foreground">{profile.status}</p>
                         </div>
                     )}
 
-                    {/* 3. Satır: Biyografi (Varsa) */}
                     {profile.bio && <p className="text-sm text-foreground/90 pt-2 max-w-2xl leading-relaxed">{profile.bio}</p>}
                 </div>
 
-                {/* 4. Satır: İstatistikler ve XP Bar (Flex Container) */}
                 <div className="mt-2 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-
-                    {/* Sol: Takipçi Sayıları */}
                     {(followerCount !== undefined || profile.followingCount !== undefined) && (
                         <div className="flex gap-4 text-sm pb-0">
                             <div className="cursor-pointer hover:underline group" onClick={() => { setDefaultModalTab("followers"); setFollowersModalOpen(true); }}>
                                 <span className="font-bold group-hover:text-primary transition-colors">{followerCount}</span>
-                                <span className="text-muted-foreground ml-1">Takipçi</span>
+                                <span className="text-muted-foreground ml-1">{t("profile.header.followersLabel")}</span>
                             </div>
                             <div className="cursor-pointer hover:underline group" onClick={() => { setDefaultModalTab("following"); setFollowersModalOpen(true); }}>
                                 <span className="font-bold group-hover:text-primary transition-colors">{profile.followingCount ?? 0}</span>
-                                <span className="text-muted-foreground ml-1">Takip</span>
+                                <span className="text-muted-foreground ml-1">{t("profile.header.followingLabel")}</span>
                             </div>
                         </div>
                     )}
 
-                    {/* Sağ: XP Bar*/}
                     {isOwnProfile && stats && (
                         <div className="w-full sm:w-60">
                             <div className="flex justify-between w-full text-[10px] font-medium mb-1.5 px-0.5">
-                                <span className="text-primary">Lvl {stats.currentLevel}</span>
-                                <span className="text-muted-foreground">{stats.currentXp} / {stats.nextLevelXp} XP</span>
+                                <span className="text-primary">{t("home.levelShort")} {stats.currentLevel}</span>
+                                <span className="text-muted-foreground">
+                                    {stats.currentXp} / {stats.nextLevelXp} XP
+                                </span>
                             </div>
 
                             <div className="h-2.5 w-full bg-secondary/50 rounded-full overflow-hidden ring-1 ring-white/5">
@@ -401,7 +411,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                                     style={{ width: `${Math.max(stats.progressPercentage, 1)}%` }}
                                 />
                             </div>
-                            <span className="text-[10px] text-muted-foreground">Sonraki seviyeye %{100 - stats.progressPercentage} kaldı</span>
+                            <span className="text-[10px] text-muted-foreground">{t("profile.header.remainingXp", { remaining: 100 - stats.progressPercentage })}</span>
                         </div>
                     )}
                 </div>
@@ -411,7 +421,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                     <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
                         <div className="flex items-center gap-2">
                             <Calendar className="h-4 w-4" />
-                            <span>GGHub'a {dayjs(profile.createdAt).format("MMMM YYYY")} tarihinde katıldı</span>
+                            <span>{t("profile.header.joinedAt", { appName: t("common.appName"), date: dayjs(profile.createdAt).format("MMMM YYYY") })}</span>
                         </div>
 
                         {profile.isDateOfBirthPublic && profile.dateOfBirth && (
@@ -438,7 +448,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
 
                     {isFollowing && (
                         <Badge variant="secondary" className="shrink-0">
-                            Takip Ediliyor
+                            {t("profile.header.followingBadge")}
                         </Badge>
                     )}
                 </div>
@@ -451,12 +461,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
 
             {isOwnProfile && <BlockedUsersDialog isOpen={blockedUsersDialogOpen} onClose={() => setBlockedUsersDialogOpen(false)} />}
             {!isOwnProfile && user && (
-                <ReportDialog
-                    isOpen={isReportDialogOpen}
-                    onOpenChange={setIsReportDialogOpen}
-                    entityType="User"
-                    entityId={profile.id}
-                />
+                <ReportDialog isOpen={isReportDialogOpen} onOpenChange={setIsReportDialogOpen} entityType="User" entityId={profile.id} />
             )}
         </div>
     );
