@@ -24,5 +24,11 @@
         public int RatingCount { get; set; } = 0;
         public string? DescriptionTr { get; set; }
         public string? MetacriticUrl { get; set; }
+
+        // RAWG Import tracking
+        public string? ImportSource { get; set; }
+        public DateTime? ImportedAt { get; set; }
+        public int? RawgRatingsCount { get; set; }
+        public int? RawgAdded { get; set; }
     }
 }

@@ -51,7 +51,7 @@ export const trMessages = {
     },
     footer: {
         tagline: "Oyun tutkunu toplulukla birleşen platform.",
-        version: "Sürüm 1.0.0",
+        version: "Sürüm 2.0.0",
         company: "Şirket",
         about: "Hakkımızda",
         privacy: "Gizlilik politikası",

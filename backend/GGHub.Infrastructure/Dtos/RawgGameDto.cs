@@ -34,5 +34,20 @@ namespace GGHub.Infrastructure.Dtos
 
         [JsonPropertyName("genres")]
         public List<RawgGenreDto> Genres { get; set; }
+
+        [JsonPropertyName("ratings_count")]
+        public int RatingsCount { get; set; }
+
+        [JsonPropertyName("added")]
+        public int Added { get; set; }
+
+        [JsonPropertyName("reviews_text_count")]
+        public int ReviewsTextCount { get; set; }
+
+        [JsonPropertyName("suggestions_count")]
+        public int SuggestionsCount { get; set; }
+
+        [JsonPropertyName("tba")]
+        public bool Tba { get; set; }
     }
 }

@@ -126,6 +126,14 @@ if (metacriticJobEnabled)
     builder.Services.AddHostedService<MetacriticSyncJob>();
 }
 
+// RAWG Import Job - ONLY runs in Development environment (double safety check in job itself)
+builder.Services.Configure<RawgImportSettings>(builder.Configuration.GetSection("Jobs:RawgImport"));
+var rawgImportEnabled = builder.Configuration.GetValue<bool>("Jobs:RawgImport:Enabled");
+if (rawgImportEnabled && builder.Environment.IsDevelopment())
+{
+    builder.Services.AddHostedService<RawgImportJob>();
+}
+
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 //if (builder.Environment.IsProduction())

@@ -51,7 +51,7 @@ export const enUSMessages = {
     },
     footer: {
         tagline: "The platform that brings together a gaming-first community.",
-        version: "Version 1.0.0",
+        version: "Version 2.0.0",
         company: "Company",
         about: "About",
         privacy: "Privacy policy",
@@ -724,7 +724,8 @@ export const enUSMessages = {
         connectTitle: "Connect",
         connectDescription: "Follow other players, browse their lists, quickly find people with similar tastes, and chat.",
         whyTitle: "Why GGHub?",
-        whyDescription: "Most platforms show the game, not the player. GGHub does the opposite: it thinks about the player first, then the game. It was designed to answer questions like “Who is playing what?”, “Which games has this person finished?”, and “Is our friend group playing this game?” from a single screen.",
+        whyDescription:
+            "Most platforms show the game, not the player. GGHub does the opposite: it thinks about the player first, then the game. It was designed to answer questions like “Who is playing what?”, “Which games has this person finished?”, and “Is our friend group playing this game?” from a single screen.",
         socialTitle: "Social by design",
         socialDescription: "Following, comments, notifications, sharing. GGHub is not just a game list tracker; it creates a living feed between players.",
         profileTitle: "Game-centered profile",

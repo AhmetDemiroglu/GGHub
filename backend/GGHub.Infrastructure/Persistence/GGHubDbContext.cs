@@ -34,6 +34,7 @@ namespace GGHub.Infrastructure.Persistence
         public DbSet<Achievement> Achievements { get; set; }
         public DbSet<UserAchievement> UserAchievements { get; set; }
         public DbSet<UserStats> UserStats { get; set; }
+        public DbSet<RawgImportCheckpoint> RawgImportCheckpoints { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -149,6 +150,23 @@ namespace GGHub.Infrastructure.Persistence
 
             modelBuilder.Entity<UserAchievement>()
                 .HasKey(ua => new { ua.UserId, ua.AchievementId });
+
+            // RawgImportCheckpoint: unique strategy key
+            modelBuilder.Entity<RawgImportCheckpoint>()
+                .HasIndex(c => c.StrategyKey)
+                .IsUnique()
+                .HasDatabaseName("IX_RawgImportCheckpoints_StrategyKey");
+
+            // Game: unique RawgId for duplicate protection
+            modelBuilder.Entity<Game>()
+                .HasIndex(g => g.RawgId)
+                .IsUnique()
+                .HasDatabaseName("IX_Games_RawgId");
+
+            // Game: index for import queries
+            modelBuilder.Entity<Game>()
+                .HasIndex(g => g.ImportSource)
+                .HasDatabaseName("IX_Games_ImportSource");
         }
     }
 
