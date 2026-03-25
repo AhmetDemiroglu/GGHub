@@ -108,19 +108,21 @@ namespace GGHub.Infrastructure.Services
 
             if (!hasBadge)
             {
+                var userAchievement = new UserAchievement
+                {
+                    UserId = userId,
+                    AchievementId = badge.Id,
+                    EarnedAt = DateTime.UtcNow
+                };
+
                 try
                 {
-                    var userAchievement = new UserAchievement
-                    {
-                        UserId = userId,
-                        AchievementId = badge.Id,
-                        EarnedAt = DateTime.UtcNow
-                    };
                     _context.UserAchievements.Add(userAchievement);
                     await _context.SaveChangesAsync();
                 }
                 catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
                 {
+                    _context.Entry(userAchievement).State = EntityState.Detached;
                     return;
                 }
 
