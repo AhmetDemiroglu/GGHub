@@ -11,7 +11,7 @@ import { useAuth } from "@core/hooks/use-auth";
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import dayjs from "dayjs";
-import { Send, AlertTriangle } from "lucide-react";
+import { Send, AlertTriangle, Loader, MessageSquare } from "lucide-react";
 import { UnauthorizedAccess } from "@core/components/other/unauthorized-access";
 import { AxiosError } from "axios";
 import { getImageUrl } from "@/core/lib/get-image-url";
@@ -22,13 +22,11 @@ export default function MessageThreadPage() {
     const username = params.username as string;
     const { user } = useAuth();
     const t = useI18n();
-
     const queryClient = useQueryClient();
 
     const [messageContent, setMessageContent] = useState("");
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // Initial fetch only - SignalR pushes new messages in real-time
     const { data: messages, isLoading } = useQuery<MessageDto[]>({
         queryKey: ["messages", username],
         queryFn: () => getMessageThread(username),
@@ -38,7 +36,6 @@ export default function MessageThreadPage() {
         mutationFn: (data: MessageForCreationDto) => sendMessage(data),
         onSuccess: (sentMessage: MessageDto) => {
             setMessageContent("");
-            // Add the sent message to the cache immediately (sender-side)
             queryClient.setQueryData<MessageDto[]>(["messages", username], (old) => {
                 if (!old) return [sentMessage];
                 if (old.some((m) => m.id === sentMessage.id)) return old;
@@ -56,7 +53,6 @@ export default function MessageThreadPage() {
 
     const handleSend = () => {
         if (!messageContent.trim()) return;
-
         sendMutation.mutate({
             recipientUsername: username,
             content: messageContent.trim(),
@@ -70,7 +66,6 @@ export default function MessageThreadPage() {
     };
 
     useEffect(() => {
-        // İlk yüklemede instant scroll, sonraki mesajlarda smooth
         scrollToBottom(isFirstRender.current);
         isFirstRender.current = false;
     }, [messages]);
@@ -78,7 +73,7 @@ export default function MessageThreadPage() {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-full">
-                <p className="text-muted-foreground">{t("common.loading")}</p>
+                <Loader className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
         );
     }
@@ -89,80 +84,106 @@ export default function MessageThreadPage() {
 
     return (
         <div className="flex flex-col h-full">
-            {/* Header */}
-            <div className="border-b p-4 bg-card shrink-0">
-                <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10">
-                        <AvatarImage
-                            src={
-                                messages && messages.length > 0
-                                    ? getImageUrl(messages[0].senderId === parseInt(user?.id || "0") ? messages[0].recipientProfileImageUrl : messages[0].senderProfileImageUrl)
-                                    : undefined
-                            }
-                            alt={username}
-                        />
-                        <AvatarFallback>{username.charAt(0).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <h2 className="font-semibold text-lg">{username}</h2>
+            {/* Chat Header */}
+            <div className="flex items-center gap-3 border-b border-border/40 px-5 py-3 shrink-0 bg-card/30">
+                <Avatar className="h-9 w-9 ring-2 ring-primary/20">
+                    <AvatarImage
+                        src={
+                            messages && messages.length > 0
+                                ? getImageUrl(messages[0].senderId === parseInt(user?.id || "0") ? messages[0].recipientProfileImageUrl : messages[0].senderProfileImageUrl)
+                                : undefined
+                        }
+                        alt={username}
+                    />
+                    <AvatarFallback className="text-sm">{username.charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div>
+                    <h2 className="text-sm font-semibold leading-tight">{username}</h2>
+                    <p className="text-xs text-muted-foreground">{t("messages.online") ?? "Online"}</p>
                 </div>
             </div>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* Messages Area */}
+            <div className="flex-1 overflow-y-auto px-5 py-4">
                 {messages && messages.length > 0 ? (
-                    messages
-                        .slice()
-                        .reverse()
-                        .map((message) => {
-                            const isOwnMessage = user?.id ? message.senderId === parseInt(user.id) : false;
-                            const time = dayjs(message.sentAt).format("HH:mm");
-                            const avatarSrc = getImageUrl(isOwnMessage ? message.senderProfileImageUrl : message.senderProfileImageUrl);
-                            const displayUsername = isOwnMessage ? message.senderUsername : message.senderUsername;
+                    <div className="space-y-3">
+                        {messages
+                            .slice()
+                            .reverse()
+                            .map((message, index, arr) => {
+                                const isOwnMessage = user?.id ? message.senderId === parseInt(user.id) : false;
+                                const time = dayjs(message.sentAt).format("HH:mm");
+                                const avatarSrc = getImageUrl(message.senderProfileImageUrl);
+                                const displayUsername = message.senderUsername;
 
-                            return (
-                                <div key={message.id} className={`flex gap-2 ${isOwnMessage ? "justify-end" : "justify-start"}`}>
-                                    {!isOwnMessage && (
-                                        <Avatar className="h-8 w-8 shrink-0">
-                                            <AvatarImage src={avatarSrc} alt={displayUsername} />
-                                            <AvatarFallback className="text-xs">{displayUsername.charAt(0).toUpperCase()}</AvatarFallback>
-                                        </Avatar>
-                                    )}
+                                // Show avatar only if next message is from different sender or it's the last message
+                                const nextMsg = arr[index + 1];
+                                const isLastInGroup = !nextMsg || (nextMsg.senderId !== message.senderId);
 
-                                    <div className="flex flex-col max-w-[70%]">
-                                        {!isOwnMessage && <span className="text-xs text-muted-foreground mb-1 ml-1">{displayUsername}</span>}
-                                        <div className={`rounded-lg p-3 ${isOwnMessage ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
-                                            <p className="text-sm wrap-break-words">{message.content}</p>
-                                            <p className={`text-xs mt-1 ${isOwnMessage ? "text-primary-foreground/70" : "text-muted-foreground"}`}>{time}</p>
+                                return (
+                                    <div key={message.id} className={`flex gap-2.5 ${isOwnMessage ? "justify-end" : "justify-start"}`}>
+                                        {!isOwnMessage && (
+                                            <div className="w-8 shrink-0">
+                                                {isLastInGroup && (
+                                                    <Avatar className="h-8 w-8">
+                                                        <AvatarImage src={avatarSrc} alt={displayUsername} />
+                                                        <AvatarFallback className="text-[10px]">{displayUsername.charAt(0).toUpperCase()}</AvatarFallback>
+                                                    </Avatar>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        <div className={`flex flex-col max-w-[65%] ${isOwnMessage ? "items-end" : "items-start"}`}>
+                                            <div
+                                                className={`rounded-2xl px-3.5 py-2 ${
+                                                    isOwnMessage
+                                                        ? "bg-primary text-primary-foreground rounded-br-md"
+                                                        : "bg-muted rounded-bl-md"
+                                                }`}
+                                            >
+                                                <p className="text-sm leading-relaxed wrap-break-word">{message.content}</p>
+                                            </div>
+                                            {isLastInGroup && (
+                                                <span className={`text-[10px] text-muted-foreground mt-1 ${isOwnMessage ? "mr-1" : "ml-1"}`}>
+                                                    {time}
+                                                </span>
+                                            )}
                                         </div>
-                                    </div>
 
-                                    {isOwnMessage && (
-                                        <Avatar className="h-8 w-8 shrink-0">
-                                            <AvatarImage src={avatarSrc} alt={displayUsername} />
-                                            <AvatarFallback className="text-xs">{displayUsername.charAt(0).toUpperCase()}</AvatarFallback>
-                                        </Avatar>
-                                    )}
-                                </div>
-                            );
-                        })
+                                        {isOwnMessage && (
+                                            <div className="w-8 shrink-0">
+                                                {isLastInGroup && (
+                                                    <Avatar className="h-8 w-8">
+                                                        <AvatarImage src={avatarSrc} alt={displayUsername} />
+                                                        <AvatarFallback className="text-[10px]">{displayUsername.charAt(0).toUpperCase()}</AvatarFallback>
+                                                    </Avatar>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        <div ref={messagesEndRef} />
+                    </div>
                 ) : (
-                    <div className="flex items-center justify-center h-full">
-                        <p className="text-muted-foreground">{t("messages.noMessages")}</p>
+                    <div className="flex flex-col items-center justify-center h-full gap-3">
+                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                            <MessageSquare className="h-8 w-8 text-muted-foreground" />
+                        </div>
+                        <p className="text-sm text-muted-foreground">{t("messages.noMessages")}</p>
                     </div>
                 )}
-                <div ref={messagesEndRef} />
             </div>
 
-            <div className="flex justify-center p-2 shrink-0">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <AlertTriangle className="h-3 w-3 shrink-0" />
-                    <p>{t("messages.securityWarning")}</p>
-                </div>
+            {/* Security Warning */}
+            <div className="flex items-center justify-center gap-1.5 px-4 py-1.5 shrink-0">
+                <AlertTriangle className="h-3 w-3 shrink-0 text-muted-foreground/60" />
+                <p className="text-[11px] text-muted-foreground/60">{t("messages.securityWarning")}</p>
             </div>
 
-            {/* Input */}
-            <div className="border-t p-4 bg-card shrink-0">
-                <div className="flex gap-2">
+            {/* Input Area */}
+            <div className="shrink-0 border-t border-border/40 bg-card/30 px-4 py-3">
+                <div className="flex items-end gap-2">
                     <Textarea
                         placeholder={t("messages.typeMessage")}
                         value={messageContent}
@@ -173,10 +194,15 @@ export default function MessageThreadPage() {
                                 handleSend();
                             }
                         }}
-                        className="resize-none"
-                        rows={2}
+                        className="min-h-10 max-h-32 resize-none rounded-xl border-border/40 bg-background/50 text-sm"
+                        rows={1}
                     />
-                    <Button onClick={handleSend} disabled={!messageContent.trim() || sendMutation.isPending} className="px-4">
+                    <Button
+                        onClick={handleSend}
+                        disabled={!messageContent.trim() || sendMutation.isPending}
+                        size="icon"
+                        className="h-10 w-10 shrink-0 rounded-xl"
+                    >
                         <Send className="h-4 w-4" />
                     </Button>
                 </div>

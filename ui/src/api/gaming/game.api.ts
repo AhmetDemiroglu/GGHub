@@ -10,7 +10,9 @@ export const gameApi = {
         return axiosInstance.get<Game>(`/games/${idOrSlug}`).then((res) => res.data);
     },
     translate: (id: number) => {
-        return axiosInstance.post<{ descriptionTr: string }>(`/games/${id}/translate`).then((res) => res.data);
+        return axiosInstance
+            .post<{ descriptionTr: string }>(`/games/${id}/translate`, undefined, { timeout: 180000 })
+            .then((res) => res.data);
     },
     getSimilar: (id: number) => {
         return axiosInstance.get<Game[]>(`/games/${id}/suggested`).then((res) => res.data);

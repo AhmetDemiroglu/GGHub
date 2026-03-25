@@ -188,3 +188,35 @@
 @utility ease-bouncy {
     transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+
+/* Sidebar text animation - CSS-only sequencing */
+/* Expanding: text fades in AFTER width starts expanding */
+[data-collapsed="false"] .sidebar-label {
+    opacity: 1;
+    transform: translateX(0);
+    transition: opacity 250ms ease, transform 250ms ease;
+    transition-delay: 120ms;
+    pointer-events: auto;
+}
+/* Collapsing: text slides and fades out smoothly BEFORE width shrinks */
+[data-collapsed="true"] .sidebar-label {
+    opacity: 0;
+    transform: translateX(-12px);
+    transition: opacity 200ms ease, transform 200ms ease;
+    transition-delay: 0ms;
+    pointer-events: none;
+}
+
+/* Sidebar section separators */
+[data-collapsed="true"] .sidebar-section {
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity 150ms ease, max-height 150ms ease;
+}
+[data-collapsed="false"] .sidebar-section {
+    opacity: 1;
+    max-height: 200px;
+    transition: opacity 250ms ease, max-height 250ms ease;
+    transition-delay: 100ms;
+}

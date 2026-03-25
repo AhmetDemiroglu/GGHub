@@ -59,7 +59,11 @@ function USFlag({ className, style }: { className?: string; style?: React.CSSPro
     );
 }
 
-export function LanguageSwitcher() {
+interface LanguageSwitcherProps {
+    vertical?: boolean;
+}
+
+export function LanguageSwitcher({ vertical = false }: LanguageSwitcherProps) {
     const t = useI18n();
     const locale = useCurrentLocale();
     const { persistLocale } = useLocaleContext();
@@ -84,6 +88,65 @@ export function LanguageSwitcher() {
     const flagTransitionStyle: React.CSSProperties = {
         transitionTimingFunction: "cubic-bezier(0.34, 1.56, 0.64, 1)",
     };
+
+    if (vertical) {
+        return (
+            <div
+                className="relative flex flex-col items-center gap-0.5 rounded-full bg-muted p-0.5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.04)] dark:shadow-[inset_0_2px_4px_rgba(255,255,255,0.04)]"
+                role="radiogroup"
+                aria-label={t("nav.language")}
+            >
+                {/* Sliding indicator - vertical */}
+                <div
+                    className={cn(
+                        "absolute top-0.5 left-0.5 h-7 w-7 rounded-full bg-card transition-transform duration-400 ease-bouncy",
+                        "shadow-[0_2px_8px_rgba(0,0,0,0.12)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.3)]",
+                        isEnglish && "translate-y-8"
+                    )}
+                />
+
+                {/* TR button */}
+                <button
+                    type="button"
+                    role="radio"
+                    aria-checked={!isEnglish}
+                    aria-label="Türkçe"
+                    onClick={() => changeLocale("tr")}
+                    className="group relative z-2 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border-none bg-transparent p-0"
+                >
+                    <TurkishFlag
+                        className={cn(
+                            "h-5 w-5 transition-all duration-400",
+                            !isEnglish
+                                ? "scale-100 grayscale-0 opacity-100"
+                                : "scale-[0.85] grayscale opacity-40 group-hover:scale-[0.95] group-hover:grayscale-40 group-hover:opacity-80"
+                        )}
+                        style={flagTransitionStyle}
+                    />
+                </button>
+
+                {/* EN button */}
+                <button
+                    type="button"
+                    role="radio"
+                    aria-checked={isEnglish}
+                    aria-label="English"
+                    onClick={() => changeLocale("en-US")}
+                    className="group relative z-2 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border-none bg-transparent p-0"
+                >
+                    <USFlag
+                        className={cn(
+                            "h-5 w-5 transition-all duration-400",
+                            isEnglish
+                                ? "scale-100 grayscale-0 opacity-100"
+                                : "scale-[0.85] grayscale opacity-40 group-hover:scale-[0.95] group-hover:grayscale-40 group-hover:opacity-80"
+                        )}
+                        style={flagTransitionStyle}
+                    />
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div
