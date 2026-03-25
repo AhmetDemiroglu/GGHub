@@ -246,7 +246,7 @@ export const trMessages = {
         leaderboardEmpty: "Henüz lider yok.",
         levelShort: "Sv.",
         discoverTitle: "Yeni oyunlar keşfet",
-        discoverDescription: "700+ oyun arasından sana uygun olanları bul, puanla ve listele.",
+        discoverDescription: "800.000+ oyun arasından sana uygun olanları bul, puanla ve listele.",
         stats: {
             games: "Oyun",
             users: "Kullanıcı",

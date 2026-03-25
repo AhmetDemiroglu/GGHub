@@ -16,7 +16,7 @@
 
 GGHub, oyuncuların yeni oyunlar keşfetmesi, kişisel listeler oluşturması, inceleme paylaşması ve canlı bir küresel toplulukla bağlantı kurması için tasarlanmış modern, tam yığın bir oyuncu sosyal platformdur. Proje **.NET 8 Clean Architecture** ve **Next.js 15 App Router** ile geliştirilmiştir.
 
-[🌐 Canlı Demo](#) · [🐛 Hata Bildir](https://github.com/ahmetdemiroglu/GGHub/issues) · [✨ Özellik Talep Et](https://github.com/ahmetdemiroglu/GGHub/issues)
+[🌐 Canlı Demo](https://gghub.social/) · [🐛 Hata Bildir](https://github.com/ahmetdemiroglu/GGHub/issues) · [✨ Özellik Talep Et](https://github.com/ahmetdemiroglu/GGHub/issues)
 
 </div>
 

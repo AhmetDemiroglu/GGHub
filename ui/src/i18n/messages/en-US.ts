@@ -246,7 +246,7 @@ export const enUSMessages = {
         leaderboardEmpty: "No leaders yet.",
         levelShort: "Lvl",
         discoverTitle: "Discover new games",
-        discoverDescription: "Find games that fit your taste across 700+ titles, then rate and list them.",
+        discoverDescription: "Find games that fit your taste across 800.000+ titles, then rate and list them.",
         stats: {
             games: "Games",
             users: "Users",
