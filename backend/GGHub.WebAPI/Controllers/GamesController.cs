@@ -12,12 +12,33 @@ namespace GGHub.WebAPI.Controllers
     public class GamesController : ControllerBase
     {
         private readonly IGameService _gameService;
+        private readonly IDiscoverService _discoverService;
         private readonly IReviewService _reviewService;
 
-        public GamesController(IGameService gameService, IReviewService reviewService) 
+        public GamesController(IGameService gameService, IDiscoverService discoverService, IReviewService reviewService)
         {
             _gameService = gameService;
+            _discoverService = discoverService;
             _reviewService = reviewService;
+        }
+
+        /// <summary>
+        /// DB-merkezli discover feed. RAWG live API kullanmaz.
+        /// Filtresiz modda kalite skoru + haftalık rotasyon; filtreli modda deterministik sıralama.
+        /// </summary>
+        [HttpGet("discover")]
+        public async Task<IActionResult> DiscoverGames([FromQuery] DiscoverQueryParams queryParams)
+        {
+            int? userId = null;
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                var claim = User.FindFirst(ClaimTypes.NameIdentifier);
+                if (claim != null && int.TryParse(claim.Value, out int parsedId))
+                    userId = parsedId;
+            }
+
+            var result = await _discoverService.DiscoverAsync(queryParams, userId);
+            return Ok(result);
         }
         [HttpGet]
         public async Task<IActionResult> GetGames([FromQuery] GameQueryParams queryParams)

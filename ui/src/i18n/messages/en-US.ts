@@ -156,7 +156,7 @@ export const enUSMessages = {
             simulation: "Simulation",
         },
         ordering: {
-            relevance: "Relevance",
+            relevance: "Recommended",
             popularity: "Popularity",
             metacritic: "Metacritic score",
             releaseDate: "Release date",

@@ -59,3 +59,13 @@ export type GameApiPaginateParams = {
     dates?: string;
     metacritic?: string;
 };
+
+export type DiscoverParams = {
+    page: number;
+    pageSize: number;
+    search?: string;
+    ordering?: string;
+    genres?: string;
+    platforms?: string;
+    dates?: string;
+};

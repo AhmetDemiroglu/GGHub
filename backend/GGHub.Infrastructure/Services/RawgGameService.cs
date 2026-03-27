@@ -119,132 +119,128 @@ namespace GGHub.Infrastructure.Services
             }
         }
 
+        /// <summary>
+        /// Local DB üzerinden oyun arama. RAWG live API artık kullanılmıyor;
+        /// import job arka planda DB'yi büyütmeye devam ediyor.
+        /// Birincil kullanım: "listeye oyun ekle" modalı gibi search use-case'leri.
+        /// Discover feed için GET /api/games/discover endpoint'ini kullanın.
+        /// </summary>
         public async Task<PaginatedResult<GameDto>> GetGamesAsync(GameQueryParams queryParams, int? userId = null)
         {
-            var requestUrl = $"{_apiSettings.BaseUrl}games?key={_apiSettings.ApiKey}&page={queryParams.Page}&page_size={queryParams.PageSize}";
-
-            if (string.IsNullOrWhiteSpace(queryParams.Search) && string.IsNullOrWhiteSpace(queryParams.Ordering))
-            {
-                requestUrl += "&metacritic=70,100";
-            }
+            var query = _context.Games.AsNoTracking()
+                .Where(g => g.BackgroundImage != null);
 
             if (!string.IsNullOrWhiteSpace(queryParams.Search))
+                query = query.Where(g => EF.Functions.ILike(g.Name, $"%{queryParams.Search}%"));
+
+            if (!string.IsNullOrWhiteSpace(queryParams.Genres))
             {
-                requestUrl += $"&search={queryParams.Search}";
+                var slug = NormalizeFilterSlug(queryParams.Genres.Trim(), DiscoverService.GenreIdToSlug);
+                if (!string.IsNullOrEmpty(slug))
+                    query = query.Where(g => g.GenresJson != null && EF.Functions.Like(g.GenresJson, $"%\"Slug\":\"{slug}\"%"));
             }
 
-            if (!string.IsNullOrWhiteSpace(queryParams.Ordering) && queryParams.Ordering != "relevance")
+            if (!string.IsNullOrWhiteSpace(queryParams.Platforms))
             {
-                requestUrl += $"&ordering={queryParams.Ordering}";
+                var slug = NormalizeFilterSlug(queryParams.Platforms.Trim(), DiscoverService.PlatformIdToSlug);
+                if (!string.IsNullOrEmpty(slug))
+                    query = query.Where(g => g.PlatformsJson != null && EF.Functions.Like(g.PlatformsJson, $"%\"Slug\":\"{slug}\"%"));
             }
 
-            if (!string.IsNullOrWhiteSpace(queryParams.Genres)) { requestUrl += $"&genres={queryParams.Genres}"; }
-            if (!string.IsNullOrWhiteSpace(queryParams.Platforms)) { requestUrl += $"&platforms={queryParams.Platforms}"; }
-            if (!string.IsNullOrWhiteSpace(queryParams.Dates)) { requestUrl += $"&dates={queryParams.Dates}"; }
-            else if (queryParams.Ordering == "-released")
+            if (!string.IsNullOrWhiteSpace(queryParams.Dates))
             {
-                var start = DateTime.UtcNow.AddYears(-10).ToString("yyyy-MM-dd");
-                var end = DateTime.UtcNow.AddMonths(24).ToString("yyyy-MM-dd");
-                requestUrl += $"&dates={start},{end}";
-            }
-
-            var response = await _httpClient.GetFromJsonAsync<PaginatedResponseDto<RawgGameDto>>(requestUrl);
-
-            if (response == null || !response.Results.Any())
-            {
-                return new PaginatedResult<GameDto>
+                var parts = queryParams.Dates.Split(',');
+                if (parts.Length == 2)
                 {
-                    Items = new List<GameDto>(),
-                    TotalCount = 0,
-                    Page = queryParams.Page,
-                    PageSize = queryParams.PageSize
-                };
+                    var start = parts[0].Trim();
+                    var end   = parts[1].Trim();
+                    if (!string.IsNullOrEmpty(start))
+                        query = query.Where(g => g.Released != null && string.Compare(g.Released, start) >= 0);
+                    if (!string.IsNullOrEmpty(end))
+                        query = query.Where(g => g.Released != null && string.Compare(g.Released, end) <= 0);
+                }
             }
 
-            var rawgIds = response.Results.Select(r => r.Id).Distinct().ToList();
+            int totalCount = await query.CountAsync();
 
-            var wishlistGameIds = new HashSet<int>(); 
+            IOrderedQueryable<Game> ordered = queryParams.Ordering switch
+            {
+                "-metacritic" => query.OrderByDescending(g => g.Metacritic ?? 0).ThenByDescending(g => g.Rating ?? 0),
+                "-released"   => query.OrderByDescending(g => g.Released ?? "0000-00-00"),
+                "-added"      => query.OrderByDescending(g => g.RawgAdded ?? 0),
+                "-rating"     => query.OrderByDescending(g => g.Rating ?? 0),
+                "name"        => query.OrderBy(g => g.Name),
+                _             => query.OrderByDescending(g => g.Rating ?? 0).ThenByDescending(g => g.RawgAdded ?? 0),
+            };
+
+            var games = await ordered
+                .Skip((queryParams.Page - 1) * queryParams.PageSize)
+                .Take(queryParams.PageSize)
+                .Select(g => new
+                {
+                    g.Id, g.RawgId, g.Slug, g.Name, g.Released,
+                    g.BackgroundImage, g.Rating, g.Metacritic,
+                    g.AverageRating, g.RatingCount,
+                    g.GenresJson, g.PlatformsJson,
+                })
+                .ToListAsync();
+
+            var wishlistSet = new HashSet<int>();
             if (userId.HasValue)
             {
-                var wishlist = await _context.UserLists
+                var ids = await _context.UserLists
                     .Where(l => l.UserId == userId && l.Type == UserListType.Wishlist)
                     .SelectMany(l => l.UserListGames)
                     .Select(ulg => ulg.Game.RawgId)
                     .ToListAsync();
-
-                foreach (var id in wishlist) wishlistGameIds.Add(id);
+                wishlistSet = new HashSet<int>(ids);
             }
 
-            var existingRawgIds = await _context.Games
-                .Where(g => rawgIds.Contains(g.RawgId))
-                .Select(g => g.RawgId)
-                .ToListAsync();
-
-            var newGames = response.Results
-                .Where(r => !existingRawgIds.Contains(r.Id))
-                .Select(dto => new Game
-                {
-                    RawgId = dto.Id,
-                    Name = dto.Name,
-                    Slug = dto.Slug,
-                    Released = dto.Released,
-                    BackgroundImage = dto.BackgroundImage,
-                    Rating = dto.Rating,
-                    Metacritic = dto.Metacritic,
-                    GenresJson = dto.Genres != null
-                        ? System.Text.Json.JsonSerializer.Serialize(dto.Genres.Select(g => new { g.Name, g.Slug }))
-                        : null,
-                    PlatformsJson = dto.Platforms != null
-                        ? System.Text.Json.JsonSerializer.Serialize(dto.Platforms.Select(p => new { p.Platform.Name, p.Platform.Slug }))
-                        : null,
-                    LastSyncedAt = DateTime.UtcNow
-                })
-                .ToList();
-
-            if (newGames.Any())
+            var items = games.Select(g => new GameDto
             {
-                await _context.Games.AddRangeAsync(newGames);
-                await _context.SaveChangesAsync();
-            }
-
-            var localRatings = await _context.Games
-                .Where(g => rawgIds.Contains(g.RawgId))
-                .Select(g => new { g.RawgId, g.AverageRating, g.RatingCount })
-                .ToDictionaryAsync(k => k.RawgId, v => new { v.AverageRating, v.RatingCount });
-
-            var gameDtos = response.Results
-                .Select(dto =>
-                {
-                    var stats = localRatings.ContainsKey(dto.Id) ? localRatings[dto.Id] : null;
-
-                    return new GameDto
-                    {
-                        Id = 0, 
-                        RawgId = dto.Id,
-                        Slug = dto.Slug,
-                        Name = dto.Name,
-                        Released = dto.Released,
-                        BackgroundImage = dto.BackgroundImage,
-                        Rating = dto.Rating,
-                        Metacritic = dto.Metacritic,
-                        Description = null,
-                        CoverImage = null,
-                        IsInWishlist = wishlistGameIds.Contains(dto.Id),
-                        Platforms = dto.Platforms?.Select(p => new PlatformDto { Name = p.Platform.Name, Slug = p.Platform.Slug }).ToList() ?? new List<PlatformDto>(),
-                        Genres = dto.Genres?.Select(g => new GenreDto { Name = g.Name, Slug = g.Slug }).ToList() ?? new List<GenreDto>(),
-                        GghubRating = stats?.AverageRating ?? 0,
-                        GghubRatingCount = stats?.RatingCount ?? 0
-                    };
-                })
-                .ToList();
+                Id                = g.Id,
+                RawgId            = g.RawgId,
+                Slug              = g.Slug,
+                Name              = g.Name,
+                Released          = g.Released,
+                BackgroundImage   = g.BackgroundImage,
+                Rating            = g.Rating,
+                Metacritic        = g.Metacritic,
+                GghubRating       = g.AverageRating,
+                GghubRatingCount  = g.RatingCount,
+                IsInWishlist      = wishlistSet.Contains(g.RawgId),
+                Platforms         = DeserializePlatforms(g.PlatformsJson),
+                Genres            = DeserializeGenres(g.GenresJson),
+            }).ToList();
 
             return new PaginatedResult<GameDto>
             {
-                Items = gameDtos,
-                TotalCount = response.Count,
-                Page = queryParams.Page,
-                PageSize = queryParams.PageSize
+                Items      = items,
+                TotalCount = totalCount,
+                Page       = queryParams.Page,
+                PageSize   = queryParams.PageSize,
             };
+        }
+
+        private static string NormalizeFilterSlug(string value, IReadOnlyDictionary<string, string> idToSlug)
+        {
+            if (int.TryParse(value, out _))
+                return idToSlug.TryGetValue(value, out var mapped) ? mapped : string.Empty;
+            return value;
+        }
+
+        private static List<PlatformDto> DeserializePlatforms(string? json)
+        {
+            if (string.IsNullOrEmpty(json)) return new List<PlatformDto>();
+            try { return System.Text.Json.JsonSerializer.Deserialize<List<PlatformDto>>(json) ?? new(); }
+            catch { return new(); }
+        }
+
+        private static List<GenreDto> DeserializeGenres(string? json)
+        {
+            if (string.IsNullOrEmpty(json)) return new List<GenreDto>();
+            try { return System.Text.Json.JsonSerializer.Deserialize<List<GenreDto>>(json) ?? new(); }
+            catch { return new(); }
         }
         public async Task<Game> EnsureGameExistsAsync(int rawgId, object? rawgDtoObj = null)
         {

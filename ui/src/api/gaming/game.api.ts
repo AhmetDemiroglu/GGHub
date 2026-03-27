@@ -1,10 +1,13 @@
 import { axiosInstance } from "@core/lib/axios";
-import type { Game, GameApiPaginateParams } from "@/models/gaming/game.model";
+import type { Game, GameApiPaginateParams, DiscoverParams } from "@/models/gaming/game.model";
 import type { PaginatedResponse } from "@/models/system/api.model";
 
 export const gameApi = {
     paginate: (params: GameApiPaginateParams) => {
         return axiosInstance.get<PaginatedResponse<Game>>("/games", { params }).then((res) => res.data);
+    },
+    discover: (params: DiscoverParams) => {
+        return axiosInstance.get<PaginatedResponse<Game>>("/games/discover", { params }).then((res) => res.data);
     },
     getById: (idOrSlug: string) => {
         return axiosInstance.get<Game>(`/games/${idOrSlug}`).then((res) => res.data);

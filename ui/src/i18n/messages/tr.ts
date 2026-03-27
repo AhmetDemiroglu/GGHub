@@ -156,7 +156,7 @@ export const trMessages = {
             simulation: "Simülasyon",
         },
         ordering: {
-            relevance: "Alaka düzeyi",
+            relevance: "Önerilen",
             popularity: "Popülerlik",
             metacritic: "Metacritic puanı",
             releaseDate: "Çıkış tarihi",
