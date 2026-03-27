@@ -473,7 +473,7 @@ namespace GGHub.Infrastructure.Services
                 .Select(g => g.First())
                 .ToDictionaryAsync(
                     k => k.RawgId,
-                    v => new { v.AverageRating, v.RatingCount }
+                    v => new { v.Id, v.AverageRating, v.RatingCount }
                 );
 
                 return rawgResults.Select(dto =>
@@ -481,6 +481,7 @@ namespace GGHub.Infrastructure.Services
                     updatedRatings.TryGetValue(dto.Id, out var stats);
                     return new GameDto
                     {
+                        Id = stats?.Id ?? 0,
                         RawgId = dto.Id,
                         Name = dto.Name,
                         Slug = dto.Slug,

@@ -54,7 +54,7 @@ export function SimilarGames({ games }: SimilarGamesProps) {
       <FlatList
         data={games}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => item.rawgId.toString()}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
