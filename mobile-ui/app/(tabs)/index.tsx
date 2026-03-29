@@ -7,8 +7,8 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
+import { AppTopBar } from '@/src/components/shell';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
@@ -66,15 +66,17 @@ export default function HomeScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
+      <View style={[styles.safe, { backgroundColor: colors.background }]}>
+        <AppTopBar showLogo />
         <HomeSkeleton />
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (isError || !homeContent) {
     return (
-      <SafeAreaView style={[styles.safe, styles.centered, { backgroundColor: colors.background }]} edges={['top']}>
+      <View style={[styles.safe, styles.centered, { backgroundColor: colors.background }]}>
+        <AppTopBar showLogo />
         <Text style={[styles.errorText, { color: colors.error }]}>
           {messages.common.genericError}
         </Text>
@@ -84,12 +86,13 @@ export default function HomeScreen() {
         >
           {messages.common.retry}
         </Text>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
+    <View style={[styles.safe, { backgroundColor: colors.background }]}>
+      <AppTopBar showLogo />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
@@ -126,7 +129,7 @@ export default function HomeScreen() {
           <ActivityFeed activities={activities} />
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

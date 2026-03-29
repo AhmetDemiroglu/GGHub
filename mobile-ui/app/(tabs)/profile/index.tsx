@@ -11,6 +11,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { ScreenWrapper } from '@/src/components/common/ScreenWrapper';
+import { AppTopBar } from '@/src/components/shell';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
 import { Card } from '@/src/components/common/Card';
 import { ProfileHeader } from '@/src/components/profile/ProfileHeader';
@@ -115,13 +116,8 @@ export default function OwnProfileScreen() {
   );
 
   return (
-    <ScreenWrapper noPadding>
-      <View style={[styles.topBar, { borderBottomColor: colors.border }]}>
-        <Text style={[styles.topTitle, { color: colors.text }]}>{messages.nav.profile}</Text>
-        <TouchableOpacity onPress={() => router.push('/profile/settings')}>
-          <Ionicons name="settings-outline" size={24} color={colors.text} />
-        </TouchableOpacity>
-      </View>
+    <ScreenWrapper noPadding safeArea={false}>
+      <AppTopBar title={messages.nav.profile} />
 
       <ScrollView
         refreshControl={
@@ -236,18 +232,6 @@ export default function OwnProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  topTitle: {
-    fontSize: FontSize.xxl,
-    fontWeight: '700',
-  },
   statsGrid: {
     flexDirection: 'row',
     marginTop: Spacing.lg,

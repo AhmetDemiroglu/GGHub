@@ -7,7 +7,9 @@ import { AuthProvider } from '@/src/contexts/auth-context';
 import { LocaleProvider } from '@/src/contexts/locale-context';
 import { ThemeProvider } from '@/src/contexts/theme-context';
 import { SignalRProvider } from '@/src/contexts/signalr-context';
+import { ShellProvider } from '@/src/contexts/shell-context';
 import { ToastProvider } from '@/src/components/common/Toast';
+import { AppSidebar } from '@/src/components/shell';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useAuth } from '@/src/hooks/use-auth';
 
@@ -72,9 +74,12 @@ export default function RootLayout() {
         <LocaleProvider>
           <ThemeProvider>
             <SignalRProvider>
-              <ToastProvider>
-                <RootLayoutNav />
-              </ToastProvider>
+              <ShellProvider>
+                <ToastProvider>
+                  <RootLayoutNav />
+                  <AppSidebar />
+                </ToastProvider>
+              </ShellProvider>
             </SignalRProvider>
           </ThemeProvider>
         </LocaleProvider>

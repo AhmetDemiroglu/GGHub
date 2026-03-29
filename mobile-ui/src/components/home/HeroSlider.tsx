@@ -118,7 +118,7 @@ export function HeroSlider({ games }: HeroSliderProps) {
         ref={flatListRef}
         data={games}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => `hero-${item.rawgId}`}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}

@@ -60,6 +60,8 @@ export const enUSMessages = {
         language: "Language",
         theme: "Theme",
         profile: "Profile",
+        search: "Search",
+        myReviews: "My Reviews",
     },
     footer: {
         tagline: "The platform that brings together a gaming-first community.",
@@ -586,6 +588,19 @@ export const enUSMessages = {
         statusIgnored: "Ignored",
         adminPanel: "Admin Panel",
         searchUsersPlaceholder: "Search by username or email...",
+    },
+    search: {
+        title: "Search",
+        placeholder: "Search users, games or lists...",
+        scopeAll: "All",
+        scopeUsers: "Users",
+        scopeGames: "Games",
+        scopeLists: "Lists",
+        noResults: "No results found.",
+        startTyping: "Start typing to search",
+        typeUser: "User",
+        typeGame: "Game",
+        typeList: "List",
     },
     messages: {
         title: "Messages",

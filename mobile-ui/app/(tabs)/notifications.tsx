@@ -11,6 +11,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ScreenWrapper } from '@/src/components/common/ScreenWrapper';
+import { AppTopBar } from '@/src/components/shell';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
 import { EmptyState } from '@/src/components/common/EmptyState';
 import { NotificationItem } from '@/src/components/notifications/NotificationItem';
@@ -72,16 +73,15 @@ export default function NotificationsScreen() {
 
   if (notificationsQuery.isLoading) return <LoadingScreen />;
 
+  const MarkAllButton = hasUnread ? (
+    <TouchableOpacity onPress={() => markAllMutation.mutate()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+      <Text style={[styles.markAllText, { color: colors.primary }]}>{messages.common.done}</Text>
+    </TouchableOpacity>
+  ) : undefined;
+
   return (
-    <ScreenWrapper noPadding>
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <Text style={[styles.title, { color: colors.text }]}>{nav.notificationsTitle}</Text>
-        {hasUnread ? (
-          <TouchableOpacity onPress={() => markAllMutation.mutate()}>
-            <Text style={[styles.markAllText, { color: colors.primary }]}>{messages.common.done}</Text>
-          </TouchableOpacity>
-        ) : null}
-      </View>
+    <ScreenWrapper noPadding safeArea={false}>
+      <AppTopBar title={nav.notificationsTitle} rightExtra={MarkAllButton} />
 
       <FlatList
         data={notificationsQuery.data ?? []}
@@ -109,18 +109,6 @@ export default function NotificationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  title: {
-    fontSize: FontSize.xxl,
-    fontWeight: '700',
-  },
   markAllText: {
     fontSize: FontSize.sm,
     fontWeight: '600',

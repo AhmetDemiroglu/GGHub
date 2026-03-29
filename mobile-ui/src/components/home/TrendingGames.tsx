@@ -70,7 +70,7 @@ export function TrendingGames({ games }: TrendingGamesProps) {
       <FlatList
         data={games}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => `trend-${item.rawgId}`}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.listContent}

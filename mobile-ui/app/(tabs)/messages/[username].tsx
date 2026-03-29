@@ -114,7 +114,7 @@ export default function MessageThreadScreen() {
   if (threadQuery.isLoading) return <LoadingScreen />;
 
   return (
-    <ScreenWrapper noPadding edges={['bottom']}>
+    <ScreenWrapper noPadding edges={['top', 'bottom']}>
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />

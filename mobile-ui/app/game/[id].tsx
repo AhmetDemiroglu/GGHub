@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
@@ -35,6 +36,7 @@ export default function GameDetailScreen() {
   const { user, isAuthenticated } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const insets = useSafeAreaInsets();
 
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
   const [listModalVisible, setListModalVisible] = useState(false);
@@ -108,6 +110,14 @@ export default function GameDetailScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Pressable
+        style={[styles.backButton, { top: insets.top + Spacing.sm, backgroundColor: 'rgba(0,0,0,0.4)' }]}
+        onPress={() => router.back()}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <Ionicons name="arrow-back" size={22} color="#ffffff" />
+      </Pressable>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -227,6 +237,16 @@ export default function GameDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  backButton: {
+    position: 'absolute',
+    left: Spacing.md,
+    zIndex: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   centered: {
     justifyContent: 'center',

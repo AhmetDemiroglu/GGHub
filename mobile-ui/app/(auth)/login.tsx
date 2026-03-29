@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
@@ -64,7 +65,11 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <Text style={[styles.appName, { color: colors.primary }]}>GGHub</Text>
+            <Image
+              source={require('@/assets/images/logo2.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
             <Text style={[styles.title, { color: colors.text }]}>{t.loginTitle}</Text>
           </View>
 
@@ -142,9 +147,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.xxxl,
   },
-  appName: {
-    fontSize: FontSize.hero,
-    fontWeight: '800',
+  logo: {
+    width: 160,
+    height: 72,
     marginBottom: Spacing.sm,
   },
   title: {

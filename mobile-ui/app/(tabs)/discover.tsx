@@ -6,9 +6,9 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
+import { AppTopBar } from '@/src/components/shell';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
@@ -208,9 +208,9 @@ export default function DiscoverScreen() {
   );
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
+    <View style={[styles.safe, { backgroundColor: colors.background }]}>
+      <AppTopBar title={t.title} />
       <View style={styles.headerRow}>
-        <Text style={[styles.title, { color: colors.text }]}>{t.title}</Text>
         <Text style={[styles.description, { color: colors.textSecondary }]}>{t.description}</Text>
       </View>
 
@@ -236,7 +236,6 @@ export default function DiscoverScreen() {
       <FlatList
         data={allGames}
         renderItem={renderItem}
-        // rawgId benzersiz ve her zaman mevcut; id=0 bug'ından bağımsız
         keyExtractor={(item) => item.rawgId.toString()}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
@@ -245,7 +244,7 @@ export default function DiscoverScreen() {
         ListFooterComponent={renderFooter}
         ListEmptyComponent={renderEmpty}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 

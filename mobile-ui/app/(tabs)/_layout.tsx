@@ -1,47 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Tabs, Redirect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { View, Text, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/hooks/use-auth';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
-import { useSignalR } from '@/src/hooks/use-signalr';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
-import { FontSize, Spacing } from '@/src/constants/theme';
-
-function TabBarBadge({ count, color }: { count: number; color: string }) {
-  if (count <= 0) return null;
-  const display = count > 99 ? '99+' : String(count);
-
-  return (
-    <View style={[styles.badge, { backgroundColor: color }]}>
-      <Text style={styles.badgeText}>{display}</Text>
-    </View>
-  );
-}
+import { FontSize } from '@/src/constants/theme';
 
 export default function TabsLayout() {
   const { isAuthenticated, isLoading } = useAuth();
   const { colors } = useTheme();
   const { messages } = useLocale();
-  const { onUnreadMessageCountUpdated, onUnreadNotificationCountUpdated } = useSignalR();
-
-  const [unreadMessages, setUnreadMessages] = useState(0);
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
-
-  useEffect(() => {
-    const unsubMsg = onUnreadMessageCountUpdated((count: unknown) => {
-      if (typeof count === 'number') setUnreadMessages(count);
-    });
-    const unsubNotif = onUnreadNotificationCountUpdated((count: unknown) => {
-      if (typeof count === 'number') setUnreadNotifications(count);
-    });
-
-    return () => {
-      unsubMsg();
-      unsubNotif();
-    };
-  }, [onUnreadMessageCountUpdated, onUnreadNotificationCountUpdated]);
+  const insets = useSafeAreaInsets();
 
   if (isLoading) {
     return <LoadingScreen />;
@@ -61,6 +32,8 @@ export default function TabsLayout() {
           backgroundColor: colors.tabBar,
           borderTopColor: colors.tabBarBorder,
           borderTopWidth: 1,
+          paddingBottom: insets.bottom,
+          height: 50 + insets.bottom,
         },
         tabBarLabelStyle: {
           fontSize: FontSize.xs,
@@ -68,6 +41,7 @@ export default function TabsLayout() {
         },
       }}
     >
+      {/* ── Görünür Sekmeler ── */}
       <Tabs.Screen
         name="index"
         options={{
@@ -81,32 +55,28 @@ export default function TabsLayout() {
         name="discover"
         options={{
           title: messages.nav.discover,
+          tabBarLabel: 'Keşfet',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="game-controller-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="search"
+        options={{
+          title: messages.nav.search,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="search-outline" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="messages"
+        name="lists"
         options={{
-          title: messages.nav.messages,
+          title: messages.nav.lists,
+          tabBarLabel: 'Listeler',
           tabBarIcon: ({ color, size }) => (
-            <View>
-              <Ionicons name="chatbubble-outline" size={size} color={color} />
-              <TabBarBadge count={unreadMessages} color={colors.badge} />
-            </View>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="notifications"
-        options={{
-          title: messages.nav.notifications,
-          tabBarIcon: ({ color, size }) => (
-            <View>
-              <Ionicons name="notifications-outline" size={size} color={color} />
-              <TabBarBadge count={unreadNotifications} color={colors.badge} />
-            </View>
+            <Ionicons name="list-outline" size={size} color={color} />
           ),
         }}
       />
@@ -119,25 +89,26 @@ export default function TabsLayout() {
           ),
         }}
       />
+
+      {/* ── Tab Bar'dan Gizli, Yönlendirilebilir Sekmeler ── */}
+      <Tabs.Screen
+        name="messages"
+        options={{
+          title: messages.nav.messages,
+          tabBarButton: () => null,
+          tabBarItemStyle: { display: 'none' },
+          tabBarStyle: { display: 'none' },
+        }}
+      />
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          title: messages.nav.notifications,
+          tabBarButton: () => null,
+          tabBarItemStyle: { display: 'none' },
+          tabBarStyle: { display: 'none' },
+        }}
+      />
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  badge: {
-    position: 'absolute',
-    top: -4,
-    right: -10,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
-  },
-  badgeText: {
-    color: '#ffffff',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-});

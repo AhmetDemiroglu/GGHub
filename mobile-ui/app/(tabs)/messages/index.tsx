@@ -11,7 +11,9 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useContext } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenWrapper } from '@/src/components/common/ScreenWrapper';
+import { AppTopBar } from '@/src/components/shell';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
 import { EmptyState } from '@/src/components/common/EmptyState';
 import { ConversationItem } from '@/src/components/messages/ConversationItem';
@@ -30,6 +32,7 @@ export default function MessagesListScreen() {
   const t = messages.messages;
 
   const { onConversationUpdated, onUnreadMessageCountUpdated } = useContext(SignalRContext);
+  const insets = useSafeAreaInsets();
 
   const [search, setSearch] = useState('');
 
@@ -72,10 +75,8 @@ export default function MessagesListScreen() {
   if (conversationsQuery.isLoading) return <LoadingScreen />;
 
   return (
-    <ScreenWrapper noPadding>
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <Text style={[styles.title, { color: colors.text }]}>{t.title}</Text>
-      </View>
+    <ScreenWrapper noPadding safeArea={false}>
+      <AppTopBar title={t.title} />
 
       <View
         style={[
@@ -110,22 +111,16 @@ export default function MessagesListScreen() {
             description={t.selectConversation}
           />
         }
-        contentContainerStyle={filtered.length === 0 ? styles.emptyList : undefined}
+        contentContainerStyle={[
+          filtered.length === 0 ? styles.emptyList : undefined,
+          { paddingBottom: insets.bottom },
+        ]}
       />
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  title: {
-    fontSize: FontSize.xxl,
-    fontWeight: '700',
-  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',

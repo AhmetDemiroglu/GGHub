@@ -60,6 +60,8 @@ export const trMessages = {
         language: "Dil",
         theme: "Tema",
         profile: "Profil",
+        search: "Ara",
+        myReviews: "İncelemelerim",
     },
     footer: {
         tagline: "Oyun tutkunu toplulukla birleşen platform.",
@@ -547,6 +549,19 @@ export const trMessages = {
             reason: "Sebep",
             inspect: "İncele",
         },
+    },
+    search: {
+        title: "Ara",
+        placeholder: "Kullanıcı, oyun veya liste ara...",
+        scopeAll: "Tümü",
+        scopeUsers: "Kullanıcılar",
+        scopeGames: "Oyunlar",
+        scopeLists: "Listeler",
+        noResults: "Sonuç bulunamadı.",
+        startTyping: "Aramak için yazmaya başlayın",
+        typeUser: "Kullanıcı",
+        typeGame: "Oyun",
+        typeList: "Liste",
     },
     messages: {
         title: "Mesajlar",
