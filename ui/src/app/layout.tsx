@@ -13,12 +13,39 @@ import GAListener from "./ga-listener";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
+const siteUrl = "https://gghub.social";
+const socialImage = "/og/gghub-social-v2.png";
 
 export const metadata: Metadata = {
-    metadataBase: new URL("https://gghub.social"),
-    title: "GGHub",
-    description: "GGHub",
+    metadataBase: new URL(siteUrl),
+    title: {
+        default: "GGHub | Oyuncu Sosyal Platformu",
+        template: "%s",
+    },
+    description: "Oyunları keşfet, puanla, listeler oluştur ve oyuncu topluluğuna katıl.",
     applicationName: "GGHub",
+    authors: [{ name: "GGHub", url: siteUrl }],
+    creator: "GGHub",
+    publisher: "GGHub",
+    keywords: [
+        "GGHub",
+        "oyuncu sosyal platformu",
+        "oyun keşfet",
+        "oyun incelemeleri",
+        "oyun listeleri",
+        "oyuncu profili",
+        "gaming social platform",
+        "game reviews",
+        "game lists",
+    ],
+    alternates: {
+        canonical: "/",
+        languages: {
+            tr: "/tr",
+            "en-US": "/en-US",
+            "x-default": "/en-US",
+        },
+    },
     robots: {
         index: true,
         follow: true,
@@ -34,6 +61,31 @@ export const metadata: Metadata = {
         icon: "/favicon.ico",
         shortcut: "/favicon.ico",
     },
+    openGraph: {
+        type: "website",
+        url: siteUrl,
+        siteName: "GGHub",
+        locale: "en_US",
+        alternateLocale: ["tr_TR"],
+        title: "GGHub | Where Gaming Lives",
+        description: "Discover games, rate what you play, create lists, and connect with the gaming community.",
+        images: [
+            {
+                url: socialImage,
+                width: 1200,
+                height: 630,
+                alt: "GGHub oyuncu sosyal platformu",
+                type: "image/png",
+            },
+        ],
+    },
+    twitter: {
+        card: "summary_large_image",
+        title: "GGHub | The Social Platform for Gamers",
+        description: "Discover games, rate what you play, create lists, and connect with the gaming community.",
+        images: [socialImage],
+    },
+    category: "gaming",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

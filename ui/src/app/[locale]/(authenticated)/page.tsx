@@ -42,10 +42,11 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
             locale: resolvedLocale === "tr" ? "tr_TR" : "en_US",
             images: [
                 {
-                    url: "/og/home.png",
+                    url: "/og/gghub-social-v2.png",
                     width: 1200,
                     height: 630,
-                    alt: "GGHub",
+                    alt: resolvedLocale === "tr" ? "GGHub oyuncu sosyal platformu" : "GGHub social platform for gamers",
+                    type: "image/png",
                 },
             ],
         },
@@ -53,7 +54,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
             card: "summary_large_image",
             title: seo.twitterTitle,
             description: seo.twitterDescription,
-            images: ["/og/home.png"],
+            images: ["/og/gghub-social-v2.png"],
         },
     };
 }

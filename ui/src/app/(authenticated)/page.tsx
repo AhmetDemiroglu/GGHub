@@ -41,10 +41,11 @@ export async function generateMetadata(): Promise<Metadata> {
             locale: locale === "tr" ? "tr_TR" : "en_US",
             images: [
                 {
-                    url: "/og/home.png",
+                    url: "/og/gghub-social-v2.png",
                     width: 1200,
                     height: 630,
-                    alt: "GGHub",
+                    alt: "GGHub oyuncu sosyal platformu",
+                    type: "image/png",
                 },
             ],
         },
@@ -52,7 +53,7 @@ export async function generateMetadata(): Promise<Metadata> {
             card: "summary_large_image",
             title: seo.twitterTitle,
             description: seo.twitterDescription,
-            images: ["/og/home.png"],
+            images: ["/og/gghub-social-v2.png"],
         },
     };
 }
