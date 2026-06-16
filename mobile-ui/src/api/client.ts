@@ -24,7 +24,7 @@ export const axiosInstance = axios.create({
   timeout: 15000,
 });
 
-const skipRefreshPaths = ['/auth/login', '/auth/register', '/auth/verify-email'];
+const skipRefreshPaths = ['/auth/login', '/auth/register', '/auth/verify-email', '/auth/google', '/auth/apple'];
 
 let accessTokenRef: string | null = null;
 let refreshTokenRef: string | null = null;

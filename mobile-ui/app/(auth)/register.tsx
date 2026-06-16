@@ -15,6 +15,7 @@ import { useLocale } from '@/src/hooks/use-locale';
 import { register as registerApi } from '@/src/api/auth';
 import { Input } from '@/src/components/common/Input';
 import { Button } from '@/src/components/common/Button';
+import { SocialAuthButtons } from '@/src/components/auth/SocialAuthButtons';
 import { FontSize, Spacing } from '@/src/constants/theme';
 
 export default function RegisterScreen() {
@@ -167,6 +168,8 @@ export default function RegisterScreen() {
               style={styles.registerButton}
               size="lg"
             />
+
+            <SocialAuthButtons />
           </View>
 
           <View style={styles.footer}>

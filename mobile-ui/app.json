@@ -4,7 +4,7 @@
     "slug": "gghub",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/icon-beyaz.png",
     "scheme": "gghub",
     "userInterfaceStyle": "automatic",
     "splash": {
@@ -13,13 +13,18 @@
       "backgroundColor": "#0f172a"
     },
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.gghub.mobile"
+      "supportsTablet": false,
+      "bundleIdentifier": "com.gghub.mobile",
+      "buildNumber": "1",
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#0f172a",
-        "foregroundImage": "./assets/images/icon.png"
+        "foregroundImage": "./assets/images/adaptive-icon.png"
       },
       "package": "com.gghub.mobile",
       "versionCode": 1,
@@ -46,6 +51,12 @@
         {
           "photosPermission": "Allow GGHub to access your photos for profile picture upload.",
           "cameraPermission": "Allow GGHub to access your camera for profile picture upload."
+        }
+      ],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.PLACEHOLDER_REVERSED_IOS_CLIENT_ID"
         }
       ]
     ],
