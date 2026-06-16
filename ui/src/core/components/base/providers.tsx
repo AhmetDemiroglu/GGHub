@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { AxiosError } from "axios";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import { toast } from "sonner";
 import { AuthProvider } from "@core/contexts/auth-context";
 import { SignalRProvider } from "@core/contexts/signalr-context";
@@ -69,10 +70,14 @@ export function Providers({ children, locale, messages }: { children: React.Reac
         client.getMutationCache().config.onError = (error) => handleGlobalError(error, tRef.current);
     }, [client]);
 
+    const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+
     return (
         <AuthProvider locale={locale}>
             <QueryClientProvider client={client}>
-                <SignalRProvider>{children}</SignalRProvider>
+                <SignalRProvider>
+                    {googleClientId ? <GoogleOAuthProvider clientId={googleClientId}>{children}</GoogleOAuthProvider> : children}
+                </SignalRProvider>
             </QueryClientProvider>
         </AuthProvider>
     );

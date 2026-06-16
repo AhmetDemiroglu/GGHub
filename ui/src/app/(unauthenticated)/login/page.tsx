@@ -19,6 +19,7 @@ import { Button } from "@/core/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/core/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/core/components/ui/form";
 import { Input } from "@/core/components/ui/input";
+import { SocialAuthButtons } from "../_components/social-auth-buttons";
 
 function LoginPageContent() {
     const t = useI18n();
@@ -130,6 +131,7 @@ function LoginPageContent() {
                             <Button type="submit" className="w-full cursor-pointer" disabled={isPending}>
                                 {isPending ? t("auth.loginPending") : t("auth.loginTitle")}
                             </Button>
+                            <SocialAuthButtons />
                             <p className="text-left text-sm text-muted-foreground">
                                 {t("auth.noAccount")}
                                 <Link href={buildLocalizedPathname("/register", locale)} className="ml-1 font-bold underline underline-offset-4 hover:text-primary">

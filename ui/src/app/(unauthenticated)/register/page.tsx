@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { Suspense } from "react";
 import { useI18n } from "@/core/contexts/locale-context";
+import { SocialAuthButtons } from "../_components/social-auth-buttons";
 
 function RegisterPageContent() {
     const t = useI18n();
@@ -127,6 +128,7 @@ function RegisterPageContent() {
                             <Button type="submit" className="w-full cursor-pointer" disabled={isPending}>
                                 {isPending ? t("auth.registerSubmitPending") : t("auth.registerCreateTitle")}
                             </Button>
+                            <SocialAuthButtons />
                             <p className="text-left text-sm text-muted-foreground">
                                 {t("auth.registerHaveAccount")}
                                 <Link href={`/login?returnUrl=${encodeURIComponent(returnUrl)}`} className="underline font-bold underline-offset-4 hover:text-primary ml-1">
