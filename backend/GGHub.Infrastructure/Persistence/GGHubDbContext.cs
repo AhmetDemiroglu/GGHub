@@ -47,6 +47,17 @@ namespace GGHub.Infrastructure.Persistence
                 .HasIndex(u => u.Username)
                 .IsUnique();
 
+            // Filtered unique indexes: allow many NULLs but enforce one user per external provider id.
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.GoogleId)
+                .IsUnique()
+                .HasFilter("\"GoogleId\" IS NOT NULL");
+
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.AppleId)
+                .IsUnique()
+                .HasFilter("\"AppleId\" IS NOT NULL");
+
             modelBuilder.Entity<UserListRating>()
                 .HasKey(r => new { r.UserId, r.UserListId });
 

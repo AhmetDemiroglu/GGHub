@@ -4,7 +4,9 @@ using GGHub.Core.Entities;
 using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using GGHub.Infrastructure.Utilities;
+using Google.Apis.Auth;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
@@ -22,14 +24,18 @@ namespace GGHub.Infrastructure.Services
         private readonly ILogger<AuthService> _logger;
         private readonly IEmailQueue _emailQueue;
         private readonly IGamificationService _gamificationService;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IMemoryCache _cache;
 
-        public AuthService(GGHubDbContext context, IConfiguration config, IEmailService emailService, ILogger<AuthService> logger, IEmailQueue emailQueue, IGamificationService gamificationService)
+        public AuthService(GGHubDbContext context, IConfiguration config, IEmailService emailService, ILogger<AuthService> logger, IEmailQueue emailQueue, IGamificationService gamificationService, IHttpClientFactory httpClientFactory, IMemoryCache cache)
         {
             _context = context;
             _config = config;
             _logger = logger;
             _emailQueue = emailQueue;
             _gamificationService = gamificationService;
+            _httpClientFactory = httpClientFactory;
+            _cache = cache;
         }
 
         public async Task<LoginResponseDto?> Login(UserForLoginDto userForLoginDto)
@@ -38,7 +44,9 @@ namespace GGHub.Infrastructure.Services
                 u.Email == userForLoginDto.Email.ToLower() ||
                 u.Username.ToLower() == userForLoginDto.Email.ToLower());
 
-            if (user == null || !VerifyPasswordHash(userForLoginDto.Password, user.PasswordHash, user.PasswordSalt))
+            // PasswordHash/Salt are null for social-only (Google/Apple) accounts → treat as invalid credentials.
+            if (user == null || user.PasswordHash == null || user.PasswordSalt == null ||
+                !VerifyPasswordHash(userForLoginDto.Password, user.PasswordHash, user.PasswordSalt))
             {
                 return null;
             }
@@ -53,23 +61,7 @@ namespace GGHub.Infrastructure.Services
                 throw new InvalidOperationException(AppText.Get("auth.accountSuspended"));
             }
 
-            var accessToken = CreateToken(user);
-            var refreshToken = new RefreshToken
-            {
-                Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
-                UserId = user.Id,
-                CreatedAt = DateTime.UtcNow,
-                ExpiresAt = DateTime.UtcNow.AddDays(7)
-            };
-
-            await _context.RefreshTokens.AddAsync(refreshToken);
-            await _context.SaveChangesAsync();
-
-            return new LoginResponseDto
-            {
-                AccessToken = accessToken,
-                RefreshToken = refreshToken.Token
-            };
+            return await IssueTokensAsync(user);
         }
         public async Task<bool> VerifyEmailAsync(string token)
         {
@@ -234,7 +226,8 @@ namespace GGHub.Infrastructure.Services
         {
             var user = await _context.Users.FindAsync(userId);
 
-            if (user == null)
+            // Social-only accounts (null password) cannot "change" a password via the current-password flow.
+            if (user == null || user.PasswordHash == null || user.PasswordSalt == null)
             {
                 return false;
             }
@@ -279,8 +272,12 @@ namespace GGHub.Infrastructure.Services
 
             return true;
         }
-        private bool VerifyPasswordHash(string password, byte[] passwordHash, byte[] passwordSalt)
+        private bool VerifyPasswordHash(string password, byte[]? passwordHash, byte[]? passwordSalt)
         {
+            if (passwordHash == null || passwordSalt == null)
+            {
+                return false;
+            }
             using (var hmac = new System.Security.Cryptography.HMACSHA512(passwordSalt))
             {
                 var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
@@ -320,6 +317,211 @@ namespace GGHub.Infrastructure.Services
             var token = tokenHandler.CreateToken(tokenDescriptor);
 
             return tokenHandler.WriteToken(token);
+        }
+
+        // ---------- External (Google / Apple) sign-in ----------
+
+        public async Task<LoginResponseDto> GoogleLoginAsync(GoogleLoginDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto?.IdToken))
+            {
+                throw new InvalidOperationException(AppText.Get("auth.invalidProviderToken"));
+            }
+
+            GoogleJsonWebSignature.Payload payload;
+            try
+            {
+                var settings = new GoogleJsonWebSignature.ValidationSettings();
+                var clientIds = _config.GetSection("GoogleAuth:ClientIds").Get<string[]>();
+                if (clientIds != null && clientIds.Length > 0)
+                {
+                    settings.Audience = clientIds; // enforce that the token was minted for one of our apps
+                }
+                payload = await GoogleJsonWebSignature.ValidateAsync(dto.IdToken, settings);
+            }
+            catch (InvalidJwtException ex)
+            {
+                _logger.LogWarning("Google token validation failed: {Message}", ex.Message);
+                throw new InvalidOperationException(AppText.Get("auth.invalidProviderToken"));
+            }
+
+            var user = await FindOrCreateExternalUserAsync("Google", payload.Subject, payload.Email, payload.Name, payload.Picture);
+            return await IssueTokensAsync(user);
+        }
+
+        public async Task<LoginResponseDto> AppleLoginAsync(AppleLoginDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto?.IdentityToken))
+            {
+                throw new InvalidOperationException(AppText.Get("auth.invalidProviderToken"));
+            }
+
+            JwtSecurityToken jwt;
+            try
+            {
+                var clientIds = _config.GetSection("AppleAuth:ClientIds").Get<string[]>() ?? Array.Empty<string>();
+                var signingKeys = await GetAppleSigningKeysAsync();
+
+                var validationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidIssuer = "https://appleid.apple.com",
+                    ValidateAudience = clientIds.Length > 0,
+                    ValidAudiences = clientIds,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKeys = signingKeys
+                };
+
+                var handler = new JwtSecurityTokenHandler();
+                handler.ValidateToken(dto.IdentityToken, validationParameters, out var validated);
+                jwt = (JwtSecurityToken)validated;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Apple token validation failed: {Message}", ex.Message);
+                throw new InvalidOperationException(AppText.Get("auth.invalidProviderToken"));
+            }
+
+            // Optional nonce binding (expo-apple-authentication / web). Accept either raw or SHA256(raw) match.
+            if (!string.IsNullOrEmpty(dto.Nonce))
+            {
+                var tokenNonce = jwt.Claims.FirstOrDefault(c => c.Type == "nonce")?.Value;
+                var hashedNonce = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(dto.Nonce))).ToLowerInvariant();
+                if (tokenNonce != hashedNonce && tokenNonce != dto.Nonce)
+                {
+                    throw new InvalidOperationException(AppText.Get("auth.invalidProviderToken"));
+                }
+            }
+
+            var sub = jwt.Subject;
+            var email = jwt.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
+            var user = await FindOrCreateExternalUserAsync("Apple", sub, email, dto.FullName, null);
+            return await IssueTokensAsync(user);
+        }
+
+        private async Task<IEnumerable<SecurityKey>> GetAppleSigningKeysAsync()
+        {
+            const string cacheKey = "apple_jwks_keys";
+            if (_cache.TryGetValue(cacheKey, out IEnumerable<SecurityKey>? cached) && cached != null)
+            {
+                return cached;
+            }
+
+            var http = _httpClientFactory.CreateClient();
+            var json = await http.GetStringAsync("https://appleid.apple.com/auth/keys");
+            var jwks = new JsonWebKeySet(json);
+            var keys = jwks.Keys.Cast<SecurityKey>().ToList();
+            _cache.Set(cacheKey, (IEnumerable<SecurityKey>)keys, TimeSpan.FromHours(12));
+            return keys;
+        }
+
+        private async Task<User> FindOrCreateExternalUserAsync(string provider, string providerKey, string? email, string? displayName, string? picture)
+        {
+            // 1) Already linked → sign in.
+            User? user = provider == "Google"
+                ? await _context.Users.FirstOrDefaultAsync(u => u.GoogleId == providerKey)
+                : await _context.Users.FirstOrDefaultAsync(u => u.AppleId == providerKey);
+
+            // 2) Existing account with the same email → link this provider.
+            if (user == null && !string.IsNullOrWhiteSpace(email))
+            {
+                var lowerEmail = email.ToLower();
+                user = await _context.Users.FirstOrDefaultAsync(u => u.Email == lowerEmail);
+                if (user != null)
+                {
+                    if (provider == "Google") user.GoogleId = providerKey; else user.AppleId = providerKey;
+                    user.IsEmailVerified = true;
+                    if (string.IsNullOrEmpty(user.ProfileImageUrl) && !string.IsNullOrEmpty(picture))
+                    {
+                        user.ProfileImageUrl = picture;
+                    }
+                    user.UpdatedAt = DateTime.UtcNow;
+                    await _context.SaveChangesAsync();
+                }
+            }
+
+            // 3) Brand new social user.
+            if (user == null)
+            {
+                var lowerEmail = !string.IsNullOrWhiteSpace(email)
+                    ? email.ToLower()
+                    : $"{provider.ToLower()}_{providerKey}@users.gghub.social";
+
+                string? firstName = null, lastName = null;
+                if (!string.IsNullOrWhiteSpace(displayName))
+                {
+                    var parts = displayName.Trim().Split(' ', 2);
+                    firstName = parts[0];
+                    lastName = parts.Length > 1 ? parts[1] : null;
+                }
+
+                user = new User
+                {
+                    Email = lowerEmail,
+                    Username = await GenerateUniqueUsernameAsync(displayName ?? email?.Split('@').FirstOrDefault()),
+                    PasswordHash = null,
+                    PasswordSalt = null,
+                    IsEmailVerified = true,
+                    FirstName = firstName,
+                    LastName = lastName,
+                    ProfileImageUrl = picture,
+                    GoogleId = provider == "Google" ? providerKey : null,
+                    AppleId = provider == "Apple" ? providerKey : null
+                };
+
+                await _context.Users.AddAsync(user);
+                await _context.SaveChangesAsync();
+
+                await _gamificationService.AddXpAsync(user.Id, 50, "Welcome");
+                await _gamificationService.CheckAchievementsAsync(user.Id, "Welcome");
+            }
+
+            if (user.IsBanned)
+            {
+                throw new InvalidOperationException(AppText.Get("auth.accountSuspended"));
+            }
+
+            return user;
+        }
+
+        private async Task<string> GenerateUniqueUsernameAsync(string? seed)
+        {
+            var baseName = new string((seed ?? "user").Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant();
+            if (baseName.Length < 3) baseName = "user";
+            if (baseName.Length > 15) baseName = baseName.Substring(0, 15);
+
+            var candidate = baseName;
+            var rng = new Random();
+            for (int i = 0; i < 25; i++)
+            {
+                var exists = await _context.Users.AnyAsync(u => u.Username.ToLower() == candidate);
+                if (!exists) return candidate;
+                candidate = $"{baseName}{rng.Next(1000, 99999)}";
+            }
+            // Guaranteed-unique fallback.
+            return ($"{baseName}{Guid.NewGuid():N}").Substring(0, 20);
+        }
+
+        private async Task<LoginResponseDto> IssueTokensAsync(User user)
+        {
+            var accessToken = CreateToken(user);
+            var refreshToken = new RefreshToken
+            {
+                Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
+                UserId = user.Id,
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddDays(7)
+            };
+
+            await _context.RefreshTokens.AddAsync(refreshToken);
+            await _context.SaveChangesAsync();
+
+            return new LoginResponseDto
+            {
+                AccessToken = accessToken,
+                RefreshToken = refreshToken.Token
+            };
         }
     }
 }

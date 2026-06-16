@@ -65,6 +65,46 @@ namespace GGHub.WebAPI.Controllers
             }
         }
 
+        [EnableRateLimiting("LoginPolicy")]
+        [HttpPost("google")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginDto dto)
+        {
+            try
+            {
+                var response = await _authService.GoogleLoginAsync(dto);
+                return Ok(response);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { message = AppText.Get("auth.loginError") });
+            }
+        }
+
+        [EnableRateLimiting("LoginPolicy")]
+        [HttpPost("apple")]
+        [AllowAnonymous]
+        public async Task<IActionResult> AppleLogin([FromBody] AppleLoginDto dto)
+        {
+            try
+            {
+                var response = await _authService.AppleLoginAsync(dto);
+                return Ok(response);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { message = AppText.Get("auth.loginError") });
+            }
+        }
+
         [HttpPost("refresh")]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto refreshTokenDto)
         {

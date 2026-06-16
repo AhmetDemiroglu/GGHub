@@ -7,8 +7,12 @@ namespace GGHub.Core.Entities
         public int Id { get; set; }
         public string Username { get; set; }
         public string Email { get; set; }
-        public byte[] PasswordHash { get; set; }
-        public byte[] PasswordSalt { get; set; }
+        // Nullable: social-only accounts (Google/Apple) have no password.
+        public byte[]? PasswordHash { get; set; }
+        public byte[]? PasswordSalt { get; set; }
+        // External auth provider subject ids (null when not linked). A single user may link both.
+        public string? GoogleId { get; set; }
+        public string? AppleId { get; set; }
         public string? FirstName { get; set; }
         public string? LastName { get; set; }
         public string? Bio { get; set; }

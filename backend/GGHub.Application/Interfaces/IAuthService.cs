@@ -12,5 +12,7 @@ namespace GGHub.Application.Interfaces
         Task<bool> RequestPasswordResetAsync(string email);
         Task<bool> ResetPasswordAsync(string token, string newPassword);
         Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword);
+        Task<LoginResponseDto> GoogleLoginAsync(GoogleLoginDto dto);
+        Task<LoginResponseDto> AppleLoginAsync(AppleLoginDto dto);
     }
 }
