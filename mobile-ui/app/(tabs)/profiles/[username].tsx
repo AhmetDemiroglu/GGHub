@@ -17,11 +17,13 @@ import { ScreenHeader } from '@/src/components/shell';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
 import { Card } from '@/src/components/common/Card';
 import { Button } from '@/src/components/common/Button';
+import { SegmentedTabs } from '@/src/components/common/SegmentedTabs';
 import { ProfileHeader } from '@/src/components/profile/ProfileHeader';
 import { FollowersModal } from '@/src/components/profile/FollowersModal';
 import { GamerDnaChart } from '@/src/components/profile/GamerDnaChart';
 import { ActivityFeedList } from '@/src/components/profile/ActivityFeedList';
 import { BottomSheet } from '@/src/components/common/BottomSheet';
+import { useToast } from '@/src/components/common/Toast';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
@@ -32,6 +34,7 @@ import { useRequireAuth } from '@/src/contexts/auth-prompt-context';
 import { reportUser } from '@/src/api/report';
 import { getReviewsByUser } from '@/src/api/review';
 import { ProfileVisibilitySetting } from '@/src/models/profile';
+import * as haptics from '@/src/utils/haptics';
 import type { Review } from '@/src/models/review';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 
@@ -44,6 +47,7 @@ export default function PublicProfileScreen() {
   const { messages } = useLocale();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const h = messages.profile.header;
   const rp = messages.report.dialog;
   const requireAuth = useRequireAuth();
@@ -78,6 +82,11 @@ export default function PublicProfileScreen() {
   const followMutation = useMutation({
     mutationFn: () => (profile?.isFollowing ? unfollowUser(username!) : followUser(username!)),
     onSuccess: () => {
+      if (profile?.isFollowing) {
+        haptics.impactLight();
+      } else {
+        haptics.success();
+      }
       queryClient.invalidateQueries({ queryKey: ['publicProfile', username] });
       queryClient.invalidateQueries({ queryKey: ['userStats', username] });
     },
@@ -86,6 +95,7 @@ export default function PublicProfileScreen() {
   const blockMutation = useMutation({
     mutationFn: () => (profile?.isBlockedByMe ? unblockUser(username!) : blockUser(username!)),
     onSuccess: () => {
+      haptics.impactHeavy();
       queryClient.invalidateQueries({ queryKey: ['publicProfile', username] });
       setMenuVisible(false);
     },
@@ -94,7 +104,8 @@ export default function PublicProfileScreen() {
   const reportMutation = useMutation({
     mutationFn: () => reportUser(profile?.id ?? 0, { reason: reportReason }),
     onSuccess: () => {
-      Alert.alert('', rp.success);
+      haptics.success();
+      showToast('success', rp.success);
       setReportVisible(false);
       setReportReason('');
     },
@@ -205,7 +216,12 @@ export default function PublicProfileScreen() {
               <Button
                 title={profile.isFollowing ? h.unfollow : h.follow}
                 variant={profile.isFollowing ? 'outline' : 'primary'}
-                onPress={() => requireAuth(() => followMutation.mutate())}
+                onPress={() => requireAuth(() => {
+                  if (!profile.isFollowing) {
+                    // follow başarılı hissi
+                  }
+                  followMutation.mutate();
+                })}
                 loading={followMutation.isPending}
                 style={styles.actionBtn}
               />
@@ -233,28 +249,14 @@ export default function PublicProfileScreen() {
         ) : (
           <>
             <View style={styles.tabsRow}>
-              {(['overview', 'reviews'] as ProfileTab[]).map((tab) => (
-                <TouchableOpacity
-                  key={tab}
-                  style={[
-                    styles.tab,
-                    activeTab === tab && {
-                      borderBottomColor: colors.primary,
-                      borderBottomWidth: 2,
-                    },
-                  ]}
-                  onPress={() => setActiveTab(tab)}
-                >
-                  <Text
-                    style={[
-                      styles.tabText,
-                      { color: activeTab === tab ? colors.primary : colors.textSecondary },
-                    ]}
-                  >
-                    {tab === 'overview' ? messages.home.activityTitle : messages.home.activityTabs.reviews}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              <SegmentedTabs
+                tabs={[
+                  { key: 'overview' as const, label: messages.home.activityTitle },
+                  { key: 'reviews' as const, label: messages.home.activityTabs.reviews },
+                ]}
+                activeKey={activeTab}
+                onChange={(k) => setActiveTab(k)}
+              />
             </View>
 
             <View style={styles.tabContent}>

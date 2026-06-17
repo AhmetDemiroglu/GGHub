@@ -1,14 +1,21 @@
 import React from 'react';
 import {
-  TouchableOpacity,
   Text,
   StyleSheet,
   ActivityIndicator,
   type ViewStyle,
   type TextStyle,
 } from 'react-native';
+import { Pressable } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { useTheme } from '@/src/hooks/use-theme';
-import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
+import { FontSize, Spacing, BorderRadius, Springs } from '@/src/constants/theme';
+import * as haptics from '@/src/utils/haptics';
 
 interface ButtonProps {
   title: string;
@@ -23,6 +30,8 @@ interface ButtonProps {
   fullWidth?: boolean;
 }
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 export function Button({
   title,
   onPress,
@@ -36,6 +45,7 @@ export function Button({
   fullWidth = false,
 }: ButtonProps) {
   const { colors } = useTheme();
+  const scale = useSharedValue(1);
 
   const bgColor =
     variant === 'primary'
@@ -63,8 +73,24 @@ export function Button({
   const paddingHorizontal = size === 'sm' ? 12 : size === 'lg' ? 24 : 16;
   const fontSize = size === 'sm' ? FontSize.sm : size === 'lg' ? FontSize.lg : FontSize.md;
 
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.96, Springs.snappy);
+  };
+  const handlePressOut = () => {
+    scale.value = withSpring(1, Springs.bouncy);
+  };
+  const handlePress = () => {
+    if (variant === 'danger') haptics.impactMedium();
+    else haptics.impactLight();
+    onPress();
+  };
+
   return (
-    <TouchableOpacity
+    <AnimatedPressable
       style={[
         styles.button,
         {
@@ -77,10 +103,12 @@ export function Button({
         variant === 'outline' && styles.outline,
         fullWidth && { width: '100%' as const },
         style,
+        animatedStyle,
       ]}
-      onPress={onPress}
+      onPress={handlePress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
       disabled={disabled || loading}
-      activeOpacity={0.7}
     >
       {loading ? (
         <ActivityIndicator size="small" color={txtColor} />
@@ -90,7 +118,7 @@ export function Button({
           <Text style={[styles.text, { color: txtColor, fontSize }, textStyle]}>{title}</Text>
         </>
       )}
-    </TouchableOpacity>
+    </AnimatedPressable>
   );
 }
 
@@ -103,7 +131,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   outline: {
-    borderWidth: 1,
+    borderWidth: 1.5,
   },
   text: {
     fontWeight: '600',

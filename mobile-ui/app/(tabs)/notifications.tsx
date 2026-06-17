@@ -82,7 +82,7 @@ export default function NotificationsScreen() {
 
   const MarkAllButton = hasUnread ? (
     <TouchableOpacity onPress={() => markAllMutation.mutate()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-      <Text style={[styles.markAllText, { color: colors.primary }]}>{messages.common.done}</Text>
+      <Text style={[styles.markAllText, { color: colors.primary }]}>{nav.markAllRead}</Text>
     </TouchableOpacity>
   ) : undefined;
 

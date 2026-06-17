@@ -2,12 +2,20 @@ import React from 'react';
 import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 import { useTheme } from '@/src/hooks/use-theme';
-import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
+import { FontSize, Spacing, BorderRadius, Springs, Shadows } from '@/src/constants/theme';
 import { getImageUrl } from '@/src/utils/image';
 import { PlatformIcons } from '@/src/components/common/PlatformIcons';
 import { ScorePillRow } from '@/src/components/common/ScorePill';
+import * as haptics from '@/src/utils/haptics';
 import type { Game } from '@/src/models/game';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface GameCardProps {
   game: Game;
@@ -19,14 +27,31 @@ export function GameCard({ game, variant = 'compact' }: GameCardProps) {
   const router = useRouter();
   const imageUri = getImageUrl(game.coverImage ?? game.backgroundImage);
   const releasedYear = game.released ? new Date(game.released).getFullYear() : undefined;
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
   const handlePress = () => {
+    haptics.impactLight();
     router.push(`/game/${game.slug}`);
+  };
+  const handlePressIn = () => {
+    scale.value = withSpring(0.97, Springs.snappy);
+  };
+  const handlePressOut = () => {
+    scale.value = withSpring(1, Springs.bouncy);
   };
 
   if (variant === 'list') {
     return (
-      <Pressable style={[styles.listCard, { backgroundColor: colors.surface }]} onPress={handlePress}>
+      <AnimatedPressable
+        style={[styles.listCard, { backgroundColor: colors.surface }, Shadows.sm, animatedStyle]}
+        onPress={handlePress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+      >
         {imageUri ? (
           <Image source={{ uri: imageUri }} style={styles.listImage} resizeMode="cover" />
         ) : (
@@ -53,12 +78,17 @@ export function GameCard({ game, variant = 'compact' }: GameCardProps) {
             gap={5}
           />
         </View>
-      </Pressable>
+      </AnimatedPressable>
     );
   }
 
   return (
-    <Pressable style={[styles.compactCard, { backgroundColor: colors.surface }]} onPress={handlePress}>
+    <AnimatedPressable
+      style={[styles.compactCard, { backgroundColor: colors.surface }, Shadows.sm, animatedStyle]}
+      onPress={handlePress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+    >
       {imageUri ? (
         <Image source={{ uri: imageUri }} style={styles.compactImage} resizeMode="cover" />
       ) : (
@@ -80,7 +110,7 @@ export function GameCard({ game, variant = 'compact' }: GameCardProps) {
           gap={5}
         />
       </View>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 

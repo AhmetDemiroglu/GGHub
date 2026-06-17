@@ -3,8 +3,9 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Avatar } from '@/src/components/common/Avatar';
 import { Badge } from '@/src/components/common/Badge';
 import { useTheme } from '@/src/hooks/use-theme';
+import * as haptics from '@/src/utils/haptics';
 import type { ConversationDto } from '@/src/models/message';
-import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
+import { Spacing, FontSize, BorderRadius, Shadows } from '@/src/constants/theme';
 
 interface ConversationItemProps {
   conversation: ConversationDto;
@@ -29,17 +30,24 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
   const { colors } = useTheme();
   const hasUnread = conversation.unreadCount > 0;
 
+  const handlePress = () => {
+    haptics.impactLight();
+    onPress();
+  };
+
   return (
     <TouchableOpacity
-      style={[styles.container, { borderBottomColor: colors.border }]}
-      onPress={onPress}
+      style={[styles.container, { borderBottomColor: colors.border }, hasUnread && { backgroundColor: `${colors.primary}08` }]}
+      onPress={handlePress}
       activeOpacity={0.7}
     >
-      <Avatar
-        uri={conversation.partnerProfileImageUrl}
-        name={conversation.partnerUsername}
-        size={50}
-      />
+      <View style={hasUnread && [styles.unreadAvatarRing, { borderColor: colors.primary }]}>
+        <Avatar
+          uri={conversation.partnerProfileImageUrl}
+          name={conversation.partnerUsername}
+          size={50}
+        />
+      </View>
       <View style={styles.content}>
         <View style={styles.topRow}>
           <Text
@@ -80,6 +88,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: Spacing.md,
+  },
+  unreadAvatarRing: {
+    borderRadius: 999,
+    borderWidth: 2,
+    padding: 2,
   },
   content: {
     flex: 1,

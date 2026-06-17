@@ -84,3 +84,49 @@ export const BorderRadius = {
   xl: 16,
   full: 9999,
 };
+
+/* ── Motion tokens ──
+ * Tüm uygulama tutarlı animasyon hissi için tek nokta. Reanimated
+ * spring/timing çağrıları bu değerleri referans alır.
+ */
+export const Durations = {
+  fast: 180,
+  normal: 260,
+  slow: 400,
+} as const;
+
+export const Easings = {
+  // Reanimated'in Easing karşılıkları (sayı factory değil, doğrudan eğri)
+  out: 'easeOut' as const,
+  inOut: 'easeInOut' as const,
+  spring: 'spring' as const,
+};
+
+/* Reanimated withSpring config'leri */
+export const Springs = {
+  /** Yumuşak, doğal drawer/modal geçişleri */
+  smooth: { damping: 26, stiffness: 280, mass: 0.8 },
+  /** Snappy - buton/sekmeler için hızlı tepki */
+  snappy: { damping: 18, stiffness: 380, mass: 0.6 },
+  /** Bouncy - oyuncu platformu için hafif zıpzıp his (beğeni/takip) */
+  bouncy: { damping: 12, stiffness: 420, mass: 0.7 },
+} as const;
+
+/* ── Elevation / Shadow tokens ──
+ * iOS shadow + Android elevation ayrımı tutarlı kalıbında.
+ */
+export interface ShadowToken {
+  shadowColor: string;
+  shadowOffset: { width: number; height: number };
+  shadowOpacity: number;
+  shadowRadius: number;
+  elevation: number;
+}
+
+export const Shadows = {
+  none: { shadowColor: 'transparent', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0, shadowRadius: 0, elevation: 0 },
+  sm: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 3, elevation: 2 },
+  md: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4 },
+  lg: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.16, shadowRadius: 12, elevation: 8 },
+  xl: { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 14 },
+} as const;

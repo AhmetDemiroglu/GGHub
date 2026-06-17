@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, Alert, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useMutation } from '@tanstack/react-query';
 import { Input } from '@/src/components/common/Input';
 import { Button } from '@/src/components/common/Button';
+import { useToast } from '@/src/components/common/Toast';
+import * as haptics from '@/src/utils/haptics';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { changePassword } from '@/src/api/auth';
@@ -11,6 +13,7 @@ import { Spacing, FontSize } from '@/src/constants/theme';
 export function ChangePasswordForm() {
   const { colors } = useTheme();
   const { messages } = useLocale();
+  const { showToast } = useToast();
   const cp = messages.profile.changePassword;
 
   const [currentPassword, setCurrentPassword] = useState('');
@@ -21,14 +24,16 @@ export function ChangePasswordForm() {
   const mutation = useMutation({
     mutationFn: () => changePassword({ currentPassword, newPassword }),
     onSuccess: () => {
-      Alert.alert(cp.successTitle, cp.successDescription);
+      haptics.success();
+      showToast('success', cp.successTitle, cp.successDescription);
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       setErrors({});
     },
     onError: () => {
-      Alert.alert(cp.errorTitle, cp.errorDescription);
+      haptics.error();
+      showToast('error', cp.errorTitle, cp.errorDescription);
     },
   });
 

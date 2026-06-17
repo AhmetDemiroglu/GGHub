@@ -6,7 +6,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
 } from 'react-native';
 import { Link, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,11 +15,14 @@ import { register as registerApi } from '@/src/api/auth';
 import { Input } from '@/src/components/common/Input';
 import { Button } from '@/src/components/common/Button';
 import { SocialAuthButtons } from '@/src/components/auth/SocialAuthButtons';
+import { useToast } from '@/src/components/common/Toast';
 import { FontSize, Spacing } from '@/src/constants/theme';
+import * as haptics from '@/src/utils/haptics';
 
 export default function RegisterScreen() {
   const { colors } = useTheme();
   const { messages } = useLocale();
+  const { showToast } = useToast();
   const t = messages.auth;
 
   const [username, setUsername] = useState('');
@@ -55,7 +57,10 @@ export default function RegisterScreen() {
   };
 
   const handleRegister = async () => {
-    if (!validate()) return;
+    if (!validate()) {
+      haptics.warning();
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -64,11 +69,13 @@ export default function RegisterScreen() {
         email: email.trim(),
         password,
       });
+      haptics.success();
       setSuccess(true);
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
       const message = axiosError.response?.data?.message || t.registerErrorDescription;
-      Alert.alert(t.registerErrorTitle, message);
+      haptics.error();
+      showToast('error', t.registerErrorTitle, message);
     } finally {
       setIsLoading(false);
     }

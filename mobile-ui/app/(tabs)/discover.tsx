@@ -29,7 +29,7 @@ export default function DiscoverScreen() {
   const [selectedPlatform, setSelectedPlatform] = useState('');
   const [selectedOrdering, setSelectedOrdering] = useState('');
   const [page, setPage] = useState(1);
-  // Tüm sayfaların biriktirilmiş oyunları — rawgId ile dedup edilir
+  // Tüm sayfaların biriktirilmiş oyunları - rawgId ile dedup edilir
   const [allGames, setAllGames] = useState<Game[]>([]);
   const [totalCount, setTotalCount] = useState(0);
 
@@ -118,7 +118,7 @@ export default function DiscoverScreen() {
     }
   }, [gamesQuery.isFetching, allGames.length, totalCount]);
 
-  // Genre ve platform seçenekleri — slug formatında (backend DB slug saklar, numeric ID slug'a çevirir)
+  // Genre ve platform seçenekleri - slug formatında (backend DB slug saklar, numeric ID slug'a çevirir)
   const genreOptions = useMemo(
     () => [
       { label: t.genres.action,              value: 'action' },

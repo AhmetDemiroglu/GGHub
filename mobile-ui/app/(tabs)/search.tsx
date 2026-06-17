@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { AppTopBar } from '@/src/components/shell';
 import { Avatar } from '@/src/components/common/Avatar';
+import { SegmentedTabs } from '@/src/components/common/SegmentedTabs';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { searchAll } from '@/src/api/search';
@@ -160,27 +161,12 @@ export default function SearchScreen() {
       </View>
 
       {/* Scope filter */}
-      <View style={[styles.scopeRow, { borderBottomColor: colors.border }]}>
-        {scopes.map((s) => (
-          <TouchableOpacity
-            key={s.key}
-            style={[
-              styles.scopeBtn,
-              scope === s.key && [styles.scopeBtnActive, { borderBottomColor: colors.primary }],
-            ]}
-            onPress={() => setScope(s.key)}
-            activeOpacity={0.7}
-          >
-            <Text
-              style={[
-                styles.scopeLabel,
-                { color: scope === s.key ? colors.primary : colors.textSecondary },
-              ]}
-            >
-              {s.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      <View style={styles.scopeRow}>
+        <SegmentedTabs
+          tabs={scopes.map((s) => ({ key: s.key, label: s.label }))}
+          activeKey={scope}
+          onChange={(k) => setScope(k)}
+        />
       </View>
 
       {/* İçerik */}
@@ -234,24 +220,8 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   scopeRow: {
-    flexDirection: 'row',
     marginHorizontal: Spacing.lg,
-    borderBottomWidth: 1,
-    marginBottom: Spacing.xs,
-  },
-  scopeBtn: {
-    flex: 1,
-    paddingVertical: Spacing.sm,
-    alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  scopeBtnActive: {
-    borderBottomWidth: 2,
-  },
-  scopeLabel: {
-    fontSize: FontSize.sm,
-    fontWeight: '600',
+    marginBottom: Spacing.sm,
   },
   center: {
     flex: 1,

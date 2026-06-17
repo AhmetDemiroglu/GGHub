@@ -101,10 +101,10 @@ export function FilterBar({
 
   const orderingOptions: FilterOption[] = [
     { label: messages.common.all, value: '' },
-    { label: 'A-Z', value: 'name' },
-    { label: 'Z-A', value: '-name' },
-    { label: 'Metacritic', value: '-metacritic' },
-    { label: messages.home?.trendingTitle ?? 'Trending', value: '-rating' },
+    { label: messages.discover.orderingAz, value: 'name' },
+    { label: messages.discover.orderingZa, value: '-name' },
+    { label: messages.discover.ordering.metacritic, value: '-metacritic' },
+    { label: messages.discover.ordering.popularity, value: '-rating' },
   ];
 
   const allGenres: FilterOption[] = [
@@ -159,7 +159,7 @@ export function FilterBar({
           onPress={() => setActiveModal('platform')}
         >
           <Text style={[styles.chipText, { color: selectedPlatform ? '#ffffff' : colors.text }]}>
-            {getSelectedLabel(allPlatforms, selectedPlatform, 'Platform')}
+            {getSelectedLabel(allPlatforms, selectedPlatform, messages.discover.platformLabel)}
           </Text>
           <Ionicons name="chevron-down" size={14} color={selectedPlatform ? '#ffffff' : colors.textMuted} />
         </Pressable>
@@ -186,7 +186,7 @@ export function FilterBar({
       <PickerSheet
         visible={activeModal === 'platform'}
         onClose={() => setActiveModal(null)}
-        title="Platform"
+        title={messages.discover.platformLabel}
         options={allPlatforms}
         selected={selectedPlatform}
         onSelect={onPlatformChange}

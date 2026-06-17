@@ -26,6 +26,14 @@ export function formatTimeAgo(dateString: string): string {
   return `${years}y`;
 }
 
+/**
+ * Locale-duyarlı büyük harf. CSS textTransform:'uppercase' Türkçe İ'yi bozar
+ * (i -> I). Bu yardımcı tr için 'tr-TR' kullanır (i -> İ).
+ */
+export function localeUpper(value: string, locale: string = 'en-US'): string {
+  return value.toLocaleUpperCase(locale === 'tr' ? 'tr-TR' : 'en-US');
+}
+
 export function formatDate(dateString: string, locale: string = 'en-US'): string {
   const date = new Date(dateString);
   return date.toLocaleDateString(locale === 'tr' ? 'tr-TR' : 'en-US', {

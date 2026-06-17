@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
-import { formatDate } from '@/src/utils/format';
+import { formatDate, localeUpper } from '@/src/utils/format';
 import type { Game } from '@/src/models/game';
 
 interface GameInfoProps {
@@ -12,10 +12,13 @@ interface GameInfoProps {
 
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
   const { colors } = useTheme();
+  const { locale } = useLocale();
 
   return (
     <View style={styles.infoRow}>
-      <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{label}</Text>
+      <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
+        {localeUpper(label, locale)}
+      </Text>
       <View style={styles.infoValue}>{children}</View>
     </View>
   );
@@ -102,7 +105,6 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontSize: FontSize.xs,
     fontWeight: '600',
-    textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   infoValue: {

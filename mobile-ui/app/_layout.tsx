@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/src/contexts/auth-context';
 import { LocaleProvider } from '@/src/contexts/locale-context';
@@ -45,7 +46,7 @@ function RootLayoutNav() {
   return (
     <>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <Stack screenOptions={{ headerShown: false, gestureEnabled: true }}>
+      <Stack screenOptions={{ headerShown: false, gestureEnabled: false }}>
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(admin)" />
@@ -57,23 +58,26 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <LocaleProvider>
-          <ThemeProvider>
-            <SignalRProvider>
-              <ShellProvider>
-                <ToastProvider>
-                  <AuthPromptProvider>
-                    <RootLayoutNav />
-                    <AppSidebar />
-                  </AuthPromptProvider>
-                </ToastProvider>
-              </ShellProvider>
-            </SignalRProvider>
-          </ThemeProvider>
-        </LocaleProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <LocaleProvider>
+            <ThemeProvider>
+              <SignalRProvider>
+                <ShellProvider>
+                  <ToastProvider>
+                    <AuthPromptProvider>
+                      <AppSidebar>
+                        <RootLayoutNav />
+                      </AppSidebar>
+                    </AuthPromptProvider>
+                  </ToastProvider>
+                </ShellProvider>
+              </SignalRProvider>
+            </ThemeProvider>
+          </LocaleProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }

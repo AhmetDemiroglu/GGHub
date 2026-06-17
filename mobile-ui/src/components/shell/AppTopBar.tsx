@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useAuth } from '@/src/hooks/use-auth';
@@ -16,6 +17,7 @@ import { useShell } from '@/src/contexts/shell-context';
 import { useSignalR } from '@/src/hooks/use-signalr';
 import { Avatar } from '@/src/components/common/Avatar';
 import { Spacing, FontSize } from '@/src/constants/theme';
+import * as haptics from '@/src/utils/haptics';
 
 const TOP_BAR_CONTENT_HEIGHT = 44;
 
@@ -23,6 +25,8 @@ interface AppTopBarProps {
   title?: string;
   showLogo?: boolean;
   rightExtra?: React.ReactNode;
+  /** translucent blur (oyun detayı / immersive için) */
+  blur?: boolean;
 }
 
 function UnreadBadge({ count, color }: { count: number; color: string }) {
@@ -34,7 +38,7 @@ function UnreadBadge({ count, color }: { count: number; color: string }) {
   );
 }
 
-export function AppTopBar({ title, showLogo = false, rightExtra }: AppTopBarProps) {
+export function AppTopBar({ title, showLogo = false, rightExtra, blur = false }: AppTopBarProps) {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const { user } = useAuth();
@@ -58,20 +62,43 @@ export function AppTopBar({ title, showLogo = false, rightExtra }: AppTopBarProp
     };
   }, [onUnreadMessageCountUpdated, onUnreadNotificationCountUpdated]);
 
+  const handleMenu = () => {
+    haptics.impactLight();
+    openSidebar();
+  };
+
+  const handleMessages = () => {
+    haptics.impactLight();
+    router.push('/(tabs)/messages');
+  };
+
+  const handleNotifications = () => {
+    haptics.impactLight();
+    router.push('/(tabs)/notifications');
+  };
+
   return (
     <View
       style={[
         styles.container,
         {
           paddingTop: insets.top,
-          backgroundColor: colors.background,
           borderBottomColor: colors.tabBarBorder,
+          backgroundColor: blur ? 'transparent' : colors.background,
         },
       ]}
     >
+      {blur ? (
+        <BlurView
+          intensity={50}
+          tint={colors.background === '#ffffff' ? 'light' : 'dark'}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+      ) : null}
       <View style={[styles.inner, { height: TOP_BAR_CONTENT_HEIGHT }]}>
         {/* Sol: Avatar / Menü */}
-        <TouchableOpacity onPress={openSidebar} style={styles.sideBtn} activeOpacity={0.7}>
+        <TouchableOpacity onPress={handleMenu} style={styles.sideBtn} activeOpacity={0.7}>
           <Avatar uri={user?.profileImageUrl} name={user?.username} size={32} />
         </TouchableOpacity>
 
@@ -85,7 +112,7 @@ export function AppTopBar({ title, showLogo = false, rightExtra }: AppTopBarProp
             />
           ) : title ? (
             <Text
-              style={[styles.title, { color: colors.text }]}
+              style={[styles.title, { color: blur ? '#ffffff' : colors.text }]}
               numberOfLines={1}
               ellipsizeMode="tail"
             >
@@ -99,20 +126,28 @@ export function AppTopBar({ title, showLogo = false, rightExtra }: AppTopBarProp
           {rightExtra ? <View style={styles.extraSlot}>{rightExtra}</View> : null}
 
           <TouchableOpacity
-            onPress={() => router.push('/(tabs)/messages')}
+            onPress={handleMessages}
             style={styles.iconBtn}
             activeOpacity={0.7}
           >
-            <Ionicons name="chatbubble-outline" size={22} color={colors.text} />
+            <Ionicons
+              name="chatbubble-outline"
+              size={22}
+              color={blur ? '#ffffff' : colors.text}
+            />
             <UnreadBadge count={unreadMessages} color={colors.badge} />
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => router.push('/(tabs)/notifications')}
+            onPress={handleNotifications}
             style={styles.iconBtn}
             activeOpacity={0.7}
           >
-            <Ionicons name="notifications-outline" size={22} color={colors.text} />
+            <Ionicons
+              name="notifications-outline"
+              size={22}
+              color={blur ? '#ffffff' : colors.text}
+            />
             <UnreadBadge count={unreadNotifications} color={colors.badge} />
           </TouchableOpacity>
         </View>
@@ -125,6 +160,7 @@ const styles = StyleSheet.create({
   container: {
     borderBottomWidth: StyleSheet.hairlineWidth,
     zIndex: 10,
+    overflow: 'hidden',
     ...Platform.select({
       android: { elevation: 2 },
       ios: {},
@@ -178,6 +214,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0,0,0,0.1)',
   },
   badgeText: {
     color: '#ffffff',

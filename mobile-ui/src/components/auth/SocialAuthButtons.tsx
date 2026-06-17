@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Alert, Platform, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Platform, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
@@ -7,6 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/src/hooks/use-auth';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
+import { useToast } from '@/src/components/common/Toast';
+import * as haptics from '@/src/utils/haptics';
 import { googleLogin, appleLogin } from '@/src/api/oauth';
 import {
   GOOGLE_IOS_CLIENT_ID,
@@ -14,11 +16,13 @@ import {
   OAUTH_ENABLED,
 } from '@/src/constants/config';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
+import { localeUpper } from '@/src/utils/format';
 
 export function SocialAuthButtons() {
   const { login } = useAuth();
   const { colors } = useTheme();
-  const { messages } = useLocale();
+  const { messages, locale } = useLocale();
+  const { showToast } = useToast();
   const t = messages.auth;
 
   const [appleAvailable, setAppleAvailable] = useState(false);
@@ -39,7 +43,8 @@ export function SocialAuthButtons() {
   const handleError = (error: unknown) => {
     const axiosError = error as { response?: { data?: { message?: string } } };
     const message = axiosError?.response?.data?.message || t.loginDefaultError;
-    Alert.alert(t.loginErrorTitle, message);
+    haptics.error();
+    showToast('error', t.loginErrorTitle, message);
   };
 
   const handleGoogle = async () => {
@@ -89,7 +94,7 @@ export function SocialAuthButtons() {
     }
   };
 
-  // Hidden until OAuth is configured (Google client IDs present) — keeps the UI clean pre-launch.
+  // Hidden until OAuth is configured (Google client IDs present) - keeps the UI clean pre-launch.
   if (!OAUTH_ENABLED) return null;
 
   const showGoogle = Boolean(GOOGLE_IOS_CLIENT_ID || GOOGLE_WEB_CLIENT_ID);
@@ -100,7 +105,7 @@ export function SocialAuthButtons() {
     <View style={styles.container}>
       <View style={styles.dividerRow}>
         <View style={[styles.line, { backgroundColor: colors.border }]} />
-        <Text style={[styles.dividerText, { color: colors.textSecondary }]}>{t.orDivider}</Text>
+        <Text style={[styles.dividerText, { color: colors.textSecondary }]}>{localeUpper(t.orDivider, locale)}</Text>
         <View style={[styles.line, { backgroundColor: colors.border }]} />
       </View>
 
@@ -147,7 +152,6 @@ const styles = StyleSheet.create({
   },
   dividerText: {
     fontSize: FontSize.sm,
-    textTransform: 'uppercase',
   },
   googleBtn: {
     flexDirection: 'row',

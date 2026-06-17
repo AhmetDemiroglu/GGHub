@@ -5,6 +5,7 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  FlatList,
   StyleSheet,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -14,6 +15,7 @@ import { ScreenWrapper } from '@/src/components/common/ScreenWrapper';
 import { AppTopBar } from '@/src/components/shell';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
 import { Card } from '@/src/components/common/Card';
+import { SegmentedTabs } from '@/src/components/common/SegmentedTabs';
 import { ProfileHeader } from '@/src/components/profile/ProfileHeader';
 import { FollowersModal } from '@/src/components/profile/FollowersModal';
 import { GamerDnaChart } from '@/src/components/profile/GamerDnaChart';
@@ -94,7 +96,7 @@ export default function OwnProfileScreen() {
     { key: 'lists', label: messages.home.activityTabs.lists },
   ];
 
-  const renderReview = (item: Review, index: number) => {
+  const renderReview = ({ item, index }: { item: Review; index: number }) => {
     const goToGame = () => {
       if (item.game?.slug) router.push(`/game/${item.game.slug}`);
     };
@@ -121,7 +123,7 @@ export default function OwnProfileScreen() {
     );
   };
 
-  const renderList = (item: UserList, index: number) => (
+  const renderList = ({ item, index }: { item: UserList; index: number }) => (
     <TouchableOpacity
       key={`${item.id}-${index}`}
       onPress={() => router.push(`/lists/${item.id}`)}
@@ -195,25 +197,11 @@ export default function OwnProfileScreen() {
         ) : null}
 
         <View style={styles.tabsRow}>
-          {tabs.map((tab) => (
-            <TouchableOpacity
-              key={tab.key}
-              style={[
-                styles.tab,
-                activeTab === tab.key && { borderBottomColor: colors.primary, borderBottomWidth: 2 },
-              ]}
-              onPress={() => setActiveTab(tab.key)}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  { color: activeTab === tab.key ? colors.primary : colors.textSecondary },
-                ]}
-              >
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          <SegmentedTabs
+            tabs={tabs}
+            activeKey={activeTab}
+            onChange={(k) => setActiveTab(k)}
+          />
         </View>
 
         <View style={styles.tabContent}>
@@ -226,19 +214,33 @@ export default function OwnProfileScreen() {
           ) : null}
 
           {activeTab === 'reviews' ? (
-            reviewsQuery.data && reviewsQuery.data.length > 0 ? (
-              reviewsQuery.data.map((r, i) => renderReview(r, i))
-            ) : (
-              <Text style={[styles.emptyText, { color: colors.textMuted }]}>{messages.reviewList.emptyTitle}</Text>
-            )
+            <FlatList
+              data={reviewsQuery.data ?? []}
+              renderItem={renderReview}
+              keyExtractor={(item, index) => `${item.id}-${index}`}
+              scrollEnabled={false}
+              ItemSeparatorComponent={() => <View style={{ height: Spacing.md }} />}
+              ListEmptyComponent={
+                <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                  {messages.reviewList.emptyTitle}
+                </Text>
+              }
+            />
           ) : null}
 
           {activeTab === 'lists' ? (
-            listsQuery.data && listsQuery.data.length > 0 ? (
-              listsQuery.data.map((l, i) => renderList(l, i))
-            ) : (
-              <Text style={[styles.emptyText, { color: colors.textMuted }]}>{messages.lists.noMyLists}</Text>
-            )
+            <FlatList
+              data={listsQuery.data ?? []}
+              renderItem={renderList}
+              keyExtractor={(item, index) => `${item.id}-${index}`}
+              scrollEnabled={false}
+              ItemSeparatorComponent={() => <View style={{ height: Spacing.md }} />}
+              ListEmptyComponent={
+                <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                  {messages.lists.noMyLists}
+                </Text>
+              }
+            />
           ) : null}
         </View>
       </ScrollView>
@@ -273,17 +275,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   tabsRow: {
-    flexDirection: 'row',
     marginTop: Spacing.lg,
-  },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: Spacing.md,
-  },
-  tabText: {
-    fontSize: FontSize.md,
-    fontWeight: '600',
+    paddingHorizontal: Spacing.lg,
   },
   tabContent: {
     padding: Spacing.lg,

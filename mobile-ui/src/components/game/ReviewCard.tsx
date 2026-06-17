@@ -3,10 +3,11 @@ import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/src/hooks/use-theme';
-import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
+import { FontSize, Spacing, BorderRadius, Shadows } from '@/src/constants/theme';
 import { getImageUrl } from '@/src/utils/image';
 import { formatTimeAgo } from '@/src/utils/format';
 import { StarRating } from '@/src/components/common/StarRating';
+import * as haptics from '@/src/utils/haptics';
 import { voteReview } from '@/src/api/review';
 import type { Review } from '@/src/models/review';
 
@@ -29,14 +30,16 @@ export function ReviewCard({ review, gameId }: ReviewCardProps) {
 
   const handleVote = (value: number) => {
     if (review.currentUserVote === value) {
+      haptics.impactLight();
       voteMutation.mutate(0);
     } else {
+      haptics.success();
       voteMutation.mutate(value);
     }
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface }]}>
+    <View style={[styles.container, { backgroundColor: colors.surface }, Shadows.sm]}>
       <View style={styles.header}>
         {avatarUri ? (
           <Image source={{ uri: avatarUri }} style={styles.avatar} />

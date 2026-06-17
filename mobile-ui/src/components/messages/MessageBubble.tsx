@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { useTheme } from '@/src/hooks/use-theme';
-import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
+import { Spacing, FontSize, BorderRadius, Shadows } from '@/src/constants/theme';
 
 interface MessageBubbleProps {
   content: string;
@@ -17,12 +18,15 @@ export function MessageBubble({ content, sentAt, isMine, isRead }: MessageBubble
   const time = new Date(sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <View style={[styles.row, isMine ? styles.rowRight : styles.rowLeft]}>
-      <View
+    <Animated.View
+      entering={FadeInDown.springify().mass(0.6).stiffness(400).damping(20)}
+      style={[styles.row, isMine ? styles.rowRight : styles.rowLeft]}
+    >
+      <Animated.View
         style={[
           styles.bubble,
           isMine
-            ? [styles.bubbleMine, { backgroundColor: colors.primary }]
+            ? [styles.bubbleMine, { backgroundColor: colors.primary }, Shadows.sm]
             : [styles.bubbleTheirs, { backgroundColor: colors.surface, borderColor: colors.border }],
         ]}
       >
@@ -44,16 +48,20 @@ export function MessageBubble({ content, sentAt, isMine, isRead }: MessageBubble
             {time}
           </Text>
           {isMine ? (
-            <Ionicons
-              name={isRead ? 'checkmark-done' : 'checkmark'}
-              size={14}
-              color={isRead ? '#a5f3fc' : 'rgba(255,255,255,0.7)'}
-              style={styles.checkIcon}
-            />
+            <Animated.View
+              entering={FadeIn.duration(300)}
+              style={styles.checkWrap}
+            >
+              <Ionicons
+                name={isRead ? 'checkmark-done' : 'checkmark'}
+                size={14}
+                color={isRead ? '#a5f3fc' : 'rgba(255,255,255,0.7)'}
+              />
+            </Animated.View>
           ) : null}
         </View>
-      </View>
-    </View>
+      </Animated.View>
+    </Animated.View>
   );
 }
 
@@ -94,7 +102,7 @@ const styles = StyleSheet.create({
   time: {
     fontSize: FontSize.xs,
   },
-  checkIcon: {
+  checkWrap: {
     marginLeft: 4,
   },
 });

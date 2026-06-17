@@ -10,11 +10,13 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/src/hooks/use-theme';
-import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
+import { FontSize, Spacing, BorderRadius, Shadows } from '@/src/constants/theme';
 import { getImageUrl } from '@/src/utils/image';
 import { PlatformIcons } from '@/src/components/common/PlatformIcons';
 import { ScorePillRow } from '@/src/components/common/ScorePill';
+import * as haptics from '@/src/utils/haptics';
 import type { HomeGame } from '@/src/models/home';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -74,15 +76,23 @@ export function HeroSlider({ games }: HeroSliderProps) {
 
       return (
         <Pressable
-          style={[styles.card, { width: ITEM_WIDTH }]}
-          onPress={() => router.push(`/game/${item.slug}`)}
+          style={[styles.card, { width: ITEM_WIDTH }, Shadows.lg]}
+          onPress={() => {
+            haptics.impactLight();
+            router.push(`/game/${item.slug}`);
+          }}
         >
           {imageUri ? (
             <Image source={{ uri: imageUri }} style={styles.image} resizeMode="cover" />
           ) : (
             <View style={[styles.image, { backgroundColor: colors.surface }]} />
           )}
-          <View style={styles.gradient} />
+          <LinearGradient
+            colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']}
+            locations={[0, 0.5, 1]}
+            style={styles.gradient}
+            pointerEvents="none"
+          />
           <View style={styles.overlay}>
             <View style={styles.bottomRow}>
               <View style={styles.nameContainer}>
@@ -174,7 +184,6 @@ const styles = StyleSheet.create({
   },
   gradient: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   overlay: {
     flex: 1,

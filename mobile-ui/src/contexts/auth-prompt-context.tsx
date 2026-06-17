@@ -25,7 +25,7 @@ export function AuthPromptProvider({ children }: { children: React.ReactNode }) 
   const [visible, setVisible] = useState(false);
   const [customMessage, setCustomMessage] = useState<string | undefined>(undefined);
 
-  // Card için yumuşak giriş animasyonu — overlay fade ile birlikte
+  // Card için yumuşak giriş animasyonu - overlay fade ile birlikte
   const cardScale = useRef(new Animated.Value(0.92)).current;
   const cardOpacity = useRef(new Animated.Value(0)).current;
 

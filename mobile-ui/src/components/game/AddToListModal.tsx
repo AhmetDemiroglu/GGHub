@@ -6,13 +6,14 @@ import {
   Modal,
   FlatList,
   ActivityIndicator,
-  Alert,
   StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
+import { useToast } from '@/src/components/common/Toast';
+import * as haptics from '@/src/utils/haptics';
 import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
 import { getMyLists, addGameToList, removeGameFromList } from '@/src/api/list';
 import type { UserList } from '@/src/models/list';
@@ -26,6 +27,7 @@ interface AddToListModalProps {
 export function AddToListModal({ visible, onClose, gameId }: AddToListModalProps) {
   const { colors } = useTheme();
   const { messages } = useLocale();
+  const { showToast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: lists, isLoading } = useQuery({
@@ -37,20 +39,23 @@ export function AddToListModal({ visible, onClose, gameId }: AddToListModalProps
   const addMutation = useMutation({
     mutationFn: (listId: number) => addGameToList(listId, gameId),
     onSuccess: () => {
+      haptics.success();
       queryClient.invalidateQueries({ queryKey: ['myLists', gameId] });
-      Alert.alert('', messages.games.gameAddedToList);
+      showToast('success', messages.games.gameAddedToList);
     },
   });
 
   const removeMutation = useMutation({
     mutationFn: (listId: number) => removeGameFromList(listId, gameId),
     onSuccess: () => {
+      haptics.impactLight();
       queryClient.invalidateQueries({ queryKey: ['myLists', gameId] });
-      Alert.alert('', messages.games.gameRemovedFromList);
+      showToast('info', messages.games.gameRemovedFromList);
     },
   });
 
   const handleToggle = (list: UserList) => {
+    haptics.impactLight();
     if (list.containsCurrentGame) {
       removeMutation.mutate(list.id);
     } else {

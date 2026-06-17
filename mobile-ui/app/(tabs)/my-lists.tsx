@@ -12,6 +12,7 @@ import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ScreenWrapper } from '@/src/components/common/ScreenWrapper';
 import { ScreenHeader } from '@/src/components/shell';
+import { SegmentedTabs } from '@/src/components/common/SegmentedTabs';
 import { ListCard } from '@/src/components/lists/ListCard';
 import { EmptyState } from '@/src/components/common/EmptyState';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
@@ -141,50 +142,15 @@ export default function MyListsScreen() {
           {messages.lists.myListsDescription}
         </Text>
 
-        <View style={[styles.tabBar, { borderBottomColor: colors.border }]}>
-          <Pressable
-            style={[
-              styles.tab,
-              activeTab === 'my' && [
-                styles.activeTab,
-                { borderBottomColor: colors.primary },
-              ],
+        <View style={styles.tabBar}>
+          <SegmentedTabs
+            tabs={[
+              { key: 'my' as const, label: messages.lists.myListsTab },
+              { key: 'following' as const, label: messages.lists.followedListsTab },
             ]}
-            onPress={() => setActiveTab('my')}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                { color: activeTab === 'my' ? colors.primary : colors.textSecondary },
-              ]}
-            >
-              {messages.lists.myListsTab}
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[
-              styles.tab,
-              activeTab === 'following' && [
-                styles.activeTab,
-                { borderBottomColor: colors.primary },
-              ],
-            ]}
-            onPress={() => setActiveTab('following')}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                {
-                  color:
-                    activeTab === 'following'
-                      ? colors.primary
-                      : colors.textSecondary,
-                },
-              ]}
-            >
-              {messages.lists.followedListsTab}
-            </Text>
-          </Pressable>
+            activeKey={activeTab}
+            onChange={(k) => setActiveTab(k)}
+          />
         </View>
       </View>
 
@@ -267,23 +233,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   tabBar: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
     marginBottom: Spacing.sm,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: Spacing.md,
-    alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  activeTab: {
-    borderBottomWidth: 2,
-  },
-  tabText: {
-    fontSize: FontSize.md,
-    fontWeight: '600',
   },
   listContent: {
     padding: Spacing.lg,

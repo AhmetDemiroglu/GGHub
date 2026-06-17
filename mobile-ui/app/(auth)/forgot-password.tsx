@@ -6,7 +6,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
 } from 'react-native';
 import { Link, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,11 +14,14 @@ import { useLocale } from '@/src/hooks/use-locale';
 import { requestPasswordReset } from '@/src/api/auth';
 import { Input } from '@/src/components/common/Input';
 import { Button } from '@/src/components/common/Button';
+import { useToast } from '@/src/components/common/Toast';
 import { FontSize, Spacing } from '@/src/constants/theme';
+import * as haptics from '@/src/utils/haptics';
 
 export default function ForgotPasswordScreen() {
   const { colors } = useTheme();
   const { messages } = useLocale();
+  const { showToast } = useToast();
   const t = messages.auth;
 
   const [email, setEmail] = useState('');
@@ -28,24 +30,28 @@ export default function ForgotPasswordScreen() {
 
   const handleSubmit = async () => {
     if (!email.trim()) {
-      Alert.alert(t.forgotPasswordErrorTitle, t.forgotPasswordEmailRequired);
+      haptics.warning();
+      showToast('error', t.forgotPasswordErrorTitle, t.forgotPasswordEmailRequired);
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
-      Alert.alert(t.forgotPasswordErrorTitle, t.forgotPasswordEmailInvalid);
+      haptics.warning();
+      showToast('error', t.forgotPasswordErrorTitle, t.forgotPasswordEmailInvalid);
       return;
     }
 
     setIsLoading(true);
     try {
       await requestPasswordReset({ email: email.trim() });
+      haptics.success();
       setSent(true);
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
       const message = axiosError.response?.data?.message || t.forgotPasswordErrorDescription;
-      Alert.alert(t.forgotPasswordErrorTitle, message);
+      haptics.error();
+      showToast('error', t.forgotPasswordErrorTitle, message);
     } finally {
       setIsLoading(false);
     }

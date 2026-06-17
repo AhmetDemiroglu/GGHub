@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { Button } from '@/src/components/common/Button';
@@ -9,6 +9,7 @@ import { FontSize, Spacing } from '@/src/constants/theme';
 export default function NotFoundScreen() {
   const { colors } = useTheme();
   const { messages } = useLocale();
+  const router = useRouter();
   const t = messages.notFound;
 
   return (
@@ -18,9 +19,12 @@ export default function NotFoundScreen() {
       <Text style={[styles.description, { color: colors.textSecondary }]}>
         {t.description}
       </Text>
-      <Link href="/(tabs)" asChild>
-        <Button title={t.home} variant="primary" onPress={() => {}} style={styles.button} />
-      </Link>
+      <Button
+        title={t.home}
+        variant="primary"
+        onPress={() => router.replace('/(tabs)')}
+        style={styles.button}
+      />
     </View>
   );
 }

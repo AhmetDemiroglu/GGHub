@@ -24,6 +24,7 @@ import { getMessageThread, sendMessage } from '@/src/api/messages';
 import { SignalRContext } from '@/src/contexts/signalr-context';
 import type { MessageDto } from '@/src/models/message';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
+import * as haptics from '@/src/utils/haptics';
 
 export default function MessageThreadScreen() {
   const { username } = useLocalSearchParams<{ username: string }>();
@@ -92,6 +93,7 @@ export default function MessageThreadScreen() {
 
   const handleSend = useCallback(
     (text: string) => {
+      haptics.impactLight();
       sendMutation.mutate(text);
     },
     [sendMutation],
@@ -119,8 +121,14 @@ export default function MessageThreadScreen() {
   return (
     <ScreenWrapper noPadding edges={['top', 'bottom']}>
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        <TouchableOpacity
+          onPress={() => {
+            haptics.impactLight();
+            router.back();
+          }}
+          style={styles.backBtn}
+        >
+          <Ionicons name="chevron-back" size={26} color={colors.text} />
         </TouchableOpacity>
         <Avatar uri={null} name={username} size={36} />
         <Text style={[styles.headerUsername, { color: colors.text }]}>{username}</Text>

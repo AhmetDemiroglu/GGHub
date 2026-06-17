@@ -4,8 +4,9 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
-import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
+import { FontSize, Spacing, BorderRadius, Shadows } from '@/src/constants/theme';
 import { getImageUrl } from '@/src/utils/image';
+import * as haptics from '@/src/utils/haptics';
 import type { HomeGame } from '@/src/models/home';
 
 interface TrendingGamesProps {
@@ -26,8 +27,11 @@ export function TrendingGames({ games }: TrendingGamesProps) {
 
       return (
         <Pressable
-          style={[styles.card, { backgroundColor: colors.surface }]}
-          onPress={() => router.push(`/game/${item.slug}`)}
+          style={[styles.card, { backgroundColor: colors.surface }, Shadows.sm]}
+          onPress={() => {
+            haptics.impactLight();
+            router.push(`/game/${item.slug}`);
+          }}
         >
           {imageUri ? (
             <Image source={{ uri: imageUri }} style={styles.cardImage} resizeMode="cover" />

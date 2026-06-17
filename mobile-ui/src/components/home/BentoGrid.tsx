@@ -2,9 +2,11 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
-import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
+import { FontSize, Spacing, BorderRadius, Shadows } from '@/src/constants/theme';
+import * as haptics from '@/src/utils/haptics';
 import { TrendingGames } from './TrendingGames';
 import { LeaderboardCard } from './LeaderboardCard';
 import type { HomeGame, LeaderboardUser } from '@/src/models/home';
@@ -26,17 +28,25 @@ export function BentoGrid({ trendingGames, leaderboard, showJoinCta }: BentoGrid
       <LeaderboardCard users={leaderboard} />
 
       {showJoinCta && (
-        <View style={[styles.ctaCard, { backgroundColor: colors.primary }]}>
+        <LinearGradient
+          colors={[colors.primary, colors.accent]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.ctaCard, Shadows.md]}
+        >
           <Ionicons name="game-controller" size={32} color="#ffffff" />
           <Text style={styles.ctaTitle}>{messages.home.joinCta}</Text>
           <Text style={styles.ctaDescription}>{messages.home.joinDescription}</Text>
           <Pressable
             style={styles.ctaButton}
-            onPress={() => router.push('/(auth)/register')}
+            onPress={() => {
+              haptics.impactLight();
+              router.push('/(auth)/register');
+            }}
           >
             <Text style={styles.ctaButtonText}>{messages.home.signUp}</Text>
           </Pressable>
-        </View>
+        </LinearGradient>
       )}
     </View>
   );

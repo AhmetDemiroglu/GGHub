@@ -7,7 +7,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
 } from 'react-native';
 import { Link, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,12 +17,15 @@ import { login as loginApi } from '@/src/api/auth';
 import { Input } from '@/src/components/common/Input';
 import { Button } from '@/src/components/common/Button';
 import { SocialAuthButtons } from '@/src/components/auth/SocialAuthButtons';
-import { FontSize, Spacing } from '@/src/constants/theme';
+import { useToast } from '@/src/components/common/Toast';
+import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
+import * as haptics from '@/src/utils/haptics';
 
 export default function LoginScreen() {
   const { login } = useAuth();
   const { colors } = useTheme();
   const { messages } = useLocale();
+  const { showToast } = useToast();
   const t = messages.auth;
 
   const [email, setEmail] = useState('');
@@ -32,11 +34,13 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email.trim()) {
-      Alert.alert(t.loginErrorTitle, t.validation.emailOrUsernameRequired);
+      haptics.warning();
+      showToast('error', t.loginErrorTitle, t.validation.emailOrUsernameRequired);
       return;
     }
     if (!password.trim()) {
-      Alert.alert(t.loginErrorTitle, t.validation.passwordRequired);
+      haptics.warning();
+      showToast('error', t.loginErrorTitle, t.validation.passwordRequired);
       return;
     }
 
@@ -44,23 +48,24 @@ export default function LoginScreen() {
     try {
       const response = await loginApi({ email: email.trim(), password });
       await login(response.data);
+      haptics.success();
+      showToast('success', t.loginSuccess);
       router.replace('/(tabs)');
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
       const message = axiosError.response?.data?.message || t.loginDefaultError;
-      Alert.alert(t.loginErrorTitle, message);
+      haptics.error();
+      showToast('error', t.loginErrorTitle, message);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleGuest = () => {
+    haptics.impactLight();
     const gw = messages.guestWelcome;
-    Alert.alert(gw.title, gw.message, [
-      { text: messages.common.cancel, style: 'cancel' },
-      { text: gw.signUp, onPress: () => router.push('/(auth)/register') },
-      { text: gw.continue, onPress: () => router.replace('/(tabs)') },
-    ]);
+    showToast('info', gw.title, gw.message);
+    router.replace('/(tabs)');
   };
 
   return (

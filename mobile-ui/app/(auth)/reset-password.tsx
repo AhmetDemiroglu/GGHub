@@ -6,7 +6,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,11 +14,14 @@ import { useLocale } from '@/src/hooks/use-locale';
 import { resetPassword, requestPasswordReset } from '@/src/api/auth';
 import { Input } from '@/src/components/common/Input';
 import { Button } from '@/src/components/common/Button';
+import { useToast } from '@/src/components/common/Toast';
 import { FontSize, Spacing } from '@/src/constants/theme';
+import * as haptics from '@/src/utils/haptics';
 
 export default function ResetPasswordScreen() {
   const { colors } = useTheme();
   const { messages } = useLocale();
+  const { showToast } = useToast();
   const t = messages.auth;
   const params = useLocalSearchParams<{ email?: string }>();
 
@@ -54,7 +56,10 @@ export default function ResetPasswordScreen() {
   };
 
   const handleReset = async () => {
-    if (!validate()) return;
+    if (!validate()) {
+      haptics.warning();
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -62,16 +67,14 @@ export default function ResetPasswordScreen() {
         token: code.trim(),
         newPassword,
       });
-      Alert.alert(t.resetPasswordSuccessTitle, t.resetPasswordSuccessDescription, [
-        {
-          text: 'OK',
-          onPress: () => router.replace('/(auth)/login'),
-        },
-      ]);
+      haptics.success();
+      showToast('success', t.resetPasswordSuccessTitle, t.resetPasswordSuccessDescription);
+      setTimeout(() => router.replace('/(auth)/login'), 1200);
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string } } };
       const message = axiosError.response?.data?.message || t.resetPasswordErrorDescription;
-      Alert.alert(t.resetPasswordErrorTitle, message);
+      haptics.error();
+      showToast('error', t.resetPasswordErrorTitle, message);
     } finally {
       setIsLoading(false);
     }
@@ -83,12 +86,11 @@ export default function ResetPasswordScreen() {
     setIsSendingCode(true);
     try {
       await requestPasswordReset({ email: params.email });
-      Alert.alert(
-        t.forgotPasswordSuccessTitle,
-        t.forgotPasswordSuccessDescription,
-      );
+      haptics.success();
+      showToast('success', t.forgotPasswordSuccessTitle, t.forgotPasswordSuccessDescription);
     } catch {
-      Alert.alert(t.forgotPasswordErrorTitle, t.forgotPasswordErrorDescription);
+      haptics.error();
+      showToast('error', t.forgotPasswordErrorTitle, t.forgotPasswordErrorDescription);
     } finally {
       setIsSendingCode(false);
     }

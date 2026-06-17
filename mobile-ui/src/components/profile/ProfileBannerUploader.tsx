@@ -10,7 +10,7 @@ interface ProfileBannerUploaderProps {
 }
 
 /**
- * Floating "kamera" buton — banner üzerine konuştuğunda tıklanır,
+ * Floating "kamera" buton - banner üzerine konuştuğunda tıklanır,
  * ImagePicker açar, kullanıcı 3:1 oranında kırpıp seçer, sonra R2'ye
  * yüklenir ve `onUploaded` callback ile yeni URL bildirilir.
  */

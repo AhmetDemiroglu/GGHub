@@ -1,12 +1,13 @@
 import React from 'react';
-import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Image, Pressable, StyleSheet, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
-import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
+import { FontSize, Spacing, BorderRadius, Shadows } from '@/src/constants/theme';
 import { getImageUrl } from '@/src/utils/image';
 import { formatTimeAgo } from '@/src/utils/format';
+import * as haptics from '@/src/utils/haptics';
 import { ActivityType, type Activity } from '@/src/models/activity';
 
 interface ActivityFeedProps {
@@ -77,8 +78,16 @@ function ActivityItem({ item }: { item: Activity }) {
   const info = getActivityInfo();
   if (!info.text) return null;
 
+  const handlePress = () => {
+    haptics.impactLight();
+    info.onPress();
+  };
+
   return (
-    <Pressable style={[styles.activityItem, { backgroundColor: colors.surface }]} onPress={info.onPress}>
+    <Pressable
+      style={[styles.activityItem, { backgroundColor: colors.surface }, Shadows.sm]}
+      onPress={handlePress}
+    >
       <View style={[styles.iconCircle, { backgroundColor: `${info.iconColor}20` }]}>
         <Ionicons name={info.icon} size={18} color={info.iconColor} />
       </View>
@@ -122,9 +131,13 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
       <Text style={[styles.sectionTitle, { color: colors.text }]}>
         {messages.home.recentActivity}
       </Text>
-      {activities.map((item, index) => (
-        <ActivityItem key={`${item.id}-${index}`} item={item} />
-      ))}
+      <FlatList
+        data={activities}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
+        renderItem={({ item }) => <ActivityItem item={item} />}
+        scrollEnabled={false}
+        ItemSeparatorComponent={() => <View style={{ height: Spacing.sm }} />}
+      />
     </View>
   );
 }

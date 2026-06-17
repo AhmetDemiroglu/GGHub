@@ -3,6 +3,8 @@ import { View, Text, Alert, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation } from '@tanstack/react-query';
 import { Button } from '@/src/components/common/Button';
+import { useToast } from '@/src/components/common/Toast';
+import * as haptics from '@/src/utils/haptics';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
@@ -17,20 +19,24 @@ export function DangerZone({ onExportData }: DangerZoneProps) {
   const { colors } = useTheme();
   const { messages } = useLocale();
   const { logout } = useAuth();
+  const { showToast } = useToast();
   const dz = messages.profile.dangerZone;
 
   const deleteMutation = useMutation({
     mutationFn: deleteMyAccount,
     onSuccess: async () => {
-      Alert.alert('', dz.deleteSuccess);
+      haptics.success();
+      showToast('info', dz.deleteSuccess);
       await logout();
     },
     onError: () => {
-      Alert.alert('', dz.deleteError);
+      haptics.error();
+      showToast('error', dz.deleteError);
     },
   });
 
   const handleDelete = () => {
+    haptics.impactHeavy();
     Alert.alert(dz.confirmTitle, dz.confirmDescription, [
       { text: dz.cancelButton, style: 'cancel' },
       {

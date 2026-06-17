@@ -67,7 +67,7 @@ export function ScreenWrapper({
     !noPadding && { paddingHorizontal: Spacing.md },
   ].filter(Boolean) as ViewStyle[];
 
-  // pointerEvents="box-none" — dokunma alt çocuklara geçer; sadece pan responder
+  // pointerEvents="box-none" - dokunma alt çocuklara geçer; sadece pan responder
   // gesture'ı yakalayacak duruma gelirse (sol kenarda + yatay drag) absorb eder.
   // Bu sayede sol kenarda da normal scroll/tıklama bozulmaz.
   const edgeOverlay = swipeResponder ? (

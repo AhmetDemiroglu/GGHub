@@ -6,6 +6,7 @@ import { useAuth } from '@/src/hooks/use-auth';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
+import { AppTabBar } from '@/src/components/shell/AppTabBar';
 import { FontSize } from '@/src/constants/theme';
 
 export default function TabsLayout() {
@@ -33,24 +34,20 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarStyle: {
-          backgroundColor: colors.tabBar,
-          borderTopColor: colors.tabBarBorder,
-          borderTopWidth: 1,
-          paddingBottom: insets.bottom,
-          height: 50 + insets.bottom,
-        },
+        tabBarStyle: { display: 'none' },
         tabBarLabelStyle: {
           fontSize: FontSize.xs,
           fontWeight: '500',
         },
       }}
+      tabBar={(props) => <AppTabBar {...props} />}
     >
       {/* ── Görünür Sekmeler ── */}
       <Tabs.Screen
         name="index"
         options={{
           title: messages.nav.home,
+          tabBarLabel: messages.nav.tabs.home,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" size={size} color={color} />
           ),
@@ -60,7 +57,7 @@ export default function TabsLayout() {
         name="discover"
         options={{
           title: messages.nav.discover,
-          tabBarLabel: 'Keşfet',
+          tabBarLabel: messages.nav.tabs.discover,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="game-controller-outline" size={size} color={color} />
           ),
@@ -70,6 +67,7 @@ export default function TabsLayout() {
         name="search"
         options={{
           title: messages.nav.search,
+          tabBarLabel: messages.nav.tabs.search,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="search-outline" size={size} color={color} />
           ),
@@ -79,7 +77,7 @@ export default function TabsLayout() {
         name="lists"
         options={{
           title: messages.nav.lists,
-          tabBarLabel: 'Listeler',
+          tabBarLabel: messages.nav.tabs.lists,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="list-outline" size={size} color={color} />
           ),
@@ -89,13 +87,14 @@ export default function TabsLayout() {
         name="profile"
         options={{
           title: messages.nav.profile,
+          tabBarLabel: messages.nav.tabs.profile,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-outline" size={size} color={color} />
           ),
         }}
         listeners={({ navigation }) => ({
           // Profil tab'ına basıldığında nested stack settings/edit'te kalmışsa
-          // index'e geri pop'la — kullanıcı tab icon'undan her zaman kendi profile gelsin.
+          // index'e geri pop'la - kullanıcı tab icon'undan her zaman kendi profile gelsin.
           tabPress: (e) => {
             const state: any = navigation.getState?.();
             const profileRoute = state?.routes?.find((r: any) => r.name === 'profile');
@@ -130,7 +129,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="profiles/[username]" options={{ ...hidden }} />
       <Tabs.Screen name="reviews/user/[username]" options={{ ...hidden }} />
 
-      {/* Game detail — immersive hero için tab bar gizlenir */}
+      {/* Game detail - tab bar gizlenir */}
       <Tabs.Screen
         name="game/[id]"
         options={{

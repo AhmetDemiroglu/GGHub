@@ -1,12 +1,22 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withDelay,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
 import { Avatar } from '@/src/components/common/Avatar';
 import { ProfileBannerUploader } from '@/src/components/profile/ProfileBannerUploader';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { getImageUrl } from '@/src/utils/image';
-import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
+import { Spacing, FontSize, BorderRadius, Springs, Shadows } from '@/src/constants/theme';
+import * as haptics from '@/src/utils/haptics';
 
 interface ProfileHeaderProps {
   username: string;
@@ -58,13 +68,37 @@ export function ProfileHeader({
   const xpPercent = xpToNextLevel > 0 ? Math.min((xp / xpToNextLevel) * 100, 100) : 0;
   const bannerUri = getImageUrl(headerImageUrl);
 
+  // XP bar animasyon
+  const xpProgress = useSharedValue(0);
+  useEffect(() => {
+    xpProgress.value = withDelay(200, withSpring(xpPercent / 100, Springs.bouncy));
+  }, [xpPercent, xpProgress]);
+
+  const xpFillStyle = useAnimatedStyle(() => ({
+    width: `${interpolate(xpProgress.value, [0, 1], [0, 100], Extrapolation.CLAMP)}%`,
+  }));
+
+  const handleFollowersPress = () => {
+    haptics.impactLight();
+    onFollowersPress?.();
+  };
+  const handleFollowingPress = () => {
+    haptics.impactLight();
+    onFollowingPress?.();
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.bannerWrap}>
         {bannerUri ? (
           <Image source={{ uri: bannerUri }} style={styles.bannerImage} resizeMode="cover" />
         ) : (
-          <View style={[styles.bannerFallback, { backgroundColor: colors.primary }]} />
+          <LinearGradient
+            colors={[colors.primary, colors.accent]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.bannerFallback}
+          />
         )}
         {editableBanner && onBannerUploaded ? (
           <View style={styles.bannerEditWrap}>
@@ -91,7 +125,7 @@ export function ProfileHeader({
         ) : null}
 
         <View style={styles.levelRow}>
-          <View style={[styles.levelBadge, { backgroundColor: colors.primary }]}>
+          <View style={[styles.levelBadge, { backgroundColor: colors.primary }, Shadows.sm]}>
             <Ionicons name="shield-checkmark" size={14} color="#ffffff" />
             <Text style={styles.levelText}>
               Lv. {level}
@@ -99,11 +133,8 @@ export function ProfileHeader({
           </View>
           <View style={styles.xpContainer}>
             <View style={[styles.xpBar, { backgroundColor: colors.surfaceHighlight }]}>
-              <View
-                style={[
-                  styles.xpFill,
-                  { backgroundColor: colors.primary, width: `${xpPercent}%` },
-                ]}
+              <Animated.View
+                style={[styles.xpFill, { backgroundColor: colors.primary }, xpFillStyle]}
               />
             </View>
             <Text style={[styles.xpText, { color: colors.textMuted }]}>
@@ -113,11 +144,11 @@ export function ProfileHeader({
         </View>
 
         <View style={styles.statsRow}>
-          <TouchableOpacity onPress={onFollowersPress} style={styles.statItem}>
+          <TouchableOpacity onPress={handleFollowersPress} style={styles.statItem}>
             <Text style={[styles.statCount, { color: colors.text }]}>{followersCount}</Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{h.followersLabel}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={onFollowingPress} style={styles.statItem}>
+          <TouchableOpacity onPress={handleFollowingPress} style={styles.statItem}>
             <Text style={[styles.statCount, { color: colors.text }]}>{followingCount}</Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{h.followingLabel}</Text>
           </TouchableOpacity>

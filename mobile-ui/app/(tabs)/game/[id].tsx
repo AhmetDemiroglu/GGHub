@@ -1,22 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   Pressable,
   ActivityIndicator,
-  Alert,
   RefreshControl,
   StyleSheet,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import Animated, {
+  useSharedValue,
+  useAnimatedScrollHandler,
+} from 'react-native-reanimated';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
 import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
+import * as haptics from '@/src/utils/haptics';
 import { gameApi } from '@/src/api/game';
 import { getGameReviews, getMyReview } from '@/src/api/review';
 import { GameHero } from '@/src/components/game/GameHero';
@@ -42,6 +46,11 @@ export default function GameDetailScreen() {
 
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
   const [listModalVisible, setListModalVisible] = useState(false);
+  const scrollY = useSharedValue(0);
+
+  const scrollHandler = useAnimatedScrollHandler((e) => {
+    scrollY.value = e.contentOffset.y;
+  });
 
   const {
     data: game,
@@ -81,10 +90,10 @@ export default function GameDetailScreen() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['game', id] });
-      Alert.alert('Success', 'Metacritic data synced.');
+      haptics.success();
     },
     onError: () => {
-      Alert.alert('Error', 'Failed to sync Metacritic data.');
+      haptics.error();
     },
   });
 
@@ -113,15 +122,22 @@ export default function GameDetailScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Pressable
-        style={[styles.backButton, { top: insets.top + Spacing.sm, backgroundColor: 'rgba(0,0,0,0.4)' }]}
-        onPress={() => router.back()}
+        style={[styles.backButton, { top: insets.top + Spacing.sm }]}
+        onPress={() => {
+          haptics.impactLight();
+          router.back();
+        }}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
-        <Ionicons name="arrow-back" size={22} color="#ffffff" />
+        <BlurView intensity={40} tint="dark" style={styles.backButtonBlur}>
+          <Ionicons name="chevron-back" size={22} color="#ffffff" />
+        </BlurView>
       </Pressable>
 
-      <ScrollView
+      <Animated.ScrollView
         showsVerticalScrollIndicator={false}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
@@ -131,7 +147,7 @@ export default function GameDetailScreen() {
           />
         }
       >
-        <GameHero game={game} />
+        <GameHero game={game} scrollY={scrollY} />
 
         {/* Action buttons */}
         <View style={styles.actionsRow}>
@@ -145,7 +161,10 @@ export default function GameDetailScreen() {
           {isAuthenticated && (
             <Pressable
               style={[styles.actionButton, { backgroundColor: colors.surface }]}
-              onPress={() => requireAuth(() => setListModalVisible(true))}
+              onPress={() => requireAuth(() => {
+                haptics.impactLight();
+                setListModalVisible(true);
+              })}
             >
               <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
               <Text style={[styles.actionText, { color: colors.primary }]}>
@@ -156,7 +175,10 @@ export default function GameDetailScreen() {
           {isAuthenticated && (
             <Pressable
               style={[styles.actionButton, { backgroundColor: colors.primary }]}
-              onPress={() => requireAuth(() => setReviewModalVisible(true))}
+              onPress={() => requireAuth(() => {
+                haptics.impactLight();
+                setReviewModalVisible(true);
+              })}
             >
               <Ionicons name="create-outline" size={20} color="#ffffff" />
               <Text style={[styles.actionText, { color: '#ffffff' }]}>
@@ -216,7 +238,7 @@ export default function GameDetailScreen() {
             </Pressable>
           </View>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Modals */}
       <ReviewModal
@@ -244,11 +266,17 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: Spacing.md,
     zIndex: 10,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  backButtonBlur: {
+    flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 20,
+    overflow: 'hidden',
   },
   centered: {
     justifyContent: 'center',
