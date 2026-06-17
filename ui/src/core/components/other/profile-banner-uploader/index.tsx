@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, ChangeEvent, useCallback } from "react";
+import { useState, useRef, ChangeEvent, useCallback, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import Cropper, { Area } from "react-easy-crop";
@@ -9,7 +9,7 @@ import { getCroppedImg } from "@/core/lib/image-utils";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/core/components/ui/dialog";
 import { Button } from "@/core/components/ui/button";
-import { Upload } from "lucide-react";
+import { ImagePlus, Upload, ZoomIn } from "lucide-react";
 import { Slider } from "@/core/components/ui/slider";
 
 interface ProfileBannerUploaderProps {
@@ -22,13 +22,39 @@ const ASPECT = 3; // X-stili geniş banner
 export function ProfileBannerUploader({ isOpen, onClose }: ProfileBannerUploaderProps) {
     const queryClient = useQueryClient();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const zoomFrameRef = useRef<number | null>(null);
 
     const [imageSrc, setImageSrc] = useState<string | null>(null);
     const [crop, setCrop] = useState({ x: 0, y: 0 });
     const [zoom, setZoom] = useState(1);
     const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
     const [croppedFile, setCroppedFile] = useState<File | null>(null);
-    const previewUrl = croppedFile ? URL.createObjectURL(croppedFile) : null;
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!imageSrc?.startsWith("blob:")) return;
+        return () => URL.revokeObjectURL(imageSrc);
+    }, [imageSrc]);
+
+    useEffect(() => {
+        if (!croppedFile) {
+            setPreviewUrl(null);
+            return;
+        }
+
+        const nextPreviewUrl = URL.createObjectURL(croppedFile);
+        setPreviewUrl(nextPreviewUrl);
+
+        return () => URL.revokeObjectURL(nextPreviewUrl);
+    }, [croppedFile]);
+
+    useEffect(() => {
+        return () => {
+            if (zoomFrameRef.current !== null) {
+                cancelAnimationFrame(zoomFrameRef.current);
+            }
+        };
+    }, []);
 
     const { mutate, isPending } = useMutation({
         mutationFn: uploadHeaderPhoto,
@@ -44,16 +70,32 @@ export function ProfileBannerUploader({ isOpen, onClose }: ProfileBannerUploader
     });
 
     const handleFileSelectClick = () => fileInputRef.current?.click();
+
     const onCropComplete = useCallback((_: Area, croppedPixels: Area) => {
         setCroppedAreaPixels(croppedPixels);
+    }, []);
+
+    const handleZoomChange = useCallback((nextZoom: number) => {
+        if (zoomFrameRef.current !== null) {
+            cancelAnimationFrame(zoomFrameRef.current);
+        }
+
+        zoomFrameRef.current = requestAnimationFrame(() => {
+            setZoom(nextZoom);
+            zoomFrameRef.current = null;
+        });
     }, []);
 
     const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onloadend = () => setImageSrc(reader.result as string);
-        reader.readAsDataURL(file);
+
+        setCroppedFile(null);
+        setCroppedAreaPixels(null);
+        setCrop({ x: 0, y: 0 });
+        setZoom(1);
+        setImageSrc(URL.createObjectURL(file));
+        event.target.value = "";
     };
 
     const showCroppedImage = useCallback(async () => {
@@ -73,6 +115,7 @@ export function ProfileBannerUploader({ isOpen, onClose }: ProfileBannerUploader
     const resetAndClose = () => {
         setImageSrc(null);
         setCroppedFile(null);
+        setCroppedAreaPixels(null);
         setZoom(1);
         setCrop({ x: 0, y: 0 });
         onClose();
@@ -85,13 +128,13 @@ export function ProfileBannerUploader({ isOpen, onClose }: ProfileBannerUploader
                 if (!open) resetAndClose();
             }}
         >
-            <DialogContent className="max-w-2xl">
+            <DialogContent size="xl" className="max-h-[92vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Profil banner'ını güncelle</DialogTitle>
                 </DialogHeader>
 
-                <div className="flex flex-col items-center gap-4 py-4">
-                    <div className="relative h-56 w-full overflow-hidden rounded-md bg-secondary/30">
+                <div className="flex flex-col items-center gap-4 py-3">
+                    <div className="relative aspect-[3/1] w-full min-h-64 overflow-hidden rounded-md bg-secondary/30 md:min-h-80 lg:min-h-[360px]">
                         {imageSrc ? (
                             <>
                                 <Cropper
@@ -101,24 +144,31 @@ export function ProfileBannerUploader({ isOpen, onClose }: ProfileBannerUploader
                                     aspect={ASPECT}
                                     cropShape="rect"
                                     onCropChange={setCrop}
-                                    onZoomChange={setZoom}
+                                    onZoomChange={handleZoomChange}
                                     onCropComplete={onCropComplete}
+                                    restrictPosition
+                                    zoomSpeed={0.7}
+                                    objectFit="horizontal-cover"
                                 />
-                                <Slider
-                                    value={[zoom]}
-                                    min={1}
-                                    max={3}
-                                    step={0.1}
-                                    onValueChange={(value) => setZoom(value[0])}
-                                    className="absolute bottom-4 left-1/2 w-1/2 -translate-x-1/2"
-                                />
+                                <div className="absolute bottom-4 left-1/2 flex w-[min(520px,calc(100%-2rem))] -translate-x-1/2 items-center gap-3 rounded-full border border-white/10 bg-background/85 px-4 py-3 shadow-lg backdrop-blur">
+                                    <ZoomIn className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                    <Slider
+                                        value={[zoom]}
+                                        min={1}
+                                        max={3}
+                                        step={0.05}
+                                        onValueChange={(value) => handleZoomChange(value[0])}
+                                        className="flex-1"
+                                    />
+                                </div>
                             </>
                         ) : previewUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={previewUrl} alt="Banner önizleme" className="h-full w-full object-cover" />
                         ) : (
-                            <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
-                                Banner için bir görsel seç (3:1 önerilir)
+                            <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
+                                <ImagePlus className="h-8 w-8" />
+                                <span>Banner için bir görsel seç (3:1 önerilir)</span>
                             </div>
                         )}
                     </div>

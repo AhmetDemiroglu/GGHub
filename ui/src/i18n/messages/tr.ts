@@ -551,6 +551,7 @@ export const trMessages = {
             bannerAlt: "GGHub Banner",
             profileImageAlt: "{name} profil resmi",
             settings: "Profil ayarları",
+            editBanner: "Banner'ı düzenle",
             editProfile: "Profili düzenle",
             viewBlockedUsers: "Engellenenleri görüntüle",
             loginRequiredFollow: "Takip etmek için giriş yapmalısın.",
