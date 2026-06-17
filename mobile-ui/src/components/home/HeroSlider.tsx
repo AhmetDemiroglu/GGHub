@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     padding: Spacing.lg,
   },
   topRow: {
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
   nameContainer: {
     flex: 1,
     marginRight: Spacing.sm,
-    gap: Spacing.xs,
+    gap: Spacing.sm,
   },
   scoreShell: {
     alignSelf: 'flex-start',
