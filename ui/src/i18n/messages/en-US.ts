@@ -78,6 +78,8 @@ export const enUSMessages = {
         orDivider: "or",
         continueWithGoogle: "Continue with Google",
         continueWithApple: "Continue with Apple",
+        loginSubtitle: "Welcome back, player.",
+        registerSubtitle: "Join the community of gamers.",
         registerTitle: "Sign up",
         registerCreateTitle: "Create account",
         registerUsernameLabel: "Username",

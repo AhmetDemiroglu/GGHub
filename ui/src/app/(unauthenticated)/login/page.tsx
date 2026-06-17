@@ -8,7 +8,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { AxiosError } from "axios";
-import { X } from "lucide-react";
+import { X, Mail, Lock } from "lucide-react";
 import { login as loginApi } from "@/api/auth/auth.api";
 import { UserForLogin } from "@/models/auth/auth.model";
 import { useAuth } from "@core/hooks/use-auth";
@@ -83,17 +83,42 @@ function LoginPageContent() {
     });
 
     return (
-        <div className="flex min-h-screen items-center justify-center">
-            <Card className="relative w-[400px]">
+        <div className="relative w-full max-w-md">
+            {/* Brand glow behind the card */}
+            <div
+                aria-hidden
+                className="pointer-events-none absolute -inset-1 rounded-[28px] bg-gradient-to-r from-cyan-500/20 via-blue-500/10 to-fuchsia-500/20 blur-2xl"
+            />
+
+            <Card className="relative overflow-hidden rounded-2xl border-border/50 bg-card/80 shadow-2xl backdrop-blur-xl">
+                {/* Top accent line */}
+                <div aria-hidden className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/70 to-transparent" />
+
                 <Link href={buildLocalizedPathname("/", locale)} aria-label={t("auth.backToHome")}>
-                    <Button variant="ghost" size="icon" className="absolute right-4 top-4 h-6 w-6 cursor-pointer" onClick={() => router.back()} aria-label={t("common.back")}>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-3 top-3 h-7 w-7 cursor-pointer text-muted-foreground hover:text-foreground"
+                        onClick={() => router.back()}
+                        aria-label={t("common.back")}
+                    >
                         <X className="h-4 w-4" />
                     </Button>
                 </Link>
-                <CardHeader>
-                    <CardTitle>{t("auth.loginTitle")}</CardTitle>
+
+                <CardHeader className="space-y-3 pb-2 pt-9 text-center">
+                    <Link href={buildLocalizedPathname("/", locale)} className="mx-auto inline-flex select-none">
+                        <span className="bg-gradient-to-r from-cyan-400 via-blue-500 to-fuchsia-500 bg-clip-text text-[2.6rem] font-extrabold leading-none tracking-tight text-transparent">
+                            GGHub
+                        </span>
+                    </Link>
+                    <div className="space-y-1">
+                        <CardTitle className="text-xl font-semibold">{t("auth.loginTitle")}</CardTitle>
+                        <p className="text-sm text-muted-foreground">{t("auth.loginSubtitle")}</p>
+                    </div>
                 </CardHeader>
-                <CardContent>
+
+                <CardContent className="px-6 pb-8 pt-2 sm:px-8">
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit((values) => mutate(values))} className="space-y-4">
                             <FormField
@@ -103,7 +128,10 @@ function LoginPageContent() {
                                     <FormItem>
                                         <FormLabel>{t("auth.loginEmailLabel")}</FormLabel>
                                         <FormControl>
-                                            <Input placeholder={t("auth.loginEmailPlaceholder")} {...field} />
+                                            <div className="relative">
+                                                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                                <Input className="h-11 pl-9" placeholder={t("auth.loginEmailPlaceholder")} {...field} />
+                                            </div>
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -116,25 +144,40 @@ function LoginPageContent() {
                                     <FormItem>
                                         <FormLabel>{t("auth.passwordLabel")}</FormLabel>
                                         <FormControl>
-                                            <Input type="password" {...field} />
+                                            <div className="relative">
+                                                <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                                <Input type="password" className="h-11 pl-9" {...field} />
+                                            </div>
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
                             <div className="text-right">
-                                <Link href={buildLocalizedPathname("/forgot-password", locale)} className="text-sm text-muted-foreground underline underline-offset-4 hover:text-primary">
+                                <Link
+                                    href={buildLocalizedPathname("/forgot-password", locale)}
+                                    className="text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-cyan-400 hover:underline"
+                                >
                                     {t("auth.forgotPassword")}
                                 </Link>
                             </div>
 
-                            <Button type="submit" className="w-full cursor-pointer" disabled={isPending}>
+                            <Button
+                                type="submit"
+                                disabled={isPending}
+                                className="h-11 w-full cursor-pointer rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 text-base font-semibold text-white shadow-lg shadow-violet-500/25 transition-all hover:from-cyan-400 hover:to-violet-400 hover:shadow-violet-500/40"
+                            >
                                 {isPending ? t("auth.loginPending") : t("auth.loginTitle")}
                             </Button>
+
                             <SocialAuthButtons />
-                            <p className="text-left text-sm text-muted-foreground">
+
+                            <p className="pt-1 text-center text-sm text-muted-foreground">
                                 {t("auth.noAccount")}
-                                <Link href={buildLocalizedPathname("/register", locale)} className="ml-1 font-bold underline underline-offset-4 hover:text-primary">
+                                <Link
+                                    href={buildLocalizedPathname("/register", locale)}
+                                    className="ml-1 font-semibold text-cyan-400 underline-offset-4 hover:underline"
+                                >
                                     {t("auth.createAccount")}
                                 </Link>
                             </p>

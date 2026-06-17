@@ -6,6 +6,7 @@ import { GoogleLogin } from "@react-oauth/google";
 import AppleSignin from "react-apple-signin-auth";
 import { toast } from "sonner";
 import { AxiosError, AxiosResponse } from "axios";
+import { Apple } from "lucide-react";
 import { googleLogin, appleLogin } from "@/api/auth/oauth.api";
 import { useAuth } from "@core/hooks/use-auth";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
@@ -55,59 +56,65 @@ export function SocialAuthButtons() {
     }
 
     return (
-        <div className="mt-4 space-y-3">
-            <div className="relative flex items-center">
-                <div className="flex-grow border-t border-border" />
-                <span className="mx-3 text-xs uppercase text-muted-foreground">{t("auth.orDivider")}</span>
-                <div className="flex-grow border-t border-border" />
+        <div className="mt-5 space-y-4">
+            <div className="flex items-center gap-3">
+                <span className="h-px flex-1 bg-border/60" />
+                <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground/70">{t("auth.orDivider")}</span>
+                <span className="h-px flex-1 bg-border/60" />
             </div>
 
-            {GOOGLE_CLIENT_ID ? (
-                <div className="flex justify-center">
-                    <GoogleLogin
-                        onSuccess={(cred) => {
-                            if (cred.credential) googleMutation.mutate(cred.credential);
+            <div className="flex flex-col items-center gap-3">
+                {GOOGLE_CLIENT_ID ? (
+                    <div className="overflow-hidden rounded-full">
+                        <GoogleLogin
+                            onSuccess={(cred) => {
+                                if (cred.credential) googleMutation.mutate(cred.credential);
+                            }}
+                            onError={() => {
+                                toast.error(t("auth.loginErrorTitle"));
+                            }}
+                            theme="filled_black"
+                            shape="pill"
+                            size="large"
+                            text="continue_with"
+                            logo_alignment="center"
+                        />
+                    </div>
+                ) : null}
+
+                {APPLE_SERVICES_ID ? (
+                    <AppleSignin
+                        authOptions={{
+                            clientId: APPLE_SERVICES_ID,
+                            scope: "name email",
+                            redirectURI: typeof window !== "undefined" ? window.location.origin : "",
+                            usePopup: true,
+                        }}
+                        uiType="dark"
+                        onSuccess={(response: AppleSignInResponse) => {
+                            const idToken = response?.authorization?.id_token;
+                            if (!idToken) return;
+                            const name = response?.user?.name
+                                ? `${response.user.name.firstName ?? ""} ${response.user.name.lastName ?? ""}`.trim()
+                                : undefined;
+                            appleMutation.mutate({ identityToken: idToken, fullName: name || undefined });
                         }}
                         onError={() => {
                             toast.error(t("auth.loginErrorTitle"));
                         }}
-                        text="continue_with"
-                        width="352"
+                        render={(props: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+                            <button
+                                {...props}
+                                type="button"
+                                className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-white/15 bg-black px-6 text-sm font-medium text-white transition-colors hover:bg-zinc-900"
+                            >
+                                <Apple className="h-4 w-4" />
+                                {t("auth.continueWithApple")}
+                            </button>
+                        )}
                     />
-                </div>
-            ) : null}
-
-            {APPLE_SERVICES_ID ? (
-                <AppleSignin
-                    authOptions={{
-                        clientId: APPLE_SERVICES_ID,
-                        scope: "name email",
-                        redirectURI: typeof window !== "undefined" ? window.location.origin : "",
-                        usePopup: true,
-                    }}
-                    uiType="dark"
-                    onSuccess={(response: AppleSignInResponse) => {
-                        const idToken = response?.authorization?.id_token;
-                        if (!idToken) return;
-                        const name = response?.user?.name
-                            ? `${response.user.name.firstName ?? ""} ${response.user.name.lastName ?? ""}`.trim()
-                            : undefined;
-                        appleMutation.mutate({ identityToken: idToken, fullName: name || undefined });
-                    }}
-                    onError={() => {
-                        toast.error(t("auth.loginErrorTitle"));
-                    }}
-                    render={(props: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-                        <button
-                            {...props}
-                            type="button"
-                            className="flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-black text-sm font-medium text-white"
-                        >
-                            {t("auth.continueWithApple")}
-                        </button>
-                    )}
-                />
-            ) : null}
+                ) : null}
+            </div>
         </div>
     );
 }

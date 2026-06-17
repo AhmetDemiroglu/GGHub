@@ -78,6 +78,8 @@ export const trMessages = {
         orDivider: "veya",
         continueWithGoogle: "Google ile devam et",
         continueWithApple: "Apple ile devam et",
+        loginSubtitle: "Tekrar hoş geldin.",
+        registerSubtitle: "Oyuncular topluluğuna katıl.",
         registerTitle: "Kayıt ol",
         registerCreateTitle: "Hesap Oluştur",
         registerUsernameLabel: "Kullanıcı Adı",
