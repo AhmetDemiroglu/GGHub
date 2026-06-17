@@ -210,7 +210,7 @@ export default function OwnProfileScreen() {
         <View style={styles.tabContent}>
           {activeTab === 'overview' ? (
             <>
-              <GamerDnaChart data={[]} />
+              <GamerDnaChart data={statsQuery.data?.gamerDna ?? []} />
               <View style={styles.sectionGap} />
               <ActivityFeedList activities={activityQuery.data ?? []} />
             </>

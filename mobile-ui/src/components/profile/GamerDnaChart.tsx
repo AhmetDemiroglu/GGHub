@@ -5,7 +5,7 @@ import { useLocale } from '@/src/hooks/use-locale';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 
 interface GenrePreference {
-  genre: string;
+  name: string;
   percentage: number;
 }
 
@@ -44,9 +44,9 @@ export function GamerDnaChart({ data }: GamerDnaChartProps) {
     <View style={styles.container}>
       <Text style={[styles.title, { color: colors.text }]}>{messages.profile.gamerDna.title}</Text>
       {data.map((item, index) => (
-        <View key={item.genre} style={styles.row}>
+        <View key={item.name} style={styles.row}>
           <Text style={[styles.genreLabel, { color: colors.textSecondary }]} numberOfLines={1}>
-            {item.genre}
+            {item.name}
           </Text>
           <View style={styles.barContainer}>
             <View style={[styles.barBg, { backgroundColor: colors.surfaceHighlight }]}>
