@@ -190,6 +190,6 @@ App Store Connect → sürüm → build seç → **Add for Review → Submit**.
   - `/profile/${username}` → `/profiles/${username}` (ActivityFeed takip aktivitesi).
   - `/auth/register` → `/(auth)/register` (BentoGrid kayıt CTA).
   - **Backend web-format deep linkleri** (`search` + `notifications`, `/games/{slug}`) artık `src/utils/route.ts` `toMobileRoute()` ile mobil route'a normalize ediliyor (`/profiles/`, `/messages/`, `/lists/` zaten eşleşiyordu). Production bundle (`expo export`) temiz.
-- **Web build lint**: `next build` mevcut (dokunulmamış) dosyalardaki ESLint hatalarında lokal olarak kırılıyor; Vercel tolere ediyor. İstenirse `eslint.ignoreDuringBuilds` veya hataların düzeltilmesi.
+- ✅ **Web build / Vercel** (ÇÖZÜLDÜ): Vercel ESLint'i kapatır ama **type-check yapar** → bir TS type hatası (`<GoogleLogin>` geçersiz `locale` prop + `onError` void değil) 3 web deploy'unu patlatmıştı. Düzeltildi; ayrıca `ui/next.config.ts`'e `eslint.ignoreDuringBuilds:true` eklendi ki lokal `next build` Vercel ile aynı davransın. **Web değişikliğini her zaman `cd ui && npx tsc --noEmit` ile doğrula** (lint, type hatasını maskeleyebiliyor). Son deploy: Vercel `success`.
 - **Migration yedeği**: `~/gghub-backups/gghub-oauth-migration-idempotent.sql` (rollback referansı).
 - **Secrets**: `appsettings.Development.json` repo'da gerçek bağlantı/anahtar içeriyor — ileride gizli yönetimi düşünülebilir.
