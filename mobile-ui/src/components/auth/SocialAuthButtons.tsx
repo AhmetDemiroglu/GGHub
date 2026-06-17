@@ -17,7 +17,7 @@ import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 
 export function SocialAuthButtons() {
   const { login } = useAuth();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { messages } = useLocale();
   const t = messages.auth;
 
@@ -117,17 +117,15 @@ export function SocialAuthButtons() {
       ) : null}
 
       {showApple ? (
-        <AppleAuthentication.AppleAuthenticationButton
-          buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
-          buttonStyle={
-            isDark
-              ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
-              : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
-          }
-          cornerRadius={BorderRadius.md}
-          style={styles.appleBtn}
+        <TouchableOpacity
+          style={[styles.googleBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={handleApple}
-        />
+          disabled={busy}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="logo-apple" size={20} color={colors.text} />
+          <Text style={[styles.googleText, { color: colors.text }]}>{t.continueWithApple}</Text>
+        </TouchableOpacity>
       ) : null}
     </View>
   );
