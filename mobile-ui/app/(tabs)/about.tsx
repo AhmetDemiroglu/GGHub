@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 import { Card } from '@/src/components/common/Card';
+import { ScreenHeader } from '@/src/components/shell';
 
 export default function AboutScreen() {
   const { colors } = useTheme();
@@ -58,8 +58,8 @@ export default function AboutScreen() {
   ];
 
   return (
-    <>
-      <Stack.Screen options={{ title: m.title, headerShown: true }} />
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScreenHeader title={messages.nav.screenTitles.about} />
       <ScrollView
         style={[styles.container, { backgroundColor: colors.background }]}
         contentContainerStyle={styles.content}
@@ -119,7 +119,7 @@ export default function AboutScreen() {
           </View>
         ))}
       </ScrollView>
-    </>
+    </View>
   );
 }
 

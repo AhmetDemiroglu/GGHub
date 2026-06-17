@@ -1,9 +1,11 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@/src/components/common/Avatar';
+import { ProfileBannerUploader } from '@/src/components/profile/ProfileBannerUploader';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
+import { getImageUrl } from '@/src/utils/image';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 
 interface ProfileHeaderProps {
@@ -13,6 +15,9 @@ interface ProfileHeaderProps {
   bio?: string | null;
   status?: string | null;
   avatarUrl?: string | null;
+  headerImageUrl?: string | null;
+  editableBanner?: boolean;
+  onBannerUploaded?: (newUrl: string) => void;
   createdAt: string;
   level?: number;
   xp?: number;
@@ -31,6 +36,9 @@ export function ProfileHeader({
   bio,
   status,
   avatarUrl,
+  headerImageUrl,
+  editableBanner = false,
+  onBannerUploaded,
   createdAt,
   level = 1,
   xp = 0,
@@ -48,10 +56,22 @@ export function ProfileHeader({
   const displayName = [firstName, lastName].filter(Boolean).join(' ') || username;
   const joinDate = new Date(createdAt).toLocaleDateString();
   const xpPercent = xpToNextLevel > 0 ? Math.min((xp / xpToNextLevel) * 100, 100) : 0;
+  const bannerUri = getImageUrl(headerImageUrl);
 
   return (
     <View style={styles.container}>
-      <View style={[styles.banner, { backgroundColor: colors.primary }]} />
+      <View style={styles.bannerWrap}>
+        {bannerUri ? (
+          <Image source={{ uri: bannerUri }} style={styles.bannerImage} resizeMode="cover" />
+        ) : (
+          <View style={[styles.bannerFallback, { backgroundColor: colors.primary }]} />
+        )}
+        {editableBanner && onBannerUploaded ? (
+          <View style={styles.bannerEditWrap}>
+            <ProfileBannerUploader onUploaded={onBannerUploaded} />
+          </View>
+        ) : null}
+      </View>
       <View style={styles.content}>
         <View style={styles.avatarRow}>
           <Avatar uri={avatarUrl} name={displayName} size={80} />
@@ -116,8 +136,22 @@ export function ProfileHeader({
 
 const styles = StyleSheet.create({
   container: {},
-  banner: {
-    height: 100,
+  bannerWrap: {
+    height: 140,
+    position: 'relative',
+  },
+  bannerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  bannerFallback: {
+    width: '100%',
+    height: '100%',
+  },
+  bannerEditWrap: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
   },
   content: {
     alignItems: 'center',

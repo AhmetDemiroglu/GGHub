@@ -246,17 +246,48 @@ namespace GGHub.Infrastructure.Services
         private IOrderedQueryable<GGHub.Core.Entities.Game> ApplyDefaultOrdering(
             IQueryable<GGHub.Core.Entities.Game> query)
         {
-            // Haftalık rotasyon seed'i: ISO hafta numarası.
-            // Aynı hafta boyunca sayfalama kararlıdır; haftadan haftaya üst sıralama değişir.
+            // Composite scoring — popülarite ağırlıklı bir öneri kuyruğu.
+            // Ağırlıklar: Pop %40, Metacritic %25, RAWG Rating %15, Recency %15, Rotation %5.
+            //
+            // Popülarite fallback zinciri: RawgAdded → RawgRatingsCount*10 → RatingCount*50 →
+            // (Metacritic≥75 ve son 2 yıl içindeyse 200 yapay puan, aksi halde 0).
+            //
+            // Recency: son 2 yıl = 100, 3–5 yıl = 50, daha eski = 0 (ISO 'yyyy-MM-dd' lexicographic compare).
+            //
+            // Rotation: aynı hafta içinde sayfalama kararlı, haftadan haftaya üst sıralama döner.
             int weekSeed = ISOWeek.GetWeekOfYear(DateTime.UtcNow);
+            string twoYearsAgoIso = DateTime.UtcNow.AddYears(-2).ToString("yyyy-MM-dd");
+            string fiveYearsAgoIso = DateTime.UtcNow.AddYears(-5).ToString("yyyy-MM-dd");
+            const int POP_CAP = 10000;
 
-            // Önce Metacritic, sonra Rating, sonra haftalık rotasyon nudge'ı, son olarak popülerlik.
-            // EF Core'un güvenle çevirebileceği basit ?? ve % operatörleri kullanılır.
             return query
-                .OrderByDescending(g => g.Metacritic ?? 0)
-                .ThenByDescending(g => g.Rating ?? 0)
-                .ThenByDescending(g => (g.Id + weekSeed) % ROTATION_MODULUS)
-                .ThenByDescending(g => g.RawgAdded ?? 0);
+                .OrderByDescending(g =>
+                    // Pop signal (capped & normalized to 0-100)
+                    (
+                        (g.RawgAdded != null && g.RawgAdded > 0
+                            ? (g.RawgAdded.Value > POP_CAP ? 100.0 : g.RawgAdded.Value / 100.0)
+                            : g.RawgRatingsCount != null && g.RawgRatingsCount > 0
+                                ? (g.RawgRatingsCount.Value * 10 > POP_CAP ? 100.0 : g.RawgRatingsCount.Value * 10 / 100.0)
+                                : g.RatingCount > 0
+                                    ? (g.RatingCount * 50 > POP_CAP ? 100.0 : g.RatingCount * 50 / 100.0)
+                                    : ((g.Metacritic ?? 0) >= 75
+                                        && g.Released != null
+                                        && g.Released.CompareTo(twoYearsAgoIso) >= 0
+                                        ? 20.0 : 0.0)
+                        ) * 0.40
+                    )
+                    // Metacritic component
+                    + (g.Metacritic ?? 0) * 0.25
+                    // RAWG rating component (0-5 → 0-100)
+                    + (g.Rating ?? 0) * 20 * 0.15
+                    // Recency boost
+                    + (g.Released != null && g.Released.CompareTo(twoYearsAgoIso) >= 0
+                        ? 100.0
+                        : g.Released != null && g.Released.CompareTo(fiveYearsAgoIso) >= 0
+                            ? 50.0
+                            : 0.0) * 0.15
+                    // Weekly rotation nudge
+                    + ((g.Id + weekSeed) % ROTATION_MODULUS) * 0.05);
         }
 
         // ------------------------------------------------------------------ //

@@ -1,6 +1,5 @@
 import React, { useState, useCallback } from 'react';
 import { View, FlatList, StyleSheet } from 'react-native';
-import { Stack } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
@@ -11,6 +10,7 @@ import { EmptyState } from '@/src/components/common/EmptyState';
 import { MyReportItem } from '@/src/components/reports/MyReportItem';
 import { ReportResultModal } from '@/src/components/reports/ReportResultModal';
 import { getMyReports } from '@/src/api/report';
+import { ScreenHeader } from '@/src/components/shell';
 import type { MyReportSummary } from '@/src/models/report';
 
 export default function MyReportsScreen() {
@@ -40,8 +40,8 @@ export default function MyReportsScreen() {
 
   return (
     <AuthGuard>
-      <Stack.Screen options={{ title: m.myReports, headerShown: true }} />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <ScreenHeader title={messages.nav.screenTitles.myReports} />
         {isLoading ? (
           <LoadingScreen />
         ) : !reports || reports.length === 0 ? (

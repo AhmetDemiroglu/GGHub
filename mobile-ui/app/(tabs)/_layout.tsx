@@ -14,10 +14,18 @@ export default function TabsLayout() {
   const { messages } = useLocale();
   const insets = useSafeAreaInsets();
 
-  // Guests are allowed to browse the tabs; account-gated tabs/actions prompt for sign-in individually.
   if (isLoading) {
     return <LoadingScreen />;
   }
+
+  // Tab bar her sayfada görünür kalır; sadece icon'u gizlenmiş "hidden tab"lar
+  // ile tab bar dışı sayfalar tab navigator altında yönetilir. Bu sayede
+  // kullanıcı sidebar veya derin link ile gittiği herhangi bir sayfadan
+  // alttaki ana sekmelere tek dokunuşla geri dönebilir.
+  const hidden = {
+    tabBarButton: () => null as any,
+    tabBarItemStyle: { display: 'none' as const },
+  };
 
   return (
     <Tabs
@@ -87,22 +95,33 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* ── Tab Bar'dan Gizli, Yönlendirilebilir Sekmeler ── */}
-      <Tabs.Screen
-        name="messages"
-        options={{
-          title: messages.nav.messages,
-          tabBarButton: () => null,
-          tabBarItemStyle: { display: 'none' },
-          tabBarStyle: { display: 'none' },
-        }}
-      />
+      {/* ── Tab Bar'dan gizli ama tab navigator'a kayıtlı rotalar ── */}
+      {/* Top bar icon'larından açılan ekranlar */}
+      <Tabs.Screen name="messages" options={{ title: messages.nav.messages, ...hidden }} />
       <Tabs.Screen
         name="notifications"
+        options={{ title: messages.nav.notifications, ...hidden }}
+      />
+
+      {/* Sidebar'dan açılan kullanıcı ekranları */}
+      <Tabs.Screen name="my-lists" options={{ title: messages.nav.myLists, ...hidden }} />
+      <Tabs.Screen name="my-reports" options={{ title: messages.nav.myReports, ...hidden }} />
+      <Tabs.Screen name="wishlist" options={{ title: messages.nav.wishlist, ...hidden }} />
+
+      {/* Statik içerik */}
+      <Tabs.Screen name="about" options={{ title: messages.nav.screenTitles.about, ...hidden }} />
+      <Tabs.Screen name="terms" options={{ title: messages.nav.screenTitles.terms, ...hidden }} />
+      <Tabs.Screen name="privacy" options={{ title: messages.nav.screenTitles.privacy, ...hidden }} />
+
+      {/* Başka kullanıcı profili & incelemeleri */}
+      <Tabs.Screen name="profiles/[username]" options={{ ...hidden }} />
+      <Tabs.Screen name="reviews/user/[username]" options={{ ...hidden }} />
+
+      {/* Game detail — immersive hero için tab bar gizlenir */}
+      <Tabs.Screen
+        name="game/[id]"
         options={{
-          title: messages.nav.notifications,
-          tabBarButton: () => null,
-          tabBarItemStyle: { display: 'none' },
+          ...hidden,
           tabBarStyle: { display: 'none' },
         }}
       />

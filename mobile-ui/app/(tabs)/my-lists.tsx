@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ScreenWrapper } from '@/src/components/common/ScreenWrapper';
+import { ScreenHeader } from '@/src/components/shell';
 import { ListCard } from '@/src/components/lists/ListCard';
 import { EmptyState } from '@/src/components/common/EmptyState';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
@@ -133,11 +134,9 @@ export default function MyListsScreen() {
   const isLoading = activeTab === 'my' ? myLoading : followedLoading;
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper noPadding safeArea={false}>
+      <ScreenHeader title={messages.nav.screenTitles.myLists} />
       <View style={styles.headerContainer}>
-        <Text style={[styles.title, { color: colors.text }]}>
-          {messages.lists.myListsTitle}
-        </Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           {messages.lists.myListsDescription}
         </Text>

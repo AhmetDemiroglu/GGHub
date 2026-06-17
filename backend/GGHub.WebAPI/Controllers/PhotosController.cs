@@ -1,4 +1,4 @@
-﻿using GGHub.Application.Interfaces;
+using GGHub.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -23,6 +23,36 @@ public class PhotosController : ControllerBase
         {
             var photoUrl = await _photoService.UploadProfilePhotoAsync(userId, file);
             return Ok(new { profileImageUrl = photoUrl });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpPost("header")]
+    public async Task<IActionResult> UploadHeaderPhoto(IFormFile file)
+    {
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        try
+        {
+            var photoUrl = await _photoService.UploadHeaderPhotoAsync(userId, file);
+            return Ok(new { headerImageUrl = photoUrl });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpDelete("header")]
+    public async Task<IActionResult> DeleteHeaderPhoto()
+    {
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        try
+        {
+            await _photoService.DeleteHeaderPhotoAsync(userId);
+            return NoContent();
         }
         catch (Exception ex)
         {

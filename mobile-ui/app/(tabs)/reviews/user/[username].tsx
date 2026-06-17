@@ -11,10 +11,12 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { ScreenWrapper } from '@/src/components/common/ScreenWrapper';
+import { ScreenHeader } from '@/src/components/shell';
 import { EmptyState } from '@/src/components/common/EmptyState';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
+import { useAuth } from '@/src/hooks/use-auth';
 import { getReviewsByUser } from '@/src/api/review';
 import { getImageUrl } from '@/src/utils/image';
 import type { Review } from '@/src/models/review';
@@ -25,16 +27,24 @@ export default function UserReviewsScreen() {
   const { colors } = useTheme();
   const { messages } = useLocale();
   const router = useRouter();
+  const { user } = useAuth();
+
+  const isSelf = username === 'me';
+  const resolvedUsername = isSelf ? user?.username : username;
 
   const {
     data: reviews,
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ['userReviews', username],
-    queryFn: () => getReviewsByUser(username!),
-    enabled: !!username,
+    queryKey: ['userReviews', resolvedUsername],
+    queryFn: () => getReviewsByUser(resolvedUsername!),
+    enabled: !!resolvedUsername,
   });
+
+  const headerTitle = isSelf
+    ? messages.nav.screenTitles.myReviews
+    : messages.nav.screenTitles.userReviews.replace('{username}', resolvedUsername ?? '');
 
   const renderStars = (rating: number) => {
     return (
@@ -119,7 +129,8 @@ export default function UserReviewsScreen() {
 
   if (isError) {
     return (
-      <ScreenWrapper>
+      <ScreenWrapper noPadding safeArea={false}>
+        <ScreenHeader title={headerTitle} />
         <EmptyState
           icon="alert-circle-outline"
           title={messages.profileReviews.loadError}
@@ -129,19 +140,13 @@ export default function UserReviewsScreen() {
   }
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper noPadding safeArea={false}>
+      <ScreenHeader title={headerTitle} />
       <FlatList
         data={reviews ?? []}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderReview}
         contentContainerStyle={styles.listContent}
-        ListHeaderComponent={
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.text }]}>
-              {messages.profileReviews.title.replace('{username}', username ?? '')}
-            </Text>
-          </View>
-        }
         ListEmptyComponent={
           <EmptyState
             icon="chatbox-outline"

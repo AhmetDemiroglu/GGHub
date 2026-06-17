@@ -65,9 +65,16 @@ namespace GGHub.Infrastructure.Services
                     gameInDb.Name = dto.Name;
                     gameInDb.Description = englishDescription;
                     gameInDb.Rating = dto.Rating;
-                    if (dto.Metacritic != null)
+                    var sanitizedMetacritic = SanitizeMetacritic(dto.Metacritic, dto.Released);
+                    if (sanitizedMetacritic != null)
                     {
-                        gameInDb.Metacritic = dto.Metacritic;
+                        gameInDb.Metacritic = sanitizedMetacritic;
+                    }
+                    else if (dto.Metacritic != null && IsFutureRelease(dto.Released))
+                    {
+                        // Gelecek tarihli oyunda RAWG'den gelen metacritic puanı geçerli olamaz —
+                        // varsa DB'de duranı da temizle.
+                        gameInDb.Metacritic = null;
                     }
                     gameInDb.Released = dto.Released;
                     gameInDb.BackgroundImage = dto.BackgroundImage;
@@ -95,7 +102,7 @@ namespace GGHub.Infrastructure.Services
                         BackgroundImage = dto.BackgroundImage,
                         CoverImage = dto.CoverImage,
                         Rating = dto.Rating,
-                        Metacritic = dto.Metacritic,
+                        Metacritic = SanitizeMetacritic(dto.Metacritic, dto.Released),
                         LastSyncedAt = DateTime.UtcNow,
 
                         PlatformsJson = platforms != null ? System.Text.Json.JsonSerializer.Serialize(platforms) : null,
@@ -300,16 +307,20 @@ namespace GGHub.Infrastructure.Services
                     gameInDb.PublishersJson = SerializeIfNotNull(fullDto.Publishers?.Select(p => new { p.Name, p.Slug }).ToList());
                     gameInDb.StoresJson = SerializeIfNotNull(fullDto.Stores?.Select(s => new { StoreName = s.Store.Name, Domain = s.Store.Domain, Url = s.Url }).ToList());
 
-                    if (gameInDb.Metacritic == null && fullDto.Metacritic != null)
-                        gameInDb.Metacritic = fullDto.Metacritic;
+                    if (gameInDb.Metacritic == null)
+                        gameInDb.Metacritic = SanitizeMetacritic(fullDto.Metacritic, fullDto.Released);
+                    else if (IsFutureRelease(fullDto.Released))
+                        gameInDb.Metacritic = null;
                 }
                 else if (rawgDto != null && string.IsNullOrEmpty(gameInDb.GenresJson))
                 {
                     gameInDb.GenresJson = SerializeIfNotNull(rawgDto.Genres?.Select(g => new { g.Name, g.Slug }).ToList());
                     gameInDb.PlatformsJson = SerializeIfNotNull(rawgDto.Platforms?.Select(p => new { p.Platform.Name, p.Platform.Slug }).ToList());
 
-                    if (gameInDb.Metacritic == null && rawgDto.Metacritic != null)
-                        gameInDb.Metacritic = rawgDto.Metacritic;
+                    if (gameInDb.Metacritic == null)
+                        gameInDb.Metacritic = SanitizeMetacritic(rawgDto.Metacritic, rawgDto.Released);
+                    else if (IsFutureRelease(rawgDto.Released))
+                        gameInDb.Metacritic = null;
                 }
 
                 gameInDb.LastSyncedAt = DateTime.UtcNow;
@@ -343,8 +354,7 @@ namespace GGHub.Infrastructure.Services
                 newGame.PublishersJson = SerializeIfNotNull(fullDto.Publishers?.Select(p => new { p.Name, p.Slug }).ToList());
                 newGame.StoresJson = SerializeIfNotNull(fullDto.Stores?.Select(s => new { StoreName = s.Store.Name, Domain = s.Store.Domain, Url = s.Url }).ToList());
 
-                if (fullDto.Metacritic != null)
-                    newGame.Metacritic = fullDto.Metacritic;
+                newGame.Metacritic = SanitizeMetacritic(fullDto.Metacritic, fullDto.Released);
             }
             else if (rawgDto != null)
             {
@@ -357,8 +367,7 @@ namespace GGHub.Infrastructure.Services
                 newGame.GenresJson = SerializeIfNotNull(rawgDto.Genres?.Select(g => new { g.Name, g.Slug }).ToList());
                 newGame.PlatformsJson = SerializeIfNotNull(rawgDto.Platforms?.Select(p => new { p.Platform.Name, p.Platform.Slug }).ToList());
 
-                if (rawgDto.Metacritic != null)
-                    newGame.Metacritic = rawgDto.Metacritic;
+                newGame.Metacritic = SanitizeMetacritic(rawgDto.Metacritic, rawgDto.Released);
             }
 
             try
@@ -488,7 +497,7 @@ namespace GGHub.Infrastructure.Services
                         Released = dto.Released,
                         BackgroundImage = dto.BackgroundImage,
                         Rating = dto.Rating,
-                        Metacritic = dto.Metacritic,
+                        Metacritic = SanitizeMetacritic(dto.Metacritic, dto.Released),
                         GghubRating = stats?.AverageRating ?? 0,
                         GghubRatingCount = stats?.RatingCount ?? 0
                     };
@@ -500,6 +509,24 @@ namespace GGHub.Infrastructure.Services
                 throw;
             }
         }
+
+        /// <summary>
+        /// Henüz çıkmamış oyunlarda metacritic puanı geçersizdir — RAWG arada böyle hatalı
+        /// metadata döndürebiliyor. Released gelecek tarihliyse null'a indirir.
+        /// </summary>
+        private static int? SanitizeMetacritic(int? rawMetacritic, string? released)
+        {
+            if (rawMetacritic == null) return null;
+            if (IsFutureRelease(released)) return null;
+            return rawMetacritic;
+        }
+
+        private static bool IsFutureRelease(string? released)
+        {
+            if (string.IsNullOrEmpty(released)) return false;
+            var todayIso = DateTime.UtcNow.ToString("yyyy-MM-dd");
+            return string.Compare(released, todayIso) > 0;
+        }
     }
- 
+
 }

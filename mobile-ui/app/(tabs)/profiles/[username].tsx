@@ -13,6 +13,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ScreenWrapper } from '@/src/components/common/ScreenWrapper';
+import { ScreenHeader } from '@/src/components/shell';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
 import { Card } from '@/src/components/common/Card';
 import { Button } from '@/src/components/common/Button';
@@ -124,14 +125,8 @@ export default function PublicProfileScreen() {
 
   if (isBlockedByThem) {
     return (
-      <ScreenWrapper>
-        <View style={[styles.headerBar, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>@{username}</Text>
-          <View style={{ width: 24 }} />
-        </View>
+      <ScreenWrapper noPadding safeArea={false}>
+        <ScreenHeader title={`@${username}`} />
         <View style={styles.blockedContainer}>
           <Ionicons name="ban-outline" size={48} color={colors.textMuted} />
           <Text style={[styles.blockedText, { color: colors.textMuted }]}>{h.blockedByThemTitle}</Text>
@@ -140,36 +135,48 @@ export default function PublicProfileScreen() {
     );
   }
 
-  const renderReview = (item: Review, index: number) => (
-    <Card key={`${item.id}-${index}`} style={styles.reviewCard}>
-      <View style={styles.reviewHeader}>
-        <Text style={[styles.reviewGame, { color: colors.text }]}>{item.game?.name}</Text>
-        <View style={styles.ratingBadge}>
-          <Ionicons name="star" size={14} color={colors.star} />
-          <Text style={[styles.ratingText, { color: colors.text }]}>{item.rating}/10</Text>
-        </View>
-      </View>
-      <Text style={[styles.reviewText, { color: colors.textSecondary }]} numberOfLines={3}>
-        {item.content}
-      </Text>
-    </Card>
-  );
+  const renderReview = (item: Review, index: number) => {
+    const goToGame = () => {
+      if (item.game?.slug) router.push(`/game/${item.game.slug}`);
+    };
+    return (
+      <TouchableOpacity
+        key={`${item.id}-${index}`}
+        onPress={goToGame}
+        activeOpacity={0.7}
+        disabled={!item.game?.slug}
+      >
+        <Card style={styles.reviewCard}>
+          <View style={styles.reviewHeader}>
+            <Text style={[styles.reviewGame, { color: colors.text }]}>{item.game?.name}</Text>
+            <View style={styles.ratingBadge}>
+              <Ionicons name="star" size={14} color={colors.star} />
+              <Text style={[styles.ratingText, { color: colors.text }]}>{item.rating}/10</Text>
+            </View>
+          </View>
+          <Text style={[styles.reviewText, { color: colors.textSecondary }]} numberOfLines={3}>
+            {item.content}
+          </Text>
+        </Card>
+      </TouchableOpacity>
+    );
+  };
 
   return (
-    <ScreenWrapper noPadding>
-      <View style={[styles.headerBar, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>@{username}</Text>
-        {!isMe ? (
-          <TouchableOpacity onPress={() => requireAuth(() => setMenuVisible(true))} style={styles.headerBtn}>
-            <Ionicons name="ellipsis-vertical" size={22} color={colors.text} />
-          </TouchableOpacity>
-        ) : (
-          <View style={{ width: 32 }} />
-        )}
-      </View>
+    <ScreenWrapper noPadding safeArea={false}>
+      <ScreenHeader
+        title={`@${username}`}
+        rightExtra={
+          !isMe ? (
+            <TouchableOpacity
+              onPress={() => requireAuth(() => setMenuVisible(true))}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="ellipsis-vertical" size={22} color={colors.text} />
+            </TouchableOpacity>
+          ) : undefined
+        }
+      />
 
       <ScrollView
         refreshControl={
@@ -183,6 +190,7 @@ export default function PublicProfileScreen() {
           bio={profile.bio}
           status={profile.status}
           avatarUrl={profile.profileImageUrl}
+          headerImageUrl={profile.headerImageUrl}
           createdAt={profile.createdAt}
           level={stats?.currentLevel ?? 1}
           xp={stats?.currentXp ?? 0}

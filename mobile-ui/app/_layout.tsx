@@ -49,19 +49,6 @@ function RootLayoutNav() {
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(admin)" />
-        <Stack.Screen name="game/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="profile/settings" options={{ headerShown: false, animation: 'slide_from_right' }} />
-        <Stack.Screen name="profile/edit" options={{ headerShown: false, animation: 'slide_from_right' }} />
-        <Stack.Screen name="profiles/[username]" options={{ headerShown: false, animation: 'slide_from_right' }} />
-        <Stack.Screen name="my-reports" options={{ headerShown: false, animation: 'slide_from_right' }} />
-        <Stack.Screen name="about" options={{ headerShown: false, animation: 'slide_from_right' }} />
-        <Stack.Screen name="terms" options={{ headerShown: false, animation: 'slide_from_right' }} />
-        <Stack.Screen name="privacy" options={{ headerShown: false, animation: 'slide_from_right' }} />
-        <Stack.Screen name="lists/index" options={{ headerShown: false, animation: 'slide_from_right' }} />
-        <Stack.Screen name="lists/[listId]" options={{ headerShown: false, animation: 'slide_from_right' }} />
-        <Stack.Screen name="my-lists" options={{ headerShown: false, animation: 'slide_from_right' }} />
-        <Stack.Screen name="wishlist" options={{ headerShown: false, animation: 'slide_from_right' }} />
-        <Stack.Screen name="reviews/user/[username]" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="+not-found" />
       </Stack>
     </>

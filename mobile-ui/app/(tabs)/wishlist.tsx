@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ScreenWrapper } from '@/src/components/common/ScreenWrapper';
+import { ScreenHeader } from '@/src/components/shell';
 import { EmptyState } from '@/src/components/common/EmptyState';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
 import { useToast } from '@/src/components/common/Toast';
@@ -53,7 +54,8 @@ export default function WishlistScreen() {
 
   if (!isAuthenticated) {
     return (
-      <ScreenWrapper>
+      <ScreenWrapper noPadding safeArea={false}>
+        <ScreenHeader title={messages.nav.screenTitles.wishlist} />
         <EmptyState
           icon="lock-closed-outline"
           title={messages.wishlistPage.loginRequired}
@@ -67,7 +69,8 @@ export default function WishlistScreen() {
 
   if (isError) {
     return (
-      <ScreenWrapper>
+      <ScreenWrapper noPadding safeArea={false}>
+        <ScreenHeader title={messages.nav.screenTitles.wishlist} />
         <EmptyState icon="alert-circle-outline" title={messages.wishlistPage.loadError} />
       </ScreenWrapper>
     );
@@ -112,7 +115,8 @@ export default function WishlistScreen() {
   );
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper noPadding safeArea={false}>
+      <ScreenHeader title={messages.nav.screenTitles.wishlist} />
       <FlatList
         data={games}
         keyExtractor={(item) => String(item.id)}
@@ -120,9 +124,6 @@ export default function WishlistScreen() {
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={
           <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.text }]}>
-              {messages.wishlistPage.title}
-            </Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
               {messages.wishlistPage.description}
             </Text>

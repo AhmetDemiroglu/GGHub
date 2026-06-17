@@ -6,6 +6,7 @@ export interface Profile {
     lastName: string | null;
     bio: string | null;
     profileImageUrl: string | null;
+    headerImageUrl: string | null;
     dateOfBirth: Date | null;
     createdAt: string;
     status: string | null;
@@ -55,6 +56,7 @@ export interface PublicProfile {
     lastName: string | null;
     bio: string | null;
     profileImageUrl: string | null;
+    headerImageUrl: string | null;
     dateOfBirth: string | null;
     createdAt: string;
     status: string | null;

@@ -12,6 +12,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ScreenWrapper } from '@/src/components/common/ScreenWrapper';
+import { ScreenHeader } from '@/src/components/shell';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
 import { Input } from '@/src/components/common/Input';
 import { Button } from '@/src/components/common/Button';
@@ -89,16 +90,10 @@ export default function ProfileEditScreen() {
   if (profileQuery.isLoading) return <LoadingScreen />;
 
   return (
-    <ScreenWrapper>
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>{ef.title}</Text>
-        <View style={{ width: 24 }} />
-      </View>
+    <ScreenWrapper noPadding safeArea={false}>
+      <ScreenHeader title={messages.nav.screenTitles.editProfile} />
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
         <View style={styles.photoSection}>
           <ProfilePhotoUploader
             currentUri={profileImageUrl}

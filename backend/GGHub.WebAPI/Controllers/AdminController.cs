@@ -279,6 +279,25 @@ namespace GGHub.WebAPI.Controllers
             return Ok(lastLines);
         }
 
+        /// <summary>
+        /// Tek seferlik temizlik: gelecek tarihli oyunların Metacritic puanını null'a indirir
+        /// (RAWG arada bu hatalı veriyi gönderiyor). Yeni RAWG senkronizasyonları zaten
+        /// SanitizeMetacritic ile filtreleniyor.
+        /// </summary>
+        [HttpPost("games/cleanup-future-metacritic")]
+        public async Task<IActionResult> CleanupFutureMetacritic()
+        {
+            var todayIso = DateTime.UtcNow.ToString("yyyy-MM-dd");
+            var updated = await _context.Games
+                .Where(g => g.Metacritic != null
+                            && g.Released != null
+                            && string.Compare(g.Released, todayIso) > 0)
+                .ExecuteUpdateAsync(s => s.SetProperty(g => g.Metacritic, (int?)null));
+
+            _logger.LogInformation("[CleanupFutureMetacritic] Reset Metacritic on {Count} future-dated games.", updated);
+            return Ok(new { updated });
+        }
+
         private int GetCurrentUserId()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);

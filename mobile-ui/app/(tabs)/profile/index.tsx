@@ -94,28 +94,46 @@ export default function OwnProfileScreen() {
     { key: 'lists', label: messages.home.activityTabs.lists },
   ];
 
-  const renderReview = (item: Review, index: number) => (
-    <Card key={`${item.id}-${index}`} style={styles.reviewCard}>
-      <View style={styles.reviewHeader}>
-        <Text style={[styles.reviewGame, { color: colors.text }]}>{item.game?.name}</Text>
-        <View style={styles.ratingBadge}>
-          <Ionicons name="star" size={14} color={colors.star} />
-          <Text style={[styles.ratingText, { color: colors.text }]}>{item.rating}/10</Text>
-        </View>
-      </View>
-      <Text style={[styles.reviewText, { color: colors.textSecondary }]} numberOfLines={3}>
-        {item.content}
-      </Text>
-    </Card>
-  );
+  const renderReview = (item: Review, index: number) => {
+    const goToGame = () => {
+      if (item.game?.slug) router.push(`/game/${item.game.slug}`);
+    };
+    return (
+      <TouchableOpacity
+        key={`${item.id}-${index}`}
+        onPress={goToGame}
+        activeOpacity={0.7}
+        disabled={!item.game?.slug}
+      >
+        <Card style={styles.reviewCard}>
+          <View style={styles.reviewHeader}>
+            <Text style={[styles.reviewGame, { color: colors.text }]}>{item.game?.name}</Text>
+            <View style={styles.ratingBadge}>
+              <Ionicons name="star" size={14} color={colors.star} />
+              <Text style={[styles.ratingText, { color: colors.text }]}>{item.rating}/10</Text>
+            </View>
+          </View>
+          <Text style={[styles.reviewText, { color: colors.textSecondary }]} numberOfLines={3}>
+            {item.content}
+          </Text>
+        </Card>
+      </TouchableOpacity>
+    );
+  };
 
   const renderList = (item: UserList, index: number) => (
-    <Card key={`${item.id}-${index}`} style={styles.listCard}>
-      <Text style={[styles.listName, { color: colors.text }]}>{item.name}</Text>
-      <Text style={[styles.listMeta, { color: colors.textSecondary }]}>
-        {item.gameCount} {af.gamesLabel} · {item.followerCount} {h.followersLabel}
-      </Text>
-    </Card>
+    <TouchableOpacity
+      key={`${item.id}-${index}`}
+      onPress={() => router.push(`/lists/${item.id}`)}
+      activeOpacity={0.7}
+    >
+      <Card style={styles.listCard}>
+        <Text style={[styles.listName, { color: colors.text }]}>{item.name}</Text>
+        <Text style={[styles.listMeta, { color: colors.textSecondary }]}>
+          {item.gameCount} {af.gamesLabel} · {item.followerCount} {h.followersLabel}
+        </Text>
+      </Card>
+    </TouchableOpacity>
   );
 
   return (
@@ -135,6 +153,9 @@ export default function OwnProfileScreen() {
             bio={profile.bio}
             status={profile.status}
             avatarUrl={profile.profileImageUrl}
+            headerImageUrl={profile.headerImageUrl}
+            editableBanner
+            onBannerUploaded={() => profileQuery.refetch()}
             createdAt={profile.createdAt}
             level={stats?.currentLevel ?? 1}
             xp={stats?.currentXp ?? 0}

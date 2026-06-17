@@ -2,7 +2,7 @@ import React from 'react';
 import { Stack } from 'expo-router';
 import { useTheme } from '@/src/hooks/use-theme';
 
-export default function ProfileLayout() {
+export default function ListsLayout() {
   const { colors } = useTheme();
 
   return (
@@ -15,8 +15,7 @@ export default function ProfileLayout() {
       }}
     >
       <Stack.Screen name="index" />
-      <Stack.Screen name="settings" />
-      <Stack.Screen name="edit" />
+      <Stack.Screen name="[listId]" />
     </Stack>
   );
 }

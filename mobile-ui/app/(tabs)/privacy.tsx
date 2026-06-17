@@ -1,9 +1,9 @@
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { Stack } from 'expo-router';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
+import { ScreenHeader } from '@/src/components/shell';
 
 const sections = [
   {
@@ -52,15 +52,15 @@ const sections = [
 
 export default function PrivacyScreen() {
   const { colors } = useTheme();
-  const { locale } = useLocale();
+  const { locale, messages } = useLocale();
   const isTr = locale === 'tr';
 
-  const pageTitle = isTr ? 'Gizlilik Politikas\u0131' : 'Privacy Policy';
+  const pageTitle = messages.nav.screenTitles.privacy;
   const lastUpdatedLabel = isTr ? 'Son G\u00FCncelleme' : 'Last Updated';
 
   return (
-    <>
-      <Stack.Screen options={{ title: pageTitle, headerShown: true }} />
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScreenHeader title={pageTitle} />
       <ScrollView
         style={[styles.container, { backgroundColor: colors.background }]}
         contentContainerStyle={styles.content}
@@ -85,7 +85,7 @@ export default function PrivacyScreen() {
           </View>
         ))}
       </ScrollView>
-    </>
+    </View>
   );
 }
 

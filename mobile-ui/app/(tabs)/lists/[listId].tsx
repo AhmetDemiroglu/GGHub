@@ -13,6 +13,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ScreenWrapper } from '@/src/components/common/ScreenWrapper';
+import { ScreenHeader } from '@/src/components/shell';
 import { Avatar } from '@/src/components/common/Avatar';
 import { Badge } from '@/src/components/common/Badge';
 import { Button } from '@/src/components/common/Button';
@@ -26,7 +27,7 @@ import { useToast } from '@/src/components/common/Toast';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
-import { getListDetail, followList, unfollowList } from '@/src/api/list';
+import { getListDetail, followList, unfollowList, removeGameFromList } from '@/src/api/list';
 import { useRequireAuth } from '@/src/contexts/auth-prompt-context';
 import { getImageUrl } from '@/src/utils/image';
 import { ListCategory } from '@/src/models/list';
@@ -92,6 +93,17 @@ export default function ListDetailScreen() {
     },
   });
 
+  const removeGameMutation = useMutation({
+    mutationFn: (gameId: number) => removeGameFromList(numericId, gameId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['listDetail', numericId] });
+      queryClient.invalidateQueries({ queryKey: ['myLists'] });
+    },
+    onError: () => {
+      showToast('error', messages.common?.genericError ?? 'Error');
+    },
+  });
+
   const handleFollowToggle = () => {
     requireAuth(() => {
       if (list?.isFollowing) {
@@ -129,6 +141,18 @@ export default function ListDetailScreen() {
           ) : (
             <Ionicons name="game-controller-outline" size={24} color={colors.textMuted} />
           )}
+          {isOwner ? (
+            <Pressable
+              style={styles.removeBadge}
+              onPress={(e) => {
+                e.stopPropagation();
+                removeGameMutation.mutate(item.id);
+              }}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
+              <Ionicons name="close" size={16} color="#ffffff" />
+            </Pressable>
+          ) : null}
         </View>
         <Text style={[styles.gameName, { color: colors.text }]} numberOfLines={2}>
           {item.name}
@@ -138,7 +162,8 @@ export default function ListDetailScreen() {
   };
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper noPadding safeArea={false}>
+      <ScreenHeader title={list.name || messages.nav.screenTitles.listDetail} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.headerSection}>
           <View style={styles.titleRow}>
@@ -367,5 +392,16 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     fontWeight: '600',
     padding: Spacing.sm,
+  },
+  removeBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

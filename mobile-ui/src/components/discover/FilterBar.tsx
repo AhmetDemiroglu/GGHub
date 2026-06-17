@@ -4,7 +4,6 @@ import {
   Text,
   Pressable,
   TextInput,
-  Modal,
   FlatList,
   StyleSheet,
   ScrollView,
@@ -13,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
+import { BottomSheet } from '@/src/components/common/BottomSheet';
 
 interface FilterOption {
   label: string;
@@ -32,7 +32,7 @@ interface FilterBarProps {
   platforms: FilterOption[];
 }
 
-function PickerModal({
+function PickerSheet({
   visible,
   onClose,
   title,
@@ -50,46 +50,36 @@ function PickerModal({
   const { colors } = useTheme();
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.modalOverlay} onPress={onClose}>
-        <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
-          <View style={styles.modalHeader}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>{title}</Text>
-            <Pressable onPress={onClose}>
-              <Ionicons name="close" size={24} color={colors.text} />
-            </Pressable>
-          </View>
-          <FlatList
-            data={options}
-            keyExtractor={(item) => item.value}
-            renderItem={({ item }) => (
-              <Pressable
-                style={[
-                  styles.optionItem,
-                  item.value === selected && { backgroundColor: `${colors.primary}15` },
-                ]}
-                onPress={() => {
-                  onSelect(item.value);
-                  onClose();
-                }}
-              >
-                <Text
-                  style={[
-                    styles.optionText,
-                    { color: item.value === selected ? colors.primary : colors.text },
-                  ]}
-                >
-                  {item.label}
-                </Text>
-                {item.value === selected && (
-                  <Ionicons name="checkmark" size={20} color={colors.primary} />
-                )}
-              </Pressable>
+    <BottomSheet visible={visible} onClose={onClose} title={title}>
+      <FlatList
+        data={options}
+        keyExtractor={(item) => item.value}
+        renderItem={({ item }) => (
+          <Pressable
+            style={[
+              styles.optionItem,
+              item.value === selected && { backgroundColor: `${colors.primary}15` },
+            ]}
+            onPress={() => {
+              onSelect(item.value);
+              onClose();
+            }}
+          >
+            <Text
+              style={[
+                styles.optionText,
+                { color: item.value === selected ? colors.primary : colors.text },
+              ]}
+            >
+              {item.label}
+            </Text>
+            {item.value === selected && (
+              <Ionicons name="checkmark" size={20} color={colors.primary} />
             )}
-          />
-        </View>
-      </Pressable>
-    </Modal>
+          </Pressable>
+        )}
+      />
+    </BottomSheet>
   );
 }
 
@@ -185,7 +175,7 @@ export function FilterBar({
         </Pressable>
       </ScrollView>
 
-      <PickerModal
+      <PickerSheet
         visible={activeModal === 'genre'}
         onClose={() => setActiveModal(null)}
         title={messages.discover.title}
@@ -193,7 +183,7 @@ export function FilterBar({
         selected={selectedGenre}
         onSelect={onGenreChange}
       />
-      <PickerModal
+      <PickerSheet
         visible={activeModal === 'platform'}
         onClose={() => setActiveModal(null)}
         title="Platform"
@@ -201,7 +191,7 @@ export function FilterBar({
         selected={selectedPlatform}
         onSelect={onPlatformChange}
       />
-      <PickerModal
+      <PickerSheet
         visible={activeModal === 'sort'}
         onClose={() => setActiveModal(null)}
         title={messages.common.sortBy}
@@ -252,35 +242,13 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     fontWeight: '500',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    maxHeight: '60%',
-    borderTopLeftRadius: BorderRadius.xl,
-    borderTopRightRadius: BorderRadius.xl,
-    paddingBottom: Spacing.xxxl,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: Spacing.lg,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
-  },
-  modalTitle: {
-    fontSize: FontSize.xl,
-    fontWeight: '700',
-  },
   optionItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
   },
   optionText: {
     fontSize: FontSize.md,

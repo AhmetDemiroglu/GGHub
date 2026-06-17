@@ -14,7 +14,8 @@ import { ReportDialog } from "@core/components/base/report-dialog";
 import { followUser, unfollowUser, blockUser, unblockUser } from "@/api/social/social.api";
 import { toast } from "sonner";
 import Image from "next/image";
-import gameBanner from "@/core/assets/games.jpg";
+import { Camera } from "lucide-react";
+import { ProfileBannerUploader } from "@core/components/other/profile-banner-uploader";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/core/components/ui/dropdown-menu";
 import { FollowersModal } from "./followers-modal";
 import { MessageDialog } from "@core/components/other/message-dialog";
@@ -45,7 +46,9 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
     const queryClient = useQueryClient();
     const [messageDialogOpen, setMessageDialogOpen] = useState(false);
     const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+    const [bannerUploaderOpen, setBannerUploaderOpen] = useState(false);
     const avatarSrc = getImageUrl(profile.profileImageUrl);
+    const bannerSrc = getImageUrl(profile.headerImageUrl);
 
     const { data: stats } = useQuery({
         queryKey: ["gamification", profile.id],
@@ -150,8 +153,8 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
         return (
             <div className="w-full rounded-lg overflow-hidden bg-card text-card-foreground shadow-md">
                 <div className="h-48 md:h-56 w-full relative">
-                    <Image src={gameBanner} alt={t("profile.header.bannerAlt")} fill className="object-cover object-[center_15%] sm:object-[center_25%] md:object-[center_35%]" priority />
-                    <div className="absolute inset-0 bg-background/70" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-purple-500/20 to-blue-500/30" />
+                    <div className="absolute inset-0 bg-background/40" />
                 </div>
 
                 <div className="p-4 md:p-6">
@@ -221,8 +224,37 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
     return (
         <div className="w-full rounded-lg overflow-hidden bg-card text-card-foreground shadow-md">
             <div className="h-48 md:h-56 w-full relative">
-                <Image src={gameBanner} alt={t("profile.header.bannerAlt")} fill className="object-cover object-[center_15%] sm:object-[center_25%] md:object-[center_35%]" priority />
-                <div className="absolute inset-0 bg-background/70" />
+                {bannerSrc ? (
+                    <Image
+                        src={bannerSrc}
+                        alt={t("profile.header.bannerAlt")}
+                        fill
+                        className="object-cover"
+                        priority
+                        unoptimized
+                    />
+                ) : (
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-purple-500/20 to-blue-500/30" />
+                )}
+                <div className="absolute inset-0 bg-background/40" />
+                {isOwnProfile && (
+                    <Button
+                        size="sm"
+                        variant="secondary"
+                        className="absolute top-3 right-3 gap-2 cursor-pointer shadow"
+                        onClick={() => setBannerUploaderOpen(true)}
+                        aria-label={t("profile.header.editBanner") ?? "Banner'ı düzenle"}
+                    >
+                        <Camera className="h-4 w-4" />
+                        {t("profile.header.editBanner") ?? "Banner"}
+                    </Button>
+                )}
+                {isOwnProfile && (
+                    <ProfileBannerUploader
+                        isOpen={bannerUploaderOpen}
+                        onClose={() => setBannerUploaderOpen(false)}
+                    />
+                )}
             </div>
             <div className="p-4 md:p-6">
                 <div className="flex flex-col sm:flex-row justify-between sm:items-start -mt-20 md:-mt-24">

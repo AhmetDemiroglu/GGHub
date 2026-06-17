@@ -11,6 +11,7 @@ namespace GGHub.Application.Dtos
         public string? LastName { get; set; }
         public string? Bio { get; set; }
         public string? ProfileImageUrl { get; set; }
+        public string? HeaderImageUrl { get; set; }
         public DateTime? DateOfBirth { get; set; }
         public DateTime CreatedAt { get; set; }
         public string? Status { get; set; }

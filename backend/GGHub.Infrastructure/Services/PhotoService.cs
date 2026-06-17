@@ -33,7 +33,27 @@ namespace GGHub.Infrastructure.Services
                 ?? throw new ArgumentNullException(AppText.Get("photo.publicUrlConfigMissing"));
         }
 
-        public async Task<string> UploadProfilePhotoAsync(int userId, IFormFile file)
+        public Task<string> UploadProfilePhotoAsync(int userId, IFormFile file) =>
+            UploadAndAssignAsync(userId, file, "profiles", (user, url) => user.ProfileImageUrl = url);
+
+        public Task<string> UploadHeaderPhotoAsync(int userId, IFormFile file) =>
+            UploadAndAssignAsync(userId, file, "headers", (user, url) => user.HeaderImageUrl = url);
+
+        public async Task DeleteHeaderPhotoAsync(int userId)
+        {
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+                throw new KeyNotFoundException(AppText.Get("photo.userNotFound"));
+
+            user.HeaderImageUrl = null;
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task<string> UploadAndAssignAsync(
+            int userId,
+            IFormFile file,
+            string keyPrefix,
+            Action<Core.Entities.User, string> assign)
         {
             var user = await _context.Users.FindAsync(userId);
             if (user == null)
@@ -49,10 +69,10 @@ namespace GGHub.Infrastructure.Services
             if (string.IsNullOrEmpty(extension) || !allowedExtensions.Contains(extension))
                 throw new ArgumentException(AppText.Get("photo.invalidFormat", new Dictionary<string, object?> { ["extension"] = extension }));
 
-            if (file.Length > 5 * 1024 * 1024) 
+            if (file.Length > 5 * 1024 * 1024)
                 throw new ArgumentException(AppText.Get("photo.fileTooLarge"));
 
-            var fileName = $"profiles/{userId}-{Guid.NewGuid()}{extension}";
+            var fileName = $"{keyPrefix}/{userId}-{Guid.NewGuid()}{extension}";
             var transferUtility = new TransferUtility(_s3Client);
 
             using (var memoryStream = new MemoryStream())
@@ -73,9 +93,9 @@ namespace GGHub.Infrastructure.Services
 
                 await transferUtility.UploadAsync(uploadRequest);
             }
-            var fileUrl = $"{_publicR2Url}/{fileName}";
 
-            user.ProfileImageUrl = fileUrl;
+            var fileUrl = $"{_publicR2Url}/{fileName}";
+            assign(user, fileUrl);
             await _context.SaveChangesAsync();
 
             return fileUrl;

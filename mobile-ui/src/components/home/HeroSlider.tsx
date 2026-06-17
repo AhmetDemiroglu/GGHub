@@ -14,7 +14,7 @@ import { useTheme } from '@/src/hooks/use-theme';
 import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
 import { getImageUrl } from '@/src/utils/image';
 import { PlatformIcons } from '@/src/components/common/PlatformIcons';
-import { ScoreBadge } from '@/src/components/common/ScoreBadge';
+import { ScorePillRow } from '@/src/components/common/ScorePill';
 import type { HomeGame } from '@/src/models/home';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -84,24 +84,21 @@ export function HeroSlider({ games }: HeroSliderProps) {
           )}
           <View style={styles.gradient} />
           <View style={styles.overlay}>
-            <View style={styles.topRow}>
-              {item.metacriticScore != null && (
-                <ScoreBadge score={item.metacriticScore} size="sm" />
-              )}
-            </View>
             <View style={styles.bottomRow}>
               <View style={styles.nameContainer}>
                 <Text style={styles.gameName} numberOfLines={2}>
                   {item.name}
                 </Text>
                 <PlatformIcons platforms={item.platforms} size={14} color="#ffffff" maxIcons={4} />
+                <ScorePillRow
+                  metacritic={item.metacriticScore}
+                  rawg={item.rawgRating}
+                  gghub={item.gghubRating > 0 ? item.gghubRating : null}
+                  gghubCount={item.gghubRatingCount}
+                  size="sm"
+                  gap={6}
+                />
               </View>
-              {item.gghubRating > 0 && (
-                <View style={styles.ratingBadge}>
-                  <Ionicons name="star" size={12} color="#f59e0b" />
-                  <Text style={styles.ratingText}>{item.gghubRating.toFixed(1)}</Text>
-                </View>
-              )}
             </View>
           </View>
         </Pressable>
