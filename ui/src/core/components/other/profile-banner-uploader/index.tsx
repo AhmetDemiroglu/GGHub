@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/core/components/ui/button";
 import { ImagePlus, Upload, ZoomIn } from "lucide-react";
 import { Slider } from "@/core/components/ui/slider";
+import { useI18n } from "@/core/contexts/locale-context";
 
 interface ProfileBannerUploaderProps {
     isOpen: boolean;
@@ -20,6 +21,7 @@ interface ProfileBannerUploaderProps {
 const ASPECT = 3; // X-stili geniş banner
 
 export function ProfileBannerUploader({ isOpen, onClose }: ProfileBannerUploaderProps) {
+    const t = useI18n();
     const queryClient = useQueryClient();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const zoomFrameRef = useRef<number | null>(null);
@@ -59,13 +61,13 @@ export function ProfileBannerUploader({ isOpen, onClose }: ProfileBannerUploader
     const { mutate, isPending } = useMutation({
         mutationFn: uploadHeaderPhoto,
         onSuccess: () => {
-            toast.success("Profil banner'ı güncellendi.");
+            toast.success(t("profile.header.coverUpdateSuccess"));
             queryClient.invalidateQueries({ queryKey: ["my-profile"] });
             queryClient.invalidateQueries({ queryKey: ["profile"] });
             resetAndClose();
         },
         onError: (error) => {
-            toast.error("Banner yüklenemedi.", { description: error.message });
+            toast.error(t("profile.header.coverUpdateError"), { description: error.message });
         },
     });
 
@@ -128,13 +130,13 @@ export function ProfileBannerUploader({ isOpen, onClose }: ProfileBannerUploader
                 if (!open) resetAndClose();
             }}
         >
-            <DialogContent size="xl" className="max-h-[92vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle>Profil banner'ını güncelle</DialogTitle>
+            <DialogContent size="xl" className="flex max-h-[92vh] flex-col overflow-hidden p-0">
+                <DialogHeader className="shrink-0 px-6 pt-6">
+                    <DialogTitle>{t("profile.header.updateCoverTitle")}</DialogTitle>
                 </DialogHeader>
 
-                <div className="flex flex-col items-center gap-4 py-3">
-                    <div className="relative aspect-[3/1] w-full min-h-64 overflow-hidden rounded-md bg-secondary/30 md:min-h-80 lg:min-h-[360px]">
+                <div className="flex min-h-0 flex-1 flex-col items-center gap-4 overflow-y-auto overflow-x-hidden px-6 py-4">
+                    <div className="relative h-[clamp(220px,42vh,360px)] w-full max-w-full overflow-hidden rounded-md bg-secondary/30">
                         {imageSrc ? (
                             <>
                                 <Cropper
@@ -150,7 +152,7 @@ export function ProfileBannerUploader({ isOpen, onClose }: ProfileBannerUploader
                                     zoomSpeed={0.7}
                                     objectFit="horizontal-cover"
                                 />
-                                <div className="absolute bottom-4 left-1/2 flex w-[min(520px,calc(100%-2rem))] -translate-x-1/2 items-center gap-3 rounded-full border border-white/10 bg-background/85 px-4 py-3 shadow-lg backdrop-blur">
+                                <div className="absolute bottom-4 left-1/2 flex w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 items-center gap-3 rounded-full border border-white/10 bg-background/85 px-4 py-3 shadow-lg backdrop-blur">
                                     <ZoomIn className="h-4 w-4 shrink-0 text-muted-foreground" />
                                     <Slider
                                         value={[zoom]}
@@ -164,11 +166,11 @@ export function ProfileBannerUploader({ isOpen, onClose }: ProfileBannerUploader
                             </>
                         ) : previewUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={previewUrl} alt="Banner önizleme" className="h-full w-full object-cover" />
+                            <img src={previewUrl} alt={t("profile.header.coverPreviewAlt")} className="h-full w-full object-cover" />
                         ) : (
                             <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
                                 <ImagePlus className="h-8 w-8" />
-                                <span>Banner için bir görsel seç (3:1 önerilir)</span>
+                                <span>{t("profile.header.coverPickerHint")}</span>
                             </div>
                         )}
                     </div>
@@ -184,24 +186,28 @@ export function ProfileBannerUploader({ isOpen, onClose }: ProfileBannerUploader
                     {!imageSrc && (
                         <Button variant="outline" onClick={handleFileSelectClick} className="cursor-pointer">
                             <Upload className="mr-2 h-4 w-4" />
-                            {croppedFile ? "Değiştir" : "Görsel seç"}
+                            {croppedFile ? t("profile.header.changeCoverImage") : t("profile.header.chooseCoverImage")}
                         </Button>
                     )}
-
-                    {imageSrc && <Button onClick={showCroppedImage}>Kırp ve önizle</Button>}
                 </div>
 
-                <DialogFooter>
+                <DialogFooter className="shrink-0 border-t px-6 py-4">
                     <Button variant="ghost" onClick={resetAndClose} className="cursor-pointer">
-                        İptal
+                        {t("common.cancel")}
                     </Button>
-                    <Button
-                        onClick={handleUpload}
-                        disabled={!croppedFile || isPending}
-                        className="cursor-pointer"
-                    >
-                        {isPending ? "Yükleniyor..." : "Kaydet"}
-                    </Button>
+                    {imageSrc ? (
+                        <Button onClick={showCroppedImage} disabled={!croppedAreaPixels} className="cursor-pointer">
+                            {t("profile.header.cropAndPreview")}
+                        </Button>
+                    ) : (
+                        <Button
+                            onClick={handleUpload}
+                            disabled={!croppedFile || isPending}
+                            className="cursor-pointer"
+                        >
+                            {isPending ? t("profile.header.uploadingCover") : t("common.save")}
+                        </Button>
+                    )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>
