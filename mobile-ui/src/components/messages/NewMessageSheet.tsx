@@ -16,7 +16,9 @@ import { BottomSheet } from '@/src/components/common/BottomSheet';
 import { Avatar } from '@/src/components/common/Avatar';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
+import { useAuth } from '@/src/hooks/use-auth';
 import { searchMessageableUsers } from '@/src/api/search';
+import { getFollowing } from '@/src/api/social';
 import { toMobileRoute } from '@/src/utils/route';
 import { BorderRadius, FontSize, Spacing } from '@/src/constants/theme';
 
@@ -47,6 +49,7 @@ interface UserRow {
 export function NewMessageSheet({ visible, onClose }: NewMessageSheetProps) {
   const { colors } = useTheme();
   const { messages } = useLocale();
+  const { user } = useAuth();
   const router = useRouter();
   const { height } = useWindowDimensions();
   const t = messages.messages;
@@ -70,12 +73,13 @@ export function NewMessageSheet({ visible, onClose }: NewMessageSheetProps) {
     staleTime: 15000,
   });
 
-  // Arama boşken takip edilen + mesaj atılabilir kullanıcıları öneri göster
-  // (aynı endpoint boş query'de backend gizlilik kurallarıyla öneri döner).
+  // Arama boşken takip ettiğin kullanıcıları öneri göster. (Backend'in boş-query
+  // önerisi "takip ettiğim VE bana mesaj atılabilir" şeklinde çok dar kalıp pratikte
+  // boş döndüğü için doğrudan takip listesini kullanıyoruz.)
   const suggestionsQuery = useQuery({
-    queryKey: ['messageableSuggestions'],
-    queryFn: () => searchMessageableUsers(''),
-    enabled: visible && !isSearching,
+    queryKey: ['messageSuggestions', user?.username],
+    queryFn: () => getFollowing(user!.username),
+    enabled: visible && !isSearching && !!user?.username,
     staleTime: 60000,
   });
 
@@ -102,12 +106,12 @@ export function NewMessageSheet({ visible, onClose }: NewMessageSheetProps) {
     route: toMobileRoute(r.link),
   }));
 
-  const suggestionRows: UserRow[] = (suggestionsQuery.data ?? []).map((r) => ({
-    key: `suggest-${r.id}`,
-    label: r.title,
-    sublabel: r.subtitle,
-    imageUrl: r.imageUrl,
-    route: toMobileRoute(r.link),
+  const suggestionRows: UserRow[] = (suggestionsQuery.data ?? []).map((u) => ({
+    key: `suggest-${u.id}`,
+    label: [u.firstName, u.lastName].filter(Boolean).join(' ') || u.username,
+    sublabel: `@${u.username}`,
+    imageUrl: u.profileImageUrl,
+    route: toMobileRoute(`/messages/${u.username}`),
   }));
 
   const renderRow = useCallback(

@@ -34,6 +34,10 @@ function LeaderboardRow({ user, index, isLast }: { user: LeaderboardUser; index:
   const avatarUri = getImageUrl(user.profileImageUrl);
   const rankColor = getRankColor(index);
   const isTop3 = index < 3;
+  // Level ismini dile gore goster (backend Turkce sabit donuyor); numaraya gore i18n map,
+  // eslesmezse backend stringine dus.
+  const localizedLevelName =
+    (messages.home.levelNames as Record<string, string>)[String(user.level)] ?? user.levelName;
 
   const handlePress = () => {
     haptics.impactLight();
@@ -65,7 +69,7 @@ function LeaderboardRow({ user, index, isLast }: { user: LeaderboardUser; index:
           {user.username}
         </Text>
         <Text style={[styles.levelText, { color: colors.textSecondary }]} numberOfLines={1}>
-          {user.levelName} ({messages.home.level} {user.level})
+          {localizedLevelName} ({messages.home.level} {user.level})
         </Text>
       </View>
       <View style={styles.xpContainer}>

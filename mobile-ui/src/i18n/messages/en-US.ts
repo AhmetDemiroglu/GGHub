@@ -359,6 +359,15 @@ export const enUSMessages = {
         emptyFeed: "No activity yet.",
         seeAll: "See All",
         level: "Level",
+        levelNames: {
+            "1": "Beginner",
+            "2": "Novice",
+            "3": "Explorer",
+            "4": "Experienced",
+            "5": "Master",
+            "6": "Legend",
+            "7": "God Mode",
+        },
         xp: "XP",
         signUp: "Sign Up",
         stats: {

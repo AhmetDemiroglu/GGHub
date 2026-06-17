@@ -57,11 +57,20 @@ export default function MessageThreadScreen() {
     queryKey: ['messageThread', username],
     queryFn: () => getMessageThread(username!),
     enabled: !!username && isAuthenticated,
+    // Sohbet her acilista taze cekilsin: aksi halde global staleTime yuzunden,
+    // ekran disindayken gelen mesaj acilinca gorunmuyordu.
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   useEffect(() => {
     if (threadQuery.data) {
-      setLocalMessages([...threadQuery.data].reverse());
+      // inverted FlatList: index 0 en altta. En yeni mesaj altta olmali, bu yuzden
+      // sentAt'e gore kesin azalan sirala (backend sirasina guvenme).
+      const sorted = [...threadQuery.data].sort(
+        (a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime(),
+      );
+      setLocalMessages(sorted);
     }
   }, [threadQuery.data]);
 
@@ -80,7 +89,9 @@ export default function MessageThreadScreen() {
         msg &&
         (msg.senderUsername === username || msg.recipientUsername === username)
       ) {
-        setLocalMessages((prev) => [msg, ...prev]);
+        setLocalMessages((prev) =>
+          prev.some((m) => m.id === msg.id) ? prev : [msg, ...prev],
+        );
       }
     });
 
@@ -98,7 +109,9 @@ export default function MessageThreadScreen() {
     mutationFn: (content: string) =>
       sendMessage({ recipientUsername: username!, content }),
     onSuccess: (newMsg) => {
-      setLocalMessages((prev) => [newMsg, ...prev]);
+      setLocalMessages((prev) =>
+        prev.some((m) => m.id === newMsg.id) ? prev : [newMsg, ...prev],
+      );
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
   });

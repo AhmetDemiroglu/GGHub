@@ -359,6 +359,15 @@ export const trMessages = {
         emptyFeed: "Henüz bir aktivite yok.",
         seeAll: "Tümünü Gör",
         level: "Seviye",
+        levelNames: {
+            "1": "Başlangıç",
+            "2": "Acemi",
+            "3": "Keşifçi",
+            "4": "Deneyimli",
+            "5": "Usta",
+            "6": "Efsane",
+            "7": "God Mode",
+        },
         xp: "XP",
         signUp: "Kayıt Ol",
         stats: {
