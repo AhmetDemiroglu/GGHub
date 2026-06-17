@@ -88,21 +88,21 @@ function RegisterPageContent() {
                     </Button>
                 </Link>
 
-                <CardHeader className="space-y-3 pb-2 pt-9 text-center">
+                <CardHeader className="space-y-1.5 pb-2 pt-6 text-center">
                     <Link href={buildLocalizedPathname("/", locale)} className="mx-auto inline-flex select-none">
-                        <span className="bg-gradient-to-r from-cyan-400 via-blue-500 to-fuchsia-500 bg-clip-text text-[2.6rem] font-extrabold leading-none tracking-tight text-transparent">
+                        <span className="bg-gradient-to-r from-cyan-400 via-blue-500 to-fuchsia-500 bg-clip-text text-[2rem] font-extrabold leading-none tracking-tight text-transparent">
                             GGHub
                         </span>
                     </Link>
-                    <div className="space-y-1">
+                    <div className="space-y-0.5">
                         <CardTitle className="text-xl font-semibold">{t("auth.registerCreateTitle")}</CardTitle>
                         <p className="text-sm text-muted-foreground">{t("auth.registerSubtitle")}</p>
                     </div>
                 </CardHeader>
 
-                <CardContent className="px-6 pb-8 pt-2 sm:px-8">
+                <CardContent className="px-6 pb-6 pt-1 sm:px-8">
                     <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
                             <FormField
                                 control={form.control}
                                 name="username"
@@ -112,7 +112,7 @@ function RegisterPageContent() {
                                         <FormControl>
                                             <div className="relative">
                                                 <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                                                <Input className="h-11 pl-9" placeholder={t("auth.registerUsernamePlaceholder")} {...field} />
+                                                <Input className="h-10 pl-9" placeholder={t("auth.registerUsernamePlaceholder")} {...field} />
                                             </div>
                                         </FormControl>
                                         <FormMessage />
@@ -129,7 +129,7 @@ function RegisterPageContent() {
                                         <FormControl>
                                             <div className="relative">
                                                 <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                                                <Input className="h-11 pl-9" placeholder={t("auth.forgotPasswordEmailPlaceholder")} {...field} />
+                                                <Input className="h-10 pl-9" placeholder={t("auth.forgotPasswordEmailPlaceholder")} {...field} />
                                             </div>
                                         </FormControl>
                                         <FormMessage />
@@ -146,7 +146,7 @@ function RegisterPageContent() {
                                         <FormControl>
                                             <div className="relative">
                                                 <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                                                <Input type="password" className="h-11 pl-9" {...field} />
+                                                <Input type="password" className="h-10 pl-9" {...field} />
                                             </div>
                                         </FormControl>
                                         <FormMessage />
@@ -157,7 +157,7 @@ function RegisterPageContent() {
                             <Button
                                 type="submit"
                                 disabled={isPending}
-                                className="h-11 w-full cursor-pointer rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 text-base font-semibold text-white shadow-lg shadow-violet-500/25 transition-all hover:from-cyan-400 hover:to-violet-400 hover:shadow-violet-500/40"
+                                className="h-10 w-full cursor-pointer rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 text-base font-semibold text-white shadow-lg shadow-violet-500/25 transition-all hover:from-cyan-400 hover:to-violet-400 hover:shadow-violet-500/40"
                             >
                                 {isPending ? t("auth.registerSubmitPending") : t("auth.registerCreateTitle")}
                             </Button>
