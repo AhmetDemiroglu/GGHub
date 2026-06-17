@@ -18,7 +18,9 @@
       "buildNumber": "1",
       "usesAppleSignIn": true,
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleLocalizations": ["en", "tr"],
+        "CFBundleDevelopmentRegion": "en"
       }
     },
     "android": {

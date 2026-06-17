@@ -53,12 +53,11 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
         // Storage read failed
       }
 
-      // Fall back to device locale
+      // Fall back to device locale: check each ranked locale, by full tag then language code.
       try {
         const deviceLocales = getLocales();
-        if (deviceLocales && deviceLocales.length > 0) {
-          const deviceLocale = deviceLocales[0];
-          const normalized = normalizeLocale(deviceLocale.languageTag);
+        for (const dl of deviceLocales ?? []) {
+          const normalized = normalizeLocale(dl.languageTag) ?? normalizeLocale(dl.languageCode);
           if (normalized) {
             setLocale(normalized);
             setMessages(getMessages(normalized));
