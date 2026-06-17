@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -7,25 +7,21 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  Animated,
+  Easing,
   Dimensions,
+  PanResponder,
 } from 'react-native';
-import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-  runOnJS,
-  interpolate,
-  Extrapolation,
-} from 'react-native-reanimated';
 import { useTheme } from '@/src/hooks/use-theme';
-import { Spacing, FontSize, BorderRadius, Springs, Shadows } from '@/src/constants/theme';
-import * as haptics from '@/src/utils/haptics';
+import { Spacing, FontSize, BorderRadius, Shadows } from '@/src/constants/theme';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const OPEN_DURATION = 260;
+const CLOSE_DURATION = 200;
+
+// Swipe-to-close esikleri
 const CLOSE_DISTANCE = 100;
-const CLOSE_VELOCITY = 600;
+const CLOSE_VELOCITY = 0.5;
 
 interface BottomSheetProps {
   visible: boolean;
@@ -34,108 +30,149 @@ interface BottomSheetProps {
   children: React.ReactNode;
 }
 
+/**
+ * Alt sayfa: RN Modal + PanResponder + RN Animated (native driver).
+ * Reanimated/worklet KULLANMAZ. Bu kombinasyon iOS'ta kanitlanmis ve crash'siz;
+ * Reanimated Gesture tabanli sheet iOS+Fabric'te native crash veriyordu.
+ * Tutamaktan asagi surukleyince esige gore kapanir ya da geri snap eder.
+ */
 export function BottomSheet({ visible, onClose, title, children }: BottomSheetProps) {
   const { colors } = useTheme();
-  const translateY = useSharedValue(SCREEN_HEIGHT);
-  const overlayOpacity = useSharedValue(0);
+  const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const overlayOpacity = useRef(new Animated.Value(0)).current;
+  // Modal yalnizca acma akisinda mount edilir, kapanis animasyonu bitince unmount.
   const [mounted, setMounted] = useState(visible);
 
   useEffect(() => {
     if (visible) {
       setMounted(true);
-      // Slight delay so mount happens before animation
-      requestAnimationFrame(() => {
-        translateY.value = withSpring(0, Springs.smooth);
-        overlayOpacity.value = withTiming(1, { duration: 220 });
-      });
+      Animated.parallel([
+        Animated.timing(overlayOpacity, {
+          toValue: 1,
+          duration: OPEN_DURATION,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(translateY, {
+          toValue: 0,
+          duration: OPEN_DURATION,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start();
     } else if (mounted) {
-      translateY.value = withSpring(SCREEN_HEIGHT, Springs.smooth);
-      overlayOpacity.value = withTiming(0, { duration: 180 });
-      const t = setTimeout(() => setMounted(false), 250);
-      return () => clearTimeout(t);
-    }
-  }, [visible, mounted, translateY, overlayOpacity]);
-
-  // Pan gesture: handle alanında aşağı sürükleme ile kapatma
-  const panGesture = React.useMemo(() => {
-    let startY = 0;
-    return Gesture.Pan()
-      .activeOffsetY(10)
-      .failOffsetX(20)
-      .onStart(() => {
-        'worklet';
-        startY = translateY.value;
-      })
-      .onUpdate((e) => {
-        'worklet';
-        const next = Math.max(0, startY + e.translationY);
-        translateY.value = next;
-        overlayOpacity.value = interpolate(
-          next,
-          [0, SCREEN_HEIGHT * 0.5],
-          [1, 0.2],
-          Extrapolation.CLAMP,
-        );
-      })
-      .onEnd((e) => {
-        'worklet';
-        const shouldClose =
-          translateY.value > CLOSE_DISTANCE || e.velocityY > CLOSE_VELOCITY;
-        if (shouldClose) {
-          haptics.impactMedium();
-          translateY.value = withSpring(SCREEN_HEIGHT, Springs.smooth);
-          overlayOpacity.value = withTiming(0, { duration: 160 });
-          runOnJS(onClose)();
-        } else {
-          translateY.value = withSpring(0, Springs.smooth);
-          overlayOpacity.value = withTiming(1, { duration: 160 });
-        }
+      Animated.parallel([
+        Animated.timing(overlayOpacity, {
+          toValue: 0,
+          duration: CLOSE_DURATION,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(translateY, {
+          toValue: SCREEN_HEIGHT,
+          duration: CLOSE_DURATION,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        if (finished) setMounted(false);
       });
-  }, [translateY, overlayOpacity, onClose]);
+    }
+  }, [visible, mounted, overlayOpacity, translateY]);
 
-  const sheetStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-  }));
-
-  const overlayStyle = useAnimatedStyle(() => ({
-    opacity: overlayOpacity.value,
-  }));
+  // Handle alaninda calisan PanResponder. Asagi surukleyince sheet kayar;
+  // birakildiginda esige gore kapanir ya da geri yukari snap eder.
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: (_, gesture) => gesture.dy > 4,
+        onPanResponderMove: (_, gesture) => {
+          if (gesture.dy > 0) {
+            translateY.setValue(gesture.dy);
+            const fade = Math.max(0.2, 1 - gesture.dy / (SCREEN_HEIGHT * 0.5));
+            overlayOpacity.setValue(fade);
+          }
+        },
+        onPanResponderRelease: (_, gesture) => {
+          const shouldClose =
+            gesture.dy > CLOSE_DISTANCE || gesture.vy > CLOSE_VELOCITY;
+          if (shouldClose) {
+            onClose();
+          } else {
+            Animated.parallel([
+              Animated.spring(translateY, {
+                toValue: 0,
+                friction: 9,
+                tension: 80,
+                useNativeDriver: true,
+              }),
+              Animated.timing(overlayOpacity, {
+                toValue: 1,
+                duration: 160,
+                easing: Easing.out(Easing.cubic),
+                useNativeDriver: true,
+              }),
+            ]).start();
+          }
+        },
+        onPanResponderTerminate: () => {
+          Animated.spring(translateY, {
+            toValue: 0,
+            friction: 9,
+            tension: 80,
+            useNativeDriver: true,
+          }).start();
+          Animated.timing(overlayOpacity, {
+            toValue: 1,
+            duration: 160,
+            useNativeDriver: true,
+          }).start();
+        },
+      }),
+    [translateY, overlayOpacity, onClose],
+  );
 
   if (!mounted) return null;
 
   return (
     <Modal visible transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
-      <GestureHandlerRootView style={styles.fill}>
-        <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, overlayStyle]}>
+      <View style={styles.fill}>
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            { backgroundColor: 'rgba(0,0,0,0.55)', opacity: overlayOpacity },
+          ]}
+        >
           <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         </Animated.View>
 
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          // Negatif offset: sheet klavyenin birkaç px arkasına insin ki klavyenin
+          // yuvarlak üst köşelerinde karartı (overlay) yerine sheet yüzeyi görünsün.
+          keyboardVerticalOffset={Platform.OS === 'ios' ? -24 : 0}
           style={styles.keyboardView}
           pointerEvents="box-none"
         >
-          <GestureDetector gesture={panGesture}>
-            <Animated.View
-              style={[
-                styles.sheet,
-                { backgroundColor: colors.surface },
-                Shadows.xl,
-                sheetStyle,
-              ]}
-            >
-              {/* Tutamak - drag burada başlar */}
-              <View style={styles.handleArea}>
-                <View style={[styles.handle, { backgroundColor: colors.textMuted }]} />
-                {title ? (
-                  <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-                ) : null}
-              </View>
-              {children}
-            </Animated.View>
-          </GestureDetector>
+          <Animated.View
+            style={[
+              styles.sheet,
+              { backgroundColor: colors.surface, transform: [{ translateY }] },
+              Shadows.xl,
+            ]}
+          >
+            {/* Tutamak - drag burada baslar */}
+            <View style={styles.handleArea} {...panResponder.panHandlers}>
+              <View style={[styles.handle, { backgroundColor: colors.textMuted }]} />
+              {title ? (
+                <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+              ) : null}
+            </View>
+            {children}
+          </Animated.View>
         </KeyboardAvoidingView>
-      </GestureHandlerRootView>
+      </View>
     </Modal>
   );
 }
@@ -143,9 +180,6 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
 const styles = StyleSheet.create({
   fill: {
     flex: 1,
-  },
-  backdrop: {
-    backgroundColor: 'rgba(0,0,0,0.55)',
   },
   keyboardView: {
     flex: 1,

@@ -17,6 +17,7 @@ import { EmptyState } from '@/src/components/common/EmptyState';
 import { NotificationItem } from '@/src/components/notifications/NotificationItem';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
+import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { getNotifications, markAllNotificationsAsRead } from '@/src/api/notifications';
 import { useAuth } from '@/src/hooks/use-auth';
 import { AuthRequiredView } from '@/src/components/common/AuthRequiredView';
@@ -31,6 +32,7 @@ export default function NotificationsScreen() {
   const { messages } = useLocale();
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
+  const tabBarHeight = useTabBarHeight();
   const nav = messages.nav;
 
   const { onReceiveNotification } = useContext(SignalRContext);
@@ -107,9 +109,10 @@ export default function NotificationsScreen() {
             description={messages.common.noResults}
           />
         }
-        contentContainerStyle={
-          (notificationsQuery.data ?? []).length === 0 ? styles.emptyList : undefined
-        }
+        contentContainerStyle={[
+          (notificationsQuery.data ?? []).length === 0 ? styles.emptyList : undefined,
+          { paddingBottom: tabBarHeight + Spacing.md },
+        ]}
       />
     </ScreenWrapper>
   );

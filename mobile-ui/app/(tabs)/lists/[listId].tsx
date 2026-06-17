@@ -27,6 +27,7 @@ import { useToast } from '@/src/components/common/Toast';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
+import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { getListDetail, followList, unfollowList, removeGameFromList } from '@/src/api/list';
 import { useRequireAuth } from '@/src/contexts/auth-prompt-context';
 import { getImageUrl } from '@/src/utils/image';
@@ -56,6 +57,7 @@ export default function ListDetailScreen() {
   const { showToast } = useToast();
   const requireAuth = useRequireAuth();
   const queryClient = useQueryClient();
+  const tabBarHeight = useTabBarHeight();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddGameModal, setShowAddGameModal] = useState(false);
 
@@ -164,7 +166,7 @@ export default function ListDetailScreen() {
   return (
     <ScreenWrapper noPadding safeArea={false}>
       <ScreenHeader title={list.name || messages.nav.screenTitles.listDetail} />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarHeight + Spacing.md }]}>
         <View style={styles.headerSection}>
           <View style={styles.titleRow}>
             <Text style={[styles.listName, { color: colors.text }]}>{list.name}</Text>
@@ -304,9 +306,7 @@ export default function ListDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  scrollContent: {
-    paddingBottom: Spacing.xxxl,
-  },
+  scrollContent: {},
   headerSection: {
     padding: Spacing.lg,
   },

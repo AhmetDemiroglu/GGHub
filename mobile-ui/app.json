@@ -17,9 +17,15 @@
       "bundleIdentifier": "com.gghub.mobile",
       "buildNumber": "1",
       "usesAppleSignIn": true,
+      "entitlements": {
+        "aps-environment": "production"
+      },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "CFBundleLocalizations": ["en", "tr"],
+        "CFBundleLocalizations": [
+          "en",
+          "tr"
+        ],
         "CFBundleDevelopmentRegion": "en"
       }
     },
@@ -31,10 +37,11 @@
       "package": "com.gghub.mobile",
       "versionCode": 1,
       "permissions": [
-        "INTERNET",
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "android.permission.INTERNET",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -44,15 +51,27 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store",
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": "Allow GGHub to use Face ID to keep your account securely signed in."
+        }
+      ],
       "expo-localization",
       "expo-font",
       "./plugins/withGradleEncoding",
       [
+        "expo-notifications",
+        {
+          "color": "#0f172a"
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "Allow GGHub to access your photos for profile picture upload.",
-          "cameraPermission": "Allow GGHub to access your camera for profile picture upload."
+          "cameraPermission": "Allow GGHub to access your camera for profile picture upload.",
+          "microphonePermission": false
         }
       ],
       [
@@ -66,9 +85,11 @@
       "typedRoutes": true
     },
     "extra": {
+      "router": {},
       "eas": {
-        "projectId": "gghub-mobile"
+        "projectId": "0f5e5cc1-3810-49e4-954e-7bb23f181e24"
       }
-    }
+    },
+    "owner": "ahmetdemiroglu"
   }
 }

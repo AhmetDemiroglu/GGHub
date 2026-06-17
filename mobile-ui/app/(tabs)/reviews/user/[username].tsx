@@ -17,6 +17,7 @@ import { LoadingScreen } from '@/src/components/common/LoadingScreen';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
+import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { getReviewsByUser } from '@/src/api/review';
 import { getImageUrl } from '@/src/utils/image';
 import type { Review } from '@/src/models/review';
@@ -28,6 +29,7 @@ export default function UserReviewsScreen() {
   const { messages } = useLocale();
   const router = useRouter();
   const { user } = useAuth();
+  const tabBarHeight = useTabBarHeight();
 
   const isSelf = username === 'me';
   const resolvedUsername = isSelf ? user?.username : username;
@@ -146,7 +148,7 @@ export default function UserReviewsScreen() {
         data={reviews ?? []}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderReview}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + Spacing.md }]}
         ListEmptyComponent={
           <EmptyState
             icon="chatbox-outline"

@@ -113,17 +113,36 @@ namespace GGHub.Infrastructure.Services
                 .Select(b => b.BlockerId == currentUserId ? b.BlockedId : b.BlockerId)
                 .ToListAsync();
 
-            var messageableUsers = await _context.Users
-                .Where(u => u.Username.ToLower().Contains(query.ToLower())
-                            && !u.IsDeleted
+            // Mesaj atılabilir kullanıcılar: engellenmemiş, mesajı kapalı olmayan ve
+            // gizlilik kuralını sağlayan (herkes; ya da "takip edenler" ayarında beni
+            // takip eden) kullanıcılar.
+            var messageable = _context.Users
+                .Where(u => !u.IsDeleted
                             && u.Id != currentUserId
                             && !blockedUserIds.Contains(u.Id)
                             && u.MessageSetting != MessagePrivacySetting.None)
                 .Where(u =>
                     u.MessageSetting == MessagePrivacySetting.Everyone ||
                     (u.MessageSetting == MessagePrivacySetting.Following &&
-                     _context.Follows.Any(f => f.FollowerId == u.Id && f.FolloweeId == currentUserId)))
-                .Take(10)
+                     _context.Follows.Any(f => f.FollowerId == u.Id && f.FolloweeId == currentUserId)));
+
+            // Query boşsa öneri modu: takip ettiğim ve mesaj atabileceğim kullanıcılar.
+            // Query doluysa kullanıcı adına göre arama.
+            var isSuggestion = string.IsNullOrWhiteSpace(query);
+            if (isSuggestion)
+            {
+                messageable = messageable
+                    .Where(u => _context.Follows.Any(f => f.FollowerId == currentUserId && f.FolloweeId == u.Id));
+            }
+            else
+            {
+                var lower = query.ToLower();
+                messageable = messageable.Where(u => u.Username.ToLower().Contains(lower));
+            }
+
+            var results = await messageable
+                .OrderBy(u => u.Username)
+                .Take(isSuggestion ? 20 : 10)
                 .Select(u => new SearchResultDto
                 {
                     Type = "Kullanıcı",
@@ -134,7 +153,7 @@ namespace GGHub.Infrastructure.Services
                 })
                 .ToListAsync();
 
-            return messageableUsers;
+            return results;
         }
 
         private static (string nameQuery, int? year) ParseQuery(string raw)

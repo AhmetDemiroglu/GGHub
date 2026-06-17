@@ -17,6 +17,7 @@ import { useToast } from '@/src/components/common/Toast';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
+import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { getMyWishlist, toggleWishlist } from '@/src/api/list';
 import { getImageUrl } from '@/src/utils/image';
 import type { Game } from '@/src/models/game';
@@ -28,6 +29,7 @@ export default function WishlistScreen() {
   const { isAuthenticated } = useAuth();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
+  const tabBarHeight = useTabBarHeight();
 
   const {
     data: wishlist,
@@ -124,7 +126,7 @@ export default function WishlistScreen() {
         data={games}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderGame}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + Spacing.md }]}
         ListHeaderComponent={
           <View style={styles.header}>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>

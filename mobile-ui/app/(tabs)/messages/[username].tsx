@@ -4,10 +4,12 @@ import {
   Text,
   FlatList,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
   TouchableOpacity,
 } from 'react-native';
+import Animated, {
+  useAnimatedKeyboard,
+  useAnimatedStyle,
+} from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -24,6 +26,7 @@ import { getMessageThread, sendMessage } from '@/src/api/messages';
 import { SignalRContext } from '@/src/contexts/signalr-context';
 import type { MessageDto } from '@/src/models/message';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
+import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import * as haptics from '@/src/utils/haptics';
 
 export default function MessageThreadScreen() {
@@ -35,6 +38,15 @@ export default function MessageThreadScreen() {
   const queryClient = useQueryClient();
   const flatListRef = useRef<FlatList>(null);
   const t = i18n.messages;
+  const tabBarHeight = useTabBarHeight();
+
+  // Klavye açıkken input klavyenin hemen üstüne, kapalıyken tab bar'ın hemen
+  // üstüne otursun. useAnimatedKeyboard değeri UI thread'de aktığı için geçiş
+  // klavye animasyonuyla birebir senkron olur.
+  const keyboard = useAnimatedKeyboard();
+  const inputAreaStyle = useAnimatedStyle(() => ({
+    paddingBottom: Math.max(tabBarHeight, keyboard.height.value),
+  }));
 
   const { joinConversation, leaveConversation, onReceiveMessage, onMessagesRead } =
     useContext(SignalRContext);
@@ -119,7 +131,7 @@ export default function MessageThreadScreen() {
   if (threadQuery.isLoading) return <LoadingScreen />;
 
   return (
-    <ScreenWrapper noPadding edges={['top', 'bottom']}>
+    <ScreenWrapper noPadding edges={['top']}>
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
         <TouchableOpacity
           onPress={() => {
@@ -141,21 +153,18 @@ export default function MessageThreadScreen() {
         </Text>
       </View>
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={90}
-      >
+      <Animated.View style={[styles.flex, inputAreaStyle]}>
         <FlatList
           ref={flatListRef}
           data={localMessages}
           renderItem={renderItem}
           keyExtractor={(item) => String(item.id)}
           inverted
+          style={styles.flex}
           contentContainerStyle={styles.messagesList}
         />
         <ChatInput onSend={handleSend} disabled={sendMutation.isPending} />
-      </KeyboardAvoidingView>
+      </Animated.View>
     </ScreenWrapper>
   );
 }

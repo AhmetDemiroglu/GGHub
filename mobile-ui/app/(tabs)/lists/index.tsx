@@ -27,6 +27,7 @@ import { getPublicLists, getMyLists, getFollowedListsByMe } from '@/src/api/list
 import { ListCategory, UserListType, type UserList, type UserListPublic } from '@/src/models/list';
 import { APP_CONFIG } from '@/src/constants/config';
 import { BorderRadius, FontSize, Spacing } from '@/src/constants/theme';
+import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 
 // ── Keşfet alt-sekmesi için kategori listesi ──────────────────────────────────
 
@@ -68,6 +69,7 @@ export default function ListsTabScreen() {
   const { showToast } = useToast();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const tabBarHeight = useTabBarHeight();
 
   const [rootTab, setRootTab] = useState<RootTab>('discover');
 
@@ -300,7 +302,7 @@ export default function ListsTabScreen() {
               if (hasMoreDiscover && !discoverLoading) setDiscoverPage((p) => p + 1);
             }}
             onEndReachedThreshold={0.5}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + Spacing.md }]}
           />
         )
       ) : null}
@@ -350,7 +352,7 @@ export default function ListsTabScreen() {
                   data={customLists}
                   keyExtractor={(item) => String(item.id)}
                   renderItem={renderMyListItem}
-                  contentContainerStyle={styles.listContent}
+                  contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + Spacing.md }]}
                   ListEmptyComponent={
                     <EmptyState icon="list-outline" title={messages.lists.noMyLists} />
                   }
@@ -364,7 +366,7 @@ export default function ListsTabScreen() {
                   data={followedLists}
                   keyExtractor={(item) => String(item.id)}
                   renderItem={renderFollowedItem}
-                  contentContainerStyle={styles.listContent}
+                  contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + Spacing.md }]}
                   ListEmptyComponent={
                     <EmptyState icon="heart-outline" title={messages.lists.noFollowedLists} />
                   }
@@ -383,7 +385,7 @@ export default function ListsTabScreen() {
 
             {/* Yeni Liste FAB */}
             <Pressable
-              style={[styles.fab, { backgroundColor: colors.primary }]}
+              style={[styles.fab, { backgroundColor: colors.primary, bottom: tabBarHeight + Spacing.md }]}
               onPress={() => requireAuth(() => setShowCreateModal(true))}
             >
               <Ionicons name="add" size={28} color="#ffffff" />
@@ -463,7 +465,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: Spacing.lg,
-    paddingBottom: Spacing.xxxl,
   },
   footerLoader: {
     paddingVertical: Spacing.lg,
@@ -508,7 +509,6 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: Spacing.lg,
-    bottom: Spacing.xxxl,
     width: 56,
     height: 56,
     borderRadius: 28,

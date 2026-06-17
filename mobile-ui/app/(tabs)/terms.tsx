@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
+import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 import { ScreenHeader } from '@/src/components/shell';
 
@@ -53,6 +54,7 @@ const sections = [
 export default function TermsScreen() {
   const { colors } = useTheme();
   const { locale, messages } = useLocale();
+  const tabBarHeight = useTabBarHeight();
   const isTr = locale === 'tr';
 
   const pageTitle = messages.nav.screenTitles.terms;
@@ -63,7 +65,7 @@ export default function TermsScreen() {
       <ScreenHeader title={pageTitle} />
       <ScrollView
         style={[styles.container, { backgroundColor: colors.background }]}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: tabBarHeight + Spacing.md }]}
         showsVerticalScrollIndicator={false}
       >
         <Text style={[styles.title, { color: colors.text }]}>{pageTitle}</Text>
@@ -96,7 +98,6 @@ const styles = StyleSheet.create({
   content: {
     padding: Spacing.lg,
     gap: Spacing.md,
-    paddingBottom: Spacing.xxxl,
   },
   title: {
     fontSize: FontSize.xxxl,

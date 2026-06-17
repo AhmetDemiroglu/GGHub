@@ -21,6 +21,7 @@ import { BlockedUsersDialog } from '@/src/components/profile/BlockedUsersDialog'
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
+import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { getMyProfile, updateProfileVisibility, updateMessageSetting } from '@/src/api/profile';
 import {
   ProfileVisibilitySetting,
@@ -35,6 +36,7 @@ export default function ProfileSettingsScreen() {
   const { messages, locale, switchLocale } = useLocale();
   const { logout, user } = useAuth();
   const queryClient = useQueryClient();
+  const tabBarHeight = useTabBarHeight();
   const h = messages.profile.header;
   const dz = messages.profile.dangerZone;
 
@@ -89,7 +91,7 @@ export default function ProfileSettingsScreen() {
     <ScreenWrapper noPadding safeArea={false}>
       <ScreenHeader title={messages.nav.screenTitles.settings} />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: tabBarHeight + Spacing.md }}>
         <TouchableOpacity
           style={[styles.menuItem, { borderBottomColor: colors.border }]}
           onPress={() => router.push('/profile/edit')}

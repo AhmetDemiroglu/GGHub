@@ -6,20 +6,22 @@ import {
   TextInput,
   StyleSheet,
   RefreshControl,
+  Pressable,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useContext } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenWrapper } from '@/src/components/common/ScreenWrapper';
 import { AppTopBar } from '@/src/components/shell';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
 import { EmptyState } from '@/src/components/common/EmptyState';
 import { ConversationItem } from '@/src/components/messages/ConversationItem';
+import { NewMessageSheet } from '@/src/components/messages/NewMessageSheet';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
+import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { AuthRequiredView } from '@/src/components/common/AuthRequiredView';
 import { getConversations } from '@/src/api/messages';
 import { SignalRContext } from '@/src/contexts/signalr-context';
@@ -35,9 +37,10 @@ export default function MessagesListScreen() {
   const t = messages.messages;
 
   const { onConversationUpdated, onUnreadMessageCountUpdated } = useContext(SignalRContext);
-  const insets = useSafeAreaInsets();
+  const tabBarHeight = useTabBarHeight();
 
   const [search, setSearch] = useState('');
+  const [showNew, setShowNew] = useState(false);
 
   const conversationsQuery = useQuery({
     queryKey: ['conversations'],
@@ -119,9 +122,27 @@ export default function MessagesListScreen() {
         }
         contentContainerStyle={[
           filtered.length === 0 ? styles.emptyList : undefined,
-          { paddingBottom: insets.bottom },
+          { paddingBottom: tabBarHeight + Spacing.md },
         ]}
       />
+
+      <Pressable
+        style={[
+          styles.fab,
+          { backgroundColor: colors.primary, bottom: tabBarHeight + Spacing.md },
+        ]}
+        onPress={() => setShowNew(true)}
+        accessibilityLabel={t.newMessage}
+      >
+        <Ionicons name="chatbubble" size={24} color="#ffffff" />
+        <View
+          style={[styles.fabBadge, { backgroundColor: '#ffffff', borderColor: colors.primary }]}
+        >
+          <Ionicons name="add" size={13} color={colors.primary} />
+        </View>
+      </Pressable>
+
+      <NewMessageSheet visible={showNew} onClose={() => setShowNew(false)} />
     </ScreenWrapper>
   );
 }
@@ -144,5 +165,30 @@ const styles = StyleSheet.create({
   },
   emptyList: {
     flex: 1,
+  },
+  fab: {
+    position: 'absolute',
+    right: Spacing.lg,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  fabBadge: {
+    position: 'absolute',
+    right: 9,
+    bottom: 9,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

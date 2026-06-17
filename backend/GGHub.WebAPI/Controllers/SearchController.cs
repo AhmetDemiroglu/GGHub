@@ -35,17 +35,14 @@ namespace GGHub.WebAPI.Controllers
         [HttpGet("messageable-users")]
         public async Task<IActionResult> SearchMessageableUsers([FromQuery] string query)
         {
-            if (string.IsNullOrWhiteSpace(query) || query.Length < 3)
-            {
-                return BadRequest(AppText.Get("search.minQueryLength"));
-            }
-
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null)
             {
                 return Unauthorized();
             }
 
+            // Boş query: takip edilen + mesaj atılabilir kullanıcıları öneri olarak döner.
+            // Dolu query: kullanıcı adına göre mesaj atılabilir kullanıcı araması.
             var userId = int.Parse(userIdClaim.Value);
             var results = await _searchService.SearchMessageableUsersAsync(query, userId);
             return Ok(results);

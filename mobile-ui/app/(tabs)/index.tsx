@@ -12,6 +12,7 @@ import { AppTopBar } from '@/src/components/shell';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
+import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
 import { getHomeContent } from '@/src/api/home';
 import { getPersonalizedFeed } from '@/src/api/activity';
@@ -45,6 +46,7 @@ export default function HomeScreen() {
   const { colors } = useTheme();
   const { messages } = useLocale();
   const { user, isAuthenticated } = useAuth();
+  const tabBarHeight = useTabBarHeight();
   const t = messages.home;
 
   const {
@@ -95,7 +97,7 @@ export default function HomeScreen() {
       <AppTopBar showLogo />
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: tabBarHeight + Spacing.md }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -144,9 +146,7 @@ const styles = StyleSheet.create({
   scroll: {
     flex: 1,
   },
-  content: {
-    paddingBottom: Spacing.xxxl,
-  },
+  content: {},
   header: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.xl,
