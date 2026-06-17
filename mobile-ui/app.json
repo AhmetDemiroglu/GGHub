@@ -22,7 +22,10 @@
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "CFBundleLocalizations": ["en", "tr"],
+        "CFBundleLocalizations": [
+          "en",
+          "tr"
+        ],
         "CFBundleDevelopmentRegion": "en"
       }
     },
@@ -34,10 +37,11 @@
       "package": "com.gghub.mobile",
       "versionCode": 1,
       "permissions": [
-        "INTERNET",
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "android.permission.INTERNET",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -75,9 +79,11 @@
       "typedRoutes": true
     },
     "extra": {
+      "router": {},
       "eas": {
-        "projectId": "gghub-mobile"
+        "projectId": "0f5e5cc1-3810-49e4-954e-7bb23f181e24"
       }
-    }
+    },
+    "owner": "ahmetdemiroglu"
   }
 }
