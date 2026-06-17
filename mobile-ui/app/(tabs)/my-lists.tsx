@@ -26,6 +26,7 @@ import { getMyLists, getFollowedListsByMe } from '@/src/api/list';
 import { UserListType, type UserList, type UserListPublic } from '@/src/models/list';
 import { APP_CONFIG } from '@/src/constants/config';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
+import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 
 type TabKey = 'my' | 'following';
 
@@ -36,6 +37,7 @@ export default function MyListsScreen() {
   const { showToast } = useToast();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const tabBarHeight = useTabBarHeight();
   const [activeTab, setActiveTab] = useState<TabKey>('my');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingList, setEditingList] = useState<UserList | null>(null);
@@ -161,7 +163,7 @@ export default function MyListsScreen() {
           data={customLists}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderMyListItem}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + Spacing.md }]}
           ListEmptyComponent={
             <EmptyState
               icon="list-outline"
@@ -174,7 +176,7 @@ export default function MyListsScreen() {
           data={followedLists}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderFollowedItem}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + Spacing.md }]}
           ListEmptyComponent={
             <EmptyState
               icon="heart-outline"
@@ -200,7 +202,7 @@ export default function MyListsScreen() {
       )}
 
       <Pressable
-        style={[styles.fab, { backgroundColor: colors.primary }]}
+        style={[styles.fab, { backgroundColor: colors.primary, bottom: tabBarHeight + Spacing.md }]}
         onPress={() => setShowCreateModal(true)}
       >
         <Ionicons name="add" size={28} color="#ffffff" />
@@ -263,7 +265,6 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: Spacing.lg,
-    bottom: Spacing.xxxl,
     width: 56,
     height: 56,
     borderRadius: 28,

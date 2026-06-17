@@ -667,6 +667,9 @@ export const enUSMessages = {
         viewLoginRequired: "Log in to view messages",
         viewLoginRequiredDescription: "You must log in to view this conversation.",
         securityWarning: "For your safety, do not share sensitive information like credit card numbers, passwords, or ID numbers in this chat.",
+        newMessage: "New message",
+        startTypingToSearch: "Type a name to search",
+        noUsersFound: "No users found",
     },
     connection: {
         connecting: "Connecting...",

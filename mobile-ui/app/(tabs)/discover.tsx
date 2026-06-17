@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppTopBar } from '@/src/components/shell';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
+import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
 import { gameApi } from '@/src/api/game';
 import { FilterBar } from '@/src/components/discover/FilterBar';
@@ -22,6 +23,7 @@ const PAGE_SIZE = 15;
 export default function DiscoverScreen() {
   const { colors } = useTheme();
   const { messages, locale } = useLocale();
+  const tabBarHeight = useTabBarHeight();
   const t = messages.discover;
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -237,7 +239,7 @@ export default function DiscoverScreen() {
         data={allGames}
         renderItem={renderItem}
         keyExtractor={(item) => item.rawgId.toString()}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + Spacing.md }]}
         showsVerticalScrollIndicator={false}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
@@ -272,7 +274,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.xxxl,
     flexGrow: 1,
   },
   footerLoader: {

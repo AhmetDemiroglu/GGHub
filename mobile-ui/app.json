@@ -51,7 +51,12 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store",
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": "Allow GGHub to use Face ID to keep your account securely signed in."
+        }
+      ],
       "expo-localization",
       "expo-font",
       "./plugins/withGradleEncoding",
@@ -65,7 +70,8 @@
         "expo-image-picker",
         {
           "photosPermission": "Allow GGHub to access your photos for profile picture upload.",
-          "cameraPermission": "Allow GGHub to access your camera for profile picture upload."
+          "cameraPermission": "Allow GGHub to access your camera for profile picture upload.",
+          "microphonePermission": false
         }
       ],
       [

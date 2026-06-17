@@ -320,7 +320,10 @@ export function AppSidebar({ children }: AppSidebarProps) {
       { translateX: interpolate(progress.value, [0, 1], [0, SIDEBAR_WIDTH], Extrapolation.CLAMP) },
       { scale: interpolate(progress.value, [0, 1], [1, 0.93], Extrapolation.CLAMP) },
     ],
-    shadowOpacity: interpolate(progress.value, [0, 1], [0, 0.3], Extrapolation.CLAMP),
+    // Hafif seffaflik: acikken kart camlasir, sidebar arkadan hafif gorunur
+    // -> kart sidebar'in ustunde duruyormus hissi (X gibi).
+    opacity: interpolate(progress.value, [0, 1], [1, 0.93], Extrapolation.CLAMP),
+    shadowOpacity: interpolate(progress.value, [0, 1], [0, 0.18], Extrapolation.CLAMP),
     elevation: interpolate(progress.value, [0, 1], [0, 14], Extrapolation.CLAMP),
   }));
 
@@ -332,7 +335,7 @@ export function AppSidebar({ children }: AppSidebarProps) {
 
   // Scrim: ana içerik üzerinde karartma
   const scrimStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 1], [0, 0.5], Extrapolation.CLAMP),
+    opacity: interpolate(progress.value, [0, 1], [0, 0.12], Extrapolation.CLAMP),
   }));
 
   // ── Handlers ──
@@ -371,7 +374,7 @@ export function AppSidebar({ children }: AppSidebarProps) {
   const displayName = user?.username ?? '';
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
       {/* ═══ Layer 0: Drawer (altta, sabit) ═══ */}
       <Animated.View
         style={[
@@ -529,8 +532,8 @@ export function AppSidebar({ children }: AppSidebarProps) {
       </Animated.View>
 
       {/* ═══ Layer 1: Ana içerik (kayan + scale + shadow) ═══ */}
-      <Animated.View style={[styles.mainContent, mainContentStyle, mainContentRadiusStyle]}>
-        <Animated.View style={[styles.mainContentClip, mainContentRadiusStyle]}>
+      <Animated.View style={[styles.mainContent, mainContentStyle, mainContentRadiusStyle, { backgroundColor: colors.background }]}>
+        <Animated.View style={[styles.mainContentClip, mainContentRadiusStyle, { backgroundColor: colors.background }]}>
           {children}
 
           {/* ═══ Layer 2: Scrim (ana içerik üstünde, tap/swipe-to-close) ═══ */}
@@ -559,7 +562,6 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     overflow: 'hidden',
-    backgroundColor: '#000',
   },
   /* Drawer */
   drawer: {
@@ -752,14 +754,12 @@ const styles = StyleSheet.create({
   mainContent: {
     flex: 1,
     zIndex: 2,
-    backgroundColor: '#000',
     shadowColor: '#000',
-    shadowRadius: 20,
-    shadowOffset: { width: -8, height: 0 },
+    shadowRadius: 28,
+    shadowOffset: { width: -4, height: 4 },
   },
   mainContentClip: {
     flex: 1,
-    backgroundColor: '#000',
     overflow: 'hidden',
   },
   /* Scrim */

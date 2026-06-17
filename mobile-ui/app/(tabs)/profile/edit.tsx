@@ -19,6 +19,7 @@ import { Button } from '@/src/components/common/Button';
 import { ProfilePhotoUploader } from '@/src/components/profile/ProfilePhotoUploader';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
+import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { getMyProfile, updateMyProfile } from '@/src/api/profile';
 import type { ProfileForUpdate } from '@/src/models/profile';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
@@ -28,6 +29,7 @@ export default function ProfileEditScreen() {
   const { colors } = useTheme();
   const { messages } = useLocale();
   const queryClient = useQueryClient();
+  const tabBarHeight = useTabBarHeight();
   const ef = messages.profile.editForm;
 
   const profileQuery = useQuery({
@@ -93,7 +95,7 @@ export default function ProfileEditScreen() {
     <ScreenWrapper noPadding safeArea={false}>
       <ScreenHeader title={messages.nav.screenTitles.editProfile} />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: tabBarHeight + Spacing.md }}>
         <View style={styles.photoSection}>
           <ProfilePhotoUploader
             currentUri={profileImageUrl}

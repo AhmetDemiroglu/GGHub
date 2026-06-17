@@ -3,6 +3,7 @@ import { View, FlatList, StyleSheet } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
+import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { Spacing } from '@/src/constants/theme';
 import { AuthGuard } from '@/src/components/common/AuthGuard';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
@@ -16,6 +17,7 @@ import type { MyReportSummary } from '@/src/models/report';
 export default function MyReportsScreen() {
   const { colors } = useTheme();
   const { messages } = useLocale();
+  const tabBarHeight = useTabBarHeight();
   const m = messages.report;
 
   const [selectedReport, setSelectedReport] = useState<MyReportSummary | null>(null);
@@ -51,7 +53,7 @@ export default function MyReportsScreen() {
             data={reports}
             renderItem={renderItem}
             keyExtractor={(item) => String(item.id)}
-            contentContainerStyle={styles.list}
+            contentContainerStyle={[styles.list, { paddingBottom: tabBarHeight + Spacing.md }]}
             refreshing={isFetching}
             onRefresh={refetch}
             showsVerticalScrollIndicator={false}

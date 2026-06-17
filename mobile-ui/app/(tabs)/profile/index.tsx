@@ -23,6 +23,7 @@ import { ActivityFeedList } from '@/src/components/profile/ActivityFeedList';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
+import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { AuthRequiredView } from '@/src/components/common/AuthRequiredView';
 import { getMyProfile } from '@/src/api/profile';
 import { getUserStats } from '@/src/api/stats';
@@ -40,6 +41,7 @@ export default function OwnProfileScreen() {
   const { colors } = useTheme();
   const { messages } = useLocale();
   const { user, isAuthenticated } = useAuth();
+  const tabBarHeight = useTabBarHeight();
   const h = messages.profile.header;
   const af = messages.profile.activityFeed;
 
@@ -143,6 +145,7 @@ export default function OwnProfileScreen() {
       <AppTopBar title={messages.nav.profile} />
 
       <ScrollView
+        contentContainerStyle={{ paddingBottom: tabBarHeight + Spacing.md }}
         refreshControl={
           <RefreshControl refreshing={profileQuery.isRefetching} onRefresh={onRefresh} />
         }

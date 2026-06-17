@@ -628,6 +628,9 @@ export const trMessages = {
         viewLoginRequired: "Mesajları görüntülemek için giriş yapın",
         viewLoginRequiredDescription: "Bu konuşmayı görüntülemek için giriş yapmalısınız.",
         securityWarning: "Güvenliğiniz için bu sohbette kredi kartı, şifre veya kimlik numarası gibi hassas bilgileri paylaşmayın.",
+        newMessage: "Yeni mesaj",
+        startTypingToSearch: "Aramak için bir isim yazın",
+        noUsersFound: "Kullanıcı bulunamadı",
     },
     connection: {
         connecting: "Bağlanıyor...",

@@ -3,7 +3,6 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -11,6 +10,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useTheme } from '@/src/hooks/use-theme';
 import { FontSize, Spacing, Springs, Shadows } from '@/src/constants/theme';
+import {
+  TAB_BAR_CORE_HEIGHT,
+  useTabBarBottomInset,
+} from '@/src/hooks/use-tab-bar-height';
 import * as haptics from '@/src/utils/haptics';
 
 /**
@@ -94,8 +97,8 @@ function TabButton({
 }
 
 export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
+  const bottomInset = useTabBarBottomInset();
   const isIOS = Platform.OS === 'ios';
 
   // Sadece görünür 5 sekme; hidden route'lar tabBarButton: () => null
@@ -128,7 +131,7 @@ export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps)
     return { ...cfg, label };
   };
 
-  const barHeight = 56 + insets.bottom;
+  const barHeight = TAB_BAR_CORE_HEIGHT + bottomInset;
 
   return (
     <View
@@ -136,15 +139,15 @@ export function AppTabBar({ state, descriptors, navigation }: BottomTabBarProps)
         styles.barContainer,
         {
           height: barHeight,
-          paddingBottom: insets.bottom,
+          paddingBottom: bottomInset,
           ...Shadows.lg,
         },
       ]}
     >
       {isIOS ? (
         <BlurView
-          intensity={60}
-          tint={colors.background === '#ffffff' ? 'light' : 'dark'}
+          intensity={80}
+          tint={isDark ? 'systemChromeMaterialDark' : 'systemChromeMaterialLight'}
           style={StyleSheet.absoluteFill}
         />
       ) : (

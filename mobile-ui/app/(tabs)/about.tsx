@@ -3,6 +3,7 @@ import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
+import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 import { Card } from '@/src/components/common/Card';
 import { ScreenHeader } from '@/src/components/shell';
@@ -10,6 +11,7 @@ import { ScreenHeader } from '@/src/components/shell';
 export default function AboutScreen() {
   const { colors } = useTheme();
   const { messages } = useLocale();
+  const tabBarHeight = useTabBarHeight();
   const m = messages.about;
 
   const features: { icon: keyof typeof Ionicons.glyphMap; title: string; description: string; color: string }[] = [
@@ -62,7 +64,7 @@ export default function AboutScreen() {
       <ScreenHeader title={messages.nav.screenTitles.about} />
       <ScrollView
         style={[styles.container, { backgroundColor: colors.background }]}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: tabBarHeight + Spacing.md }]}
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.hero, { backgroundColor: colors.primary + '10' }]}>
@@ -130,7 +132,6 @@ const styles = StyleSheet.create({
   content: {
     padding: Spacing.lg,
     gap: Spacing.md,
-    paddingBottom: Spacing.xxxl,
   },
   hero: {
     alignItems: 'center',

@@ -16,6 +16,7 @@ import { Avatar } from '@/src/components/common/Avatar';
 import { SegmentedTabs } from '@/src/components/common/SegmentedTabs';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
+import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { searchAll } from '@/src/api/search';
 import { toMobileRoute } from '@/src/utils/route';
 import type { SearchResult } from '@/src/models/search';
@@ -29,6 +30,7 @@ export default function SearchScreen() {
   const { colors } = useTheme();
   const { messages } = useLocale();
   const router = useRouter();
+  const tabBarHeight = useTabBarHeight();
   const t = messages.search;
 
   const [query, setQuery] = useState('');
@@ -191,7 +193,7 @@ export default function SearchScreen() {
           renderItem={renderItem}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + Spacing.md }]}
         />
       )}
     </View>
