@@ -14,6 +14,7 @@ import { AuthPromptProvider } from '@/src/contexts/auth-prompt-context';
 import { AppSidebar } from '@/src/components/shell';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useAuth } from '@/src/hooks/use-auth';
+import { usePushNotifications } from '@/src/hooks/use-push-notifications';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -32,6 +33,8 @@ const queryClient = new QueryClient({
 function RootLayoutNav() {
   const { isDark } = useTheme();
   const { isLoading } = useAuth();
+
+  usePushNotifications();
 
   useEffect(() => {
     if (!isLoading) {

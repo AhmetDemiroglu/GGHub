@@ -17,6 +17,9 @@
       "bundleIdentifier": "com.gghub.mobile",
       "buildNumber": "1",
       "usesAppleSignIn": true,
+      "entitlements": {
+        "aps-environment": "production"
+      },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "CFBundleLocalizations": ["en", "tr"],
@@ -48,6 +51,12 @@
       "expo-localization",
       "expo-font",
       "./plugins/withGradleEncoding",
+      [
+        "expo-notifications",
+        {
+          "color": "#0f172a"
+        }
+      ],
       [
         "expo-image-picker",
         {
