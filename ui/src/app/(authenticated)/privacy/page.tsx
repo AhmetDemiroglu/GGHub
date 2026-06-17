@@ -122,23 +122,23 @@ export default function PrivacyPage() {
                         </p>
                     </Card>
 
-                    {/* İletişim, full width */}
-                    <div className="md:col-span-2 rounded-2xl border border-border/50 bg-gradient-to-br from-cyan-500/5 to-violet-500/5 p-6">
-                        <div className="flex items-start gap-4">
-                            <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary/50 text-cyan-400">
+                    {/* İletişim, 9'un yanındaki boşluğu doldurur */}
+                    <section className="rounded-2xl border border-border/50 bg-gradient-to-br from-cyan-500/5 to-violet-500/5 p-6 transition-colors hover:border-border">
+                        <div className="flex items-center gap-3">
+                            <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/50 text-cyan-400">
                                 <Mail className="h-5 w-5" />
                             </div>
-                            <div>
-                                <h2 className="text-base font-semibold tracking-tight">10. İletişim</h2>
-                                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                                    Gizlilikle ilgili soruların veya taleplerin için bize yaz:{" "}
-                                    <a href="mailto:info@gghub.social" className="font-medium text-primary hover:underline">
-                                        info@gghub.social
-                                    </a>
-                                </p>
-                            </div>
+                            <h2 className="text-base font-semibold tracking-tight">10. İletişim</h2>
                         </div>
-                    </div>
+                        <div className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                            <p>
+                                Gizlilikle ilgili soruların veya taleplerin için bize yaz:{" "}
+                                <a href="mailto:info@gghub.social" className="font-medium text-primary hover:underline">
+                                    info@gghub.social
+                                </a>
+                            </p>
+                        </div>
+                    </section>
                 </div>
 
                 <AppDownloadCTA />
