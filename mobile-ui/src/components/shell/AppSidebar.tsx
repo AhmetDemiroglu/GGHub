@@ -42,6 +42,9 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SIDEBAR_WIDTH = Math.min(SCREEN_WIDTH * 0.8, 330);
 const EDGE_STRIP_WIDTH = 24;
 
+// Navbar (tab) kokleri: bu ekranlarda sol kenardan kaydirinca sidebar acilir.
+const TAB_ROOTS = ['/', '/discover', '/search', '/lists', '/profile'];
+
 /* ───────────────────────── Nav Row (sade liste satırı) ───────────────────────── */
 interface NavRowProps {
   icon: React.ComponentProps<typeof Ionicons>['name'];
@@ -175,7 +178,9 @@ export function AppSidebar({ children }: AppSidebarProps) {
   const pathname = usePathname();
 
   const progress = useSharedValue(0);
-  const isHome = pathname === '/';
+  // Sidebar acma gesture'i artik tum navbar (tab) koklerinde aktif (sadece ana sayfada degil).
+  // Nested/detay ekranlarda kapali kalir; orada soldan-saga geri jesti devrede.
+  const isTabRoot = TAB_ROOTS.includes(pathname);
 
   // Sync progress with open state
   useEffect(() => {
@@ -225,7 +230,7 @@ export function AppSidebar({ children }: AppSidebarProps) {
   // AÇMA pan'i - sol kenar şeridi, sadece ana sayfada
   const openPan = React.useMemo(() => {
     return Gesture.Pan()
-      .enabled(isHome && !isSidebarOpen)
+      .enabled(isTabRoot && !isSidebarOpen)
       .activeOffsetX(10)
       .failOffsetY(8)
       .onUpdate((e) => {
@@ -242,7 +247,7 @@ export function AppSidebar({ children }: AppSidebarProps) {
           progress.value = withSpring(0, Springs.smooth);
         }
       });
-  }, [isHome, isSidebarOpen, progress, openSidebar]);
+  }, [isTabRoot, isSidebarOpen, progress, openSidebar]);
 
   // ── Animated styles ──
   // Drawer: sabit, hafif parallax drift
@@ -464,8 +469,8 @@ export function AppSidebar({ children }: AppSidebarProps) {
         </Animated.View>
       </Animated.View>
 
-      {/* ═══ Layer 3: Edge strip - açma (sadece ana sayfada, kapalıyken) ═══ */}
-      {isHome && !isSidebarOpen && (
+      {/* ═══ Layer 3: Edge strip - açma (tüm tab köklerinde, kapalıyken) ═══ */}
+      {isTabRoot && !isSidebarOpen && (
         <GestureDetector gesture={openPan}>
           <View style={styles.edgeStrip} />
         </GestureDetector>

@@ -1,16 +1,14 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
   View,
   StyleSheet,
-  Platform,
-  PanResponder,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
 import { useTheme } from '@/src/hooks/use-theme';
 import { Spacing } from '@/src/constants/theme';
+import { SwipeBackEdge } from '@/src/components/common/SwipeBackEdge';
 
 interface ScreenWrapperProps {
   children: React.ReactNode;
@@ -20,19 +18,12 @@ interface ScreenWrapperProps {
   scrollEnabled?: boolean;
   style?: StyleProp<ViewStyle>;
   /**
-   * iOS'a özel sol kenardan sağa çekerek geri gitme jesti. Default açık.
-   * Tab navigator screen'lerinde (hidden tabs) native Stack swipe-back
-   * çalışmadığı için bu wrapper devreye girer.
+   * Sol kenardan sağa çekerek geri gitme jesti (iOS + Android). Default açık.
+   * Native stack swipe-back'in olduğu nested ekranlarda `false` verilir
+   * (çift-geri olmaması için); tab navigator'a kayıtlı düz ekranlarda bu jest devreye girer.
    */
   swipeBackEnabled?: boolean;
 }
-
-// Sol kenarda jesti yakalayan dar şerit (px)
-const EDGE_WIDTH = 24;
-// Geri gitmek için minimum yatay drag
-const BACK_DX = 80;
-// Bu eşiğin üstünde dikey hareket gelirse jest scroll/normal touch sayılıp iptal edilir
-const VERTICAL_TOLERANCE = 30;
 
 export function ScreenWrapper({
   children,
@@ -44,39 +35,11 @@ export function ScreenWrapper({
 }: ScreenWrapperProps) {
   const { colors } = useTheme();
 
-  const swipeResponder = useMemo(() => {
-    if (Platform.OS !== 'ios' || !swipeBackEnabled) return null;
-    return PanResponder.create({
-      onStartShouldSetPanResponder: (evt) => evt.nativeEvent.pageX < EDGE_WIDTH,
-      onMoveShouldSetPanResponder: (evt, gesture) =>
-        evt.nativeEvent.pageX < EDGE_WIDTH &&
-        gesture.dx > 5 &&
-        Math.abs(gesture.dy) < VERTICAL_TOLERANCE,
-      onPanResponderTerminationRequest: () => false,
-      onPanResponderRelease: (_, gesture) => {
-        if (gesture.dx > BACK_DX && router.canGoBack()) {
-          router.back();
-        }
-      },
-    });
-  }, [swipeBackEnabled]);
-
   const containerStyle: ViewStyle[] = [
     styles.container,
     { backgroundColor: colors.background },
     !noPadding && { paddingHorizontal: Spacing.md },
   ].filter(Boolean) as ViewStyle[];
-
-  // pointerEvents="box-none" - dokunma alt çocuklara geçer; sadece pan responder
-  // gesture'ı yakalayacak duruma gelirse (sol kenarda + yatay drag) absorb eder.
-  // Bu sayede sol kenarda da normal scroll/tıklama bozulmaz.
-  const edgeOverlay = swipeResponder ? (
-    <View
-      pointerEvents="box-none"
-      style={styles.edgeOverlay}
-      {...swipeResponder.panHandlers}
-    />
-  ) : null;
 
   if (safeArea) {
     const safeAreaProps: any = {
@@ -88,7 +51,7 @@ export function ScreenWrapper({
     return (
       <SafeAreaView {...safeAreaProps}>
         {children}
-        {edgeOverlay}
+        <SwipeBackEdge enabled={swipeBackEnabled} />
       </SafeAreaView>
     );
   }
@@ -96,7 +59,7 @@ export function ScreenWrapper({
   return (
     <View style={[containerStyle, style]}>
       {children}
-      {edgeOverlay}
+      <SwipeBackEdge enabled={swipeBackEnabled} />
     </View>
   );
 }
@@ -104,14 +67,5 @@ export function ScreenWrapper({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  edgeOverlay: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: EDGE_WIDTH,
-    // Görsel olarak görünmez; sadece dokunmatik alanı yakalar.
-    backgroundColor: 'transparent',
   },
 });

@@ -18,6 +18,7 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   login: (response: LoginResponse) => Promise<void>;
   logout: () => Promise<void>;
+  updateProfileImage: (url: string | null) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -28,6 +29,7 @@ export const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   login: async () => {},
   logout: async () => {},
+  updateProfileImage: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -135,6 +137,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [scheduleTokenRefresh],
   );
 
+  // Avatar degisince auth user'i ve SecureStore'u senkronla.
+  // JWT picture claim'i yeniden uretilmedigi icin sidebar/avatar bu olmadan bayatliyor.
+  const updateProfileImage = useCallback(async (url: string | null) => {
+    setUser((prev) => (prev ? { ...prev, profileImageUrl: url } : prev));
+    try {
+      const stored = await SecureStore.getItemAsync(USER_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        await SecureStore.setItemAsync(
+          USER_KEY,
+          JSON.stringify({ ...parsed, profileImageUrl: url }),
+        );
+      }
+    } catch {
+      // Persist basarisiz; state yine de guncellendi
+    }
+  }, []);
+
   // Load tokens from secure store on mount
   useEffect(() => {
     const loadTokens = async () => {
@@ -224,6 +244,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated: !!accessToken && !!user,
     login,
     logout,
+    updateProfileImage,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

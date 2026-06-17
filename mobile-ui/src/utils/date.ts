@@ -1,3 +1,23 @@
+// Dile gore sayisal tarih: tr -> GG/AA/YYYY, diger -> AA/GG/YYYY. Iki haneli, slash.
+export const formatNumericDate = (
+  dateString: string | null | undefined,
+  locale: string = 'en-US',
+): string => {
+  if (!dateString) return '';
+  try {
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return '';
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return locale.startsWith('tr')
+      ? `${day}/${month}/${year}`
+      : `${month}/${day}/${year}`;
+  } catch {
+    return '';
+  }
+};
+
 export const formatDate = (
   dateString: string | null | undefined,
   locale: string = 'en-US',

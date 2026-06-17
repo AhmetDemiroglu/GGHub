@@ -31,6 +31,7 @@ import { ReviewModal } from '@/src/components/game/ReviewModal';
 import { AddToListModal } from '@/src/components/game/AddToListModal';
 import { SimilarGames } from '@/src/components/game/SimilarGames';
 import { WishlistButton } from '@/src/components/game/WishlistButton';
+import { SwipeBackEdge } from '@/src/components/common/SwipeBackEdge';
 import { useRequireAuth } from '@/src/contexts/auth-prompt-context';
 import type { Game } from '@/src/models/game';
 
@@ -254,6 +255,8 @@ export default function GameDetailScreen() {
         onClose={() => setListModalVisible(false)}
         gameId={game.id}
       />
+
+      <SwipeBackEdge />
     </View>
   );
 }

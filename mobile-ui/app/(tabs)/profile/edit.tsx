@@ -19,6 +19,7 @@ import { Button } from '@/src/components/common/Button';
 import { ProfilePhotoUploader } from '@/src/components/profile/ProfilePhotoUploader';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
+import { useAuth } from '@/src/hooks/use-auth';
 import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { getMyProfile, updateMyProfile } from '@/src/api/profile';
 import type { ProfileForUpdate } from '@/src/models/profile';
@@ -28,6 +29,7 @@ export default function ProfileEditScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const { messages } = useLocale();
+  const { updateProfileImage } = useAuth();
   const queryClient = useQueryClient();
   const tabBarHeight = useTabBarHeight();
   const ef = messages.profile.editForm;
@@ -87,12 +89,14 @@ export default function ProfileEditScreen() {
 
   const handlePhotoUploaded = (newUrl: string) => {
     setProfileImageUrl(newUrl);
+    // Avatar'i auth context'e de yaz: sidebar ve diger ekranlar aninda guncellensin.
+    updateProfileImage(newUrl);
   };
 
   if (profileQuery.isLoading) return <LoadingScreen />;
 
   return (
-    <ScreenWrapper noPadding safeArea={false}>
+    <ScreenWrapper noPadding safeArea={false} swipeBackEnabled={false}>
       <ScreenHeader title={messages.nav.screenTitles.editProfile} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: tabBarHeight + Spacing.md }}>

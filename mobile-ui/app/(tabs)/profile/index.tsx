@@ -32,7 +32,7 @@ import { getMyLists } from '@/src/api/list';
 import { getPersonalizedFeed } from '@/src/api/activity';
 import type { Review } from '@/src/models/review';
 import type { UserList } from '@/src/models/list';
-import { Spacing, FontSize } from '@/src/constants/theme';
+import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 
 type ProfileTab = 'overview' | 'reviews' | 'lists';
 
@@ -40,7 +40,7 @@ export default function OwnProfileScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const { messages } = useLocale();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, updateProfileImage } = useAuth();
   const tabBarHeight = useTabBarHeight();
   const h = messages.profile.header;
   const af = messages.profile.activityFeed;
@@ -87,6 +87,15 @@ export default function OwnProfileScreen() {
     profileQuery.refetch();
     statsQuery.refetch();
   }, [profileQuery, statsQuery]);
+
+  const handleAvatarUploaded = useCallback(
+    (newUrl: string) => {
+      // Sidebar ve oturum genelinde aninda guncelle, sonra sunucu halini tazele.
+      updateProfileImage(newUrl);
+      profileQuery.refetch();
+    },
+    [updateProfileImage, profileQuery],
+  );
 
   if (!isAuthenticated) return <AuthRequiredView />;
 
@@ -141,7 +150,7 @@ export default function OwnProfileScreen() {
   );
 
   return (
-    <ScreenWrapper noPadding safeArea={false}>
+    <ScreenWrapper noPadding safeArea={false} swipeBackEnabled={false}>
       <AppTopBar title={messages.nav.profile} />
 
       <ScrollView
@@ -161,6 +170,20 @@ export default function OwnProfileScreen() {
             headerImageUrl={profile.headerImageUrl}
             editableBanner
             onBannerUploaded={() => profileQuery.refetch()}
+            editableAvatar
+            onAvatarUploaded={handleAvatarUploaded}
+            topRightAction={
+              <TouchableOpacity
+                onPress={() => router.push('/profile/edit')}
+                activeOpacity={0.7}
+                style={[styles.editBtn, { borderColor: colors.border }]}
+              >
+                <Ionicons name="pencil" size={14} color={colors.text} />
+                <Text style={[styles.editBtnText, { color: colors.text }]}>
+                  {messages.common.edit}
+                </Text>
+              </TouchableOpacity>
+            }
             createdAt={profile.createdAt}
             level={stats?.currentLevel ?? 1}
             xp={stats?.currentXp ?? 0}
@@ -210,7 +233,7 @@ export default function OwnProfileScreen() {
         <View style={styles.tabContent}>
           {activeTab === 'overview' ? (
             <>
-              <GamerDnaChart data={statsQuery.data?.gamerDna ?? []} />
+              <GamerDnaChart data={statsQuery.data?.gamerDna ?? []} username={username} />
               <View style={styles.sectionGap} />
               <ActivityFeedList activities={activityQuery.data ?? []} />
             </>
@@ -261,6 +284,19 @@ export default function OwnProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  editBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+  },
+  editBtnText: {
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+  },
   statsGrid: {
     flexDirection: 'row',
     marginTop: Spacing.lg,

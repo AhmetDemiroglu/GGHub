@@ -261,7 +261,7 @@ export default function PublicProfileScreen() {
 
             <View style={styles.tabContent}>
               {activeTab === 'overview' ? (
-                <GamerDnaChart data={statsQuery.data?.gamerDna ?? []} />
+                <GamerDnaChart data={statsQuery.data?.gamerDna ?? []} username={username} />
               ) : null}
 
               {activeTab === 'reviews' ? (

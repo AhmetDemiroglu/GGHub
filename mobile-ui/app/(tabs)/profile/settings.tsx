@@ -88,7 +88,7 @@ export default function ProfileSettingsScreen() {
   if (profileQuery.isLoading) return <LoadingScreen />;
 
   return (
-    <ScreenWrapper noPadding safeArea={false}>
+    <ScreenWrapper noPadding safeArea={false} swipeBackEnabled={false}>
       <ScreenHeader title={messages.nav.screenTitles.settings} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: tabBarHeight + Spacing.md }}>

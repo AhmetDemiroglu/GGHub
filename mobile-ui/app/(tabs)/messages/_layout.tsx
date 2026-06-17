@@ -11,6 +11,7 @@ export default function MessagesLayout() {
         headerShown: false,
         contentStyle: { backgroundColor: colors.background },
         animation: 'slide_from_right',
+        gestureEnabled: true,
       }}
     >
       <Stack.Screen name="index" />

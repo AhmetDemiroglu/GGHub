@@ -140,7 +140,7 @@ export default function MessageThreadScreen() {
     null;
 
   return (
-    <ScreenWrapper noPadding edges={['top']}>
+    <ScreenWrapper noPadding edges={['top']} swipeBackEnabled={false}>
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
         <TouchableOpacity
           onPress={() => {

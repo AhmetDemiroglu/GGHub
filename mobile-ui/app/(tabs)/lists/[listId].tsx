@@ -122,7 +122,7 @@ export default function ListDetailScreen() {
 
   if (isError || !list) {
     return (
-      <ScreenWrapper>
+      <ScreenWrapper swipeBackEnabled={false}>
         <EmptyState icon="alert-circle-outline" title={messages.listDetail.notFound} />
       </ScreenWrapper>
     );
@@ -164,7 +164,7 @@ export default function ListDetailScreen() {
   };
 
   return (
-    <ScreenWrapper noPadding safeArea={false}>
+    <ScreenWrapper noPadding safeArea={false} swipeBackEnabled={false}>
       <ScreenHeader title={list.name || messages.nav.screenTitles.listDetail} />
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarHeight + Spacing.md }]}>
         <View style={styles.headerSection}>
