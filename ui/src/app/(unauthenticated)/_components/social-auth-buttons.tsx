@@ -68,10 +68,11 @@ export function SocialAuthButtons() {
                         onSuccess={(cred) => {
                             if (cred.credential) googleMutation.mutate(cred.credential);
                         }}
-                        onError={() => toast.error(t("auth.loginErrorTitle"))}
+                        onError={() => {
+                            toast.error(t("auth.loginErrorTitle"));
+                        }}
                         text="continue_with"
                         width="352"
-                        locale={locale === "tr" ? "tr" : "en"}
                     />
                 </div>
             ) : null}
@@ -93,7 +94,9 @@ export function SocialAuthButtons() {
                             : undefined;
                         appleMutation.mutate({ identityToken: idToken, fullName: name || undefined });
                     }}
-                    onError={() => toast.error(t("auth.loginErrorTitle"))}
+                    onError={() => {
+                        toast.error(t("auth.loginErrorTitle"));
+                    }}
                     render={(props: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
                         <button
                             {...props}
