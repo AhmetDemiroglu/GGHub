@@ -101,7 +101,8 @@ export function SocialAuthButtons() {
                     authOptions={{
                         clientId: APPLE_SERVICES_ID,
                         scope: "name email",
-                        redirectURI: typeof window !== "undefined" ? window.location.origin : "",
+                        // Must exactly match a Return URL registered on the Apple Services ID.
+                        redirectURI: typeof window !== "undefined" ? `${window.location.origin}/login` : "",
                         usePopup: true,
                     }}
                     uiType="dark"
