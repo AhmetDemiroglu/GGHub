@@ -1,4 +1,7 @@
+"use client";
+
 import { Play, Mail, ArrowUpRight } from "lucide-react";
+import { useCurrentLocale } from "@/core/contexts/locale-context";
 
 // Official Apple logo (lucide's "Apple" is a fruit, not the brand mark).
 function AppleLogo({ className }: { className?: string }) {
@@ -9,11 +12,31 @@ function AppleLogo({ className }: { className?: string }) {
     );
 }
 
+const COPY = {
+    "en-US": {
+        downloadTitle: "Download the app",
+        downloadDesc: "GGHub is coming soon to iOS and Android. Store links will be right here very soon.",
+        contactTitle: "Get in touch",
+        contactDesc: "Write to us with questions, feedback, or collaboration ideas.",
+        soon: "Soon",
+    },
+    tr: {
+        downloadTitle: "Uygulamayı indir",
+        downloadDesc: "GGHub yakında iOS ve Android'de. Mağaza linkleri çok yakında burada.",
+        contactTitle: "İletişime geç",
+        contactDesc: "Soruların, geri bildirimin veya iş birliği için bize yaz.",
+        soon: "Yakında",
+    },
+} as const;
+
 /**
  * Shared "download the app + contact" block used across the public legal/marketing pages.
- * Store buttons are intentionally passive (apps not yet published), shown with a "Yakında" badge.
+ * Store buttons are intentionally passive (apps not yet published), shown with a "Soon" badge.
  */
 export function AppDownloadCTA() {
+    const locale = useCurrentLocale();
+    const t = COPY[locale] ?? COPY["en-US"];
+
     return (
         <section className="mt-10 grid gap-4 md:grid-cols-2">
             {/* Download card */}
@@ -22,13 +45,11 @@ export function AppDownloadCTA() {
                     aria-hidden
                     className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-cyan-500/20 to-fuchsia-500/20 blur-2xl"
                 />
-                <h3 className="text-lg font-semibold tracking-tight">Uygulamayı indir</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                    GGHub yakında iOS ve Android&apos;de. Mağaza linkleri çok yakında burada.
-                </p>
+                <h3 className="text-lg font-semibold tracking-tight">{t.downloadTitle}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{t.downloadDesc}</p>
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-                    <StoreButton icon={<AppleLogo className="h-5 w-5" />} label="App Store" />
-                    <StoreButton icon={<Play className="h-5 w-5" />} label="Google Play" />
+                    <StoreButton icon={<AppleLogo className="h-5 w-5" />} label="App Store" soon={t.soon} />
+                    <StoreButton icon={<Play className="h-5 w-5" />} label="Google Play" soon={t.soon} />
                 </div>
             </div>
 
@@ -38,10 +59,8 @@ export function AppDownloadCTA() {
                     aria-hidden
                     className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-blue-500/20 to-violet-500/20 blur-2xl"
                 />
-                <h3 className="text-lg font-semibold tracking-tight">İletişime geç</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                    Soruların, geri bildirimin veya iş birliği için bize yaz.
-                </p>
+                <h3 className="text-lg font-semibold tracking-tight">{t.contactTitle}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{t.contactDesc}</p>
                 <a
                     href="mailto:info@gghub.social"
                     className="mt-4 inline-flex items-center gap-2 rounded-full border border-border/60 bg-secondary/40 px-4 py-2.5 text-sm font-medium transition-colors hover:border-cyan-400/60 hover:text-cyan-400"
@@ -55,13 +74,13 @@ export function AppDownloadCTA() {
     );
 }
 
-function StoreButton({ icon, label }: { icon: React.ReactNode; label: string }) {
+function StoreButton({ icon, label, soon }: { icon: React.ReactNode; label: string; soon: string }) {
     return (
         <div className="relative inline-flex flex-1 cursor-default items-center justify-center gap-2.5 rounded-xl border border-border/60 bg-black/80 px-5 py-3 text-white opacity-90">
             {icon}
             <span className="text-sm font-semibold">{label}</span>
             <span className="absolute -right-2 -top-2 rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-2 py-0.5 text-[10px] font-bold text-white shadow">
-                Yakında
+                {soon}
             </span>
         </div>
     );
