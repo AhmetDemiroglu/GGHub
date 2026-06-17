@@ -138,6 +138,14 @@ if (rawgImportEnabled && builder.Environment.IsDevelopment())
     builder.Services.AddHostedService<RawgImportJob>();
 }
 
+// Future-dated Metacritic cleanup — günde bir kez, prod + dev. Yeni sync'ler zaten
+// SanitizeMetacritic ile filtreliyor; bu job mevcut hatalı kayıtlar için.
+var futureCleanupEnabled = builder.Configuration.GetValue<bool?>("Jobs:FutureMetacriticCleanup:Enabled") ?? true;
+if (futureCleanupEnabled)
+{
+    builder.Services.AddHostedService<FutureMetacriticCleanupJob>();
+}
+
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 //if (builder.Environment.IsProduction())
