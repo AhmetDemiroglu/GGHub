@@ -130,6 +130,15 @@ export default function MessageThreadScreen() {
 
   if (threadQuery.isLoading) return <LoadingScreen />;
 
+  // Partner avatarını thread mesajlarından türet; MessageDto gönderen/alıcı
+  // profil resmini taşıyor, böylece header'da web'deki gibi resim görünür.
+  const partnerAvatarUrl =
+    localMessages.find((m) => m.senderUsername === username && m.senderProfileImageUrl)
+      ?.senderProfileImageUrl ??
+    localMessages.find((m) => m.recipientUsername === username && m.recipientProfileImageUrl)
+      ?.recipientProfileImageUrl ??
+    null;
+
   return (
     <ScreenWrapper noPadding edges={['top']}>
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
@@ -142,7 +151,7 @@ export default function MessageThreadScreen() {
         >
           <Ionicons name="chevron-back" size={26} color={colors.text} />
         </TouchableOpacity>
-        <Avatar uri={null} name={username} size={36} />
+        <Avatar uri={partnerAvatarUrl} name={username} size={36} />
         <Text style={[styles.headerUsername, { color: colors.text }]}>{username}</Text>
       </View>
 
