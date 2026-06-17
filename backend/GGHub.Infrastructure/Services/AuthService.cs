@@ -11,9 +11,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json.Serialization;
 
 namespace GGHub.Infrastructure.Services
 {
@@ -323,30 +326,114 @@ namespace GGHub.Infrastructure.Services
 
         public async Task<LoginResponseDto> GoogleLoginAsync(GoogleLoginDto dto)
         {
-            if (string.IsNullOrWhiteSpace(dto?.IdToken))
+            string subject;
+            string? email, name, picture;
+
+            if (!string.IsNullOrWhiteSpace(dto?.IdToken))
+            {
+                // ID token flow — used by the mobile app / One Tap.
+                try
+                {
+                    var settings = new GoogleJsonWebSignature.ValidationSettings();
+                    var clientIds = _config.GetSection("GoogleAuth:ClientIds").Get<string[]>();
+                    if (clientIds != null && clientIds.Length > 0)
+                    {
+                        settings.Audience = clientIds; // enforce that the token was minted for one of our apps
+                    }
+                    var payload = await GoogleJsonWebSignature.ValidateAsync(dto.IdToken, settings);
+                    subject = payload.Subject;
+                    email = payload.Email;
+                    name = payload.Name;
+                    picture = payload.Picture;
+                }
+                catch (InvalidJwtException ex)
+                {
+                    _logger.LogWarning("Google id token validation failed: {Message}", ex.Message);
+                    throw new InvalidOperationException(AppText.Get("auth.invalidProviderToken"));
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(dto?.AccessToken))
+            {
+                // Access token flow — used by the custom web button. Verify the token + its audience
+                // via tokeninfo, then best-effort enrich the profile via userinfo.
+                (subject, email) = await VerifyGoogleAccessTokenAsync(dto.AccessToken);
+                (name, picture) = await GetGoogleUserInfoAsync(dto.AccessToken);
+            }
+            else
             {
                 throw new InvalidOperationException(AppText.Get("auth.invalidProviderToken"));
             }
 
-            GoogleJsonWebSignature.Payload payload;
+            var user = await FindOrCreateExternalUserAsync("Google", subject, email, name, picture);
+            return await IssueTokensAsync(user);
+        }
+
+        private async Task<(string Subject, string? Email)> VerifyGoogleAccessTokenAsync(string accessToken)
+        {
             try
             {
-                var settings = new GoogleJsonWebSignature.ValidationSettings();
-                var clientIds = _config.GetSection("GoogleAuth:ClientIds").Get<string[]>();
-                if (clientIds != null && clientIds.Length > 0)
+                var http = _httpClientFactory.CreateClient();
+                var info = await http.GetFromJsonAsync<GoogleTokenInfo>(
+                    $"https://www.googleapis.com/oauth2/v3/tokeninfo?access_token={Uri.EscapeDataString(accessToken)}");
+
+                if (info == null || string.IsNullOrEmpty(info.Sub))
                 {
-                    settings.Audience = clientIds; // enforce that the token was minted for one of our apps
+                    throw new InvalidOperationException(AppText.Get("auth.invalidProviderToken"));
                 }
-                payload = await GoogleJsonWebSignature.ValidateAsync(dto.IdToken, settings);
+
+                var clientIds = _config.GetSection("GoogleAuth:ClientIds").Get<string[]>() ?? Array.Empty<string>();
+                if (clientIds.Length > 0 && !clientIds.Contains(info.Aud) && !clientIds.Contains(info.Azp))
+                {
+                    _logger.LogWarning("Google access token audience mismatch: aud={Aud}", info.Aud);
+                    throw new InvalidOperationException(AppText.Get("auth.invalidProviderToken"));
+                }
+
+                return (info.Sub, info.Email);
             }
-            catch (InvalidJwtException ex)
+            catch (InvalidOperationException)
             {
-                _logger.LogWarning("Google token validation failed: {Message}", ex.Message);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Google access token validation failed: {Message}", ex.Message);
                 throw new InvalidOperationException(AppText.Get("auth.invalidProviderToken"));
             }
+        }
 
-            var user = await FindOrCreateExternalUserAsync("Google", payload.Subject, payload.Email, payload.Name, payload.Picture);
-            return await IssueTokensAsync(user);
+        private async Task<(string? Name, string? Picture)> GetGoogleUserInfoAsync(string accessToken)
+        {
+            try
+            {
+                var http = _httpClientFactory.CreateClient();
+                using var req = new HttpRequestMessage(HttpMethod.Get, "https://www.googleapis.com/oauth2/v3/userinfo");
+                req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+                var resp = await http.SendAsync(req);
+                if (!resp.IsSuccessStatusCode)
+                {
+                    return (null, null);
+                }
+                var info = await resp.Content.ReadFromJsonAsync<GoogleUserInfo>();
+                return (info?.Name, info?.Picture);
+            }
+            catch
+            {
+                return (null, null); // best-effort profile enrichment
+            }
+        }
+
+        private class GoogleTokenInfo
+        {
+            [JsonPropertyName("sub")] public string? Sub { get; set; }
+            [JsonPropertyName("email")] public string? Email { get; set; }
+            [JsonPropertyName("aud")] public string? Aud { get; set; }
+            [JsonPropertyName("azp")] public string? Azp { get; set; }
+        }
+
+        private class GoogleUserInfo
+        {
+            [JsonPropertyName("name")] public string? Name { get; set; }
+            [JsonPropertyName("picture")] public string? Picture { get; set; }
         }
 
         public async Task<LoginResponseDto> AppleLoginAsync(AppleLoginDto dto)
