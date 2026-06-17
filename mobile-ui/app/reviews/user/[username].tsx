@@ -67,7 +67,7 @@ export default function UserReviewsScreen() {
           ]}
           onPress={() => {
             if (game) {
-              router.push(`/games/${game.slug}`);
+              router.push(`/game/${game.slug}`);
             }
           }}
         >

@@ -18,6 +18,7 @@ import { NotificationItem } from '@/src/components/notifications/NotificationIte
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { getNotifications, markAllNotificationsAsRead } from '@/src/api/notifications';
+import { toMobileRoute } from '@/src/utils/route';
 import { SignalRContext } from '@/src/contexts/signalr-context';
 import type { NotificationDto } from '@/src/models/notification';
 import { Spacing, FontSize } from '@/src/constants/theme';
@@ -53,7 +54,7 @@ export default function NotificationsScreen() {
   const handleNotificationPress = useCallback(
     (notification: NotificationDto) => {
       if (notification.link) {
-        router.push(notification.link as any);
+        router.push(toMobileRoute(notification.link) as any);
       }
     },
     [router],

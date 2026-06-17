@@ -57,7 +57,7 @@ function ActivityItem({ item }: { item: Activity }) {
           text: `${messages.home.startedFollowing} @${username}`,
           onPress: () => {
             if (username) {
-              router.push(`/profile/${username}`);
+              router.push(`/profiles/${username}`);
             }
           },
           image: getImageUrl(item.followData?.profileImageUrl),

@@ -32,7 +32,7 @@ export function BentoGrid({ trendingGames, leaderboard, showJoinCta }: BentoGrid
           <Text style={styles.ctaDescription}>{messages.home.joinDescription}</Text>
           <Pressable
             style={styles.ctaButton}
-            onPress={() => router.push('/auth/register')}
+            onPress={() => router.push('/(auth)/register')}
           >
             <Text style={styles.ctaButtonText}>{messages.home.signUp}</Text>
           </Pressable>

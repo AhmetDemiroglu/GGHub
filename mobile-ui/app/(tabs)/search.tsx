@@ -16,6 +16,7 @@ import { Avatar } from '@/src/components/common/Avatar';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { searchAll } from '@/src/api/search';
+import { toMobileRoute } from '@/src/utils/route';
 import type { SearchResult } from '@/src/models/search';
 import { BorderRadius, FontSize, Spacing } from '@/src/constants/theme';
 
@@ -58,7 +59,7 @@ export default function SearchScreen() {
 
   const handleResultPress = useCallback(
     (item: SearchResult) => {
-      router.push(item.link as any);
+      router.push(toMobileRoute(item.link) as any);
     },
     [router],
   );

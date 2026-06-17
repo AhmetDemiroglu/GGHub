@@ -121,7 +121,7 @@ export default function ListDetailScreen() {
     return (
       <Pressable
         style={[styles.gameCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-        onPress={() => router.push(`/games/${item.slug}`)}
+        onPress={() => router.push(`/game/${item.slug}`)}
       >
         <View style={[styles.gameCover, { backgroundColor: colors.surfaceHighlight }]}>
           {imageUrl ? (
