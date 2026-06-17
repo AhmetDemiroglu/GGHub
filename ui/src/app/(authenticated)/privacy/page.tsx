@@ -1,4 +1,17 @@
-import { Shield, Mail } from "lucide-react";
+import {
+    Shield,
+    Info,
+    Database,
+    Target,
+    Cookie,
+    Share2,
+    Clock,
+    UserCheck,
+    Lock,
+    RefreshCw,
+    Mail,
+    Check,
+} from "lucide-react";
 import { AppDownloadCTA } from "@core/components/other/public/app-cta";
 
 export const metadata = {
@@ -10,122 +23,163 @@ export default function PrivacyPage() {
     return (
         <div className="w-full h-full p-5">
             <div className="space-y-6">
-                <div className="flex flex-col items-center gap-4 text-center pt-2">
-                    <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                        <Shield className="h-8 w-8" />
+                {/* Hero */}
+                <section className="relative overflow-hidden rounded-3xl border border-border/50 bg-card/60 px-6 py-12 text-center">
+                    <div
+                        aria-hidden
+                        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.12),_transparent_55%),radial-gradient(circle_at_bottom,_rgba(139,92,246,0.12),_transparent_60%)]"
+                    />
+                    <div className="relative flex flex-col items-center gap-4">
+                        <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500/15 to-violet-500/15 text-cyan-400">
+                            <Shield className="h-8 w-8" />
+                        </div>
+                        <h1 className="text-3xl font-bold tracking-tight md:text-4xl">Gizlilik Politikası</h1>
+                        <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
+                            Hangi verileri, neden ve nasıl işlediğimizi açık bir dille anlatıyoruz. Verilerini satmıyor, sadece hizmeti sunmak için kullanıyoruz.
+                        </p>
+                        <p className="text-xs text-muted-foreground/70">Son güncelleme: 17 Haziran 2026</p>
                     </div>
-                    <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Gizlilik Politikası</h1>
-                    <p className="text-muted-foreground text-sm">Son güncelleme: 03 Kasım 2025</p>
-                </div>
+                </section>
 
-                <div className="rounded-2xl border border-border/40 bg-background/30 p-8 space-y-6">
-                    {/* 1. Amaç */}
-                    <section className="space-y-3">
-                        <h2 className="text-lg font-semibold tracking-tight">1. Amaç</h2>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                            Bu gizlilik politikası, GGHub platformunu kullanırken paylaştığınız bilgilerin hangi amaçlarla ve nasıl işlendiğini açıklamak için hazırlanmıştır. Kişisel verilerinizin
-                            gizliliği ve güvenliği bizim için önemlidir.
+                {/* Sections */}
+                <div className="grid gap-4 md:grid-cols-2">
+                    <Card icon={Info} color="text-cyan-400" title="1. Amaç">
+                        <p>
+                            Bu politika, GGHub platformunu kullanırken paylaştığın bilgilerin hangi amaçlarla ve nasıl işlendiğini açıklar. Kişisel verilerinin gizliliği
+                            ve güvenliği bizim için önceliklidir.
                         </p>
-                    </section>
+                    </Card>
 
-                    {/* 2. Toplanan Veriler */}
-                    <section className="space-y-3">
-                        <h2 className="text-lg font-semibold tracking-tight">2. Toplanan Veriler</h2>
-                        <p className="text-sm text-muted-foreground leading-relaxed">Platformu kullandığınızda aşağıdaki veri türleri toplanabilir:</p>
-                        <ul className="space-y-2 text-sm text-muted-foreground leading-relaxed">
-                            <li>- Hesap bilgileri (kullanıcı adı, e-posta, profil bilgileri)</li>
-                            <li>- Kullanım verileri (oluşturulan listeler, takip edilen kullanıcılar, yorumlar)</li>
-                            <li>- Teknik veriler (IP adresi, tarayıcı türü, cihaz bilgisi, oturum zamanı)</li>
-                            <li>- Çerez verileri (oturumun açık kalması ve tercihlerin hatırlanması için)</li>
-                        </ul>
-                    </section>
+                    <Card icon={Database} color="text-violet-400" title="2. Toplanan Veriler">
+                        <p className="mb-3">Platformu kullandığında aşağıdaki veri türleri toplanabilir:</p>
+                        <List
+                            items={[
+                                "Hesap bilgileri: kullanıcı adı, e-posta, profil bilgileri",
+                                "Sosyal giriş bilgileri: Google veya Apple ile giriş yaptığında ad ve e-posta",
+                                "Kullanım verileri: oluşturulan listeler, takipler, puanlar ve yorumlar",
+                                "Teknik veriler: IP adresi, cihaz ve tarayıcı bilgisi, oturum zamanı",
+                                "Çerez verileri: oturumun açık kalması ve tercihlerin hatırlanması için",
+                            ]}
+                        />
+                    </Card>
 
-                    {/* 3. İşleme Amaçları */}
-                    <section className="space-y-3">
-                        <h2 className="text-lg font-semibold tracking-tight">3. Verilerin İşlenme Amaçları</h2>
-                        <p className="text-sm text-muted-foreground leading-relaxed">Toplanan veriler aşağıdaki amaçlarla işlenir:</p>
-                        <ul className="space-y-2 text-sm text-muted-foreground leading-relaxed">
-                            <li>- Üyelik ve giriş süreçlerini yürütmek</li>
-                            <li>- Oyun listesi, takip, yorum ve bildirim gibi özellikleri sunmak</li>
-                            <li>- Hesabınızın güvenliğini sağlamak</li>
-                            <li>- Platform performansını izlemek ve geliştirmek</li>
-                            <li>- Yasal yükümlülükleri yerine getirmek</li>
-                        </ul>
-                    </section>
+                    <Card icon={Target} color="text-amber-400" title="3. Verilerin İşlenme Amaçları">
+                        <List
+                            items={[
+                                "Üyelik ve giriş süreçlerini yürütmek",
+                                "Liste, takip, puanlama, yorum ve bildirim özelliklerini sunmak",
+                                "Hesabının güvenliğini sağlamak",
+                                "Platform performansını izlemek ve geliştirmek",
+                                "Yasal yükümlülükleri yerine getirmek",
+                            ]}
+                        />
+                    </Card>
 
-                    {/* 4. Çerezler */}
-                    <section className="space-y-3">
-                        <h2 className="text-lg font-semibold tracking-tight">4. Çerezler (Cookies)</h2>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                            GGHub, oturumunuzu açık tutmak, tercihlerinizi hatırlamak ve kullanım istatistikleri oluşturmak için çerezler kullanır. Tarayıcı ayarlarınızdan çerezleri
-                            engelleyebilirsiniz; ancak bazı özellikler kısıtlanabilir.
+                    <Card icon={Cookie} color="text-orange-400" title="4. Çerezler">
+                        <p>
+                            GGHub; oturumunu açık tutmak, tercihlerini hatırlamak ve kullanım istatistiği oluşturmak için çerezler kullanır. Tarayıcı ayarlarından
+                            çerezleri engelleyebilirsin; ancak bazı özellikler kısıtlanabilir.
                         </p>
-                    </section>
+                    </Card>
 
-                    {/* 5. Verilerin Paylaşılması */}
-                    <section className="space-y-3">
-                        <h2 className="text-lg font-semibold tracking-tight">5. Verilerin Paylaşılması</h2>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                            Kişisel verileriniz üçüncü kişilere satılmaz. Verileriniz sadece hizmetin sunulması için gerekli olan altyapı sağlayıcılarıyla (barındırma hizmeti, e-posta servisi vb.)
-                            paylaşılabilir. Yasal bir talep olması halinde resmi mercilerle paylaşım yapılabilir.
+                    <Card icon={Share2} color="text-blue-400" title="5. Verilerin Paylaşılması">
+                        <p>
+                            Kişisel verilerin üçüncü kişilere satılmaz. Veriler yalnızca hizmetin sunulması için gerekli altyapı sağlayıcılarıyla (barındırma, e-posta,
+                            kimlik doğrulama servisleri gibi) paylaşılabilir. Yasal bir talep olması halinde resmi mercilerle paylaşım yapılabilir.
                         </p>
-                    </section>
+                    </Card>
 
-                    {/* 6. Saklama Süresi */}
-                    <section className="space-y-3">
-                        <h2 className="text-lg font-semibold tracking-tight">6. Veri Saklama Süresi</h2>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                            Hesabınız aktif olduğu sürece hesabın çalışması için gerekli veriler saklanır. Hesabınızı sildiğinizde veya silinmesini istediğinizde, yasal olarak saklanması gereken
-                            kayıtlar hariç olmak üzere veriler makul süre içinde silinir.
+                    <Card icon={Clock} color="text-emerald-400" title="6. Veri Saklama Süresi">
+                        <p>
+                            Hesabın aktif olduğu sürece, hesabın çalışması için gerekli veriler saklanır. Hesabını sildiğinde, yasal olarak saklanması gereken kayıtlar
+                            hariç olmak üzere verilerin makul süre içinde kalıcı olarak silinir.
                         </p>
-                    </section>
+                    </Card>
 
-                    {/* 7. Haklarınız */}
-                    <section className="space-y-3">
-                        <h2 className="text-lg font-semibold tracking-tight">7. Kullanıcı Hakları</h2>
-                        <p className="text-sm text-muted-foreground leading-relaxed">Aşağıdaki konularda talepte bulunabilirsiniz:</p>
-                        <ul className="space-y-2 text-sm text-muted-foreground leading-relaxed">
-                            <li>- Hakkınızda hangi verilerin tutulduğunu öğrenme</li>
-                            <li>- Yanlış veya eksik verilerin düzeltilmesini isteme</li>
-                            <li>- Hesabınızın ve verilerinizin silinmesini talep etme</li>
-                            <li>- Verilerinizin hangi amaçlarla kullanıldığını öğrenme</li>
-                        </ul>
-                        <p className="text-sm text-muted-foreground leading-relaxed">Bu talepler için aşağıdaki e-posta adresine başvurabilirsiniz.</p>
-                    </section>
+                    <Card icon={UserCheck} color="text-fuchsia-400" title="7. Kullanıcı Hakların">
+                        <p className="mb-3">Aşağıdaki konularda her zaman talepte bulunabilirsin:</p>
+                        <List
+                            items={[
+                                "Hakkında hangi verilerin tutulduğunu öğrenme",
+                                "Yanlış veya eksik verilerin düzeltilmesini isteme",
+                                "Hesabının ve verilerinin silinmesini talep etme",
+                                "Verilerinin hangi amaçlarla kullanıldığını öğrenme",
+                            ]}
+                        />
+                        <p className="mt-3">Hesabını uygulama içinden Profil, Ayarlar adımıyla kendin de silebilirsin.</p>
+                    </Card>
 
-                    {/* 8. Güvenlik */}
-                    <section className="space-y-3">
-                        <h2 className="text-lg font-semibold tracking-tight">8. Güvenlik</h2>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                            Verilerinizin yetkisiz erişime karşı korunması için makul teknik ve idari tedbirler uygulanır. Ancak internet üzerinden yapılan hiçbir aktarımın tamamen güvenli olduğu
-                            garanti edilemez.
+                    <Card icon={Lock} color="text-rose-400" title="8. Güvenlik">
+                        <p>
+                            Verilerinin yetkisiz erişime karşı korunması için makul teknik ve idari tedbirler uygulanır. Ancak internet üzerinden yapılan hiçbir aktarımın
+                            tamamen güvenli olduğu garanti edilemez.
                         </p>
-                    </section>
+                    </Card>
 
-                    {/* 9. Değişiklikler */}
-                    <section className="space-y-3">
-                        <h2 className="text-lg font-semibold tracking-tight">9. Politika Değişiklikleri</h2>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                            Bu gizlilik politikası zaman zaman güncellenebilir. Sayfanın en üstündeki tarihin değişmesi, yeni sürümün yürürlükte olduğu anlamına gelir.
+                    <Card icon={RefreshCw} color="text-teal-400" title="9. Politika Değişiklikleri">
+                        <p>
+                            Bu gizlilik politikası zaman zaman güncellenebilir. Sayfanın üstündeki tarihin değişmesi, yeni sürümün yürürlükte olduğu anlamına gelir.
                         </p>
-                    </section>
+                    </Card>
 
-                    {/* 10. İletişim */}
-                    <section className="space-y-2 pt-2 border-t border-border/40">
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                            Gizlilik ile ilgili sorularınız için
-                            <span className="mx-2">
-                                <a href="mailto:info@gghub.social" className="inline-flex items-center gap-1 text-primary hover:underline cursor-pointer font-medium">
-                                    <Mail className="w-3.5 h-3.5" /> info@gghub.social
-                                </a>
-                            </span>
-                            adresine e-posta gönderebilirsiniz.
-                        </p>
-                    </section>
+                    {/* İletişim, full width */}
+                    <div className="md:col-span-2 rounded-2xl border border-border/50 bg-gradient-to-br from-cyan-500/5 to-violet-500/5 p-6">
+                        <div className="flex items-start gap-4">
+                            <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary/50 text-cyan-400">
+                                <Mail className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <h2 className="text-base font-semibold tracking-tight">10. İletişim</h2>
+                                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                                    Gizlilikle ilgili soruların veya taleplerin için bize yaz:{" "}
+                                    <a href="mailto:info@gghub.social" className="font-medium text-primary hover:underline">
+                                        info@gghub.social
+                                    </a>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <AppDownloadCTA />
             </div>
         </div>
+    );
+}
+
+function Card({
+    icon: Icon,
+    color,
+    title,
+    children,
+}: {
+    icon: React.ComponentType<{ className?: string }>;
+    color: string;
+    title: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <section className="rounded-2xl border border-border/50 bg-card/60 p-6 transition-colors hover:border-border">
+            <div className="flex items-center gap-3">
+                <div className={`inline-flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/50 ${color}`}>
+                    <Icon className="h-5 w-5" />
+                </div>
+                <h2 className="text-base font-semibold tracking-tight">{title}</h2>
+            </div>
+            <div className="mt-4 text-sm leading-relaxed text-muted-foreground">{children}</div>
+        </section>
+    );
+}
+
+function List({ items }: { items: string[] }) {
+    return (
+        <ul className="space-y-2">
+            {items.map((item) => (
+                <li key={item} className="flex items-start gap-2.5">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400/80" />
+                    <span>{item}</span>
+                </li>
+            ))}
+        </ul>
     );
 }

@@ -2,7 +2,7 @@ import { Gamepad2, ListChecks, Star, Users, MessageCircle, Trophy, Sparkles } fr
 import { AppDownloadCTA } from "@core/components/other/public/app-cta";
 
 export const metadata = {
-    title: "GGHub — Oyuncular için sosyal platform",
+    title: "GGHub: Oyuncular için sosyal platform",
     description:
         "Oyun keşfet, listeler oluştur, puanla & incele ve oyuncu topluluğunu takip et. GGHub yakında iOS ve Android'de.",
 };
@@ -18,9 +18,9 @@ const features = [
 
 export default function MarketingPage() {
     return (
-        <div className="relative mx-auto w-full max-w-5xl px-4 py-8">
+        <div className="relative w-full p-5">
             {/* Hero */}
-            <section className="relative overflow-hidden rounded-3xl border border-border/50 bg-card/60 px-6 py-14 text-center">
+            <section className="relative overflow-hidden rounded-3xl border border-border/50 bg-card/60 px-6 py-16 text-center md:py-20">
                 <div
                     aria-hidden
                     className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.12),_transparent_55%),radial-gradient(circle_at_bottom,_rgba(139,92,246,0.12),_transparent_60%)]"
@@ -34,8 +34,8 @@ export default function MarketingPage() {
                         <br />
                         Oyunun kalbi burada atıyor
                     </h1>
-                    <p className="mx-auto mt-5 max-w-xl text-pretty text-base text-muted-foreground md:text-lg">
-                        Oyuncular için sosyal platform. Oyun keşfet, listeler oluştur, puanla ve topluluğu takip et — hepsi tek yerde.
+                    <p className="mx-auto mt-5 max-w-2xl text-pretty text-base text-muted-foreground md:text-lg">
+                        Oyuncular için sosyal platform. Oyun keşfet, listeler oluştur, puanla ve topluluğu takip et. Hepsi tek yerde.
                     </p>
                 </div>
             </section>

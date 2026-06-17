@@ -1,8 +1,17 @@
-import { Apple, Play, Mail, ArrowUpRight } from "lucide-react";
+import { Play, Mail, ArrowUpRight } from "lucide-react";
+
+// Official Apple logo (lucide's "Apple" is a fruit, not the brand mark).
+function AppleLogo({ className }: { className?: string }) {
+    return (
+        <svg viewBox="0 0 384 512" className={className} fill="currentColor" aria-hidden="true">
+            <path d="M318.7 268.7c-.2-36.71 16.41-64.39 49.81-84.78-18.69-26.78-46.97-41.51-84.27-44.38-35.42-2.79-74.18 20.62-88.39 20.62-15.02 0-49.31-19.62-76.27-19.62C63.4 141.51 4 184.81 4 272.83c0 26.01 4.76 52.88 14.28 80.59 12.71 36.41 58.56 125.81 106.39 124.36 25.02-.59 42.71-17.73 75.27-17.73 31.58 0 47.95 17.73 75.85 17.73 48.25-.7 89.74-81.95 101.83-118.46-64.78-30.51-61.21-89.46-61.21-90.21zm-56.65-164.24c27.32-32.42 24.83-61.93 24.02-72.59-24.13 1.4-52.06 16.42-67.97 34.9-17.52 19.82-27.83 44.32-25.61 71.45 26.07 2.01 49.81-11.42 69.56-33.76z" />
+        </svg>
+    );
+}
 
 /**
  * Shared "download the app + contact" block used across the public legal/marketing pages.
- * Store buttons are intentionally passive (apps not yet published) — shown with a "Yakında" badge.
+ * Store buttons are intentionally passive (apps not yet published), shown with a "Yakında" badge.
  */
 export function AppDownloadCTA() {
     return (
@@ -18,7 +27,7 @@ export function AppDownloadCTA() {
                     GGHub yakında iOS ve Android&apos;de. Mağaza linkleri çok yakında burada.
                 </p>
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-                    <StoreButton icon={<Apple className="h-5 w-5" />} label="App Store" />
+                    <StoreButton icon={<AppleLogo className="h-5 w-5" />} label="App Store" />
                     <StoreButton icon={<Play className="h-5 w-5" />} label="Google Play" />
                 </div>
             </div>
