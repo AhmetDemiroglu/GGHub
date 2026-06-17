@@ -1,4 +1,5 @@
 import { FileText } from "lucide-react";
+import { AppDownloadCTA } from "@core/components/other/public/app-cta";
 
 export const metadata = {
     title: "Kullanım Şartları | GGHub",
@@ -127,6 +128,8 @@ export default function TermsPage() {
                         </p>
                     </section>
                 </div>
+
+                <AppDownloadCTA />
             </div>
         </div>
     );

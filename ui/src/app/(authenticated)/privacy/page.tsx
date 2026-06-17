@@ -1,4 +1,5 @@
 import { Shield, Mail } from "lucide-react";
+import { AppDownloadCTA } from "@core/components/other/public/app-cta";
 
 export const metadata = {
     title: "Gizlilik Politikası | GGHub",
@@ -122,6 +123,8 @@ export default function PrivacyPage() {
                         </p>
                     </section>
                 </div>
+
+                <AppDownloadCTA />
             </div>
         </div>
     );
