@@ -50,32 +50,9 @@ export default function WishlistScreen() {
     },
   });
 
-  const games = wishlist?.games ?? [];
-
-  if (!isAuthenticated) {
-    return (
-      <ScreenWrapper noPadding safeArea={false}>
-        <ScreenHeader title={messages.nav.screenTitles.wishlist} />
-        <EmptyState
-          icon="lock-closed-outline"
-          title={messages.wishlistPage.loginRequired}
-          description={messages.wishlistPage.loginDescription}
-        />
-      </ScreenWrapper>
-    );
-  }
-
-  if (isLoading) return <LoadingScreen />;
-
-  if (isError) {
-    return (
-      <ScreenWrapper noPadding safeArea={false}>
-        <ScreenHeader title={messages.nav.screenTitles.wishlist} />
-        <EmptyState icon="alert-circle-outline" title={messages.wishlistPage.loadError} />
-      </ScreenWrapper>
-    );
-  }
-
+  // NOT: Tüm hook çağrıları erken return'lerden ÖNCE olmalı.
+  // useCallback'i conditional return'lerin ALTINA koymak render'lar arası
+  // hook sayısını değiştirir ("Rendered more hooks than the previous render").
   const renderGame = useCallback(
     ({ item }: { item: Game }) => {
       const imageUrl = getImageUrl(item.coverImage ?? item.backgroundImage);
@@ -113,6 +90,32 @@ export default function WishlistScreen() {
     },
     [colors, messages, removeMutation],
   );
+
+  const games = wishlist?.games ?? [];
+
+  if (!isAuthenticated) {
+    return (
+      <ScreenWrapper noPadding safeArea={false}>
+        <ScreenHeader title={messages.nav.screenTitles.wishlist} />
+        <EmptyState
+          icon="lock-closed-outline"
+          title={messages.wishlistPage.loginRequired}
+          description={messages.wishlistPage.loginDescription}
+        />
+      </ScreenWrapper>
+    );
+  }
+
+  if (isLoading) return <LoadingScreen />;
+
+  if (isError) {
+    return (
+      <ScreenWrapper noPadding safeArea={false}>
+        <ScreenHeader title={messages.nav.screenTitles.wishlist} />
+        <EmptyState icon="alert-circle-outline" title={messages.wishlistPage.loadError} />
+      </ScreenWrapper>
+    );
+  }
 
   return (
     <ScreenWrapper noPadding safeArea={false}>

@@ -162,31 +162,39 @@ export function AppSidebar() {
         </TouchableOpacity>
 
         <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
-          {/* Kullanıcı Kartı */}
-          <View style={[styles.userCard, { borderBottomColor: colors.border }]}>
-            <Avatar uri={user?.profileImageUrl} name={user?.username} size={56} />
-            <View style={styles.userInfo}>
-              {isAuthenticated ? (
-                <>
-                  <Text style={[styles.username, { color: colors.text }]}>
-                    {user?.username ?? '—'}
-                  </Text>
-                  {user?.role === 'Admin' ? (
-                    <View style={[styles.roleBadge, { backgroundColor: colors.primary }]}>
-                      <Text style={styles.roleBadgeText}>Admin</Text>
-                    </View>
-                  ) : null}
-                </>
-              ) : (
+          {/* Kullanıcı Kartı — authenticated user için tıklanabilir, kendi profile götürür */}
+          {isAuthenticated ? (
+            <TouchableOpacity
+              style={[styles.userCard, { borderBottomColor: colors.border }]}
+              onPress={() => navigate('/(tabs)/profile')}
+              activeOpacity={0.7}
+            >
+              <Avatar uri={user?.profileImageUrl} name={user?.username} size={56} />
+              <View style={styles.userInfo}>
+                <Text style={[styles.username, { color: colors.text }]}>
+                  {user?.username ?? '—'}
+                </Text>
+                {user?.role === 'Admin' ? (
+                  <View style={[styles.roleBadge, { backgroundColor: colors.primary }]}>
+                    <Text style={styles.roleBadgeText}>Admin</Text>
+                  </View>
+                ) : null}
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </TouchableOpacity>
+          ) : (
+            <View style={[styles.userCard, { borderBottomColor: colors.border }]}>
+              <Avatar uri={user?.profileImageUrl} name={user?.username} size={56} />
+              <View style={styles.userInfo}>
                 <TouchableOpacity onPress={() => navigate('/(auth)/login')} activeOpacity={0.7}>
                   <Text style={[styles.username, { color: colors.text }]}>{messages.authPrompt.signIn}</Text>
                   <Text style={{ color: colors.primary, fontSize: FontSize.sm, marginTop: 2, fontWeight: '600' }}>
                     {messages.authPrompt.signUp}
                   </Text>
                 </TouchableOpacity>
-              )}
+              </View>
             </View>
-          </View>
+          )}
 
           {/* Ana Navigasyon (yalnızca giriş yapanlar) */}
           {isAuthenticated && (

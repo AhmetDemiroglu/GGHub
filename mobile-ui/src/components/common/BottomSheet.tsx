@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Animated,
   Easing,
   Dimensions,
+  PanResponder,
 } from 'react-native';
 import { useTheme } from '@/src/hooks/use-theme';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
@@ -17,6 +18,10 @@ import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const OPEN_DURATION = 260;
 const CLOSE_DURATION = 200;
+
+// Swipe-to-close eşikleri
+const CLOSE_DISTANCE = 100;
+const CLOSE_VELOCITY = 0.5;
 
 interface BottomSheetProps {
   visible: boolean;
@@ -69,6 +74,62 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
     }
   }, [visible, mounted, overlayOpacity, translateY]);
 
+  // Handle area'sında çalışan PanResponder. Sheet'in en üstündeki "tutamak"
+  // alanı üzerinden aşağı sürüklenince sheet kayar; bırakıldığında eşiğe
+  // göre kapanır ya da geri yukarı snap eder.
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: (_, gesture) => gesture.dy > 4,
+        onPanResponderMove: (_, gesture) => {
+          if (gesture.dy > 0) {
+            translateY.setValue(gesture.dy);
+            // Drag esnasında backdrop opacity'sini de yumuşakça azalt
+            const fade = Math.max(0.2, 1 - gesture.dy / (SCREEN_HEIGHT * 0.5));
+            overlayOpacity.setValue(fade);
+          }
+        },
+        onPanResponderRelease: (_, gesture) => {
+          const shouldClose =
+            gesture.dy > CLOSE_DISTANCE || gesture.vy > CLOSE_VELOCITY;
+          if (shouldClose) {
+            onClose();
+          } else {
+            // Geri yukarı snap
+            Animated.parallel([
+              Animated.spring(translateY, {
+                toValue: 0,
+                friction: 9,
+                tension: 80,
+                useNativeDriver: true,
+              }),
+              Animated.timing(overlayOpacity, {
+                toValue: 1,
+                duration: 160,
+                easing: Easing.out(Easing.cubic),
+                useNativeDriver: true,
+              }),
+            ]).start();
+          }
+        },
+        onPanResponderTerminate: () => {
+          Animated.spring(translateY, {
+            toValue: 0,
+            friction: 9,
+            tension: 80,
+            useNativeDriver: true,
+          }).start();
+          Animated.timing(overlayOpacity, {
+            toValue: 1,
+            duration: 160,
+            useNativeDriver: true,
+          }).start();
+        },
+      }),
+    [translateY, overlayOpacity, onClose],
+  );
+
   if (!mounted) return null;
 
   return (
@@ -94,10 +155,13 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
               { backgroundColor: colors.surface, transform: [{ translateY }] },
             ]}
           >
-            <View style={[styles.handle, { backgroundColor: colors.textMuted }]} />
-            {title ? (
-              <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-            ) : null}
+            {/* Tutamak — drag burada başlar */}
+            <View style={styles.handleArea} {...panResponder.panHandlers}>
+              <View style={[styles.handle, { backgroundColor: colors.textMuted }]} />
+              {title ? (
+                <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+              ) : null}
+            </View>
             {children}
           </Animated.View>
         </KeyboardAvoidingView>
@@ -119,19 +183,25 @@ const styles = StyleSheet.create({
     borderTopRightRadius: BorderRadius.xl,
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.xxxl,
-    paddingTop: Spacing.md,
+    paddingTop: Spacing.sm,
     maxHeight: '80%',
+  },
+  handleArea: {
+    // Drag yakalama alanı — handle + opsiyonel başlık.
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.md,
+    marginHorizontal: -Spacing.lg,
+    paddingHorizontal: Spacing.lg,
   },
   handle: {
     width: 40,
     height: 4,
     borderRadius: 2,
     alignSelf: 'center',
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   title: {
     fontSize: FontSize.xl,
     fontWeight: '700',
-    marginBottom: Spacing.lg,
   },
 });

@@ -93,6 +93,19 @@ export default function TabsLayout() {
             <Ionicons name="person-outline" size={size} color={color} />
           ),
         }}
+        listeners={({ navigation }) => ({
+          // Profil tab'ına basıldığında nested stack settings/edit'te kalmışsa
+          // index'e geri pop'la — kullanıcı tab icon'undan her zaman kendi profile gelsin.
+          tabPress: (e) => {
+            const state: any = navigation.getState?.();
+            const profileRoute = state?.routes?.find((r: any) => r.name === 'profile');
+            const hasNestedStack = profileRoute?.state && typeof profileRoute.state.index === 'number';
+            if (hasNestedStack && profileRoute.state.index > 0) {
+              e.preventDefault();
+              navigation.navigate('profile', { screen: 'index' });
+            }
+          },
+        })}
       />
 
       {/* ── Tab Bar'dan gizli ama tab navigator'a kayıtlı rotalar ── */}

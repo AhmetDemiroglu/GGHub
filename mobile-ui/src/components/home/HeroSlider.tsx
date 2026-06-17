@@ -90,14 +90,16 @@ export function HeroSlider({ games }: HeroSliderProps) {
                   {item.name}
                 </Text>
                 <PlatformIcons platforms={item.platforms} size={14} color="#ffffff" maxIcons={4} />
-                <ScorePillRow
-                  metacritic={item.metacriticScore}
-                  rawg={item.rawgRating}
-                  gghub={item.gghubRating > 0 ? item.gghubRating : null}
-                  gghubCount={item.gghubRatingCount}
-                  size="sm"
-                  gap={6}
-                />
+                <View style={styles.scoreShell}>
+                  <ScorePillRow
+                    metacritic={item.metacriticScore}
+                    rawg={item.rawgRating}
+                    gghub={item.gghubRating > 0 ? item.gghubRating : null}
+                    gghubCount={item.gghubRatingCount}
+                    size="sm"
+                    gap={6}
+                  />
+                </View>
               </View>
             </View>
           </View>
@@ -192,6 +194,13 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: Spacing.sm,
     gap: Spacing.xs,
+  },
+  scoreShell: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderRadius: BorderRadius.md,
   },
   gameName: {
     color: '#ffffff',
