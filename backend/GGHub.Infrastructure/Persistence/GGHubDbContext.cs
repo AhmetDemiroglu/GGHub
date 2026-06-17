@@ -35,6 +35,7 @@ namespace GGHub.Infrastructure.Persistence
         public DbSet<UserAchievement> UserAchievements { get; set; }
         public DbSet<UserStats> UserStats { get; set; }
         public DbSet<RawgImportCheckpoint> RawgImportCheckpoints { get; set; }
+        public DbSet<PushToken> PushTokens { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -178,6 +179,22 @@ namespace GGHub.Infrastructure.Persistence
             modelBuilder.Entity<Game>()
                 .HasIndex(g => g.ImportSource)
                 .HasDatabaseName("IX_Games_ImportSource");
+
+            // PushToken: one row per device token, cascade-delete with the user
+            modelBuilder.Entity<PushToken>(entity =>
+            {
+                entity.HasIndex(t => t.Token)
+                    .IsUnique()
+                    .HasDatabaseName("IX_PushTokens_Token");
+
+                entity.HasIndex(t => t.UserId)
+                    .HasDatabaseName("IX_PushTokens_UserId");
+
+                entity.HasOne(t => t.User)
+                    .WithMany()
+                    .HasForeignKey(t => t.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
         }
     }
 

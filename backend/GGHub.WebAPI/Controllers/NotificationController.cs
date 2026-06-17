@@ -1,3 +1,4 @@
+using GGHub.Application.Dtos;
 using GGHub.Application.Interfaces;
 using GGHub.Infrastructure.Localization;
 using Microsoft.AspNetCore.Authorization;
@@ -12,10 +13,12 @@ namespace GGHub.WebAPI.Controllers
     public class NotificationsController : ControllerBase
     {
         private readonly INotificationService _notificationService;
+        private readonly IPushNotificationService _pushNotificationService;
 
-        public NotificationsController(INotificationService notificationService)
+        public NotificationsController(INotificationService notificationService, IPushNotificationService pushNotificationService)
         {
             _notificationService = notificationService;
+            _pushNotificationService = pushNotificationService;
         }
 
         [HttpGet]
@@ -53,6 +56,31 @@ namespace GGHub.WebAPI.Controllers
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             await _notificationService.MarkAllAsReadAsync(userId);
+            return Ok();
+        }
+
+        [HttpPost("register-token")]
+        public async Task<IActionResult> RegisterPushToken(PushTokenForRegistrationDto dto)
+        {
+            if (dto == null || string.IsNullOrWhiteSpace(dto.Token))
+            {
+                return BadRequest();
+            }
+
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            await _pushNotificationService.RegisterTokenAsync(userId, dto.Token, dto.Platform ?? "unknown");
+            return Ok();
+        }
+
+        [HttpPost("unregister-token")]
+        public async Task<IActionResult> UnregisterPushToken(PushTokenForRegistrationDto dto)
+        {
+            if (dto == null || string.IsNullOrWhiteSpace(dto.Token))
+            {
+                return BadRequest();
+            }
+
+            await _pushNotificationService.RemoveTokenAsync(dto.Token);
             return Ok();
         }
     }

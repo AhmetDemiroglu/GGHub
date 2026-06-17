@@ -14,12 +14,14 @@ namespace GGHub.Infrastructure.Services
         private readonly INotificationService _notificationService;
         private readonly IGamificationService _gamificationService;
         private readonly IHubNotificationService _hubNotificationService;
-        public SocialService(GGHubDbContext context, INotificationService notificationService, IGamificationService gamificationService, IHubNotificationService hubNotificationService)
+        private readonly IPushNotificationService _pushNotificationService;
+        public SocialService(GGHubDbContext context, INotificationService notificationService, IGamificationService gamificationService, IHubNotificationService hubNotificationService, IPushNotificationService pushNotificationService)
         {
             _context = context;
             _notificationService = notificationService;
             _gamificationService = gamificationService;
             _hubNotificationService = hubNotificationService;
+            _pushNotificationService = pushNotificationService;
         }
         public async Task<bool> FollowUserAsync(int followerId, string followeeUsername)
         {
@@ -251,6 +253,9 @@ namespace GGHub.Infrastructure.Services
 
             // Push real-time events to recipient
             await _hubNotificationService.SendMessageAsync(recipient.Id, result);
+
+            // OS-level push for the new message (delivered when the app is backgrounded/closed). Best-effort.
+            await _pushNotificationService.SendToUserAsync(recipient.Id, sender!.Username, message.Content, $"/messages/{sender.Username}");
 
             // Update unread message count for recipient
             var recipientUnreadCount = await GetUnreadMessageCountAsync(recipient.Id);

@@ -11,10 +11,12 @@ namespace GGHub.Infrastructure.Services
     {
         private readonly GGHubDbContext _context;
         private readonly IHubNotificationService _hubNotificationService;
-        public NotificationService(GGHubDbContext context, IHubNotificationService hubNotificationService)
+        private readonly IPushNotificationService _pushNotificationService;
+        public NotificationService(GGHubDbContext context, IHubNotificationService hubNotificationService, IPushNotificationService pushNotificationService)
         {
             _context = context;
             _hubNotificationService = hubNotificationService;
+            _pushNotificationService = pushNotificationService;
         }
         public async Task CreateNotificationAsync(int recipientUserId, string message, NotificationType type, string? link = null)
         {
@@ -42,6 +44,9 @@ namespace GGHub.Infrastructure.Services
             // Update unread notification count
             var unreadCount = await GetUnreadCountAsync(recipientUserId);
             await _hubNotificationService.UpdateUnreadNotificationCountAsync(recipientUserId, unreadCount);
+
+            // OS-level push (delivered when the app is backgrounded/closed). Best-effort.
+            await _pushNotificationService.SendToUserAsync(recipientUserId, "GGHub", message, link);
         }
         public async Task<IEnumerable<NotificationDto>> GetUserNotificationsAsync(int userId)
         {
