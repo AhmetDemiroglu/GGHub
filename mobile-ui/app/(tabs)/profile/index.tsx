@@ -21,6 +21,7 @@ import { ActivityFeedList } from '@/src/components/profile/ActivityFeedList';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
+import { AuthRequiredView } from '@/src/components/common/AuthRequiredView';
 import { getMyProfile } from '@/src/api/profile';
 import { getUserStats } from '@/src/api/stats';
 import { getReviewsByUser } from '@/src/api/review';
@@ -36,7 +37,7 @@ export default function OwnProfileScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const { messages } = useLocale();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const h = messages.profile.header;
   const af = messages.profile.activityFeed;
 
@@ -82,6 +83,8 @@ export default function OwnProfileScreen() {
     profileQuery.refetch();
     statsQuery.refetch();
   }, [profileQuery, statsQuery]);
+
+  if (!isAuthenticated) return <AuthRequiredView />;
 
   if (profileQuery.isLoading) return <LoadingScreen />;
 

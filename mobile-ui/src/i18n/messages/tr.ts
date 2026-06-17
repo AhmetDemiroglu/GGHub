@@ -1,4 +1,17 @@
 export const trMessages = {
+    authPrompt: {
+        title: "Hesap gerekli",
+        message: "Bu özelliği kullanmak için bir hesabın olması gerekiyor.",
+        signIn: "Giriş yap",
+        signUp: "Kayıt ol",
+        cancel: "Vazgeç",
+    },
+    guestWelcome: {
+        title: "Misafir olarak devam et",
+        message: "Oyunları, listeleri ve profilleri görüntüleyebilirsin. Topluluğu takip etmek, puan vermek, yorum yapmak, liste oluşturmak, istek listesi kullanmak veya mesaj göndermek için hesap gerekir.",
+        continue: "Misafir olarak devam et",
+        signUp: "Kayıt ol",
+    },
     common: {
         appName: "GGHub",
         loading: "Yükleniyor...",
@@ -92,6 +105,7 @@ export const trMessages = {
         orDivider: "veya",
         continueWithGoogle: "Google ile devam et",
         continueWithApple: "Apple ile devam et",
+        loginSubtitle: "Tekrar hoş geldin.",
         registerTitle: "Kayıt ol",
         registerCreateTitle: "Hesap Oluştur",
         registerEmailLabel: "E-posta",

@@ -68,7 +68,7 @@ export function AppSidebar() {
   const insets = useSafeAreaInsets();
   const { colors, isDark, toggleTheme } = useTheme();
   const { locale, switchLocale, messages } = useLocale();
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
   const { isSidebarOpen, closeSidebar } = useShell();
   const router = useRouter();
 
@@ -166,18 +166,30 @@ export function AppSidebar() {
           <View style={[styles.userCard, { borderBottomColor: colors.border }]}>
             <Avatar uri={user?.profileImageUrl} name={user?.username} size={56} />
             <View style={styles.userInfo}>
-              <Text style={[styles.username, { color: colors.text }]}>
-                {user?.username ?? '—'}
-              </Text>
-              {user?.role === 'Admin' ? (
-                <View style={[styles.roleBadge, { backgroundColor: colors.primary }]}>
-                  <Text style={styles.roleBadgeText}>Admin</Text>
-                </View>
-              ) : null}
+              {isAuthenticated ? (
+                <>
+                  <Text style={[styles.username, { color: colors.text }]}>
+                    {user?.username ?? '—'}
+                  </Text>
+                  {user?.role === 'Admin' ? (
+                    <View style={[styles.roleBadge, { backgroundColor: colors.primary }]}>
+                      <Text style={styles.roleBadgeText}>Admin</Text>
+                    </View>
+                  ) : null}
+                </>
+              ) : (
+                <TouchableOpacity onPress={() => navigate('/(auth)/login')} activeOpacity={0.7}>
+                  <Text style={[styles.username, { color: colors.text }]}>{messages.authPrompt.signIn}</Text>
+                  <Text style={{ color: colors.primary, fontSize: FontSize.sm, marginTop: 2, fontWeight: '600' }}>
+                    {messages.authPrompt.signUp}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
 
-          {/* Ana Navigasyon */}
+          {/* Ana Navigasyon (yalnızca giriş yapanlar) */}
+          {isAuthenticated && (
           <View style={styles.section}>
             <NavItem
               icon="list-outline"
@@ -212,6 +224,7 @@ export function AppSidebar() {
               />
             ) : null}
           </View>
+          )}
 
           {/* Hızlı Ayarlar */}
           <View style={[styles.section, { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth }]}>
@@ -256,12 +269,14 @@ export function AppSidebar() {
 
           {/* Uygulama */}
           <View style={[styles.section, { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth }]}>
-            <NavItem
-              icon="settings-outline"
-              label={nav.profileSettings}
-              onPress={() => navigate('/profile/settings')}
-              colors={colors}
-            />
+            {isAuthenticated && (
+              <NavItem
+                icon="settings-outline"
+                label={nav.profileSettings}
+                onPress={() => navigate('/profile/settings')}
+                colors={colors}
+              />
+            )}
             <NavItem
               icon="information-circle-outline"
               label="Hakkında"
@@ -276,7 +291,8 @@ export function AppSidebar() {
             />
           </View>
 
-          {/* Çıkış */}
+          {/* Çıkış (yalnızca giriş yapanlar) */}
+          {isAuthenticated && (
           <View style={[styles.section, { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth }]}>
             <NavItem
               icon="log-out-outline"
@@ -286,6 +302,7 @@ export function AppSidebar() {
               colors={colors}
             />
           </View>
+          )}
         </ScrollView>
       </Animated.View>
     </Modal>

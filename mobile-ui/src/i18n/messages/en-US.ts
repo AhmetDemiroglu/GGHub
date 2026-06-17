@@ -1,4 +1,17 @@
 export const enUSMessages = {
+    authPrompt: {
+        title: "Account required",
+        message: "You need an account to use this feature.",
+        signIn: "Log in",
+        signUp: "Sign up",
+        cancel: "Cancel",
+    },
+    guestWelcome: {
+        title: "Continue as guest",
+        message: "You can browse games, lists and profiles. To follow the community, rate, review, create lists, use the wishlist or send messages, you'll need an account.",
+        continue: "Continue as guest",
+        signUp: "Sign up",
+    },
     common: {
         appName: "GGHub",
         loading: "Loading...",
@@ -92,6 +105,7 @@ export const enUSMessages = {
         orDivider: "or",
         continueWithGoogle: "Continue with Google",
         continueWithApple: "Continue with Apple",
+        loginSubtitle: "Welcome back, player.",
         registerTitle: "Sign up",
         registerCreateTitle: "Create account",
         registerEmailLabel: "Email",

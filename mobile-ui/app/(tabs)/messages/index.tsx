@@ -19,6 +19,8 @@ import { EmptyState } from '@/src/components/common/EmptyState';
 import { ConversationItem } from '@/src/components/messages/ConversationItem';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
+import { useAuth } from '@/src/hooks/use-auth';
+import { AuthRequiredView } from '@/src/components/common/AuthRequiredView';
 import { getConversations } from '@/src/api/messages';
 import { SignalRContext } from '@/src/contexts/signalr-context';
 import type { ConversationDto } from '@/src/models/message';
@@ -28,6 +30,7 @@ export default function MessagesListScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const { messages } = useLocale();
+  const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const t = messages.messages;
 
@@ -39,6 +42,7 @@ export default function MessagesListScreen() {
   const conversationsQuery = useQuery({
     queryKey: ['conversations'],
     queryFn: getConversations,
+    enabled: isAuthenticated,
   });
 
   useEffect(() => {
@@ -71,6 +75,8 @@ export default function MessagesListScreen() {
     ),
     [router],
   );
+
+  if (!isAuthenticated) return <AuthRequiredView />;
 
   if (conversationsQuery.isLoading) return <LoadingScreen />;
 

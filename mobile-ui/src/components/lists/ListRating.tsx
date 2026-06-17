@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
+import { useRequireAuth } from '@/src/contexts/auth-prompt-context';
 import { useToast } from '@/src/components/common/Toast';
 import { submitListRating, getMyListRating } from '@/src/api/list-rating';
 import { Spacing, FontSize } from '@/src/constants/theme';
@@ -19,6 +20,7 @@ export function ListRating({ listId, averageRating, ratingCount }: ListRatingPro
   const { colors } = useTheme();
   const { messages } = useLocale();
   const { isAuthenticated } = useAuth();
+  const requireAuth = useRequireAuth();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
   const [hoverStar, setHoverStar] = useState(0);
@@ -44,11 +46,7 @@ export function ListRating({ listId, averageRating, ratingCount }: ListRatingPro
   });
 
   const handleRate = (value: number) => {
-    if (!isAuthenticated) {
-      showToast('info', messages.listDetail.loginRequiredAction);
-      return;
-    }
-    ratingMutation.mutate(value);
+    requireAuth(() => ratingMutation.mutate(value));
   };
 
   return (

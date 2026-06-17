@@ -18,6 +18,8 @@ import { NotificationItem } from '@/src/components/notifications/NotificationIte
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { getNotifications, markAllNotificationsAsRead } from '@/src/api/notifications';
+import { useAuth } from '@/src/hooks/use-auth';
+import { AuthRequiredView } from '@/src/components/common/AuthRequiredView';
 import { toMobileRoute } from '@/src/utils/route';
 import { SignalRContext } from '@/src/contexts/signalr-context';
 import type { NotificationDto } from '@/src/models/notification';
@@ -27,6 +29,7 @@ export default function NotificationsScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const { messages } = useLocale();
+  const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const nav = messages.nav;
 
@@ -35,6 +38,7 @@ export default function NotificationsScreen() {
   const notificationsQuery = useQuery({
     queryKey: ['notifications'],
     queryFn: getNotifications,
+    enabled: isAuthenticated,
   });
 
   useEffect(() => {
@@ -71,6 +75,8 @@ export default function NotificationsScreen() {
   );
 
   const hasUnread = (notificationsQuery.data ?? []).some((n) => !n.isRead);
+
+  if (!isAuthenticated) return <AuthRequiredView />;
 
   if (notificationsQuery.isLoading) return <LoadingScreen />;
 

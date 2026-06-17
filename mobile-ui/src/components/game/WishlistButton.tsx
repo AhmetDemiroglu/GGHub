@@ -3,6 +3,7 @@ import { Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/src/hooks/use-theme';
+import { useRequireAuth } from '@/src/contexts/auth-prompt-context';
 import { Spacing, BorderRadius } from '@/src/constants/theme';
 import { toggleWishlist } from '@/src/api/list';
 
@@ -15,6 +16,7 @@ interface WishlistButtonProps {
 
 export function WishlistButton({ gameId, isWishlisted, gameSlug, size = 24 }: WishlistButtonProps) {
   const { colors } = useTheme();
+  const requireAuth = useRequireAuth();
   const queryClient = useQueryClient();
   const [localWishlisted, setLocalWishlisted] = useState(isWishlisted);
 
@@ -36,7 +38,7 @@ export function WishlistButton({ gameId, isWishlisted, gameSlug, size = 24 }: Wi
   return (
     <Pressable
       style={[styles.button, { backgroundColor: localWishlisted ? `${colors.error}15` : colors.surface }]}
-      onPress={() => mutation.mutate()}
+      onPress={() => requireAuth(() => mutation.mutate())}
       disabled={mutation.isPending}
     >
       <Ionicons

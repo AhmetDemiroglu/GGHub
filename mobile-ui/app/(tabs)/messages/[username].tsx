@@ -19,6 +19,7 @@ import { ChatInput } from '@/src/components/messages/ChatInput';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
+import { AuthRequiredView } from '@/src/components/common/AuthRequiredView';
 import { getMessageThread, sendMessage } from '@/src/api/messages';
 import { SignalRContext } from '@/src/contexts/signalr-context';
 import type { MessageDto } from '@/src/models/message';
@@ -29,7 +30,7 @@ export default function MessageThreadScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const { messages: i18n } = useLocale();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const flatListRef = useRef<FlatList>(null);
   const t = i18n.messages;
@@ -42,7 +43,7 @@ export default function MessageThreadScreen() {
   const threadQuery = useQuery({
     queryKey: ['messageThread', username],
     queryFn: () => getMessageThread(username!),
-    enabled: !!username,
+    enabled: !!username && isAuthenticated,
   });
 
   useEffect(() => {
@@ -110,6 +111,8 @@ export default function MessageThreadScreen() {
     },
     [user?.username],
   );
+
+  if (!isAuthenticated) return <AuthRequiredView />;
 
   if (threadQuery.isLoading) return <LoadingScreen />;
 

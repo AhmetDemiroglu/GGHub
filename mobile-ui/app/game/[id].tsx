@@ -27,6 +27,7 @@ import { ReviewModal } from '@/src/components/game/ReviewModal';
 import { AddToListModal } from '@/src/components/game/AddToListModal';
 import { SimilarGames } from '@/src/components/game/SimilarGames';
 import { WishlistButton } from '@/src/components/game/WishlistButton';
+import { useRequireAuth } from '@/src/contexts/auth-prompt-context';
 import type { Game } from '@/src/models/game';
 
 export default function GameDetailScreen() {
@@ -37,6 +38,7 @@ export default function GameDetailScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
+  const requireAuth = useRequireAuth();
 
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
   const [listModalVisible, setListModalVisible] = useState(false);
@@ -143,7 +145,7 @@ export default function GameDetailScreen() {
           {isAuthenticated && (
             <Pressable
               style={[styles.actionButton, { backgroundColor: colors.surface }]}
-              onPress={() => setListModalVisible(true)}
+              onPress={() => requireAuth(() => setListModalVisible(true))}
             >
               <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
               <Text style={[styles.actionText, { color: colors.primary }]}>
@@ -154,7 +156,7 @@ export default function GameDetailScreen() {
           {isAuthenticated && (
             <Pressable
               style={[styles.actionButton, { backgroundColor: colors.primary }]}
-              onPress={() => setReviewModalVisible(true)}
+              onPress={() => requireAuth(() => setReviewModalVisible(true))}
             >
               <Ionicons name="create-outline" size={20} color="#ffffff" />
               <Text style={[styles.actionText, { color: '#ffffff' }]}>

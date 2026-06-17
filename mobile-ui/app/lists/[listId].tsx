@@ -27,6 +27,7 @@ import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
 import { getListDetail, followList, unfollowList } from '@/src/api/list';
+import { useRequireAuth } from '@/src/contexts/auth-prompt-context';
 import { getImageUrl } from '@/src/utils/image';
 import { ListCategory } from '@/src/models/list';
 import type { Game } from '@/src/models/game';
@@ -49,9 +50,10 @@ export default function ListDetailScreen() {
   const { listId } = useLocalSearchParams<{ listId: string }>();
   const { colors } = useTheme();
   const { messages } = useLocale();
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const { showToast } = useToast();
+  const requireAuth = useRequireAuth();
   const queryClient = useQueryClient();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddGameModal, setShowAddGameModal] = useState(false);
@@ -91,15 +93,13 @@ export default function ListDetailScreen() {
   });
 
   const handleFollowToggle = () => {
-    if (!isAuthenticated) {
-      showToast('info', messages.listDetail.loginRequiredToFollow);
-      return;
-    }
-    if (list?.isFollowing) {
-      unfollowMutation.mutate();
-    } else {
-      followMutation.mutate();
-    }
+    requireAuth(() => {
+      if (list?.isFollowing) {
+        unfollowMutation.mutate();
+      } else {
+        followMutation.mutate();
+      }
+    });
   };
 
   const isOwner = user && list && Number(user.id) === list.owner.id;

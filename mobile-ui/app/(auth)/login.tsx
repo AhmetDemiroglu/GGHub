@@ -54,6 +54,15 @@ export default function LoginScreen() {
     }
   };
 
+  const handleGuest = () => {
+    const gw = messages.guestWelcome;
+    Alert.alert(gw.title, gw.message, [
+      { text: messages.common.cancel, style: 'cancel' },
+      { text: gw.signUp, onPress: () => router.push('/(auth)/register') },
+      { text: gw.continue, onPress: () => router.replace('/(tabs)') },
+    ]);
+  };
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
@@ -72,6 +81,7 @@ export default function LoginScreen() {
               resizeMode="contain"
             />
             <Text style={[styles.title, { color: colors.text }]}>{t.loginTitle}</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t.loginSubtitle}</Text>
           </View>
 
           <View style={styles.form}>
@@ -127,6 +137,14 @@ export default function LoginScreen() {
               </Text>
             </Link>
           </View>
+
+          <Button
+            title={messages.guestWelcome.continue}
+            onPress={handleGuest}
+            variant="ghost"
+            size="md"
+            style={styles.guestButton}
+          />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -158,6 +176,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: FontSize.xxl,
     fontWeight: '600',
+  },
+  subtitle: {
+    fontSize: FontSize.md,
+    marginTop: Spacing.xs,
+  },
+  guestButton: {
+    marginTop: Spacing.lg,
   },
   form: {
     marginBottom: Spacing.xxl,

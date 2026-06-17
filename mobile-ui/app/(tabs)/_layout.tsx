@@ -1,5 +1,5 @@
 import React from 'react';
-import { Tabs, Redirect } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/hooks/use-auth';
@@ -9,17 +9,14 @@ import { LoadingScreen } from '@/src/components/common/LoadingScreen';
 import { FontSize } from '@/src/constants/theme';
 
 export default function TabsLayout() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isLoading } = useAuth();
   const { colors } = useTheme();
   const { messages } = useLocale();
   const insets = useSafeAreaInsets();
 
+  // Guests are allowed to browse the tabs; account-gated tabs/actions prompt for sign-in individually.
   if (isLoading) {
     return <LoadingScreen />;
-  }
-
-  if (!isAuthenticated) {
-    return <Redirect href="/(auth)/login" />;
   }
 
   return (

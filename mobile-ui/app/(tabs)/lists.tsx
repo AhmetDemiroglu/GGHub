@@ -15,6 +15,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AppTopBar } from '@/src/components/shell';
 import { ListCard } from '@/src/components/lists/ListCard';
 import { ListFormModal } from '@/src/components/lists/ListFormModal';
+import { useRequireAuth } from '@/src/contexts/auth-prompt-context';
 import { showDeleteListDialog } from '@/src/components/lists/DeleteListDialog';
 import { EmptyState } from '@/src/components/common/EmptyState';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
@@ -109,6 +110,7 @@ export default function ListsTabScreen() {
   const [followingPage, setFollowingPage] = useState(1);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingList, setEditingList] = useState<UserList | null>(null);
+  const requireAuth = useRequireAuth();
 
   const { data: myLists, isLoading: myLoading } = useQuery({
     queryKey: ['myLists'],
@@ -382,7 +384,7 @@ export default function ListsTabScreen() {
             {/* Yeni Liste FAB */}
             <Pressable
               style={[styles.fab, { backgroundColor: colors.primary }]}
-              onPress={() => setShowCreateModal(true)}
+              onPress={() => requireAuth(() => setShowCreateModal(true))}
             >
               <Ionicons name="add" size={28} color="#ffffff" />
             </Pressable>

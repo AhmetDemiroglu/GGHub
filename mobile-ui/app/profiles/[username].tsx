@@ -27,6 +27,7 @@ import { useAuth } from '@/src/hooks/use-auth';
 import { getProfileByUsername } from '@/src/api/profile';
 import { getUserStats } from '@/src/api/stats';
 import { followUser, unfollowUser, blockUser, unblockUser } from '@/src/api/social';
+import { useRequireAuth } from '@/src/contexts/auth-prompt-context';
 import { reportUser } from '@/src/api/report';
 import { getReviewsByUser } from '@/src/api/review';
 import { ProfileVisibilitySetting } from '@/src/models/profile';
@@ -44,6 +45,7 @@ export default function PublicProfileScreen() {
   const queryClient = useQueryClient();
   const h = messages.profile.header;
   const rp = messages.report.dialog;
+  const requireAuth = useRequireAuth();
 
   const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
   const [followersModal, setFollowersModal] = useState<'followers' | 'following' | null>(null);
@@ -161,7 +163,7 @@ export default function PublicProfileScreen() {
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>@{username}</Text>
         {!isMe ? (
-          <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.headerBtn}>
+          <TouchableOpacity onPress={() => requireAuth(() => setMenuVisible(true))} style={styles.headerBtn}>
             <Ionicons name="ellipsis-vertical" size={22} color={colors.text} />
           </TouchableOpacity>
         ) : (
@@ -195,7 +197,7 @@ export default function PublicProfileScreen() {
               <Button
                 title={profile.isFollowing ? h.unfollow : h.follow}
                 variant={profile.isFollowing ? 'outline' : 'primary'}
-                onPress={() => followMutation.mutate()}
+                onPress={() => requireAuth(() => followMutation.mutate())}
                 loading={followMutation.isPending}
                 style={styles.actionBtn}
               />
@@ -203,7 +205,7 @@ export default function PublicProfileScreen() {
                 <Button
                   title={h.messageOpen}
                   variant="secondary"
-                  onPress={() => router.push(`/(tabs)/messages/${username}`)}
+                  onPress={() => requireAuth(() => router.push(`/(tabs)/messages/${username}`))}
                   style={styles.actionBtn}
                   icon={<Ionicons name="chatbubble-outline" size={16} color={colors.text} />}
                 />
