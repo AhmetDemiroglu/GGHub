@@ -16,9 +16,10 @@ import { BottomSheet } from '@/src/components/common/BottomSheet';
 import { Avatar } from '@/src/components/common/Avatar';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
+import { useAuth } from '@/src/hooks/use-auth';
 import { searchMessageableUsers } from '@/src/api/search';
+import { getFollowing } from '@/src/api/social';
 import { toMobileRoute } from '@/src/utils/route';
-import type { SearchResult } from '@/src/models/search';
 import { BorderRadius, FontSize, Spacing } from '@/src/constants/theme';
 
 const DEBOUNCE_MS = 350;
@@ -29,16 +30,26 @@ interface NewMessageSheetProps {
   onClose: () => void;
 }
 
+interface UserRow {
+  key: string;
+  label: string;
+  sublabel?: string | null;
+  imageUrl?: string | null;
+  route: string;
+}
+
 /**
- * X tarzı "yeni mesaj" akışı: alttan açılan sheet içinde kendi arama kutusu +
- * mesaj atılabilecek kullanıcı listesi. Backend (searchMessageableUsers) zaten
- * engellenen, mesaj kapalı ve takip-gerektiren gizlilik kurallarını uyguladığı
- * için burada ek bir kontrol gerekmez. Bir kullanıcıya basınca sheet kapanır ve
- * o kişinin sohbet ekranı açılır; kullanıcı mesaj atmadan da sheet'i kapatabilir.
+ * X tarzı "yeni mesaj" akışı: alttan açılan sheet içinde kendi arama kutusu var.
+ * Arama boşken takip ettiğin kullanıcılar öneri olarak listelenir; isim yazınca
+ * backend (searchMessageableUsers) engellenen, mesaj kapalı ve takip-gerektiren
+ * gizlilik kurallarını uygulayarak mesaj atılabilecek kullanıcıları döner. Bir
+ * kullanıcıya basınca sheet kapanır ve o kişinin sohbet ekranı açılır; kullanıcı
+ * mesaj atmadan da sheet'i kaydırarak kapatabilir.
  */
 export function NewMessageSheet({ visible, onClose }: NewMessageSheetProps) {
   const { colors } = useTheme();
   const { messages } = useLocale();
+  const { user } = useAuth();
   const router = useRouter();
   const { height } = useWindowDimensions();
   const t = messages.messages;
@@ -53,14 +64,22 @@ export function NewMessageSheet({ visible, onClose }: NewMessageSheetProps) {
     timerRef.current = setTimeout(() => setDebouncedQuery(text.trim()), DEBOUNCE_MS);
   };
 
-  const { data, isLoading } = useQuery({
+  const isSearching = debouncedQuery.length >= MIN_QUERY;
+
+  const searchQuery = useQuery({
     queryKey: ['messageableUsers', debouncedQuery],
     queryFn: () => searchMessageableUsers(debouncedQuery),
-    enabled: visible && debouncedQuery.length >= MIN_QUERY,
+    enabled: visible && isSearching,
     staleTime: 15000,
   });
 
-  const users = data ?? [];
+  // Arama boşken takip edilen kullanıcıları öneri olarak göster.
+  const suggestionsQuery = useQuery({
+    queryKey: ['following', user?.username],
+    queryFn: () => getFollowing(user!.username),
+    enabled: visible && !!user?.username && !isSearching,
+    staleTime: 60000,
+  });
 
   const handleClose = useCallback(() => {
     // Sheet tekrar açıldığında temiz gelsin diye arama state'ini sıfırla.
@@ -70,31 +89,47 @@ export function NewMessageSheet({ visible, onClose }: NewMessageSheetProps) {
   }, [onClose]);
 
   const handleSelect = useCallback(
-    (item: SearchResult) => {
+    (route: string) => {
       handleClose();
-      router.push(toMobileRoute(item.link) as any);
+      router.push(route as any);
     },
     [handleClose, router],
   );
 
-  const renderItem = useCallback(
-    ({ item }: { item: SearchResult }) => (
+  const searchRows: UserRow[] = (searchQuery.data ?? []).map((r) => ({
+    key: `${r.type}-${r.id}`,
+    label: r.title,
+    sublabel: r.subtitle,
+    imageUrl: r.imageUrl,
+    route: toMobileRoute(r.link),
+  }));
+
+  const suggestionRows: UserRow[] = (suggestionsQuery.data ?? []).map((s) => ({
+    key: `follow-${s.id}`,
+    label: [s.firstName, s.lastName].filter(Boolean).join(' ') || s.username,
+    sublabel: `@${s.username}`,
+    imageUrl: s.profileImageUrl,
+    route: `/messages/${s.username}`,
+  }));
+
+  const renderRow = useCallback(
+    ({ item }: { item: UserRow }) => (
       <TouchableOpacity
         style={[styles.userRow, { borderBottomColor: colors.border }]}
-        onPress={() => handleSelect(item)}
+        onPress={() => handleSelect(item.route)}
         activeOpacity={0.7}
       >
-        <Avatar uri={item.imageUrl} name={item.title} size={44} />
+        <Avatar uri={item.imageUrl} name={item.label} size={44} />
         <View style={styles.userText}>
           <Text style={[styles.userName, { color: colors.text }]} numberOfLines={1}>
-            {item.title}
+            {item.label}
           </Text>
-          {item.subtitle ? (
+          {item.sublabel ? (
             <Text
               style={[styles.userSubtitle, { color: colors.textSecondary }]}
               numberOfLines={1}
             >
-              {item.subtitle}
+              {item.sublabel}
             </Text>
           ) : null}
         </View>
@@ -104,13 +139,69 @@ export function NewMessageSheet({ visible, onClose }: NewMessageSheetProps) {
     [colors, handleSelect],
   );
 
-  const showPrompt = debouncedQuery.length < MIN_QUERY;
-  const showEmpty =
-    debouncedQuery.length >= MIN_QUERY && !isLoading && users.length === 0;
-
   // Liste alanına klavyenin üstünde sığacak makul bir yükseklik ver. FlatList
   // sınırlı yükseklik olmadan sheet içinde 0 px'e çöker.
   const bodyHeight = Math.round(height * 0.42);
+
+  const renderBody = () => {
+    if (isSearching) {
+      if (searchQuery.isLoading) {
+        return (
+          <View style={styles.center}>
+            <ActivityIndicator color={colors.primary} />
+          </View>
+        );
+      }
+      if (searchRows.length === 0) {
+        return (
+          <View style={styles.center}>
+            <Ionicons name="sad-outline" size={40} color={colors.textMuted} />
+            <Text style={[styles.hintText, { color: colors.textMuted }]}>{t.noUsersFound}</Text>
+          </View>
+        );
+      }
+      return (
+        <FlatList
+          data={searchRows}
+          keyExtractor={(item) => item.key}
+          renderItem={renderRow}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        />
+      );
+    }
+
+    // Arama yok: takip edilenleri öneri olarak göster.
+    if (suggestionsQuery.isLoading) {
+      return (
+        <View style={styles.center}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      );
+    }
+    if (suggestionRows.length === 0) {
+      return (
+        <View style={styles.center}>
+          <Ionicons name="people-outline" size={40} color={colors.textMuted} />
+          <Text style={[styles.hintText, { color: colors.textMuted }]}>
+            {t.startTypingToSearch}
+          </Text>
+        </View>
+      );
+    }
+    return (
+      <FlatList
+        data={suggestionRows}
+        keyExtractor={(item) => item.key}
+        renderItem={renderRow}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        ListHeaderComponent={
+          <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>{t.suggested}</Text>
+        }
+      />
+    );
+  };
 
   return (
     <BottomSheet visible={visible} onClose={handleClose} title={t.newMessage}>
@@ -142,35 +233,7 @@ export function NewMessageSheet({ visible, onClose }: NewMessageSheetProps) {
         ) : null}
       </View>
 
-      <View style={{ height: bodyHeight }}>
-        {isLoading ? (
-          <View style={styles.center}>
-            <ActivityIndicator color={colors.primary} />
-          </View>
-        ) : showPrompt ? (
-          <View style={styles.center}>
-            <Ionicons name="people-outline" size={40} color={colors.textMuted} />
-            <Text style={[styles.hintText, { color: colors.textMuted }]}>
-              {t.startTypingToSearch}
-            </Text>
-          </View>
-        ) : showEmpty ? (
-          <View style={styles.center}>
-            <Ionicons name="sad-outline" size={40} color={colors.textMuted} />
-            <Text style={[styles.hintText, { color: colors.textMuted }]}>
-              {t.noUsersFound}
-            </Text>
-          </View>
-        ) : (
-          <FlatList
-            data={users}
-            keyExtractor={(item) => `${item.type}-${item.id}`}
-            renderItem={renderItem}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-          />
-        )}
-      </View>
+      <View style={{ height: bodyHeight }}>{renderBody()}</View>
     </BottomSheet>
   );
 }
@@ -200,6 +263,11 @@ const styles = StyleSheet.create({
   hintText: {
     fontSize: FontSize.md,
     textAlign: 'center',
+  },
+  sectionLabel: {
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+    paddingVertical: Spacing.sm,
   },
   userRow: {
     flexDirection: 'row',

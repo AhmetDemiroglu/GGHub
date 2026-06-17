@@ -670,6 +670,7 @@ export const enUSMessages = {
         newMessage: "New message",
         startTypingToSearch: "Type a name to search",
         noUsersFound: "No users found",
+        suggested: "Suggested",
     },
     connection: {
         connecting: "Connecting...",

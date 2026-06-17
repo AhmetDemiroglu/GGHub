@@ -243,10 +243,10 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                         variant="secondary"
                         className="absolute top-3 right-3 gap-2 cursor-pointer shadow"
                         onClick={() => setBannerUploaderOpen(true)}
-                        aria-label={t("profile.header.editBanner") ?? "Banner'ı düzenle"}
+                        aria-label={t("profile.header.editBanner")}
                     >
                         <Camera className="h-4 w-4" />
-                        {t("profile.header.editBanner") ?? "Banner"}
+                        <span className="hidden sm:inline">{t("profile.header.editBanner")}</span>
                     </Button>
                 )}
                 {isOwnProfile && (

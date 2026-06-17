@@ -165,8 +165,8 @@ export default function OwnProfileScreen() {
             level={stats?.currentLevel ?? 1}
             xp={stats?.currentXp ?? 0}
             xpToNextLevel={stats?.nextLevelXp ?? 100}
-            followersCount={stats?.totalFollowers ?? 0}
-            followingCount={0}
+            followersCount={profile.followerCount ?? stats?.totalFollowers ?? 0}
+            followingCount={profile.followingCount ?? 0}
             onFollowersPress={() => setFollowersModal('followers')}
             onFollowingPress={() => setFollowersModal('following')}
           >

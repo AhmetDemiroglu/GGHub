@@ -149,6 +149,9 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
 
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          // Negatif offset: sheet klavyenin birkaç px arkasına insin ki klavyenin
+          // yuvarlak üst köşelerinde karartı (overlay) yerine sheet yüzeyi görünsün.
+          keyboardVerticalOffset={Platform.OS === 'ios' ? -24 : 0}
           style={styles.keyboardView}
           pointerEvents="box-none"
         >

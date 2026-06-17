@@ -551,6 +551,7 @@ export const enUSMessages = {
             bannerAlt: "GGHub Banner",
             profileImageAlt: "{name}'s profile picture",
             settings: "Profile settings",
+            editBanner: "Edit banner",
             editProfile: "Edit profile",
             viewBlockedUsers: "View blocked users",
             loginRequiredFollow: "You need to log in to follow.",

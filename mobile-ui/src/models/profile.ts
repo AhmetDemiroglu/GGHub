@@ -16,6 +16,8 @@ export interface Profile {
   isEmailPublic: boolean;
   isPhoneNumberPublic: boolean;
   isDateOfBirthPublic: boolean;
+  followerCount?: number;
+  followingCount?: number;
 }
 
 export interface ProfileForUpdate {

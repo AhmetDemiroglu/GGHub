@@ -631,6 +631,7 @@ export const trMessages = {
         newMessage: "Yeni mesaj",
         startTypingToSearch: "Aramak için bir isim yazın",
         noUsersFound: "Kullanıcı bulunamadı",
+        suggested: "Önerilenler",
     },
     connection: {
         connecting: "Bağlanıyor...",
