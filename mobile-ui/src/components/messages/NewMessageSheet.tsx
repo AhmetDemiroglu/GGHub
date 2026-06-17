@@ -16,9 +16,7 @@ import { BottomSheet } from '@/src/components/common/BottomSheet';
 import { Avatar } from '@/src/components/common/Avatar';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
-import { useAuth } from '@/src/hooks/use-auth';
 import { searchMessageableUsers } from '@/src/api/search';
-import { getFollowing } from '@/src/api/social';
 import { toMobileRoute } from '@/src/utils/route';
 import { BorderRadius, FontSize, Spacing } from '@/src/constants/theme';
 
@@ -49,7 +47,6 @@ interface UserRow {
 export function NewMessageSheet({ visible, onClose }: NewMessageSheetProps) {
   const { colors } = useTheme();
   const { messages } = useLocale();
-  const { user } = useAuth();
   const router = useRouter();
   const { height } = useWindowDimensions();
   const t = messages.messages;
@@ -73,11 +70,12 @@ export function NewMessageSheet({ visible, onClose }: NewMessageSheetProps) {
     staleTime: 15000,
   });
 
-  // Arama boşken takip edilen kullanıcıları öneri olarak göster.
+  // Arama boşken takip edilen + mesaj atılabilir kullanıcıları öneri göster
+  // (aynı endpoint boş query'de backend gizlilik kurallarıyla öneri döner).
   const suggestionsQuery = useQuery({
-    queryKey: ['following', user?.username],
-    queryFn: () => getFollowing(user!.username),
-    enabled: visible && !!user?.username && !isSearching,
+    queryKey: ['messageableSuggestions'],
+    queryFn: () => searchMessageableUsers(''),
+    enabled: visible && !isSearching,
     staleTime: 60000,
   });
 
@@ -104,12 +102,12 @@ export function NewMessageSheet({ visible, onClose }: NewMessageSheetProps) {
     route: toMobileRoute(r.link),
   }));
 
-  const suggestionRows: UserRow[] = (suggestionsQuery.data ?? []).map((s) => ({
-    key: `follow-${s.id}`,
-    label: [s.firstName, s.lastName].filter(Boolean).join(' ') || s.username,
-    sublabel: `@${s.username}`,
-    imageUrl: s.profileImageUrl,
-    route: `/messages/${s.username}`,
+  const suggestionRows: UserRow[] = (suggestionsQuery.data ?? []).map((r) => ({
+    key: `suggest-${r.id}`,
+    label: r.title,
+    sublabel: r.subtitle,
+    imageUrl: r.imageUrl,
+    route: toMobileRoute(r.link),
   }));
 
   const renderRow = useCallback(

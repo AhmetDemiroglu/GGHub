@@ -13,13 +13,11 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  withTiming,
   runOnJS,
   interpolate,
   clamp,
   Extrapolation,
 } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, usePathname } from 'expo-router';
@@ -41,130 +39,42 @@ import * as haptics from '@/src/utils/haptics';
 import type { ThemeMode } from '@/src/contexts/theme-context';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const SIDEBAR_WIDTH = Math.min(SCREEN_WIDTH * 0.78, 320);
+const SIDEBAR_WIDTH = Math.min(SCREEN_WIDTH * 0.8, 330);
 const EDGE_STRIP_WIDTH = 24;
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-
-/* ───────────────────────── Nav Item ───────────────────────── */
-interface NavItemProps {
+/* ───────────────────────── Nav Row (sade liste satırı) ───────────────────────── */
+interface NavRowProps {
   icon: React.ComponentProps<typeof Ionicons>['name'];
   label: string;
   onPress: () => void;
-  danger?: boolean;
   colors: ThemeColors;
+  danger?: boolean;
+  muted?: boolean;
 }
 
-function NavItem({ icon, label, onPress, danger = false, colors }: NavItemProps) {
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePress = () => {
-    haptics.selection();
-    onPress();
-  };
-
+function NavRow({ icon, label, onPress, colors, danger = false, muted = false }: NavRowProps) {
+  const color = danger ? colors.error : muted ? colors.textSecondary : colors.text;
   return (
-    <AnimatedPressable
-      onPress={handlePress}
-      onPressIn={() => {
-        scale.value = withSpring(0.97, Springs.snappy);
+    <Pressable
+      onPress={() => {
+        haptics.selection();
+        onPress();
       }}
-      onPressOut={() => {
-        scale.value = withSpring(1, Springs.snappy);
-      }}
-      style={[styles.navItem, { backgroundColor: colors.surface }, animatedStyle]}
+      style={({ pressed }) => [styles.navRow, pressed && { opacity: 0.5 }]}
     >
-      <View
-        style={[
-          styles.navIconWrap,
-          { backgroundColor: danger ? `${colors.error}18` : `${colors.primary}18` },
-        ]}
-      >
-        <Ionicons
-          name={icon}
-          size={20}
-          color={danger ? colors.error : colors.primary}
-        />
-      </View>
+      <Ionicons name={icon} size={muted ? 21 : 23} color={color} />
       <Text
-        style={[styles.navLabel, { color: danger ? colors.error : colors.text }]}
+        style={[muted ? styles.navLabelMuted : styles.navLabel, { color }]}
         numberOfLines={1}
       >
         {label}
       </Text>
-      <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-    </AnimatedPressable>
+    </Pressable>
   );
 }
 
-/* ───────────────────────── Section Header ───────────────────────── */
-function SectionHeader({ label, colors }: { label: string; colors: ThemeColors }) {
-  return (
-    <View style={styles.sectionHeaderWrap}>
-      <View style={[styles.sectionHeaderLine, { backgroundColor: colors.border }]} />
-      <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>
-        {label}
-      </Text>
-      <View style={[styles.sectionHeaderLine, { backgroundColor: colors.border, flex: 1 }]} />
-    </View>
-  );
-}
-
-/* ───────────────────────── Flag Pill (Language) ───────────────────────── */
-function LanguagePill({
-  locale,
-  onSwitch,
-  colors,
-}: {
-  locale: AppLocale;
-  onSwitch: (l: AppLocale) => void;
-  colors: ThemeColors;
-}) {
-  const options: { key: AppLocale; flag: string; label: string }[] = [
-    { key: 'tr', flag: '🇹🇷', label: 'TR' },
-    { key: 'en-US', flag: '🇬🇧', label: 'EN' },
-  ];
-
-  return (
-    <View style={[styles.pillContainer, { backgroundColor: colors.surfaceHighlight }]}>
-      {options.map((opt) => {
-        const active = locale === opt.key;
-        return (
-          <Pressable
-            key={opt.key}
-            style={[
-              styles.pillOption,
-              active && { backgroundColor: colors.primary, ...Shadows.sm },
-            ]}
-            onPress={() => {
-              if (!active) {
-                haptics.selection();
-                onSwitch(opt.key);
-              }
-            }}
-          >
-            <Text style={styles.pillFlag}>{opt.flag}</Text>
-            <Text
-              style={[
-                styles.pillLabel,
-                { color: active ? '#ffffff' : colors.textSecondary },
-              ]}
-            >
-              {opt.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
-/* ───────────────────────── Theme Segmented ───────────────────────── */
-function ThemeSegmented({
+/* ───────────────────────── Compact theme control ───────────────────────── */
+function ThemeControl({
   mode,
   onSet,
   colors,
@@ -178,31 +88,65 @@ function ThemeSegmented({
     { key: 'light', icon: 'sunny-outline' },
     { key: 'dark', icon: 'moon-outline' },
   ];
-
   return (
-    <View style={[styles.pillContainer, { backgroundColor: colors.surfaceHighlight }]}>
+    <View style={[styles.segment, { backgroundColor: colors.surfaceHighlight }]}>
       {options.map((opt) => {
         const active = mode === opt.key;
         return (
           <Pressable
             key={opt.key}
-            style={[
-              styles.pillOption,
-              styles.pillOptionSquare,
-              active && { backgroundColor: colors.primary, ...Shadows.sm },
-            ]}
             onPress={() => {
               if (!active) {
                 haptics.selection();
                 onSet(opt.key);
               }
             }}
+            style={[styles.segmentBtn, active && { backgroundColor: colors.background, ...Shadows.sm }]}
           >
-            <Ionicons
-              name={opt.icon}
-              size={18}
-              color={active ? '#ffffff' : colors.textSecondary}
-            />
+            <Ionicons name={opt.icon} size={16} color={active ? colors.primary : colors.textMuted} />
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/* ───────────────────────── Compact language control ───────────────────────── */
+function LanguageControl({
+  locale,
+  onSwitch,
+  colors,
+}: {
+  locale: AppLocale;
+  onSwitch: (l: AppLocale) => void;
+  colors: ThemeColors;
+}) {
+  const options: { key: AppLocale; label: string }[] = [
+    { key: 'tr', label: 'TR' },
+    { key: 'en-US', label: 'EN' },
+  ];
+  return (
+    <View style={[styles.segment, { backgroundColor: colors.surfaceHighlight }]}>
+      {options.map((opt) => {
+        const active = locale === opt.key;
+        return (
+          <Pressable
+            key={opt.key}
+            onPress={() => {
+              if (!active) {
+                haptics.selection();
+                onSwitch(opt.key);
+              }
+            }}
+            style={[
+              styles.segmentBtn,
+              styles.segmentBtnWide,
+              active && { backgroundColor: colors.background, ...Shadows.sm },
+            ]}
+          >
+            <Text style={[styles.segmentLabel, { color: active ? colors.primary : colors.textMuted }]}>
+              {opt.label}
+            </Text>
           </Pressable>
         );
       })}
@@ -212,9 +156,9 @@ function ThemeSegmented({
 
 /* ───────────────────────── Main Sidebar (X-style parallax) ─────────────────────────
  * Mimari: 3 katman, tek `progress` shared value [0=kapalı, 1=açık]
- *  - Drawer (altta, sabit): parallax drift
- *  - Ana içerik (kayan): translateX + scale + borderRadius + shadow
- *  - Scrim (ana içerik üstünde): tap/swipe-to-close
+ *  - Drawer (altta, sabit): hafif parallax drift
+ *  - Ana içerik (kayan): translateX + scale + yuvarlak köşe + sidebar'a düşen gölge
+ *  - Scrim (ana içerik üstünde): hafif tema-rengi veil (gri değil) + tap/swipe-to-close
  * Edge-swipe açma: sadece ana sayfada, sol kenar şeridi
  */
 interface AppSidebarProps {
@@ -230,10 +174,7 @@ export function AppSidebar({ children }: AppSidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // progress: 0 = kapalı, 1 = açık
   const progress = useSharedValue(0);
-
-  // Ana sayfa tespiti - edge-swipe sadece ana sayfada
   const isHome = pathname === '/';
 
   // Sync progress with open state
@@ -257,7 +198,7 @@ export function AppSidebar({ children }: AppSidebarProps) {
     return () => subscription.remove();
   }, [isSidebarOpen, closeSidebar]);
 
-  // KAPATMA pan'i - scrim üzerinde (ana içerik alanı), sola kaydırma
+  // KAPATMA pan'i - scrim üzerinde, sola kaydırma
   const closePan = React.useMemo(() => {
     return Gesture.Pan()
       .enabled(isSidebarOpen)
@@ -279,7 +220,6 @@ export function AppSidebar({ children }: AppSidebarProps) {
       });
   }, [isSidebarOpen, progress, closeSidebar]);
 
-  // closePan + Native (tap-to-close Pressable ile uyumlu)
   const closeGesture = Gesture.Simultaneous(closePan, Gesture.Native());
 
   // AÇMA pan'i - sol kenar şeridi, sadece ana sayfada
@@ -308,34 +248,29 @@ export function AppSidebar({ children }: AppSidebarProps) {
   // Drawer: sabit, hafif parallax drift
   const drawerStyle = useAnimatedStyle(() => ({
     transform: [
-      {
-        translateX: interpolate(progress.value, [0, 1], [-40, 0], Extrapolation.CLAMP),
-      },
+      { translateX: interpolate(progress.value, [0, 1], [-40, 0], Extrapolation.CLAMP) },
     ],
   }));
 
-  // Ana içerik: sağa kay + küçül + yuvarlak köşe + gölge
+  // Ana içerik: sağa kay + hafif küçül + sidebar'a düşen yumuşak gölge
   const mainContentStyle = useAnimatedStyle(() => ({
     transform: [
       { translateX: interpolate(progress.value, [0, 1], [0, SIDEBAR_WIDTH], Extrapolation.CLAMP) },
       { scale: interpolate(progress.value, [0, 1], [1, 0.93], Extrapolation.CLAMP) },
     ],
-    // Hafif seffaflik: acikken kart camlasir, sidebar arkadan hafif gorunur
-    // -> kart sidebar'in ustunde duruyormus hissi (X gibi).
-    opacity: interpolate(progress.value, [0, 1], [1, 0.93], Extrapolation.CLAMP),
-    shadowOpacity: interpolate(progress.value, [0, 1], [0, 0.18], Extrapolation.CLAMP),
+    shadowOpacity: interpolate(progress.value, [0, 1], [0, 0.22], Extrapolation.CLAMP),
     elevation: interpolate(progress.value, [0, 1], [0, 14], Extrapolation.CLAMP),
   }));
 
-  // borderRadius hem gölge (dış) hem clip (iç) katmanında olmalı ki gölge de
-  // yuvarlak olsun. iOS'ta overflow:'hidden' gölgeyi kırptığı için ikiye ayırdık.
+  // borderRadius hem gölge (dış) hem clip (iç) katmanında olmalı ki gölge de yuvarlak olsun.
   const mainContentRadiusStyle = useAnimatedStyle(() => ({
-    borderRadius: interpolate(progress.value, [0, 1], [0, 16], Extrapolation.CLAMP),
+    borderRadius: interpolate(progress.value, [0, 1], [0, 18], Extrapolation.CLAMP),
   }));
 
-  // Scrim: ana içerik üzerinde karartma
+  // Scrim: gri DEĞİL; tema arka plan rengiyle hafif "white shading" (acik temada beyaz),
+  // boylece kayan sayfa karartilmaz, sadece hafifce geri cekilmis gibi durur.
   const scrimStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 1], [0, 0.12], Extrapolation.CLAMP),
+    opacity: interpolate(progress.value, [0, 1], [0, 0.2], Extrapolation.CLAMP),
   }));
 
   // ── Handlers ──
@@ -382,164 +317,145 @@ export function AppSidebar({ children }: AppSidebarProps) {
           {
             width: SIDEBAR_WIDTH,
             backgroundColor: colors.background,
-            paddingTop: insets.top + Spacing.sm,
-            paddingBottom: insets.bottom,
+            paddingTop: insets.top + Spacing.md,
+            paddingBottom: insets.bottom + Spacing.sm,
           },
           drawerStyle,
         ]}
       >
-        {/* Close button */}
-        <Pressable
-          style={[styles.closeBtn, { top: insets.top + Spacing.sm }]}
-          onPress={() => {
-            haptics.impactLight();
-            closeSidebar();
-          }}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        >
-          <Ionicons name="close" size={22} color={colors.textMuted} />
-        </Pressable>
-
         <ScrollView
           showsVerticalScrollIndicator={false}
           bounces={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {/* ── User Card ── */}
+          {/* ── Header ── */}
           {isAuthenticated ? (
             <Pressable
               onPress={() => {
                 haptics.selection();
                 navigate('/(tabs)/profile');
               }}
+              style={({ pressed }) => [styles.header, pressed && { opacity: 0.6 }]}
             >
-              <LinearGradient
-                colors={[colors.primary, colors.accent]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.userCard}
-              >
-                <View style={styles.userCardTop}>
-                  <Avatar uri={user?.profileImageUrl} name={displayName} size={56} />
-                  <View style={styles.userInfo}>
-                    <Text style={styles.username} numberOfLines={1}>
-                      {user?.username ?? '-'}
-                    </Text>
-                    {user?.role === 'Admin' ? (
-                      <View style={styles.roleBadge}>
-                        <Ionicons name="shield" size={11} color="#ffffff" />
-                        <Text style={styles.roleBadgeText}>Admin</Text>
-                      </View>
-                    ) : null}
-                  </View>
+              <Avatar uri={user?.profileImageUrl} name={displayName} size={52} />
+              <View style={styles.headerText}>
+                <View style={styles.headerNameRow}>
+                  <Text style={[styles.headerName, { color: colors.text }]} numberOfLines={1}>
+                    {displayName}
+                  </Text>
+                  {user?.role === 'Admin' ? (
+                    <Ionicons name="shield-checkmark" size={15} color={colors.primary} />
+                  ) : null}
                 </View>
-              </LinearGradient>
+                <Text style={[styles.headerHandle, { color: colors.textMuted }]} numberOfLines={1}>
+                  @{displayName}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </Pressable>
           ) : (
-            <View style={[styles.guestCard, { backgroundColor: colors.surface }]}>
-              <View style={styles.guestAvatarWrap}>
-                <Ionicons name="person-outline" size={28} color={colors.textMuted} />
-              </View>
-              <View style={styles.guestInfo}>
-                <Text style={[styles.guestTitle, { color: colors.text }]}>
+            <View style={styles.guestWrap}>
+              <View style={styles.guestRow}>
+                <View style={[styles.guestAvatar, { backgroundColor: colors.surfaceHighlight }]}>
+                  <Ionicons name="person-outline" size={26} color={colors.textMuted} />
+                </View>
+                <Text style={[styles.guestTitle, { color: colors.text }]} numberOfLines={2}>
                   {messages.authPrompt.signIn}
                 </Text>
+              </View>
+              <View style={styles.guestButtons}>
                 <Pressable
                   onPress={() => navigate('/(auth)/register')}
                   style={({ pressed }) => [
-                    styles.guestCta,
+                    styles.guestBtnPrimary,
                     { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
                   ]}
                 >
-                  <Text style={styles.guestCtaText}>{messages.authPrompt.signUp}</Text>
+                  <Text style={styles.guestBtnPrimaryText}>{messages.authPrompt.signUp}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => navigate('/(auth)/login')}
+                  style={({ pressed }) => [
+                    styles.guestBtnGhost,
+                    { borderColor: colors.border, opacity: pressed ? 0.6 : 1 },
+                  ]}
+                >
+                  <Text style={[styles.guestBtnGhostText, { color: colors.text }]}>
+                    {messages.authPrompt.signIn}
+                  </Text>
                 </Pressable>
               </View>
-              <Pressable
-                onPress={() => navigate('/(auth)/login')}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-              </Pressable>
             </View>
           )}
 
-          {/* ── Quick Settings ── */}
-          <View style={styles.section}>
-            <SectionHeader label={nav.theme} colors={colors} />
-            <ThemeSegmented mode={themeMode} onSet={handleThemeSet} colors={colors} />
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-            <View style={{ height: Spacing.md }} />
-
-            <SectionHeader label={nav.language} colors={colors} />
-            <LanguagePill locale={locale} onSwitch={handleLocaleSwitch} colors={colors} />
-          </View>
-
-          {/* ── Main Navigation ── */}
+          {/* ── Birincil nav (sadece giriş yapınca) ── */}
           {isAuthenticated && (
-            <View style={styles.section}>
-              <SectionHeader label={nav.profile} colors={colors} />
-              <View style={styles.navGroup}>
-                <NavItem icon="list-outline" label={nav.myLists} onPress={() => navigate('/my-lists')} colors={colors} />
-                <NavItem icon="heart-outline" label={nav.wishlist} onPress={() => navigate('/wishlist')} colors={colors} />
-                <NavItem icon="star-outline" label={nav.myReviews} onPress={() => navigate('/reviews/user/me')} colors={colors} />
-                <NavItem icon="flag-outline" label={nav.myReports} onPress={() => navigate('/my-reports')} colors={colors} />
-                {user?.role === 'Admin' ? (
-                  <NavItem icon="shield-outline" label={nav.adminPanel} onPress={() => navigate('/(admin)/dashboard')} colors={colors} />
-                ) : null}
-              </View>
-            </View>
-          )}
-
-          {/* ── App ── */}
-          <View style={styles.section}>
-            <SectionHeader label={messages.common.appName} colors={colors} />
             <View style={styles.navGroup}>
-              {isAuthenticated && (
-                <NavItem icon="settings-outline" label={nav.profileSettings} onPress={() => navigate('/profile/settings')} colors={colors} />
-              )}
-              <NavItem icon="information-circle-outline" label={nav.about} onPress={() => navigate('/about')} colors={colors} />
-              <NavItem icon="document-text-outline" label={nav.privacy} onPress={() => navigate('/privacy')} colors={colors} />
-              <NavItem icon="document-text-outline" label={nav.terms} onPress={() => navigate('/terms')} colors={colors} />
-            </View>
-          </View>
-
-          {/* ── Logout ── */}
-          {isAuthenticated && (
-            <View style={[styles.section, { marginTop: Spacing.sm }]}>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.logoutButton,
-                  { backgroundColor: `${colors.error}14`, borderColor: `${colors.error}30` },
-                  pressed && { opacity: 0.85 },
-                ]}
-                onPress={handleLogout}
-              >
-                <Ionicons name="log-out-outline" size={20} color={colors.error} />
-                <Text style={[styles.logoutText, { color: colors.error }]}>
-                  {nav.logout}
-                </Text>
-              </Pressable>
+              <NavRow icon="bookmark-outline" label={nav.myLists} onPress={() => navigate('/my-lists')} colors={colors} />
+              <NavRow icon="heart-outline" label={nav.wishlist} onPress={() => navigate('/wishlist')} colors={colors} />
+              <NavRow icon="star-outline" label={nav.myReviews} onPress={() => navigate('/reviews/user/me')} colors={colors} />
+              <NavRow icon="flag-outline" label={nav.myReports} onPress={() => navigate('/my-reports')} colors={colors} />
+              {user?.role === 'Admin' ? (
+                <NavRow icon="shield-outline" label={nav.adminPanel} onPress={() => navigate('/(admin)/dashboard')} colors={colors} />
+              ) : null}
             </View>
           )}
 
-          {/* Footer version */}
-          <View style={styles.footerWrap}>
-            <Text style={[styles.footerVersion, { color: colors.textMuted }]}>
-              {messages.footer.version}
-            </Text>
+          {isAuthenticated && <View style={[styles.divider, { backgroundColor: colors.border }]} />}
+
+          {/* ── İkincil nav (uygulama) ── */}
+          <View style={styles.navGroup}>
+            {isAuthenticated && (
+              <NavRow icon="settings-outline" label={nav.profileSettings} onPress={() => navigate('/profile/settings')} colors={colors} muted />
+            )}
+            <NavRow icon="information-circle-outline" label={nav.about} onPress={() => navigate('/about')} colors={colors} muted />
+            <NavRow icon="lock-closed-outline" label={nav.privacy} onPress={() => navigate('/privacy')} colors={colors} muted />
+            <NavRow icon="document-text-outline" label={nav.terms} onPress={() => navigate('/terms')} colors={colors} muted />
           </View>
+
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          {/* ── Görünüm + dil (kompakt) ── */}
+          <View style={styles.settingRow}>
+            <View style={styles.settingLabelWrap}>
+              <Ionicons name="contrast-outline" size={20} color={colors.textSecondary} />
+              <Text style={[styles.settingLabel, { color: colors.textSecondary }]}>{nav.theme}</Text>
+            </View>
+            <ThemeControl mode={themeMode} onSet={handleThemeSet} colors={colors} />
+          </View>
+          <View style={styles.settingRow}>
+            <View style={styles.settingLabelWrap}>
+              <Ionicons name="language-outline" size={20} color={colors.textSecondary} />
+              <Text style={[styles.settingLabel, { color: colors.textSecondary }]}>{nav.language}</Text>
+            </View>
+            <LanguageControl locale={locale} onSwitch={handleLocaleSwitch} colors={colors} />
+          </View>
+
+          {/* ── Çıkış ── */}
+          {isAuthenticated && (
+            <>
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+              <NavRow icon="log-out-outline" label={nav.logout} onPress={handleLogout} colors={colors} danger />
+            </>
+          )}
+
+          <Text style={[styles.version, { color: colors.textMuted }]}>{messages.footer.version}</Text>
         </ScrollView>
       </Animated.View>
 
-      {/* ═══ Layer 1: Ana içerik (kayan + scale + shadow) ═══ */}
-      <Animated.View style={[styles.mainContent, mainContentStyle, mainContentRadiusStyle, { backgroundColor: colors.background }]}>
+      {/* ═══ Layer 1: Ana içerik (kayan + scale + sidebar'a düşen gölge) ═══ */}
+      <Animated.View
+        style={[styles.mainContent, mainContentStyle, mainContentRadiusStyle, { backgroundColor: colors.background }]}
+      >
         <Animated.View style={[styles.mainContentClip, mainContentRadiusStyle, { backgroundColor: colors.background }]}>
           {children}
 
-          {/* ═══ Layer 2: Scrim (ana içerik üstünde, tap/swipe-to-close) ═══ */}
+          {/* ═══ Layer 2: Scrim (tema-rengi hafif veil; gri değil) ═══ */}
           <GestureDetector gesture={closeGesture}>
             <Animated.View
-              style={[StyleSheet.absoluteFill, styles.scrim, scrimStyle]}
+              style={[StyleSheet.absoluteFill, styles.scrim, { backgroundColor: colors.background }, scrimStyle]}
               pointerEvents={isSidebarOpen ? 'auto' : 'none'}
             >
               <Pressable style={StyleSheet.absoluteFill} onPress={closeSidebar} />
@@ -572,191 +488,158 @@ const styles = StyleSheet.create({
     zIndex: 1,
     overflow: 'hidden',
   },
-  closeBtn: {
-    position: 'absolute',
-    right: Spacing.md,
-    zIndex: 10,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   scrollContent: {
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.xl,
+    paddingHorizontal: Spacing.xl,
+    paddingBottom: Spacing.lg,
   },
-  /* User card */
-  userCard: {
-    borderRadius: BorderRadius.xl,
-    padding: Spacing.lg,
-    marginBottom: Spacing.lg,
-  },
-  userCardTop: {
+  /* Header */
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
+    paddingVertical: Spacing.sm,
   },
-  userInfo: {
+  headerText: {
     flex: 1,
     gap: 2,
   },
-  username: {
-    color: '#ffffff',
-    fontSize: FontSize.lg,
-    fontWeight: '700',
-  },
-  roleBadge: {
+  headerNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 4,
-    marginTop: 4,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-    borderRadius: BorderRadius.full,
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    gap: 6,
   },
-  roleBadgeText: {
-    color: '#ffffff',
-    fontSize: FontSize.xs,
-    fontWeight: '700',
+  headerName: {
+    fontSize: FontSize.xl,
+    fontWeight: '800',
+    letterSpacing: -0.3,
   },
-  /* Guest card */
-  guestCard: {
+  headerHandle: {
+    fontSize: FontSize.md,
+  },
+  /* Guest */
+  guestWrap: {
+    gap: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  guestRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: BorderRadius.xl,
-    padding: Spacing.lg,
-    marginBottom: Spacing.lg,
     gap: Spacing.md,
   },
-  guestAvatarWrap: {
+  guestAvatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(120,120,120,0.12)',
-  },
-  guestInfo: {
-    flex: 1,
-    gap: Spacing.sm,
   },
   guestTitle: {
-    fontSize: FontSize.md,
-    fontWeight: '600',
-  },
-  guestCta: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.full,
-  },
-  guestCtaText: {
-    color: '#ffffff',
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-  },
-  /* Section */
-  section: {
-    marginBottom: Spacing.lg,
-  },
-  sectionHeaderWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    marginBottom: Spacing.sm,
-  },
-  sectionHeaderLine: {
-    height: StyleSheet.hairlineWidth,
-    width: Spacing.sm,
-  },
-  sectionHeader: {
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-    letterSpacing: 0.4,
-  },
-  navGroup: {
-    gap: Spacing.xs,
-  },
-  /* Nav item */
-  navItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    gap: Spacing.md,
-  },
-  navIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: BorderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  navLabel: {
     flex: 1,
-    fontSize: FontSize.md,
-    fontWeight: '600',
-  },
-  /* Pills */
-  pillContainer: {
-    flexDirection: 'row',
-    borderRadius: BorderRadius.full,
-    padding: 4,
-    gap: 4,
-  },
-  pillOption: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
-  },
-  pillOptionSquare: {
-    paddingVertical: Spacing.sm + 2,
-  },
-  pillFlag: {
     fontSize: FontSize.lg,
-  },
-  pillLabel: {
-    fontSize: FontSize.sm,
     fontWeight: '700',
   },
-  /* Logout */
-  logoutButton: {
+  guestButtons: {
     flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  guestBtnPrimary: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.sm,
     paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.lg,
+    borderRadius: BorderRadius.full,
+  },
+  guestBtnPrimaryText: {
+    color: '#ffffff',
+    fontSize: FontSize.md,
+    fontWeight: '700',
+  },
+  guestBtnGhost: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.full,
     borderWidth: 1,
   },
-  logoutText: {
+  guestBtnGhostText: {
     fontSize: FontSize.md,
     fontWeight: '700',
   },
-  /* Footer */
-  footerWrap: {
-    alignItems: 'center',
-    paddingVertical: Spacing.lg,
+  /* Divider */
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    marginVertical: Spacing.md,
   },
-  footerVersion: {
+  /* Nav */
+  navGroup: {
+    gap: 2,
+  },
+  navRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.lg,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: 2,
+  },
+  navLabel: {
+    fontSize: FontSize.lg + 1,
+    fontWeight: '600',
+  },
+  navLabelMuted: {
+    fontSize: FontSize.md + 1,
+    fontWeight: '500',
+  },
+  /* Settings (theme + language) */
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.sm,
+    gap: Spacing.md,
+  },
+  settingLabelWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  settingLabel: {
+    fontSize: FontSize.md + 1,
+    fontWeight: '500',
+  },
+  segment: {
+    flexDirection: 'row',
+    borderRadius: BorderRadius.full,
+    padding: 3,
+    gap: 2,
+  },
+  segmentBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: BorderRadius.full,
+  },
+  segmentBtnWide: {
+    paddingHorizontal: 16,
+  },
+  segmentLabel: {
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+  },
+  /* Version */
+  version: {
     fontSize: FontSize.xs,
+    textAlign: 'center',
+    marginTop: Spacing.xl,
   },
   /* Main content */
   mainContent: {
     flex: 1,
     zIndex: 2,
     shadowColor: '#000',
-    shadowRadius: 28,
-    shadowOffset: { width: -4, height: 4 },
+    shadowRadius: 24,
+    shadowOffset: { width: -6, height: 3 },
   },
   mainContentClip: {
     flex: 1,
@@ -765,7 +648,6 @@ const styles = StyleSheet.create({
   /* Scrim */
   scrim: {
     zIndex: 3,
-    backgroundColor: '#000',
   },
   /* Edge strip */
   edgeStrip: {
