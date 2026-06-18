@@ -92,6 +92,11 @@ export default function MessageThreadScreen() {
         setLocalMessages((prev) =>
           prev.some((m) => m.id === msg.id) ? prev : [msg, ...prev],
         );
+        // Ekran acikken partner'dan mesaj gelirse aninda okundu yap: thread GET'i
+        // tekrar cagir (backend okunmamislari isaretler + gondericiye okundu yayar).
+        if (msg.senderUsername === username) {
+          queryClient.invalidateQueries({ queryKey: ['messageThread', username] });
+        }
       }
     });
 

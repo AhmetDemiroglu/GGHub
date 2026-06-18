@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   StyleSheet,
   Text,
   TextInput,
@@ -13,18 +14,27 @@ import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { AppTopBar } from '@/src/components/shell';
 import { Avatar } from '@/src/components/common/Avatar';
-import { SegmentedTabs } from '@/src/components/common/SegmentedTabs';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { searchAll } from '@/src/api/search';
 import { toMobileRoute } from '@/src/utils/route';
+import { getImageUrl } from '@/src/utils/image';
 import type { SearchResult } from '@/src/models/search';
 import { BorderRadius, FontSize, Spacing } from '@/src/constants/theme';
 
-type ScopeKey = 'all' | 'user' | 'game' | 'list';
+type ResultKind = 'user' | 'game' | 'list' | 'other';
 
 const DEBOUNCE_MS = 350;
+
+// Backend `type` alanini Turkce dondurdugu icin sonuc tipini locale-bagimsiz
+// sekilde link'ten turet (kullanici/oyun/liste).
+function kindFromLink(link: string): ResultKind {
+  if (link.includes('/profiles/') || link.includes('/messages/')) return 'user';
+  if (link.includes('/game')) return 'game';
+  if (link.includes('/list')) return 'list';
+  return 'other';
+}
 
 export default function SearchScreen() {
   const { colors } = useTheme();
@@ -35,7 +45,6 @@ export default function SearchScreen() {
 
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [scope, setScope] = useState<ScopeKey>('all');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleQueryChange = (text: string) => {
@@ -56,9 +65,7 @@ export default function SearchScreen() {
     staleTime: 15000,
   });
 
-  const filtered: SearchResult[] = (data ?? []).filter(
-    (r) => scope === 'all' || r.type.toLowerCase() === scope,
-  );
+  const results: SearchResult[] = data ?? [];
 
   const handleResultPress = useCallback(
     (item: SearchResult) => {
@@ -67,15 +74,8 @@ export default function SearchScreen() {
     [router],
   );
 
-  const scopes: { key: ScopeKey; label: string }[] = [
-    { key: 'all', label: t.scopeAll },
-    { key: 'user', label: t.scopeUsers },
-    { key: 'game', label: t.scopeGames },
-    { key: 'list', label: t.scopeLists },
-  ];
-
-  const typeIcon = (type: string): React.ComponentProps<typeof Ionicons>['name'] => {
-    switch (type.toLowerCase()) {
+  const typeIcon = (kind: ResultKind): React.ComponentProps<typeof Ionicons>['name'] => {
+    switch (kind) {
       case 'user':
         return 'person-outline';
       case 'game':
@@ -87,8 +87,8 @@ export default function SearchScreen() {
     }
   };
 
-  const typeLabel = (type: string): string => {
-    switch (type.toLowerCase()) {
+  const typeLabel = (kind: ResultKind): string | null => {
+    switch (kind) {
       case 'user':
         return t.typeUser;
       case 'game':
@@ -96,46 +96,52 @@ export default function SearchScreen() {
       case 'list':
         return t.typeList;
       default:
-        return type;
+        return null;
     }
   };
 
   const renderItem = useCallback(
-    ({ item }: { item: SearchResult }) => (
-      <TouchableOpacity
-        style={[styles.resultItem, { borderBottomColor: colors.border }]}
-        onPress={() => handleResultPress(item)}
-        activeOpacity={0.7}
-      >
-        {item.type.toLowerCase() === 'user' ? (
-          <Avatar uri={item.imageUrl} name={item.title} size={40} />
-        ) : (
-          <View style={[styles.resultIcon, { backgroundColor: colors.surfaceHighlight }]}>
-            <Ionicons name={typeIcon(item.type)} size={20} color={colors.textSecondary} />
-          </View>
-        )}
-        <View style={styles.resultText}>
-          <Text style={[styles.resultTitle, { color: colors.text }]} numberOfLines={1}>
-            {item.title}
-          </Text>
-          {item.subtitle ? (
-            <Text style={[styles.resultSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>
-              {item.subtitle}
+    ({ item }: { item: SearchResult }) => {
+      const kind = kindFromLink(item.link);
+      const imageUri = getImageUrl(item.imageUrl);
+      const label = typeLabel(kind);
+      return (
+        <TouchableOpacity
+          style={[styles.resultItem, { borderBottomColor: colors.border }]}
+          onPress={() => handleResultPress(item)}
+          activeOpacity={0.7}
+        >
+          {kind === 'user' ? (
+            <Avatar uri={item.imageUrl} name={item.title} size={44} />
+          ) : kind === 'game' && imageUri ? (
+            <Image source={{ uri: imageUri }} style={styles.gameCover} resizeMode="cover" />
+          ) : (
+            <View style={[styles.resultIcon, { backgroundColor: colors.surfaceHighlight }]}>
+              <Ionicons name={typeIcon(kind)} size={20} color={colors.textSecondary} />
+            </View>
+          )}
+          <View style={styles.resultText}>
+            <Text style={[styles.resultTitle, { color: colors.text }]} numberOfLines={1}>
+              {item.title}
             </Text>
+            {item.subtitle ? (
+              <Text style={[styles.resultSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>
+                {item.subtitle}
+              </Text>
+            ) : null}
+          </View>
+          {label ? (
+            <View style={[styles.typeBadge, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.typeBadgeText, { color: colors.textMuted }]}>{label}</Text>
+            </View>
           ) : null}
-        </View>
-        <View style={[styles.typeBadge, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.typeBadgeText, { color: colors.textMuted }]}>
-            {typeLabel(item.type)}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    ),
+        </TouchableOpacity>
+      );
+    },
     [colors, handleResultPress, t],
   );
 
-  const showEmpty =
-    debouncedQuery.length >= 2 && !isLoading && filtered.length === 0;
+  const showEmpty = debouncedQuery.length >= 2 && !isLoading && results.length === 0;
   const showPrompt = debouncedQuery.length < 2 && query.length === 0;
 
   return (
@@ -162,15 +168,6 @@ export default function SearchScreen() {
         ) : null}
       </View>
 
-      {/* Scope filter */}
-      <View style={styles.scopeRow}>
-        <SegmentedTabs
-          tabs={scopes.map((s) => ({ key: s.key, label: s.label }))}
-          activeKey={scope}
-          onChange={(k) => setScope(k)}
-        />
-      </View>
-
       {/* İçerik */}
       {isLoading ? (
         <View style={styles.center}>
@@ -188,12 +185,15 @@ export default function SearchScreen() {
         </View>
       ) : (
         <FlatList
-          data={filtered}
+          data={results}
           keyExtractor={(item) => `${item.type}-${item.id}`}
           renderItem={renderItem}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
-          contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + Spacing.md }]}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingTop: Spacing.sm, paddingBottom: tabBarHeight + Spacing.md },
+          ]}
         />
       )}
     </View>
@@ -221,10 +221,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     paddingVertical: 0,
   },
-  scopeRow: {
-    marginHorizontal: Spacing.lg,
-    marginBottom: Spacing.sm,
-  },
   center: {
     flex: 1,
     justifyContent: 'center',
@@ -247,11 +243,16 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   resultIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  gameCover: {
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.md,
   },
   resultText: {
     flex: 1,

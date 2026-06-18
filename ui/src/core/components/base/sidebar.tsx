@@ -200,8 +200,8 @@ function SidebarInner({ isMobile }: { isMobile: boolean }) {
                     <NavItem key={item.href} href={localizeHref(item.href)} label={item.label} icon={item.icon} active={isActive(item.href)} collapsed={collapsed} onClick={onLinkClick} />
                 ))}
 
-                {/* Messages with badge */}
-                {isAuthenticated && (
+                {/* Messages with badge (mobile only - desktop uses the popover below) */}
+                {isAuthenticated && isMobile && (
                     <NavItem
                         href={localizeHref("/messages")}
                         label={t("nav.messages")}

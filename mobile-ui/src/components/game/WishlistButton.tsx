@@ -34,7 +34,9 @@ export function WishlistButton({ gameId, isWishlisted, gameSlug, size = 24 }: Wi
   const [localWishlisted, setLocalWishlisted] = useState(isWishlisted);
 
   const scale = useSharedValue(1);
-  const heartPop = useSharedValue(localWishlisted ? 1 : 0);
+  // Kalp her zaman gorunur olmali (scale 1); animasyon sadece "pop" efekti icin.
+  // Eskiden listede degilken 0'a olceklenip ikon tamamen kayboluyordu.
+  const heartPop = useSharedValue(1);
 
   const mutation = useMutation({
     mutationFn: () => toggleWishlist(gameId),
@@ -51,7 +53,11 @@ export function WishlistButton({ gameId, isWishlisted, gameSlug, size = 24 }: Wi
         );
       } else {
         haptics.impactLight();
-        heartPop.value = withSpring(0, Springs.smooth);
+        // Listeden cikarinca da gorunur kal (outline kalp); kucuk bir bump efekti.
+        heartPop.value = withSequence(
+          withSpring(0.85, Springs.snappy),
+          withSpring(1, Springs.smooth),
+        );
       }
     },
     onSuccess: (data) => {
@@ -61,7 +67,7 @@ export function WishlistButton({ gameId, isWishlisted, gameSlug, size = 24 }: Wi
     },
     onError: () => {
       setLocalWishlisted(isWishlisted);
-      heartPop.value = withSpring(isWishlisted ? 1 : 0, Springs.smooth);
+      heartPop.value = withSpring(1, Springs.smooth);
     },
   });
 
@@ -85,7 +91,13 @@ export function WishlistButton({ gameId, isWishlisted, gameSlug, size = 24 }: Wi
     <AnimatedPressable
       style={[
         styles.button,
-        { backgroundColor: localWishlisted ? `${colors.error}15` : colors.surface },
+        {
+          backgroundColor: localWishlisted ? `${colors.error}15` : colors.surface,
+          // Kenarlik: light temada surface neredeyse beyaz oldugundan beyaz arka planda
+          // buton kayboluyordu; outline ile her zaman gorunur.
+          borderWidth: 1,
+          borderColor: localWishlisted ? `${colors.error}40` : colors.border,
+        },
         Shadows.sm,
         buttonAnimatedStyle,
       ]}
@@ -96,7 +108,7 @@ export function WishlistButton({ gameId, isWishlisted, gameSlug, size = 24 }: Wi
         <Ionicons
           name={localWishlisted ? 'heart' : 'heart-outline'}
           size={size}
-          color={localWishlisted ? colors.error : colors.textMuted}
+          color={localWishlisted ? colors.error : colors.textSecondary}
         />
       </Animated.View>
     </AnimatedPressable>
