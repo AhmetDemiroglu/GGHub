@@ -8,6 +8,7 @@ import {
   Pressable,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { ScreenWrapper } from '@/src/components/common/ScreenWrapper';
@@ -17,7 +18,6 @@ import { LoadingScreen } from '@/src/components/common/LoadingScreen';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
-import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { getReviewsByUser } from '@/src/api/review';
 import { getImageUrl } from '@/src/utils/image';
 import type { Review } from '@/src/models/review';
@@ -29,7 +29,7 @@ export default function UserReviewsScreen() {
   const { messages } = useLocale();
   const router = useRouter();
   const { user } = useAuth();
-  const tabBarHeight = useTabBarHeight();
+  const insets = useSafeAreaInsets();
 
   const isSelf = username === 'me';
   const resolvedUsername = isSelf ? user?.username : username;
@@ -131,7 +131,7 @@ export default function UserReviewsScreen() {
 
   if (isError) {
     return (
-      <ScreenWrapper noPadding safeArea={false}>
+      <ScreenWrapper noPadding safeArea={false} swipeBackEnabled={false}>
         <ScreenHeader title={headerTitle} />
         <EmptyState
           icon="alert-circle-outline"
@@ -142,13 +142,13 @@ export default function UserReviewsScreen() {
   }
 
   return (
-    <ScreenWrapper noPadding safeArea={false}>
+    <ScreenWrapper noPadding safeArea={false} swipeBackEnabled={false}>
       <ScreenHeader title={headerTitle} />
       <FlatList
         data={reviews ?? []}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderReview}
-        contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + Spacing.md }]}
+        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + Spacing.md }]}
         ListEmptyComponent={
           <EmptyState
             icon="chatbox-outline"

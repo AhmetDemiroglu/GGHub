@@ -13,6 +13,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenWrapper } from '@/src/components/common/ScreenWrapper';
 import { ScreenHeader } from '@/src/components/shell';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
@@ -28,7 +29,6 @@ import { useToast } from '@/src/components/common/Toast';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
-import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { getProfileByUsername } from '@/src/api/profile';
 import { getUserStats } from '@/src/api/stats';
 import { followUser, unfollowUser, blockUser, unblockUser } from '@/src/api/social';
@@ -52,7 +52,7 @@ export default function PublicProfileScreen() {
   const { colors } = useTheme();
   const { messages } = useLocale();
   const { user } = useAuth();
-  const tabBarHeight = useTabBarHeight();
+  const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const h = messages.profile.header;
@@ -143,7 +143,7 @@ export default function PublicProfileScreen() {
 
   if (!profile) {
     return (
-      <ScreenWrapper>
+      <ScreenWrapper swipeBackEnabled={false}>
         <Text style={[styles.errorText, { color: colors.textMuted }]}>
           {messages.common.genericError}
         </Text>
@@ -159,7 +159,7 @@ export default function PublicProfileScreen() {
 
   if (isBlockedByThem) {
     return (
-      <ScreenWrapper noPadding safeArea={false}>
+      <ScreenWrapper noPadding safeArea={false} swipeBackEnabled={false}>
         <ScreenHeader title={`@${username}`} />
         <View style={styles.blockedContainer}>
           <Ionicons name="ban-outline" size={48} color={colors.textMuted} />
@@ -251,7 +251,7 @@ export default function PublicProfileScreen() {
   };
 
   return (
-    <ScreenWrapper noPadding safeArea={false}>
+    <ScreenWrapper noPadding safeArea={false} swipeBackEnabled={false}>
       <ScreenHeader
         title={`@${username}`}
         rightExtra={
@@ -267,7 +267,7 @@ export default function PublicProfileScreen() {
       />
 
       <ScrollView
-        contentContainerStyle={{ paddingBottom: tabBarHeight + Spacing.xxxl }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + Spacing.xxxl }}
         refreshControl={
           <RefreshControl refreshing={profileQuery.isRefetching} onRefresh={onRefresh} />
         }

@@ -126,18 +126,6 @@ export default function TabsLayout() {
       <Tabs.Screen name="terms" options={{ title: messages.nav.screenTitles.terms, ...hidden }} />
       <Tabs.Screen name="privacy" options={{ title: messages.nav.screenTitles.privacy, ...hidden }} />
 
-      {/* Başka kullanıcı profili & incelemeleri */}
-      <Tabs.Screen name="profiles/[username]" options={{ ...hidden }} />
-      <Tabs.Screen name="reviews/user/[username]" options={{ ...hidden }} />
-
-      {/* Game detail - tab bar gizlenir */}
-      <Tabs.Screen
-        name="game/[id]"
-        options={{
-          ...hidden,
-          tabBarStyle: { display: 'none' },
-        }}
-      />
     </Tabs>
   );
 }

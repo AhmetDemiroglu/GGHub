@@ -53,6 +53,9 @@ function RootLayoutNav() {
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(admin)" />
+        <Stack.Screen name="game/[id]" />
+        <Stack.Screen name="profiles/[username]" />
+        <Stack.Screen name="reviews/user/[username]" />
         <Stack.Screen name="+not-found" />
       </Stack>
     </>

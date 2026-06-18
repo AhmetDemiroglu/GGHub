@@ -32,9 +32,7 @@ import { AddToListModal } from '@/src/components/game/AddToListModal';
 import { SimilarGames } from '@/src/components/game/SimilarGames';
 import { WishlistButton } from '@/src/components/game/WishlistButton';
 import { FavoriteButton } from '@/src/components/game/FavoriteButton';
-import { SwipeBackEdge } from '@/src/components/common/SwipeBackEdge';
 import { useRequireAuth } from '@/src/contexts/auth-prompt-context';
-import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import type { Game } from '@/src/models/game';
 
 export default function GameDetailScreen() {
@@ -46,7 +44,6 @@ export default function GameDetailScreen() {
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
   const requireAuth = useRequireAuth();
-  const tabBarHeight = useTabBarHeight();
 
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
   const [listModalVisible, setListModalVisible] = useState(false);
@@ -105,7 +102,6 @@ export default function GameDetailScreen() {
     return (
       <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <SwipeBackEdge />
       </View>
     );
   }
@@ -120,7 +116,6 @@ export default function GameDetailScreen() {
         <Pressable onPress={() => router.back()}>
           <Text style={[styles.backText, { color: colors.primary }]}>{messages.common.back}</Text>
         </Pressable>
-        <SwipeBackEdge />
       </View>
     );
   }
@@ -144,7 +139,7 @@ export default function GameDetailScreen() {
         showsVerticalScrollIndicator={false}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
-        contentContainerStyle={{ paddingBottom: tabBarHeight + Spacing.xxxl }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + Spacing.xxxl }}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
@@ -264,8 +259,6 @@ export default function GameDetailScreen() {
         onClose={() => setListModalVisible(false)}
         gameId={game.rawgId}
       />
-
-      <SwipeBackEdge />
     </View>
   );
 }
