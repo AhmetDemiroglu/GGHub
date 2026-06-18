@@ -6,6 +6,7 @@ import {
   Pressable,
   ActivityIndicator,
   StyleSheet,
+  useWindowDimensions,
 } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { BottomSheet } from '@/src/components/common/BottomSheet';
@@ -29,8 +30,13 @@ export function ReviewModal({ visible, onClose, gameId, gameSlug, existingReview
   const { messages } = useLocale();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
+  const { width: windowWidth } = useWindowDimensions();
   const [rating, setRating] = useState(0);
   const [content, setContent] = useState('');
+  const ratingButtonWidth = Math.max(
+    30,
+    Math.min(34, (windowWidth - Spacing.lg * 2 - Spacing.md * 2 - Spacing.xs * 9) / 10),
+  );
 
   useEffect(() => {
     if (existingReview) {
@@ -103,6 +109,8 @@ export function ReviewModal({ visible, onClose, gameId, gameSlug, existingReview
                 style={[
                   styles.ratingButton,
                   {
+                    width: ratingButtonWidth,
+                    height: ratingButtonWidth + 8,
                     borderColor: filled ? activeColor : colors.border,
                     backgroundColor: filled ? activeColor : colors.surface,
                   },
@@ -200,13 +208,11 @@ const styles = StyleSheet.create({
   ratingGrid: {
     width: '100%',
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     justifyContent: 'center',
-    gap: Spacing.sm,
+    gap: Spacing.xs,
   },
   ratingButton: {
-    width: 44,
-    height: 52,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
     alignItems: 'center',
@@ -216,7 +222,7 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.04 }],
   },
   ratingButtonText: {
-    fontSize: FontSize.lg,
+    fontSize: FontSize.md,
     fontWeight: '800',
   },
   ratingButtonTextDark: {

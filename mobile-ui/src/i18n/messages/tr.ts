@@ -242,6 +242,8 @@ export const trMessages = {
         loginRequired: "Giriş yapmalısınız",
         editReview: "İncelemeyi Düzenle",
         writeReview: "İnceleme Yaz",
+        editReviewAction: "Düzenle",
+        writeReviewAction: "İncele",
         reviews: "İncelemeler",
         noReviews: "Henüz İnceleme Yok",
         noReviewsDescription: "Bu oyun hakkında düşüncelerinizi paylaşan ilk kişi siz olun.",

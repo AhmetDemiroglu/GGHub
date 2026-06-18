@@ -187,7 +187,7 @@ export default function GameDetailScreen() {
             >
               <Ionicons name="create-outline" size={18} color="#ffffff" />
               <Text style={[styles.actionText, { color: '#ffffff' }]} numberOfLines={1}>
-                {myReview ? messages.games.editReview : messages.games.writeReview}
+                {myReview ? messages.games.editReviewAction : messages.games.writeReviewAction}
               </Text>
             </Pressable>
           )}
@@ -308,10 +308,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.md,
-    gap: 6,
+    gap: 5,
   },
   actionText: {
     fontSize: FontSize.sm,

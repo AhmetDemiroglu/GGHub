@@ -78,6 +78,8 @@ export interface Messages {
   reviews: string;
   writeReview: string;
   editReview: string;
+  writeReviewAction: string;
+  editReviewAction: string;
   addToList: string;
   addToWishlist: string;
   removeFromWishlist: string;

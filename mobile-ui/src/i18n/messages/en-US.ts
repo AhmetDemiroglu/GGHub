@@ -242,6 +242,8 @@ export const enUSMessages = {
         loginRequired: "You must be logged in",
         editReview: "Edit Review",
         writeReview: "Write Review",
+        editReviewAction: "Edit",
+        writeReviewAction: "Review",
         reviews: "Reviews",
         noReviews: "No Reviews Yet",
         noReviewsDescription: "Be the first to share your thoughts on this game.",
