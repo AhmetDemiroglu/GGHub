@@ -89,6 +89,11 @@ export interface Messages {
   noReviewsDescription: string;
   reviewPlaceholder: string;
   ratingLabel: string;
+  reviewSaved: string;
+  reviewUpdated: string;
+  ratingWeak: string;
+  ratingAverage: string;
+  ratingLegendary: string;
   upvote: string;
   downvote: string;
   showMore: string;

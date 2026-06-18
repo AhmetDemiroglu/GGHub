@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { ProfileVisibilitySetting, MessagePrivacySetting } from '@/src/models/profile';
@@ -56,6 +55,9 @@ export function PrivacySettings({
             onPress={() => onVisibilityChange(opt.value)}
           >
             <Text
+              numberOfLines={2}
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
               style={[
                 styles.optionText,
                 {
@@ -88,6 +90,9 @@ export function PrivacySettings({
             onPress={() => onMessageSettingChange(opt.value)}
           >
             <Text
+              numberOfLines={2}
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
               style={[
                 styles.optionText,
                 {
@@ -122,13 +127,18 @@ const styles = StyleSheet.create({
   },
   option: {
     flex: 1,
+    minHeight: 58,
     paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xs,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   optionText: {
     fontSize: FontSize.sm,
     fontWeight: '600',
+    lineHeight: 17,
+    textAlign: 'center',
   },
 });

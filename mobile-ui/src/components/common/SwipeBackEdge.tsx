@@ -1,47 +1,54 @@
-import React, { useMemo } from 'react';
-import { View, PanResponder, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
+import React, { useCallback, useMemo } from 'react';
+import { StyleSheet } from 'react-native';
+import { router, usePathname } from 'expo-router';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { runOnJS } from 'react-native-reanimated';
 
 // Sol kenarda jesti yakalayan dar şerit (px)
-const EDGE_WIDTH = 24;
-// Geri gitmek için minimum yatay drag
-const BACK_DX = 80;
-// Bu eşiğin üstünde dikey hareket gelirse jest scroll/normal touch sayılıp iptal edilir
-const VERTICAL_TOLERANCE = 30;
+const EDGE_WIDTH = 44;
+// Geri gitmek için minimum yatay drag veya hızlı flick
+const BACK_DX = 56;
+const BACK_VELOCITY_X = 450;
+// Navbar (tab) kökleri: bu ekranlarda sol swipe sidebar'a aittir.
+const TAB_ROOTS = ['/', '/discover', '/search', '/lists', '/profile'];
 
 interface SwipeBackEdgeProps {
   enabled?: boolean;
 }
 
 /**
- * Sol kenardan sağa çekerek geri gitme jesti (iOS + Android).
- * Native stack swipe-back'in olmadığı (tab navigator'a kayıtlı) düz ekranlar için
- * router.back() tetikler. Native gesture'lı nested stack ekranlarında kullanılmaz
- * (çift-geri olmaması icin orada `enabled={false}`).
- *
- * pointerEvents="box-none": dokunma alt çocuklara geçer; yalnızca sol kenarda + yatay
- * drag olduğunda PanResponder devreye girer, normal scroll/tıklama bozulmaz.
+ * Sol kenardan sağa çekerek geri gitme jesti.
+ * Bottom tab köklerinde sidebar gesture'ı kazanır; detay/alt sayfalarda back çalışır.
  */
 export function SwipeBackEdge({ enabled = true }: SwipeBackEdgeProps) {
-  const responder = useMemo(() => {
-    if (!enabled) return null;
-    return PanResponder.create({
-      onStartShouldSetPanResponder: (evt) => evt.nativeEvent.pageX < EDGE_WIDTH,
-      onMoveShouldSetPanResponder: (evt, gesture) =>
-        evt.nativeEvent.pageX < EDGE_WIDTH &&
-        gesture.dx > 5 &&
-        Math.abs(gesture.dy) < VERTICAL_TOLERANCE,
-      onPanResponderTerminationRequest: () => false,
-      onPanResponderRelease: (_, gesture) => {
-        if (gesture.dx > BACK_DX && router.canGoBack()) {
-          router.back();
-        }
-      },
-    });
-  }, [enabled]);
+  const pathname = usePathname();
+  const isTabRoot = TAB_ROOTS.includes(pathname);
+  const isEnabled = enabled && !isTabRoot;
+  const goBackIfPossible = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    }
+  }, []);
 
-  if (!responder) return null;
-  return <View pointerEvents="box-none" style={styles.edge} {...responder.panHandlers} />;
+  const backGesture = useMemo(() => {
+    return Gesture.Pan()
+      .enabled(isEnabled)
+      .activeOffsetX(6)
+      .failOffsetY([-30, 30])
+      .onEnd((event) => {
+        if (event.translationX > BACK_DX || event.velocityX > BACK_VELOCITY_X) {
+          runOnJS(goBackIfPossible)();
+        }
+      });
+  }, [goBackIfPossible, isEnabled]);
+
+  if (!isEnabled) return null;
+
+  return (
+    <GestureDetector gesture={backGesture}>
+      <Animated.View style={styles.edge} />
+    </GestureDetector>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -51,6 +58,8 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: EDGE_WIDTH,
+    zIndex: 1000,
+    elevation: 1000,
     backgroundColor: 'transparent',
   },
 });

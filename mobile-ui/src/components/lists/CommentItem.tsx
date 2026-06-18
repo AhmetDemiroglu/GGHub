@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Pressable, TextInput, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/src/hooks/use-theme';
@@ -26,6 +27,7 @@ export function CommentItem({ comment, listId }: CommentItemProps) {
   const { messages } = useLocale();
   const { user } = useAuth();
   const { showToast } = useToast();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
@@ -93,21 +95,26 @@ export function CommentItem({ comment, listId }: CommentItemProps) {
   };
 
   const timeAgo = new Date(comment.createdAt).toLocaleDateString();
+  const openOwnerProfile = () => {
+    router.push(`/profiles/${comment.owner.username}`);
+  };
 
   return (
     <View style={[styles.container, { borderBottomColor: colors.border }]}>
       <View style={styles.header}>
-        <Avatar
-          uri={comment.owner.profileImageUrl}
-          name={comment.owner.username}
-          size={32}
-        />
-        <View style={styles.headerInfo}>
+        <Pressable onPress={openOwnerProfile} hitSlop={6}>
+          <Avatar
+            uri={comment.owner.profileImageUrl}
+            name={comment.owner.username}
+            size={32}
+          />
+        </Pressable>
+        <Pressable style={styles.headerInfo} onPress={openOwnerProfile}>
           <Text style={[styles.username, { color: colors.text }]}>
             @{comment.owner.username}
           </Text>
           <Text style={[styles.timestamp, { color: colors.textMuted }]}>{timeAgo}</Text>
-        </View>
+        </Pressable>
         {isOwner && !isEditing ? (
           <View style={styles.actions}>
             <Pressable onPress={() => setIsEditing(true)} hitSlop={8}>

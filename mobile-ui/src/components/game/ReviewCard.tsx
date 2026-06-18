@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/src/hooks/use-theme';
@@ -18,6 +19,7 @@ interface ReviewCardProps {
 
 export function ReviewCard({ review, gameId }: ReviewCardProps) {
   const { colors } = useTheme();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const avatarUri = getImageUrl(review.user.profileImageUrl);
 
@@ -38,22 +40,28 @@ export function ReviewCard({ review, gameId }: ReviewCardProps) {
     }
   };
 
+  const openUserProfile = () => {
+    router.push(`/profiles/${review.user.username}`);
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.surface }, Shadows.sm]}>
       <View style={styles.header}>
-        {avatarUri ? (
-          <Image source={{ uri: avatarUri }} style={styles.avatar} />
-        ) : (
-          <View style={[styles.avatar, { backgroundColor: colors.surfaceHighlight, alignItems: 'center', justifyContent: 'center' }]}>
-            <Ionicons name="person" size={14} color={colors.textMuted} />
-          </View>
-        )}
-        <View style={styles.userInfo}>
+        <Pressable onPress={openUserProfile} hitSlop={6}>
+          {avatarUri ? (
+            <Image source={{ uri: avatarUri }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, { backgroundColor: colors.surfaceHighlight, alignItems: 'center', justifyContent: 'center' }]}>
+              <Ionicons name="person" size={14} color={colors.textMuted} />
+            </View>
+          )}
+        </Pressable>
+        <Pressable style={styles.userInfo} onPress={openUserProfile}>
           <Text style={[styles.username, { color: colors.text }]}>{review.user.username}</Text>
           <Text style={[styles.timestamp, { color: colors.textMuted }]}>
             {formatTimeAgo(review.createdAt)}
           </Text>
-        </View>
+        </Pressable>
         <StarRating rating={Math.round(review.rating / 2)} maxStars={5} size={14} />
       </View>
 

@@ -69,13 +69,13 @@ export default function GameDetailScreen() {
   });
 
   const { data: reviews } = useQuery({
-    queryKey: ['gameReviews', game?.id],
+    queryKey: ['gameReviews', game?.rawgId],
     queryFn: () => getGameReviews(game!.rawgId),
     enabled: !!game,
   });
 
   const { data: myReview } = useQuery({
-    queryKey: ['myReview', game?.id],
+    queryKey: ['myReview', game?.rawgId],
     queryFn: () => getMyReview(game!.rawgId),
     enabled: !!game && isAuthenticated,
   });
@@ -105,6 +105,7 @@ export default function GameDetailScreen() {
     return (
       <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
+        <SwipeBackEdge />
       </View>
     );
   }
@@ -119,6 +120,7 @@ export default function GameDetailScreen() {
         <Pressable onPress={() => router.back()}>
           <Text style={[styles.backText, { color: colors.primary }]}>{messages.common.back}</Text>
         </Pressable>
+        <SwipeBackEdge />
       </View>
     );
   }

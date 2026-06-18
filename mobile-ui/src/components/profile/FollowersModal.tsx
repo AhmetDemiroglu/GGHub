@@ -4,10 +4,12 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
+  Pressable,
   TextInput,
   Modal,
   StyleSheet,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -39,8 +41,8 @@ export function FollowersModal({
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const fm = messages.profile.followersModal;
-  const h = messages.profile.header;
 
   const [activeTab, setActiveTab] = useState<'followers' | 'following'>(initialTab);
   const [search, setSearch] = useState('');
@@ -95,26 +97,36 @@ export function FollowersModal({
     }
   };
 
+  const handleOpenProfile = (targetUsername: string) => {
+    onClose();
+    router.push(`/profiles/${targetUsername}`);
+  };
+
   const renderItem = ({ item }: { item: SocialProfile }) => {
     const isMe = user?.username === item.username;
     const displayName = [item.firstName, item.lastName].filter(Boolean).join(' ') || item.username;
 
     return (
-      <View style={[styles.userRow, { borderBottomColor: colors.border }]}>
+      <Pressable
+        style={[styles.userRow, { borderBottomColor: colors.border }]}
+        onPress={() => handleOpenProfile(item.username)}
+      >
         <Avatar uri={item.profileImageUrl} name={displayName} size={44} />
         <View style={styles.userInfo}>
           <Text style={[styles.userName, { color: colors.text }]}>{displayName}</Text>
           <Text style={[styles.userHandle, { color: colors.textSecondary }]}>@{item.username}</Text>
         </View>
         {!isMe ? (
-          <Button
-            title={item.isFollowing ? fm.following : fm.follow}
-            variant={item.isFollowing ? 'outline' : 'primary'}
-            size="sm"
-            onPress={() => handleToggleFollow(item)}
-          />
+          <Pressable onPress={(event) => event.stopPropagation()}>
+            <Button
+              title={item.isFollowing ? fm.following : fm.follow}
+              variant={item.isFollowing ? 'outline' : 'primary'}
+              size="sm"
+              onPress={() => handleToggleFollow(item)}
+            />
+          </Pressable>
         ) : null}
-      </View>
+      </Pressable>
     );
   };
 

@@ -12,7 +12,7 @@ import { BottomSheet } from '@/src/components/common/BottomSheet';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
-import { StarRating } from '@/src/components/common/StarRating';
+import { useToast } from '@/src/components/common/Toast';
 import { createReview, updateReview } from '@/src/api/review';
 import type { Review } from '@/src/models/review';
 
@@ -27,13 +27,14 @@ interface ReviewModalProps {
 export function ReviewModal({ visible, onClose, gameId, gameSlug, existingReview }: ReviewModalProps) {
   const { colors } = useTheme();
   const { messages } = useLocale();
+  const { showToast } = useToast();
   const queryClient = useQueryClient();
   const [rating, setRating] = useState(0);
   const [content, setContent] = useState('');
 
   useEffect(() => {
     if (existingReview) {
-      setRating(Math.round(existingReview.rating / 2));
+      setRating(existingReview.rating);
       setContent(existingReview.content);
     } else {
       setRating(0);
@@ -42,21 +43,23 @@ export function ReviewModal({ visible, onClose, gameId, gameSlug, existingReview
   }, [existingReview, visible]);
 
   const createMutation = useMutation({
-    mutationFn: () => createReview({ gameId, rating: rating * 2, content }),
+    mutationFn: () => createReview({ gameId, rating, content }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['gameReviews', gameId] });
       queryClient.invalidateQueries({ queryKey: ['myReview', gameId] });
       queryClient.invalidateQueries({ queryKey: ['game', gameSlug] });
+      showToast('success', messages.games.reviewSaved, `${rating}/10`);
       onClose();
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: () => updateReview(existingReview!.id, { rating: rating * 2, content }),
+    mutationFn: () => updateReview(existingReview!.id, { rating, content }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['gameReviews', gameId] });
       queryClient.invalidateQueries({ queryKey: ['myReview', gameId] });
       queryClient.invalidateQueries({ queryKey: ['game', gameSlug] });
+      showToast('success', messages.games.reviewUpdated, `${rating}/10`);
       onClose();
     },
   });
@@ -81,12 +84,57 @@ export function ReviewModal({ visible, onClose, gameId, gameSlug, existingReview
     >
       <View style={styles.ratingSection}>
         <Text style={[styles.ratingLabel, { color: colors.textSecondary }]}>
-          {messages.games.ratingLabel}
+          {messages.games.ratingLabel} {rating > 0 ? `(${rating}/10)` : ''}
         </Text>
-        <StarRating rating={rating} maxStars={5} size={32} interactive onRatingChange={setRating} />
-        {rating > 0 ? (
-          <Text style={[styles.ratingValue, { color: colors.primary }]}>{rating * 2}/10</Text>
-        ) : null}
+        <View style={styles.ratingGrid}>
+          {Array.from({ length: 10 }, (_, index) => {
+            const value = index + 1;
+            const selected = value === rating;
+            const filled = rating > 0 && value <= rating;
+            const isLow = value <= 4;
+            const isMid = value === 5;
+            const activeColor = isLow ? colors.error : isMid ? colors.warning : colors.success;
+
+            return (
+              <Pressable
+                key={value}
+                onPress={() => setRating(value)}
+                hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                style={[
+                  styles.ratingButton,
+                  {
+                    borderColor: filled ? activeColor : colors.border,
+                    backgroundColor: filled ? activeColor : colors.surface,
+                  },
+                  selected ? styles.ratingButtonSelected : null,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.ratingButtonText,
+                    { color: filled ? '#ffffff' : colors.textMuted },
+                    filled && isMid ? styles.ratingButtonTextDark : null,
+                  ]}
+                >
+                  {value}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <View style={styles.ratingGuide}>
+          <Text style={[styles.ratingGuideText, { color: colors.textMuted }]}>
+            {messages.games.ratingWeak}
+          </Text>
+          <View style={[styles.ratingGuideLine, { backgroundColor: colors.border }]} />
+          <Text style={[styles.ratingGuideText, { color: colors.textMuted }]}>
+            {messages.games.ratingAverage}
+          </Text>
+          <View style={[styles.ratingGuideLine, { backgroundColor: colors.border }]} />
+          <Text style={[styles.ratingGuideText, { color: colors.textMuted }]}>
+            {messages.games.ratingLegendary}
+          </Text>
+        </View>
       </View>
 
       <TextInput
@@ -147,10 +195,49 @@ const styles = StyleSheet.create({
   ratingLabel: {
     fontSize: FontSize.md,
     fontWeight: '600',
+    textTransform: 'uppercase',
   },
-  ratingValue: {
+  ratingGrid: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+  },
+  ratingButton: {
+    width: 44,
+    height: 52,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ratingButtonSelected: {
+    transform: [{ scale: 1.04 }],
+  },
+  ratingButtonText: {
     fontSize: FontSize.lg,
+    fontWeight: '800',
+  },
+  ratingButtonTextDark: {
+    color: '#111111',
+  },
+  ratingGuide: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    marginTop: Spacing.xs,
+  },
+  ratingGuideText: {
+    fontSize: FontSize.xs,
     fontWeight: '700',
+  },
+  ratingGuideLine: {
+    height: 1,
+    flex: 1,
+    maxWidth: 80,
   },
   textInput: {
     borderWidth: 1,

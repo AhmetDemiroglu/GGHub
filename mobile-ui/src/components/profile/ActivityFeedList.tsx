@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@/src/components/common/Avatar';
 import { useTheme } from '@/src/hooks/use-theme';
@@ -36,6 +37,7 @@ function formatTimeAgo(dateStr: string): string {
 export function ActivityFeedList({ activities }: ActivityFeedListProps) {
   const { colors } = useTheme();
   const { messages } = useLocale();
+  const router = useRouter();
 
   if (!activities || activities.length === 0) {
     return (
@@ -86,6 +88,28 @@ export function ActivityFeedList({ activities }: ActivityFeedListProps) {
     }
   };
 
+  const openActivityTarget = (item: Activity) => {
+    switch (item.type) {
+      case ActivityType.Review:
+        if (item.reviewData?.game?.slug) {
+          router.push(`/game/${item.reviewData.game.slug}`);
+        }
+        break;
+      case ActivityType.ListCreated:
+        if (item.listData?.listId) {
+          router.push(`/lists/${item.listData.listId}`);
+        }
+        break;
+      case ActivityType.FollowUser:
+        if (item.followData?.username) {
+          router.push(`/profiles/${item.followData.username}`);
+        }
+        break;
+      default:
+        break;
+    }
+  };
+
   const renderItem = ({ item }: { item: Activity }) => {
     const iconName = ACTIVITY_ICONS[item.type] || 'ellipse-outline';
     const description = getDescription(item);
@@ -94,7 +118,10 @@ export function ActivityFeedList({ activities }: ActivityFeedListProps) {
     const isUserImage = item.type === ActivityType.FollowUser;
 
     return (
-      <View style={[styles.activityRow, { borderBottomColor: colors.border }]}>
+      <Pressable
+        style={[styles.activityRow, { borderBottomColor: colors.border }]}
+        onPress={() => openActivityTarget(item)}
+      >
         <View style={styles.mediaWrap}>
           {imageUri ? (
             isUserImage ? (
@@ -124,7 +151,7 @@ export function ActivityFeedList({ activities }: ActivityFeedListProps) {
             {formatTimeAgo(item.occurredAt)}
           </Text>
         </View>
-      </View>
+      </Pressable>
     );
   };
 

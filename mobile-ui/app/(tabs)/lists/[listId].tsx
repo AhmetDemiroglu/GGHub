@@ -179,7 +179,10 @@ export default function ListDetailScreen() {
             </Text>
           ) : null}
 
-          <Pressable style={styles.ownerRow}>
+          <Pressable
+            style={styles.ownerRow}
+            onPress={() => router.push(`/profiles/${list.owner.username}`)}
+          >
             <Avatar
               uri={list.owner.profileImageUrl}
               name={list.owner.username}

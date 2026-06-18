@@ -49,6 +49,12 @@ export function ListCard({ list }: ListCardProps) {
     router.push(`/lists/${list.id}`);
   };
 
+  const handleOwnerPress = () => {
+    if (ownerName) {
+      router.push(`/profiles/${ownerName}`);
+    }
+  };
+
   return (
     <Pressable
       style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -81,12 +87,18 @@ export function ListCard({ list }: ListCardProps) {
         </View>
 
         {ownerName ? (
-          <View style={styles.ownerRow}>
+          <Pressable
+            style={styles.ownerRow}
+            onPress={(event) => {
+              event.stopPropagation();
+              handleOwnerPress();
+            }}
+          >
             <Avatar uri={ownerAvatar} name={ownerName} size={20} />
             <Text style={[styles.ownerName, { color: colors.textSecondary }]} numberOfLines={1}>
               @{ownerName}
             </Text>
-          </View>
+          </Pressable>
         ) : null}
 
         <View style={styles.statsRow}>

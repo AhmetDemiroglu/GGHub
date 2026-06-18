@@ -140,7 +140,7 @@ export default function ProfileSettingsScreen() {
         >
           <Ionicons name="flag-outline" size={22} color={colors.text} />
           <Text style={[styles.menuText, { color: colors.text }]}>
-            {messages.report.myReports}
+            {messages.nav.screenTitles.myReports}
           </Text>
           <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
         </TouchableOpacity>

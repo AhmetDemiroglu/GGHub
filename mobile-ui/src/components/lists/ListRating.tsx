@@ -23,7 +23,7 @@ export function ListRating({ listId, averageRating, ratingCount }: ListRatingPro
   const requireAuth = useRequireAuth();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
-  const [hoverStar, setHoverStar] = useState(0);
+  const [selectedRating, setSelectedRating] = useState<number | null>(null);
 
   const { data: myRatingData } = useQuery({
     queryKey: ['myListRating', listId],
@@ -32,21 +32,26 @@ export function ListRating({ listId, averageRating, ratingCount }: ListRatingPro
   });
 
   const myRating = myRatingData?.value ?? 0;
+  const displayedRating = selectedRating ?? myRating;
 
   const ratingMutation = useMutation({
     mutationFn: (value: number) => submitListRating(listId, { value }),
-    onSuccess: () => {
+    onSuccess: (_, value) => {
       queryClient.invalidateQueries({ queryKey: ['myListRating', listId] });
       queryClient.invalidateQueries({ queryKey: ['listDetail', listId] });
-      showToast('success', messages.listDetail.ratingSaved);
+      showToast('success', messages.listDetail.ratingSaved.replace('{rating}', String(value)));
     },
     onError: () => {
+      setSelectedRating(null);
       showToast('error', messages.listDetail.ratingSaveError);
     },
   });
 
   const handleRate = (value: number) => {
-    requireAuth(() => ratingMutation.mutate(value));
+    requireAuth(() => {
+      setSelectedRating(value);
+      ratingMutation.mutate(value);
+    });
   };
 
   return (
@@ -64,19 +69,18 @@ export function ListRating({ listId, averageRating, ratingCount }: ListRatingPro
       {isAuthenticated ? (
         <View style={styles.userRatingContainer}>
           <Text style={[styles.ratingLabel, { color: colors.textSecondary }]}>
-            {myRating > 0 ? messages.listDetail.yourRating : messages.listDetail.rateThis}
+            {displayedRating > 0 ? messages.listDetail.yourRating : messages.listDetail.rateThis}
           </Text>
           <View style={styles.starsRow}>
             {[1, 2, 3, 4, 5].map((star) => (
               <Pressable
                 key={star}
                 onPress={() => handleRate(star)}
-                onPressIn={() => setHoverStar(star)}
-                onPressOut={() => setHoverStar(0)}
-                hitSlop={4}
+                hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+                style={styles.starButton}
               >
                 <Ionicons
-                  name={star <= (hoverStar || myRating) ? 'star' : 'star-outline'}
+                  name={star <= displayedRating ? 'star' : 'star-outline'}
                   size={28}
                   color={colors.star}
                 />
@@ -116,6 +120,12 @@ const styles = StyleSheet.create({
   },
   starsRow: {
     flexDirection: 'row',
-    gap: Spacing.xs,
+    gap: Spacing.sm,
+  },
+  starButton: {
+    minWidth: 36,
+    minHeight: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

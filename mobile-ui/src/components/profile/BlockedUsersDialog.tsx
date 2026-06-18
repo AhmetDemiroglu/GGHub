@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, FlatList, Modal, TouchableOpacity, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Avatar } from '@/src/components/common/Avatar';
@@ -19,6 +20,7 @@ export function BlockedUsersDialog({ visible, onClose }: BlockedUsersDialogProps
   const { colors } = useTheme();
   const { messages } = useLocale();
   const queryClient = useQueryClient();
+  const insets = useSafeAreaInsets();
   const bd = messages.profile.blockedUsersDialog;
 
   const blockedQuery = useQuery({
@@ -59,12 +61,20 @@ export function BlockedUsersDialog({ visible, onClose }: BlockedUsersDialogProps
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={onClose}>
+        <View
+          style={[
+            styles.header,
+            {
+              borderBottomColor: colors.border,
+              paddingTop: insets.top + Spacing.md,
+            },
+          ]}
+        >
+          <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={10}>
             <Ionicons name="close" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.title, { color: colors.text }]}>{bd.title}</Text>
-          <View style={{ width: 24 }} />
+          <View style={styles.closeBtn} />
         </View>
 
         <FlatList
@@ -96,6 +106,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
     borderBottomWidth: 1,
+  },
+  closeBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
     fontSize: FontSize.lg,
