@@ -158,9 +158,9 @@ export default function GameDetailScreen() {
               <WishlistButton
                 gameId={game.rawgId}
                 isWishlisted={game.isInWishlist ?? false}
-                gameSlug={game.slug}
+                size={22}
               />
-              <FavoriteButton gameId={game.rawgId} />
+              <FavoriteButton gameId={game.rawgId} size={22} />
             </>
           )}
           {isAuthenticated && (
@@ -171,8 +171,8 @@ export default function GameDetailScreen() {
                 setListModalVisible(true);
               })}
             >
-              <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
-              <Text style={[styles.actionText, { color: colors.primary }]}>
+              <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
+              <Text style={[styles.actionText, { color: colors.primary }]} numberOfLines={1}>
                 {messages.games.addToList}
               </Text>
             </Pressable>
@@ -185,8 +185,8 @@ export default function GameDetailScreen() {
                 setReviewModalVisible(true);
               })}
             >
-              <Ionicons name="create-outline" size={20} color="#ffffff" />
-              <Text style={[styles.actionText, { color: '#ffffff' }]}>
+              <Ionicons name="create-outline" size={18} color="#ffffff" />
+              <Text style={[styles.actionText, { color: '#ffffff' }]} numberOfLines={1}>
                 {myReview ? messages.games.editReview : messages.games.writeReview}
               </Text>
             </Pressable>
@@ -304,15 +304,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
     gap: Spacing.sm,
-    flexWrap: 'wrap',
   },
   actionButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.md,
-    gap: Spacing.sm,
+    gap: 6,
   },
   actionText: {
     fontSize: FontSize.sm,

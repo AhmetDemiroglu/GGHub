@@ -23,13 +23,12 @@ import { toggleWishlist } from '@/src/api/list';
 interface WishlistButtonProps {
   gameId: number;
   isWishlisted: boolean;
-  gameSlug: string;
   size?: number;
 }
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export function WishlistButton({ gameId, isWishlisted, gameSlug, size = 24 }: WishlistButtonProps) {
+export function WishlistButton({ gameId, isWishlisted, size = 24 }: WishlistButtonProps) {
   const { colors } = useTheme();
   const { messages } = useLocale();
   const { showToast } = useToast();
@@ -65,8 +64,9 @@ export function WishlistButton({ gameId, isWishlisted, gameSlug, size = 24 }: Wi
       }
     },
     onSuccess: (data) => {
+      // Sadece yerel ikon + wishlist sayfasi tazelenir. Oyun detayini ('game')
+      // invalidate ETMIYORUZ: tum sayfa+parallax yeniden render olup scroll ziplatiyordu.
       setLocalWishlisted(data.isAdded);
-      queryClient.invalidateQueries({ queryKey: ['game', gameSlug] });
       queryClient.invalidateQueries({ queryKey: ['myWishlist'] });
       showToast('success', data.message);
     },
