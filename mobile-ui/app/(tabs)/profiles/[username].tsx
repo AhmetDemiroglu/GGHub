@@ -4,10 +4,10 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Alert,
   TextInput,
   StyleSheet,
   RefreshControl,
+  FlatList,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,9 +33,12 @@ import { followUser, unfollowUser, blockUser, unblockUser } from '@/src/api/soci
 import { useRequireAuth } from '@/src/contexts/auth-prompt-context';
 import { reportUser } from '@/src/api/report';
 import { getReviewsByUser } from '@/src/api/review';
+import { getListsByUsername } from '@/src/api/list';
+import { getUserActivityFeed } from '@/src/api/activity';
 import { ProfileVisibilitySetting } from '@/src/models/profile';
 import * as haptics from '@/src/utils/haptics';
 import type { Review } from '@/src/models/review';
+import type { UserList } from '@/src/models/list';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 
 type ProfileTab = 'overview' | 'reviews' | 'lists';
@@ -50,6 +53,7 @@ export default function PublicProfileScreen() {
   const { showToast } = useToast();
   const h = messages.profile.header;
   const rp = messages.report.dialog;
+  const af = messages.profile.activityFeed;
   const requireAuth = useRequireAuth();
 
   const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
@@ -74,6 +78,18 @@ export default function PublicProfileScreen() {
     queryKey: ['userReviews', username],
     queryFn: () => getReviewsByUser(username!),
     enabled: !!username && activeTab === 'reviews',
+  });
+
+  const listsQuery = useQuery({
+    queryKey: ['userLists', username],
+    queryFn: () => getListsByUsername(username!),
+    enabled: !!username && activeTab === 'lists',
+  });
+
+  const activityQuery = useQuery({
+    queryKey: ['userActivity', username],
+    queryFn: () => getUserActivityFeed(username!),
+    enabled: !!username && activeTab === 'overview',
   });
 
   const profile = profileQuery.data;
@@ -114,7 +130,10 @@ export default function PublicProfileScreen() {
   const onRefresh = useCallback(() => {
     profileQuery.refetch();
     statsQuery.refetch();
-  }, [profileQuery, statsQuery]);
+    if (activeTab === 'overview') activityQuery.refetch();
+    if (activeTab === 'reviews') reviewsQuery.refetch();
+    if (activeTab === 'lists') listsQuery.refetch();
+  }, [activeTab, activityQuery, listsQuery, profileQuery, reviewsQuery, statsQuery]);
 
   if (profileQuery.isLoading) return <LoadingScreen />;
 
@@ -173,6 +192,26 @@ export default function PublicProfileScreen() {
     );
   };
 
+  const renderList = ({ item, index }: { item: UserList; index: number }) => (
+    <TouchableOpacity
+      key={`${item.id}-${index}`}
+      onPress={() => router.push(`/lists/${item.id}`)}
+      activeOpacity={0.7}
+    >
+      <Card style={styles.listCard}>
+        <Text style={[styles.listName, { color: colors.text }]}>{item.name}</Text>
+        {item.description ? (
+          <Text style={[styles.listDescription, { color: colors.textSecondary }]} numberOfLines={2}>
+            {item.description}
+          </Text>
+        ) : null}
+        <Text style={[styles.listMeta, { color: colors.textSecondary }]}>
+          {item.gameCount} {af.gamesLabel} · {item.followerCount} {h.followersLabel}
+        </Text>
+      </Card>
+    </TouchableOpacity>
+  );
+
   return (
     <ScreenWrapper noPadding safeArea={false}>
       <ScreenHeader
@@ -211,15 +250,39 @@ export default function PublicProfileScreen() {
           onFollowersPress={() => setFollowersModal('followers')}
           onFollowingPress={() => setFollowersModal('following')}
         >
+          <View style={styles.statsGrid}>
+            <View style={styles.statBox}>
+              <Text style={[styles.statNum, { color: colors.text }]}>
+                {profile.reviewCount ?? stats?.totalReviews ?? 0}
+              </Text>
+              <Text style={[styles.statLbl, { color: colors.textSecondary }]}>
+                {messages.home.activityTabs.reviews}
+              </Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={[styles.statNum, { color: colors.text }]}>
+                {profile.listCount ?? stats?.totalLists ?? 0}
+              </Text>
+              <Text style={[styles.statLbl, { color: colors.textSecondary }]}>
+                {messages.home.activityTabs.lists}
+              </Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={[styles.statNum, { color: colors.text }]}>
+                {stats?.totalGamesListed ?? 0}
+              </Text>
+              <Text style={[styles.statLbl, { color: colors.textSecondary }]}>
+                {af.gamesLabel}
+              </Text>
+            </View>
+          </View>
+
           {!isMe ? (
             <View style={styles.actionRow}>
               <Button
                 title={profile.isFollowing ? h.unfollow : h.follow}
                 variant={profile.isFollowing ? 'outline' : 'primary'}
                 onPress={() => requireAuth(() => {
-                  if (!profile.isFollowing) {
-                    // follow başarılı hissi
-                  }
                   followMutation.mutate();
                 })}
                 loading={followMutation.isPending}
@@ -253,6 +316,7 @@ export default function PublicProfileScreen() {
                 tabs={[
                   { key: 'overview' as const, label: messages.home.activityTitle },
                   { key: 'reviews' as const, label: messages.home.activityTabs.reviews },
+                  { key: 'lists' as const, label: messages.home.activityTabs.lists },
                 ]}
                 activeKey={activeTab}
                 onChange={(k) => setActiveTab(k)}
@@ -261,7 +325,11 @@ export default function PublicProfileScreen() {
 
             <View style={styles.tabContent}>
               {activeTab === 'overview' ? (
-                <GamerDnaChart data={statsQuery.data?.gamerDna ?? []} username={username} />
+                <>
+                  <GamerDnaChart data={statsQuery.data?.gamerDna ?? []} username={username} />
+                  <View style={styles.sectionGap} />
+                  <ActivityFeedList activities={activityQuery.data ?? []} />
+                </>
               ) : null}
 
               {activeTab === 'reviews' ? (
@@ -272,6 +340,21 @@ export default function PublicProfileScreen() {
                     {messages.reviewList.emptyTitle}
                   </Text>
                 )
+              ) : null}
+
+              {activeTab === 'lists' ? (
+                <FlatList
+                  data={listsQuery.data ?? []}
+                  renderItem={renderList}
+                  keyExtractor={(item, index) => `${item.id}-${index}`}
+                  scrollEnabled={false}
+                  ItemSeparatorComponent={() => <View style={{ height: Spacing.md }} />}
+                  ListEmptyComponent={
+                    <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                      {messages.lists.noListsForCriteria}
+                    </Text>
+                  }
+                />
               ) : null}
             </View>
           </>
@@ -373,6 +456,22 @@ const styles = StyleSheet.create({
   actionBtn: {
     flex: 1,
   },
+  statsGrid: {
+    flexDirection: 'row',
+    marginTop: Spacing.lg,
+    gap: Spacing.xl,
+  },
+  statBox: {
+    alignItems: 'center',
+  },
+  statNum: {
+    fontSize: FontSize.lg,
+    fontWeight: '700',
+  },
+  statLbl: {
+    fontSize: FontSize.xs,
+    marginTop: 2,
+  },
   blockedContainer: {
     flex: 1,
     alignItems: 'center',
@@ -397,8 +496,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   tabsRow: {
-    flexDirection: 'row',
     marginTop: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
   },
   tab: {
     flex: 1,
@@ -410,7 +509,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   tabContent: {
-    padding: Spacing.lg,
+    paddingTop: Spacing.lg,
+    paddingHorizontal: Spacing.xl,
+    paddingBottom: Spacing.lg,
   },
   reviewCard: {
     marginBottom: Spacing.md,
@@ -438,6 +539,25 @@ const styles = StyleSheet.create({
   reviewText: {
     fontSize: FontSize.md,
     lineHeight: 20,
+  },
+  listCard: {
+    marginBottom: Spacing.md,
+  },
+  listName: {
+    fontSize: FontSize.md,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  listDescription: {
+    fontSize: FontSize.sm,
+    lineHeight: 18,
+    marginBottom: 6,
+  },
+  listMeta: {
+    fontSize: FontSize.sm,
+  },
+  sectionGap: {
+    height: Spacing.xxl,
   },
   emptyText: {
     fontSize: FontSize.md,

@@ -34,6 +34,7 @@ export function SegmentedTabs<T extends string>({
   onChange,
 }: SegmentedTabsProps<T>) {
   const { colors } = useTheme();
+  const [containerWidth, setContainerWidth] = React.useState(0);
   const activeIndex = Math.max(
     0,
     tabs.findIndex((t) => t.key === activeKey),
@@ -41,14 +42,18 @@ export function SegmentedTabs<T extends string>({
 
   const indicatorLeft = useSharedValue(activeIndex);
   const count = tabs.length;
+  const innerPadding = 4;
+  const indicatorWidth = containerWidth > 0
+    ? Math.max((containerWidth - innerPadding * 2) / count, 0)
+    : 0;
 
   React.useEffect(() => {
     indicatorLeft.value = withSpring(activeIndex, Springs.smooth);
   }, [activeIndex, indicatorLeft]);
 
   const indicatorStyle = useAnimatedStyle(() => ({
-    left: `${(indicatorLeft.value / count) * 100}%`,
-    width: `${100 / count}%`,
+    left: innerPadding + indicatorLeft.value * indicatorWidth,
+    width: indicatorWidth,
   }));
 
   const handlePress = (tab: SegmentedTab<T>) => {
@@ -59,17 +64,22 @@ export function SegmentedTabs<T extends string>({
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surfaceHighlight }]}>
+    <View
+      style={[styles.container, { backgroundColor: colors.surfaceHighlight }]}
+      onLayout={(event) => setContainerWidth(event.nativeEvent.layout.width)}
+    >
       {/* Sliding indicator */}
-      <Animated.View
-        style={[
-          styles.indicator,
-          { backgroundColor: colors.background },
-          Shadows.sm,
-          indicatorStyle,
-        ]}
-        pointerEvents="none"
-      />
+      {containerWidth > 0 ? (
+        <Animated.View
+          style={[
+            styles.indicator,
+            { backgroundColor: colors.background },
+            Shadows.sm,
+            indicatorStyle,
+          ]}
+          pointerEvents="none"
+        />
+      ) : null}
       {tabs.map((tab) => {
         const active = tab.key === activeKey;
         return (

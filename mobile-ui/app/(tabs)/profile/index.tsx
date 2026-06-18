@@ -318,7 +318,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
   },
   tabContent: {
-    padding: Spacing.lg,
+    paddingTop: Spacing.lg,
+    paddingHorizontal: Spacing.xl,
+    paddingBottom: Spacing.lg,
   },
   sectionGap: {
     height: Spacing.xxl,

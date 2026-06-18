@@ -15,13 +15,30 @@ namespace GGHub.Infrastructure.Services
             _context = context;
         }
 
-        public async Task<IEnumerable<ActivityDto>> GetUserActivityFeedAsync(string username, int limit = 20)
+        public async Task<IEnumerable<ActivityDto>> GetUserActivityFeedAsync(string username, int? currentUserId = null, int limit = 20)
         {
             var user = await _context.Users
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Username == username);
 
-            if (user == null) return Enumerable.Empty<ActivityDto>();
+            if (user == null || user.IsDeleted) return Enumerable.Empty<ActivityDto>();
+
+            var isOwner = currentUserId == user.Id;
+            var isFollowing = currentUserId.HasValue &&
+                              await _context.Follows.AnyAsync(f => f.FollowerId == currentUserId.Value && f.FolloweeId == user.Id);
+
+            if (!isOwner)
+            {
+                if (user.ProfileVisibility == ProfileVisibilitySetting.Private)
+                {
+                    return Enumerable.Empty<ActivityDto>();
+                }
+
+                if (user.ProfileVisibility == ProfileVisibilitySetting.Followers && !isFollowing)
+                {
+                    return Enumerable.Empty<ActivityDto>();
+                }
+            }
 
             // 1. REVIEWS (Son X adet)
             var reviews = await _context.Reviews
@@ -56,7 +73,11 @@ namespace GGHub.Infrastructure.Services
             // 2. LISTS  
             var lists = await _context.UserLists
                 .AsNoTracking()
-                .Where(l => l.UserId == user.Id && l.Visibility != ListVisibilitySetting.Private)
+                .Where(l => l.UserId == user.Id)
+                .Where(l =>
+                    isOwner ||
+                    l.Visibility == ListVisibilitySetting.Public ||
+                    (l.Visibility == ListVisibilitySetting.Followers && isFollowing))
                 .Include(l => l.UserListGames).ThenInclude(ulg => ulg.Game)
                 .OrderByDescending(l => l.CreatedAt)
                 .Take(limit)
