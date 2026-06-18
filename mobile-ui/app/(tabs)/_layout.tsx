@@ -119,6 +119,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="my-lists" options={{ title: messages.nav.myLists, ...hidden }} />
       <Tabs.Screen name="my-reports" options={{ title: messages.nav.myReports, ...hidden }} />
       <Tabs.Screen name="wishlist" options={{ title: messages.nav.wishlist, ...hidden }} />
+      <Tabs.Screen name="favorites" options={{ title: messages.nav.favorites, ...hidden }} />
 
       {/* Statik içerik */}
       <Tabs.Screen name="about" options={{ title: messages.nav.screenTitles.about, ...hidden }} />

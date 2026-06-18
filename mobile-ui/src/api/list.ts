@@ -115,6 +115,21 @@ export const checkWishlistStatus = (gameId: number) => {
     .then((res) => res.data);
 };
 
+// Favoriler (max 5). gameId = rawgId bekleniyor (backend GetOrCreateGameByRawgId).
+export const toggleFavorite = (gameId: number) => {
+  return axiosInstance
+    .post<{ isAdded: boolean; message: string }>(
+      `/user-lists/favorites/${gameId}`,
+    )
+    .then((res) => res.data);
+};
+
+export const checkFavoriteStatus = (gameId: number) => {
+  return axiosInstance
+    .get<{ isFavorite: boolean }>(`/user-lists/favorites/${gameId}/status`)
+    .then((res) => res.data);
+};
+
 export const getListsByUsername = async (
   username: string,
 ): Promise<UserList[]> => {

@@ -41,6 +41,7 @@ export const enUSMessages = {
         adminPanel: "Admin panel",
         profileSettings: "Profile settings",
         wishlist: "My wishlist",
+        favorites: "My favorites",
         myReports: "My reports",
         logout: "Log out",
         login: "Log in",
@@ -840,6 +841,14 @@ export const enUSMessages = {
         gghubRating: "GGHub Rating",
         removeAria: "Remove from wishlist",
         showMore: "Show More",
+    },
+    favoritesPage: {
+        title: "My Favorites",
+        description: "Your top games, up to 5. They show off on your profile.",
+        loadError: "There was an error loading your favorites.",
+        emptyTitle: "You have no favorite games yet.",
+        emptyDescription: "Open a game and tap the star to add it here (up to 5).",
+        removeAria: "Remove from favorites",
     },
     commentsSection: {
         title: "Comments ({count})",

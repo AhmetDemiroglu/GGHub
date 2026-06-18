@@ -11,6 +11,7 @@ import "dayjs/locale/tr";
 import { useQueryClient } from "@tanstack/react-query";
 import {
     Bell,
+    Crown,
     FileText,
     Gamepad2,
     Gift,
@@ -407,6 +408,12 @@ function SidebarInner({ isMobile }: { isMobile: boolean }) {
                                     <Link href={localizeHref("/wishlist")} className="flex cursor-pointer items-center" onClick={onLinkClick}>
                                         <Gift className="mr-2 h-4 w-4" />
                                         <span>{t("nav.wishlist")}</span>
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                    <Link href={localizeHref("/favorites")} className="flex cursor-pointer items-center" onClick={onLinkClick}>
+                                        <Crown className="mr-2 h-4 w-4" />
+                                        <span>{t("nav.favorites")}</span>
                                     </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem asChild>

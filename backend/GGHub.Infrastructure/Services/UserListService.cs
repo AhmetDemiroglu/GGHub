@@ -642,6 +642,7 @@ namespace GGHub.Infrastructure.Services
                         .Select(ulg => new ListGamePreviewDto
                         {
                             Id = ulg.Game.Id,
+                            RawgId = ulg.Game.RawgId,
                             Name = ulg.Game.Name,
                             Slug = ulg.Game.Slug,
                             CoverImage = ulg.Game.CoverImage ?? ulg.Game.BackgroundImage
@@ -734,6 +735,7 @@ namespace GGHub.Infrastructure.Services
                     .Select(ulg => new ListGamePreviewDto
                     {
                         Id = ulg.Game.Id,
+                        RawgId = ulg.Game.RawgId,
                         Name = ulg.Game.Name,
                         Slug = ulg.Game.Slug,
                         CoverImage = ulg.Game.CoverImage ?? ulg.Game.BackgroundImage

@@ -400,7 +400,8 @@ export function AppSidebar({ children }: AppSidebarProps) {
             <View style={styles.navGroup}>
               <NavRow icon="bookmark-outline" label={nav.myLists} onPress={() => navigate('/my-lists')} colors={colors} />
               <NavRow icon="heart-outline" label={nav.wishlist} onPress={() => navigate('/wishlist')} colors={colors} />
-              <NavRow icon="star-outline" label={nav.myReviews} onPress={() => navigate('/reviews/user/me')} colors={colors} />
+              <NavRow icon="star-outline" label={nav.favorites} onPress={() => navigate('/favorites')} colors={colors} />
+              <NavRow icon="chatbox-ellipses-outline" label={nav.myReviews} onPress={() => navigate('/reviews/user/me')} colors={colors} />
               <NavRow icon="flag-outline" label={nav.myReports} onPress={() => navigate('/my-reports')} colors={colors} />
               {user?.role === 'Admin' ? (
                 <NavRow icon="shield-outline" label={nav.adminPanel} onPress={() => navigate('/(admin)/dashboard')} colors={colors} />

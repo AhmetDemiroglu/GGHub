@@ -3,13 +3,14 @@ import {
   View,
   Text,
   Pressable,
-  Modal,
   FlatList,
   ActivityIndicator,
   StyleSheet,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { BottomSheet } from '@/src/components/common/BottomSheet';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useToast } from '@/src/components/common/Toast';
@@ -29,6 +30,7 @@ export function AddToListModal({ visible, onClose, gameId }: AddToListModalProps
   const { messages } = useLocale();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
+  const { height } = useWindowDimensions();
 
   const { data: lists, isLoading } = useQuery({
     queryKey: ['myLists', gameId],
@@ -75,75 +77,46 @@ export function AddToListModal({ visible, onClose, gameId }: AddToListModalProps
           {item.gameCount} {messages.home.stats.games.toLowerCase?.() ?? 'games'}
         </Text>
       </View>
-      <View style={[styles.checkbox, { borderColor: item.containsCurrentGame ? colors.primary : colors.border, backgroundColor: item.containsCurrentGame ? colors.primary : 'transparent' }]}>
+      <View
+        style={[
+          styles.checkbox,
+          {
+            borderColor: item.containsCurrentGame ? colors.primary : colors.border,
+            backgroundColor: item.containsCurrentGame ? colors.primary : 'transparent',
+          },
+        ]}
+      >
         {item.containsCurrentGame && <Ionicons name="checkmark" size={16} color="#ffffff" />}
       </View>
     </Pressable>
   );
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.overlay} onPress={onClose}>
-        <View style={[styles.content, { backgroundColor: colors.surface }]}>
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.text }]}>
-              {messages.games.addToList}
-            </Text>
-            <Pressable onPress={onClose}>
-              <Ionicons name="close" size={24} color={colors.text} />
-            </Pressable>
-          </View>
-
-          {isLoading ? (
-            <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
-          ) : !lists || lists.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="list-outline" size={48} color={colors.textMuted} />
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>
-                {messages.games.noLists}
-              </Text>
-              <Text style={[styles.emptyDescription, { color: colors.textMuted }]}>
-                {messages.games.noListsDescription}
-              </Text>
-            </View>
-          ) : (
-            <FlatList
-              data={lists}
-              renderItem={renderItem}
-              keyExtractor={(item) => item.id.toString()}
-              showsVerticalScrollIndicator={false}
-            />
-          )}
+    <BottomSheet visible={visible} onClose={onClose} title={messages.games.addToList}>
+      {isLoading ? (
+        <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
+      ) : !lists || lists.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Ionicons name="list-outline" size={48} color={colors.textMuted} />
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>{messages.games.noLists}</Text>
+          <Text style={[styles.emptyDescription, { color: colors.textMuted }]}>
+            {messages.games.noListsDescription}
+          </Text>
         </View>
-      </Pressable>
-    </Modal>
+      ) : (
+        <FlatList
+          data={lists}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id.toString()}
+          showsVerticalScrollIndicator={false}
+          style={{ maxHeight: height * 0.5 }}
+        />
+      )}
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  content: {
-    borderTopLeftRadius: BorderRadius.xl,
-    borderTopRightRadius: BorderRadius.xl,
-    maxHeight: '70%',
-    paddingBottom: Spacing.xxxl,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: Spacing.lg,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
-  },
-  title: {
-    fontSize: FontSize.xl,
-    fontWeight: '700',
-  },
   loader: {
     paddingVertical: Spacing.xxxl,
   },
@@ -151,7 +124,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.lg,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },

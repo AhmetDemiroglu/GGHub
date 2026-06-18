@@ -41,6 +41,7 @@ export const trMessages = {
         adminPanel: "Admin paneli",
         profileSettings: "Profil yönetimi",
         wishlist: "İstek listem",
+        favorites: "Favorilerim",
         myReports: "Raporlarım",
         logout: "Çıkış yap",
         login: "Giriş yap",
@@ -839,6 +840,14 @@ export const trMessages = {
         gghubRating: "GGHub Puanı",
         removeAria: "İstek listesinden kaldır",
         showMore: "Daha Fazla Göster",
+    },
+    favoritesPage: {
+        title: "Favorilerim",
+        description: "En sevdiğin oyunlar, en fazla 5 tane. Profilinde öne çıkar.",
+        loadError: "Favorilerin yüklenirken bir hata oluştu.",
+        emptyTitle: "Henüz favori oyunun yok.",
+        emptyDescription: "Bir oyunu aç ve yıldıza dokunarak ekle (en fazla 5).",
+        removeAria: "Favorilerden çıkar",
     },
     commentsSection: {
         title: "Yorumlar ({count})",

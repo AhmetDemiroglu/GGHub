@@ -51,6 +51,7 @@ export interface UserListForUpdate {
 
 export interface ListGamePreview {
   id: number;
+  rawgId: number;
   name: string;
   slug: string;
   coverImage: string | null;

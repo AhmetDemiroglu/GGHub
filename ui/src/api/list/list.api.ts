@@ -72,3 +72,7 @@ export const getFavoritesList = async (username: string): Promise<UserList | nul
     const response = await axiosInstance.get<UserList | null>(`/user-lists/user/${username}/favorites`);
     return response.data;
 };
+
+export const toggleFavorite = (gameId: number) => {
+    return axiosInstance.post<{ isAdded: boolean; message: string }>(`/user-lists/favorites/${gameId}`).then((res) => res.data);
+};

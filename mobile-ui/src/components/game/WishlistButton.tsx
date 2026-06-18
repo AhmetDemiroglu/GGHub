@@ -13,6 +13,8 @@ import Animated, {
   Extrapolation,
 } from 'react-native-reanimated';
 import { useTheme } from '@/src/hooks/use-theme';
+import { useLocale } from '@/src/hooks/use-locale';
+import { useToast } from '@/src/components/common/Toast';
 import { useRequireAuth } from '@/src/contexts/auth-prompt-context';
 import { Spacing, BorderRadius, Springs, Shadows } from '@/src/constants/theme';
 import * as haptics from '@/src/utils/haptics';
@@ -29,6 +31,8 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export function WishlistButton({ gameId, isWishlisted, gameSlug, size = 24 }: WishlistButtonProps) {
   const { colors } = useTheme();
+  const { messages } = useLocale();
+  const { showToast } = useToast();
   const requireAuth = useRequireAuth();
   const queryClient = useQueryClient();
   const [localWishlisted, setLocalWishlisted] = useState(isWishlisted);
@@ -63,11 +67,13 @@ export function WishlistButton({ gameId, isWishlisted, gameSlug, size = 24 }: Wi
     onSuccess: (data) => {
       setLocalWishlisted(data.isAdded);
       queryClient.invalidateQueries({ queryKey: ['game', gameSlug] });
-      queryClient.invalidateQueries({ queryKey: ['wishlist'] });
+      queryClient.invalidateQueries({ queryKey: ['myWishlist'] });
+      showToast('success', data.message);
     },
     onError: () => {
       setLocalWishlisted(isWishlisted);
       heartPop.value = withSpring(1, Springs.smooth);
+      showToast('error', messages.common.genericError);
     },
   });
 

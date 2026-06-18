@@ -31,6 +31,7 @@ import { ReviewModal } from '@/src/components/game/ReviewModal';
 import { AddToListModal } from '@/src/components/game/AddToListModal';
 import { SimilarGames } from '@/src/components/game/SimilarGames';
 import { WishlistButton } from '@/src/components/game/WishlistButton';
+import { FavoriteButton } from '@/src/components/game/FavoriteButton';
 import { SwipeBackEdge } from '@/src/components/common/SwipeBackEdge';
 import { useRequireAuth } from '@/src/contexts/auth-prompt-context';
 import type { Game } from '@/src/models/game';
@@ -153,11 +154,14 @@ export default function GameDetailScreen() {
         {/* Action buttons */}
         <View style={styles.actionsRow}>
           {isAuthenticated && (
-            <WishlistButton
-              gameId={game.id}
-              isWishlisted={game.isInWishlist ?? false}
-              gameSlug={game.slug}
-            />
+            <>
+              <WishlistButton
+                gameId={game.rawgId}
+                isWishlisted={game.isInWishlist ?? false}
+                gameSlug={game.slug}
+              />
+              <FavoriteButton gameId={game.rawgId} />
+            </>
           )}
           {isAuthenticated && (
             <Pressable
@@ -253,7 +257,7 @@ export default function GameDetailScreen() {
       <AddToListModal
         visible={listModalVisible}
         onClose={() => setListModalVisible(false)}
-        gameId={game.id}
+        gameId={game.rawgId}
       />
 
       <SwipeBackEdge />
