@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
+  Image,
   ScrollView,
   TouchableOpacity,
   RefreshControl,
@@ -30,6 +31,7 @@ import { getUserStats } from '@/src/api/stats';
 import { getReviewsByUser } from '@/src/api/review';
 import { getMyLists } from '@/src/api/list';
 import { getPersonalizedFeed } from '@/src/api/activity';
+import { getImageUrl } from '@/src/utils/image';
 import type { Review } from '@/src/models/review';
 import type { UserList } from '@/src/models/list';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
@@ -119,42 +121,76 @@ export default function OwnProfileScreen() {
         disabled={!item.game?.slug}
       >
         <Card style={styles.reviewCard}>
-          <View style={styles.reviewHeader}>
-            <Text style={[styles.reviewGame, { color: colors.text }]}>{item.game?.name}</Text>
-            <View style={styles.ratingBadge}>
-              <Ionicons name="star" size={14} color={colors.star} />
-              <Text style={[styles.ratingText, { color: colors.text }]}>{item.rating}/10</Text>
+          <View style={styles.reviewRow}>
+            {getImageUrl(item.game?.coverImage ?? item.game?.backgroundImage) ? (
+              <Image
+                source={{ uri: getImageUrl(item.game?.coverImage ?? item.game?.backgroundImage)! }}
+                style={styles.cardImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={[styles.cardImageFallback, { backgroundColor: colors.surfaceHighlight }]}>
+                <Ionicons name="game-controller-outline" size={20} color={colors.textMuted} />
+              </View>
+            )}
+            <View style={styles.cardBody}>
+              <View style={styles.reviewHeader}>
+                <Text style={[styles.reviewGame, { color: colors.text }]} numberOfLines={1}>
+                  {item.game?.name}
+                </Text>
+                <View style={styles.ratingBadge}>
+                  <Ionicons name="star" size={14} color={colors.star} />
+                  <Text style={[styles.ratingText, { color: colors.text }]}>{item.rating}/10</Text>
+                </View>
+              </View>
+              <Text style={[styles.reviewText, { color: colors.textSecondary }]} numberOfLines={3}>
+                {item.content}
+              </Text>
             </View>
           </View>
-          <Text style={[styles.reviewText, { color: colors.textSecondary }]} numberOfLines={3}>
-            {item.content}
-          </Text>
         </Card>
       </TouchableOpacity>
     );
   };
 
-  const renderList = ({ item, index }: { item: UserList; index: number }) => (
-    <TouchableOpacity
-      key={`${item.id}-${index}`}
-      onPress={() => router.push(`/lists/${item.id}`)}
-      activeOpacity={0.7}
-    >
-      <Card style={styles.listCard}>
-        <Text style={[styles.listName, { color: colors.text }]}>{item.name}</Text>
-        <Text style={[styles.listMeta, { color: colors.textSecondary }]}>
-          {item.gameCount} {af.gamesLabel} · {item.followerCount} {h.followersLabel}
-        </Text>
-      </Card>
-    </TouchableOpacity>
-  );
+  const renderList = ({ item, index }: { item: UserList; index: number }) => {
+    const listImage = getImageUrl(item.previewGames?.[0]?.coverImage ?? item.firstGameImageUrls?.[0]);
+
+    return (
+      <TouchableOpacity
+        key={`${item.id}-${index}`}
+        onPress={() => router.push(`/lists/${item.id}`)}
+        activeOpacity={0.7}
+      >
+        <Card style={styles.listCard}>
+          <View style={styles.listRow}>
+            {listImage ? (
+              <Image source={{ uri: listImage }} style={styles.cardImage} resizeMode="cover" />
+            ) : (
+              <View style={[styles.cardImageFallback, { backgroundColor: colors.surfaceHighlight }]}>
+                <Ionicons name="list-outline" size={20} color={colors.textMuted} />
+              </View>
+            )}
+            <View style={styles.cardBody}>
+              <Text style={[styles.listName, { color: colors.text }]} numberOfLines={1}>
+                {item.name}
+              </Text>
+              <Text style={[styles.listMeta, { color: colors.textSecondary }]}>
+                {item.gameCount} {af.gamesLabel} · {item.followerCount} {h.followersLabel}
+              </Text>
+            </View>
+          </View>
+        </Card>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <ScreenWrapper noPadding safeArea={false} swipeBackEnabled={false}>
       <AppTopBar title={messages.nav.profile} />
 
       <ScrollView
-        contentContainerStyle={{ paddingBottom: tabBarHeight + Spacing.md }}
+        contentContainerStyle={{ paddingBottom: tabBarHeight + Spacing.xxxl }}
         refreshControl={
           <RefreshControl refreshing={profileQuery.isRefetching} onRefresh={onRefresh} />
         }
@@ -328,6 +364,10 @@ const styles = StyleSheet.create({
   reviewCard: {
     marginBottom: Spacing.md,
   },
+  reviewRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
   reviewHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -354,6 +394,26 @@ const styles = StyleSheet.create({
   },
   listCard: {
     marginBottom: Spacing.md,
+  },
+  listRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  cardImage: {
+    width: 58,
+    height: 58,
+    borderRadius: BorderRadius.md,
+  },
+  cardImageFallback: {
+    width: 58,
+    height: 58,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardBody: {
+    flex: 1,
   },
   listName: {
     fontSize: FontSize.md,

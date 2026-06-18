@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@/src/components/common/Avatar';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { ActivityType, type Activity } from '@/src/models/activity';
+import { getImageUrl } from '@/src/utils/image';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 
 interface ActivityFeedListProps {
@@ -72,15 +73,43 @@ export function ActivityFeedList({ activities }: ActivityFeedListProps) {
     }
   };
 
+  const getImage = (item: Activity): string | undefined => {
+    switch (item.type) {
+      case ActivityType.Review:
+        return getImageUrl(item.reviewData?.game?.coverImage ?? item.reviewData?.game?.backgroundImage);
+      case ActivityType.ListCreated:
+        return item.listData?.previewImages?.[0] ? getImageUrl(item.listData.previewImages[0]) : undefined;
+      case ActivityType.FollowUser:
+        return getImageUrl(item.followData?.profileImageUrl);
+      default:
+        return undefined;
+    }
+  };
+
   const renderItem = ({ item }: { item: Activity }) => {
     const iconName = ACTIVITY_ICONS[item.type] || 'ellipse-outline';
     const description = getDescription(item);
     const targetName = getTargetName(item);
+    const imageUri = getImage(item);
+    const isUserImage = item.type === ActivityType.FollowUser;
 
     return (
       <View style={[styles.activityRow, { borderBottomColor: colors.border }]}>
-        <View style={[styles.iconWrapper, { backgroundColor: colors.surfaceHighlight }]}>
-          <Ionicons name={iconName} size={18} color={colors.primary} />
+        <View style={styles.mediaWrap}>
+          {imageUri ? (
+            isUserImage ? (
+              <Avatar uri={imageUri} name={targetName ?? ''} size={44} />
+            ) : (
+              <Image source={{ uri: imageUri }} style={styles.activityImage} resizeMode="cover" />
+            )
+          ) : (
+            <View style={[styles.iconWrapper, { backgroundColor: colors.surfaceHighlight }]}>
+              <Ionicons name={iconName} size={18} color={colors.primary} />
+            </View>
+          )}
+          <View style={[styles.typeBadge, { backgroundColor: colors.card }]}>
+            <Ionicons name={iconName} size={12} color={colors.primary} />
+          </View>
         </View>
         <View style={styles.activityContent}>
           <Text style={[styles.activityText, { color: colors.text }]} numberOfLines={2}>
@@ -124,10 +153,30 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: Spacing.md,
   },
+  mediaWrap: {
+    position: 'relative',
+    width: 44,
+    height: 44,
+  },
+  activityImage: {
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.md,
+  },
   iconWrapper: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  typeBadge: {
+    position: 'absolute',
+    right: -4,
+    bottom: -4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
