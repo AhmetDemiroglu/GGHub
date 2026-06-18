@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -78,6 +78,8 @@ export default function ListsTabScreen() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<ListCategory | undefined>(undefined);
   const [discoverPage, setDiscoverPage] = useState(1);
+  const [discoverLists, setDiscoverLists] = useState<UserListPublic[]>([]);
+  const [discoverTotal, setDiscoverTotal] = useState(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pageSize = APP_CONFIG.paginationDefaults.pageSize;
 
@@ -91,25 +93,38 @@ export default function ListsTabScreen() {
   };
 
   const {
-    data: discoverData,
     isLoading: discoverLoading,
+    isFetching: discoverFetching,
     isError: discoverError,
-    refetch: discoverRefetch,
   } = useQuery({
     queryKey: ['publicLists', debouncedSearch, selectedCategory, discoverPage],
-    queryFn: () =>
-      getPublicLists({
+    queryFn: async () => {
+      const result = await getPublicLists({
         page: discoverPage,
         pageSize,
         searchTerm: debouncedSearch || undefined,
         category: selectedCategory,
-      }),
+      });
+
+      setDiscoverTotal(result.totalCount);
+      setDiscoverLists((current) => {
+        if (discoverPage === 1) return result.items;
+
+        const existingIds = new Set(current.map((item) => item.id));
+        const newItems = result.items.filter((item) => !existingIds.has(item.id));
+        return [...current, ...newItems];
+      });
+
+      return result;
+    },
     enabled: rootTab === 'discover',
   });
 
   // ── Listelerim state'i ────────────────────────────────────────────────────
   const [mySubTab, setMySubTab] = useState<MySubTab>('my');
   const [followingPage, setFollowingPage] = useState(1);
+  const [followedLists, setFollowedLists] = useState<UserListPublic[]>([]);
+  const [followedTotal, setFollowedTotal] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingList, setEditingList] = useState<UserList | null>(null);
   const requireAuth = useRequireAuth();
@@ -120,20 +135,33 @@ export default function ListsTabScreen() {
     enabled: isAuthenticated && rootTab === 'my',
   });
 
-  const { data: followedData, isLoading: followedLoading } = useQuery({
+  const { isLoading: followedLoading, isFetching: followedFetching } = useQuery({
     queryKey: ['followedLists', followingPage],
-    queryFn: () =>
-      getFollowedListsByMe({ page: followingPage, pageSize }),
+    queryFn: async () => {
+      const result = await getFollowedListsByMe({ page: followingPage, pageSize });
+
+      setFollowedTotal(result.totalCount);
+      setFollowedLists((current) => {
+        if (followingPage === 1) return result.items;
+
+        const existingIds = new Set(current.map((item) => item.id));
+        const newItems = result.items.filter((item) => !existingIds.has(item.id));
+        return [...current, ...newItems];
+      });
+
+      return result;
+    },
     enabled: isAuthenticated && rootTab === 'my' && mySubTab === 'following',
   });
 
-  const discoverLists = discoverData?.items ?? [];
-  const discoverTotal = discoverData?.totalCount ?? 0;
   const hasMoreDiscover = discoverLists.length < discoverTotal;
 
   const customLists = (myLists ?? []).filter((l) => l.type === UserListType.Custom);
-  const followedLists = followedData?.items ?? [];
-  const hasMoreFollowed = followedLists.length < (followedData?.totalCount ?? 0);
+  const hasMoreFollowed = followedLists.length < followedTotal;
+
+  useEffect(() => {
+    setDiscoverPage(1);
+  }, [debouncedSearch, selectedCategory]);
 
   // ── Render helpers ────────────────────────────────────────────────────────
 
@@ -278,7 +306,7 @@ export default function ListsTabScreen() {
 
       {/* ── Keşfet ── */}
       {rootTab === 'discover' ? (
-        discoverLoading && discoverPage === 1 ? (
+        discoverLoading && discoverPage === 1 && discoverLists.length === 0 ? (
           <LoadingScreen />
         ) : (
           <FlatList
@@ -287,19 +315,19 @@ export default function ListsTabScreen() {
             renderItem={renderDiscoverItem}
             ListHeaderComponent={DiscoverHeader}
             ListEmptyComponent={
-              discoverError ? (
+              discoverFetching ? null : discoverError ? (
                 <EmptyState icon="alert-circle-outline" title={messages.lists.loadError} />
               ) : (
                 <EmptyState icon="list-outline" title={messages.lists.noListsForCriteria} />
               )
             }
             ListFooterComponent={
-              discoverLoading && discoverPage > 1 ? (
+              discoverFetching && discoverPage > 1 ? (
                 <ActivityIndicator size="small" color={colors.primary} style={styles.footerLoader} />
               ) : null
             }
             onEndReached={() => {
-              if (hasMoreDiscover && !discoverLoading) setDiscoverPage((p) => p + 1);
+              if (hasMoreDiscover && !discoverFetching) setDiscoverPage((p) => p + 1);
             }}
             onEndReachedThreshold={0.5}
             contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + Spacing.md }]}
@@ -359,7 +387,7 @@ export default function ListsTabScreen() {
                 />
               )
             ) : (
-              followedLoading && followingPage === 1 ? (
+              followedLoading && followingPage === 1 && followedLists.length === 0 ? (
                 <LoadingScreen />
               ) : (
                 <FlatList
@@ -368,15 +396,17 @@ export default function ListsTabScreen() {
                   renderItem={renderFollowedItem}
                   contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + Spacing.md }]}
                   ListEmptyComponent={
-                    <EmptyState icon="heart-outline" title={messages.lists.noFollowedLists} />
+                    followedFetching ? null : (
+                      <EmptyState icon="heart-outline" title={messages.lists.noFollowedLists} />
+                    )
                   }
                   ListFooterComponent={
-                    followedLoading && followingPage > 1 ? (
+                    followedFetching && followingPage > 1 ? (
                       <ActivityIndicator size="small" color={colors.primary} style={styles.footerLoader} />
                     ) : null
                   }
                   onEndReached={() => {
-                    if (hasMoreFollowed && !followedLoading) setFollowingPage((p) => p + 1);
+                    if (hasMoreFollowed && !followedFetching) setFollowingPage((p) => p + 1);
                   }}
                   onEndReachedThreshold={0.5}
                 />

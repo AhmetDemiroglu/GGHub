@@ -34,6 +34,7 @@ import { WishlistButton } from '@/src/components/game/WishlistButton';
 import { FavoriteButton } from '@/src/components/game/FavoriteButton';
 import { SwipeBackEdge } from '@/src/components/common/SwipeBackEdge';
 import { useRequireAuth } from '@/src/contexts/auth-prompt-context';
+import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import type { Game } from '@/src/models/game';
 
 export default function GameDetailScreen() {
@@ -45,6 +46,7 @@ export default function GameDetailScreen() {
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
   const requireAuth = useRequireAuth();
+  const tabBarHeight = useTabBarHeight();
 
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
   const [listModalVisible, setListModalVisible] = useState(false);
@@ -140,6 +142,7 @@ export default function GameDetailScreen() {
         showsVerticalScrollIndicator={false}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
+        contentContainerStyle={{ paddingBottom: tabBarHeight + Spacing.xxxl }}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
