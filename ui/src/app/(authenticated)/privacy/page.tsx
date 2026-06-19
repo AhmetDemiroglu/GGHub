@@ -1,6 +1,6 @@
 "use client";
 
-import { Shield, Info, Database, Target, Cookie, Share2, Clock, UserCheck, Lock, RefreshCw, Mail, Check, Trash2 } from "lucide-react";
+import { Shield, Info, Database, Target, Cookie, Share2, Clock, UserCheck, Lock, RefreshCw, Mail, Check, Trash2, Globe, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { AppDownloadCTA } from "@core/components/other/public/app-cta";
 import { useCurrentLocale } from "@/core/contexts/locale-context";
@@ -29,10 +29,20 @@ const COPY = {
         contactLead: "For privacy questions or requests, write to us:",
         deletion: {
             title: "Account & Data Deletion",
-            lead: "You can delete your account and all associated data at any time:",
-            web: "On the web — sign in at gghub.social, open your Profile, scroll to the “Danger Zone”, and choose “Delete my account”. You can also export a copy of your data there.",
-            app: "In the app — go to Profile → Settings → “Danger Zone” → “Delete my account”.",
-            note: "Deletion permanently anonymizes your account and data and cannot be undone.",
+            lead: "You can delete your account and all your data yourself at any time — on the web or in the app:",
+            webLabel: "On the website",
+            webSteps: [
+                "Sign in at gghub.social and open your Profile page",
+                "Scroll down to the “Danger Zone” section",
+                "Click “Delete my account” and confirm (you can also download a copy first with “Export your data”)",
+            ],
+            appLabel: "In the mobile app",
+            appSteps: [
+                "Go to Profile → Settings",
+                "Open the “Danger Zone” section",
+                "Tap “Delete my account” and confirm",
+            ],
+            note: "Deletion permanently anonymizes your account and all data and cannot be undone. Everything is removed except records we are legally required to keep.",
             moreBefore: "For full step-by-step details, see our ",
             moreLink: "data deletion page",
             moreAfter: ".",
@@ -72,7 +82,6 @@ const COPY = {
                     "Request deletion of your account and data",
                     "Learn the purposes your data is used for",
                 ],
-                after: "You can also delete your account yourself in-app via Profile, Settings.",
             },
             { title: "8. Security", lead: "Reasonable technical and administrative measures are applied to protect your data against unauthorized access. However, no transmission over the internet can be guaranteed to be completely secure." },
             { title: "9. Policy Changes", lead: "This privacy policy may be updated from time to time. A change in the date at the top means the new version is in effect." },
@@ -86,10 +95,20 @@ const COPY = {
         contactLead: "Gizlilikle ilgili soruların veya taleplerin için bize yaz:",
         deletion: {
             title: "Hesap ve Veri Silme",
-            lead: "Hesabını ve ona bağlı tüm verileri istediğin zaman silebilirsin:",
-            web: "Web'de — gghub.social'da giriş yap, Profil sayfanı aç, “Tehlikeli Bölge” bölümüne in ve “Hesabımı Sil”i seç. Verilerinin bir kopyasını da buradan dışa aktarabilirsin.",
-            app: "Uygulamada — Profil → Ayarlar → “Tehlikeli Alan” → “Hesabımı Sil” adımını izle.",
-            note: "Silme işlemi hesabını ve verilerini kalıcı olarak anonimleştirir ve geri alınamaz.",
+            lead: "Hesabını ve tüm verilerini istediğin zaman, hem web'den hem uygulamadan kendin silebilirsin:",
+            webLabel: "Web sitesinde",
+            webSteps: [
+                "gghub.social'da giriş yap ve Profil sayfanı aç",
+                "“Tehlikeli Bölge” bölümüne in",
+                "“Hesabımı Sil”e tıkla ve onayla (istersen önce “Verilerini Dışa Aktar” ile bir kopya indir)",
+            ],
+            appLabel: "Mobil uygulamada",
+            appSteps: [
+                "Profil → Ayarlar adımına git",
+                "“Tehlikeli Alan” bölümünü aç",
+                "“Hesabımı Sil”e dokun ve onayla",
+            ],
+            note: "Silme işlemi hesabını ve tüm verilerini kalıcı olarak anonimleştirir; geri alınamaz. Yasal olarak saklanması zorunlu kayıtlar hariç her şey silinir.",
             moreBefore: "Adım adım ayrıntılar için ",
             moreLink: "veri silme sayfamıza",
             moreAfter: " göz at.",
@@ -129,7 +148,6 @@ const COPY = {
                     "Hesabının ve verilerinin silinmesini talep etme",
                     "Verilerinin hangi amaçlarla kullanıldığını öğrenme",
                 ],
-                after: "Hesabını uygulama içinden Profil, Ayarlar adımıyla kendin de silebilirsin.",
             },
             { title: "8. Güvenlik", lead: "Verilerinin yetkisiz erişime karşı korunması için makul teknik ve idari tedbirler uygulanır. Ancak internet üzerinden yapılan hiçbir aktarımın tamamen güvenli olduğu garanti edilemez." },
             { title: "9. Politika Değişiklikleri", lead: "Bu gizlilik politikası zaman zaman güncellenebilir. Sayfanın üstündeki tarihin değişmesi, yeni sürümün yürürlükte olduğu anlamına gelir." },
@@ -168,27 +186,39 @@ export default function PrivacyPage() {
                         </div>
                         <h2 className="text-base font-semibold tracking-tight">{t.deletion.title}</h2>
                     </div>
-                    <div className="mt-4 space-y-3 text-sm leading-relaxed text-muted-foreground">
-                        <p>{t.deletion.lead}</p>
-                        <ul className="space-y-2">
-                            <li className="flex items-start gap-2.5">
-                                <Check className="mt-0.5 h-4 w-4 shrink-0 text-rose-400/80" />
-                                <span>{t.deletion.web}</span>
-                            </li>
-                            <li className="flex items-start gap-2.5">
-                                <Check className="mt-0.5 h-4 w-4 shrink-0 text-rose-400/80" />
-                                <span>{t.deletion.app}</span>
-                            </li>
-                        </ul>
-                        <p className="font-medium text-foreground/80">{t.deletion.note}</p>
-                        <p>
-                            {t.deletion.moreBefore}
-                            <Link href={buildLocalizedPathname("/data-deletion", locale)} className="font-medium text-primary hover:underline">
-                                {t.deletion.moreLink}
-                            </Link>
-                            {t.deletion.moreAfter}
-                        </p>
+                    <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{t.deletion.lead}</p>
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                        <div className="rounded-xl border border-border/50 bg-card/40 p-4">
+                            <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground/90">
+                                <Globe className="h-4 w-4 text-rose-400" />
+                                {t.deletion.webLabel}
+                            </div>
+                            <ol className="list-decimal space-y-1.5 pl-5 text-sm leading-relaxed text-muted-foreground marker:text-rose-400/70">
+                                {t.deletion.webSteps.map((s) => (
+                                    <li key={s}>{s}</li>
+                                ))}
+                            </ol>
+                        </div>
+                        <div className="rounded-xl border border-border/50 bg-card/40 p-4">
+                            <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground/90">
+                                <Smartphone className="h-4 w-4 text-rose-400" />
+                                {t.deletion.appLabel}
+                            </div>
+                            <ol className="list-decimal space-y-1.5 pl-5 text-sm leading-relaxed text-muted-foreground marker:text-rose-400/70">
+                                {t.deletion.appSteps.map((s) => (
+                                    <li key={s}>{s}</li>
+                                ))}
+                            </ol>
+                        </div>
                     </div>
+                    <p className="mt-4 text-sm font-medium leading-relaxed text-foreground/80">{t.deletion.note}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                        {t.deletion.moreBefore}
+                        <Link href={buildLocalizedPathname("/data-deletion", locale)} className="font-medium text-primary hover:underline">
+                            {t.deletion.moreLink}
+                        </Link>
+                        {t.deletion.moreAfter}
+                    </p>
                 </section>
 
                 {/* Sections */}
