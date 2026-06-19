@@ -6,7 +6,7 @@
 
 **Durum:** Kod tarafı (izin temizliği, native manifest, Google girişi Android, hesap silme web sayfası) **TAMAMLANDI**. Kalan: keystore + SHA, Google Cloud Android client, Play Console başvurusu (bu belgedeki 👤/🤝 adımlar).
 
-> ⚠️ **EN KRİTİK ŞEY — ZAMAN:** Hesabın **kişisel** olduğu için, production'a başvurmadan önce **en az 12 testçiyle 14 gün KESİNTİSİZ kapalı test** yapman zorunlu (Google kuralı, Kasım 2023 sonrası kişisel hesaplar). 14 günlük sayaç ancak AAB kapalı teste yüklenip 12 testçi opt-in olunca başlar. **Bu yüzden öncelik: bir an önce imzalı AAB üretip kapalı teste yüklemek ve testçileri davet etmek.** (Bkz. Bölüm 9.)
+> ✅ **İYİ HABER — 14 GÜNLÜK ZORUNLU TEST MUHTEMELEN GEREKMİYOR:** 14 gün/12 testçi kapalı test kuralı, kişisel bir hesabın **ilk kez production erişimi** almasıyla ilgilidir. Senin hesabında (**SeptimusLab**) zaten **production'da yayınlanmış uygulamalar var** → production erişimin **açık**. Bu yüzden GGHub'ı büyük ihtimalle **doğrudan production'a** (normal uygulama incelemesiyle) gönderebiliriz; zorunlu 14 günü beklemeden. **Konsolda teyit:** uygulamayı oluşturup Production track'ine gittiğimizde "Apply for production access" gibi bir engel ÇIKMIYORSA, erişim açıktır ve doğrudan release yapabiliriz. (Yine de **internal testing** ile kendi smoke testimizi yapmak akıllıca — Bölüm 7C — ama zorunlu değil.)
 
 ---
 
@@ -46,18 +46,19 @@
 
 ---
 
-## 2. Kritik Zaman Çizelgesi (kişisel hesap)
+## 2. Kritik Zaman Çizelgesi (hesabın production erişimli)
 
 ```
-Gün 0    : Play Console hesabı hazır + imzalı AAB üret + INTERNAL test'e yükle → kendin dene (Google girişi dahil)
-Gün 0-1  : CLOSED testing track aç + AAB yükle + 12+ testçiyi davet et → testçiler opt-in + kurar
-Gün 1    : ⏱️ 14 GÜNLÜK SAYAÇ BAŞLAR (12 testçi opt-in olduğu an)
-... bu sürede: store listing + Data safety + içerik derecelendirme formlarını doldur (Bölüm 8) ...
-Gün 15   : "Production access başvurusu" butonu açılır → formu doldur → Google inceler (birkaç gün)
-Gün 18+  : Onay → production'a release → mağazada görünür
+Adım 1 : Keystore üret + SHA çıkar (Bölüm 4)
+Adım 2 : Google Cloud Android OAuth client(ler)i (paket + SHA) ekle (Bölüm 5)
+Adım 3 : prebuild + Android Studio ile imzalı AAB üret (Bölüm 6)
+Adım 4 : Play'de uygulama oluştur + App Signing SHA'yı al → Google Cloud'a ekle (Bölüm 7)
+Adım 5 : Internal testing'e yükle → kendin dene (Google girişi dahil) (Bölüm 7C)
+Adım 6 : Store listing + Data safety + içerik derecelendirme formları (Bölüm 8)
+Adım 7 : Production'a release → Google incelemesi (birkaç gün) → mağazada (Bölüm 10)
 ```
 
-**Çıkarım:** En geç Gün 0-1'de kapalı testi başlatmazsak yayın gecikir. Formlar (Bölüm 8) 14 günü beklerken doldurulabilir.
+**Çıkarım:** 14 günlük zorunlu kapalı testi (muhtemelen) beklemeyeceğimiz için darboğaz, Google'ın **uygulama incelemesi** (birkaç gün). Formlar (Bölüm 8) build hazırlanırken paralel doldurulabilir.
 
 ---
 
@@ -233,9 +234,9 @@ nohup "/Applications/Android Studio.app/Contents/MacOS/studio" ~/Documents/SaaS/
 
 ---
 
-## 9. Kapalı Test (Closed testing) — 14 Günü Başlat (👤) ⏱️
+## 9. Kapalı Test (Closed testing) — SADECE konsol zorunlu tutarsa (👤)
 
-> 📌 **Bu bölüm production'a çıkmanın ön şartı.** Internal test 14 güne SAYMAZ; **Closed testing** sayar.
+> 📌 **Bu bölüm senin hesabında muhtemelen GEREKMİYOR** (production erişimin zaten açık — Bölüm 2). Sadece Bölüm 10'da Production track'inde "Apply for production access / 14-day closed test" engeliyle karşılaşırsan bu adımları uygula. Aksi halde Bölüm 7C (internal test) + Bölüm 10'a (production) geç.
 
 1. **Test and release → Testing → Closed testing → Create track** (veya "Alpha" hazır track'i kullan) → **Create new release**.
 2. Aynı AAB'yi yükle (Internal'daki build'i "promote" da edebilirsin) → Save → Review → **Start rollout to Closed testing**.
