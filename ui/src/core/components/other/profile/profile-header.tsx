@@ -154,19 +154,19 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
     if (isBlockRelationship && !isOwnProfile) {
         return (
             <div className="w-full rounded-lg overflow-hidden bg-card text-card-foreground shadow-md">
-                <div className="aspect-[3/1] w-full relative">
+                <div className="h-28 md:h-32 w-full relative">
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-purple-500/20 to-blue-500/30" />
                     <div className="absolute inset-0 bg-background/40" />
                 </div>
 
                 <div className="p-4 md:p-6">
-                    <div className="flex flex-col sm:flex-row justify-between sm:items-start -mt-20 md:-mt-24">
+                    <div className="flex flex-col sm:flex-row justify-between sm:items-start -mt-10 md:-mt-12">
                         <Avatar className="h-28 w-28 md:h-36 md:w-36 border-4 border-card shadow-lg">
                             <AvatarImage src={avatarSrc} alt={t("profile.header.profileImageAlt", { name: displayName })} />
                             <AvatarFallback className="text-5xl">{profile.username.charAt(0).toUpperCase()}</AvatarFallback>
                         </Avatar>
 
-                        <div className="flex gap-2 pt-4 sm:pt-20 md:pt-24">
+                        <div className="flex gap-2 pt-4 sm:pt-10 md:pt-12">
                             {profile.isBlockedByMe && (
                                 <TooltipProvider>
                                     <Tooltip>
@@ -225,7 +225,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
 
     return (
         <div className="w-full rounded-lg overflow-hidden bg-card text-card-foreground shadow-md">
-            <div className="aspect-[3/1] w-full relative">
+            <div className={bannerSrc ? "aspect-[3/1] w-full relative" : "h-28 md:h-32 w-full relative"}>
                 {bannerSrc ? (
                     <Image
                         src={bannerSrc}
@@ -267,7 +267,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                 )}
             </div>
             <div className="p-4 md:p-6">
-                <div className="flex flex-col sm:flex-row justify-between sm:items-start -mt-20 md:-mt-24">
+                <div className={`flex flex-col sm:flex-row justify-between sm:items-start ${bannerSrc ? "-mt-20 md:-mt-24" : "-mt-10 md:-mt-12"}`}>
                     {isOwnProfile ? (
                         <div className="relative shrink-0">
                             <button onClick={() => setPhotoUploaderOpen(true)} className="rounded-full cursor-pointer" aria-label={t("profile.header.editProfilePhoto")}>
@@ -290,7 +290,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                         </Avatar>
                     )}
 
-                    <div className="flex gap-2 pt-4 sm:pt-20 md:pt-24">
+                    <div className={`flex gap-2 pt-4 ${bannerSrc ? "sm:pt-20 md:pt-24" : "sm:pt-10 md:pt-12"}`}>
                         {isOwnProfile ? (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
