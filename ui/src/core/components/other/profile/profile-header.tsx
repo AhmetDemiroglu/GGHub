@@ -14,8 +14,9 @@ import { ReportDialog } from "@core/components/base/report-dialog";
 import { followUser, unfollowUser, blockUser, unblockUser } from "@/api/social/social.api";
 import { toast } from "sonner";
 import Image from "next/image";
-import { Camera } from "lucide-react";
+import { Camera, Pencil } from "lucide-react";
 import { ProfileBannerUploader } from "@core/components/other/profile-banner-uploader";
+import { ProfilePhotoUploader } from "@core/components/other/profile-photo-uploader";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/core/components/ui/dropdown-menu";
 import { FollowersModal } from "./followers-modal";
 import { MessageDialog } from "@core/components/other/message-dialog";
@@ -47,6 +48,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
     const [messageDialogOpen, setMessageDialogOpen] = useState(false);
     const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
     const [bannerUploaderOpen, setBannerUploaderOpen] = useState(false);
+    const [photoUploaderOpen, setPhotoUploaderOpen] = useState(false);
     const avatarSrc = getImageUrl(profile.profileImageUrl);
     const bannerSrc = getImageUrl(profile.headerImageUrl);
 
@@ -152,7 +154,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
     if (isBlockRelationship && !isOwnProfile) {
         return (
             <div className="w-full rounded-lg overflow-hidden bg-card text-card-foreground shadow-md">
-                <div className="h-48 md:h-56 w-full relative">
+                <div className="aspect-[3/1] w-full relative">
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-purple-500/20 to-blue-500/30" />
                     <div className="absolute inset-0 bg-background/40" />
                 </div>
@@ -223,7 +225,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
 
     return (
         <div className="w-full rounded-lg overflow-hidden bg-card text-card-foreground shadow-md">
-            <div className="h-48 md:h-56 w-full relative">
+            <div className="aspect-[3/1] w-full relative">
                 {bannerSrc ? (
                     <Image
                         src={bannerSrc}
@@ -255,13 +257,38 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                         onClose={() => setBannerUploaderOpen(false)}
                     />
                 )}
+                {isOwnProfile && (
+                    <ProfilePhotoUploader
+                        isOpen={photoUploaderOpen}
+                        onClose={() => setPhotoUploaderOpen(false)}
+                        currentImageUrl={profile.profileImageUrl}
+                        username={profile.username}
+                    />
+                )}
             </div>
             <div className="p-4 md:p-6">
                 <div className="flex flex-col sm:flex-row justify-between sm:items-start -mt-20 md:-mt-24">
-                    <Avatar className="h-28 w-28 md:h-36 md:w-36 border-4 border-card shadow-lg">
-                        <AvatarImage src={avatarSrc} alt={t("profile.header.profileImageAlt", { name: displayName })} />
-                        <AvatarFallback className="text-5xl">{profile.username.charAt(0).toUpperCase()}</AvatarFallback>
-                    </Avatar>
+                    {isOwnProfile ? (
+                        <div className="relative shrink-0">
+                            <button onClick={() => setPhotoUploaderOpen(true)} className="rounded-full cursor-pointer" aria-label={t("profile.header.editProfilePhoto")}>
+                                <Avatar className="h-28 w-28 md:h-36 md:w-36 border-4 border-card shadow-lg cursor-pointer">
+                                    <AvatarImage src={avatarSrc} alt={t("profile.header.profileImageAlt", { name: displayName })} />
+                                    <AvatarFallback className="text-5xl">{profile.username.charAt(0).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                            </button>
+                            <div
+                                className="absolute bottom-1 right-1 md:bottom-2 md:right-2 rounded-full bg-primary p-1.5 md:p-2 border-2 border-card cursor-pointer shadow"
+                                onClick={() => setPhotoUploaderOpen(true)}
+                            >
+                                <Pencil className="h-3 w-3 md:h-4 md:w-4 text-primary-foreground" />
+                            </div>
+                        </div>
+                    ) : (
+                        <Avatar className="h-28 w-28 md:h-36 md:w-36 border-4 border-card shadow-lg">
+                            <AvatarImage src={avatarSrc} alt={t("profile.header.profileImageAlt", { name: displayName })} />
+                            <AvatarFallback className="text-5xl">{profile.username.charAt(0).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                    )}
 
                     <div className="flex gap-2 pt-4 sm:pt-20 md:pt-24">
                         {isOwnProfile ? (

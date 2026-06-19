@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar
 import { Upload } from "lucide-react";
 import { Slider } from "@/core/components/ui/slider";
 import { getImageUrl } from "@/core/lib/get-image-url";
+import { useAuth } from "@core/hooks/use-auth";
 
 interface ProfilePhotoUploaderProps {
     isOpen: boolean;
@@ -23,6 +24,7 @@ interface ProfilePhotoUploaderProps {
 
 export function ProfilePhotoUploader({ isOpen, onClose, currentImageUrl, username }: ProfilePhotoUploaderProps) {
     const queryClient = useQueryClient();
+    const { updateUser } = useAuth();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -38,9 +40,11 @@ export function ProfilePhotoUploader({ isOpen, onClose, currentImageUrl, usernam
 
     const { mutate, isPending } = useMutation({
         mutationFn: uploadProfilePhoto,
-        onSuccess: () => {
+        onSuccess: (data) => {
             toast.success("Profil fotoğrafı başarıyla güncellendi!");
             queryClient.invalidateQueries({ queryKey: ["my-profile"] });
+            queryClient.invalidateQueries({ queryKey: ["profile"] });
+            updateUser({ profileImageUrl: data.profileImageUrl });
             resetAndClose();
         },
         onError: (error) => {

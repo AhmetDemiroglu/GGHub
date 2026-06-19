@@ -23,6 +23,7 @@ interface AuthContextValue {
     isLoading: boolean;
     login: (tokens: { accessToken: string; refreshToken: string }) => void;
     logout: () => void;
+    updateUser: (patch: Partial<AuthenticatedUser>) => void;
     getAuthState: () => { accessToken: string | null; refreshToken: string | null };
 }
 
@@ -82,6 +83,12 @@ export function AuthProvider({ children, locale }: { children: ReactNode; locale
         queryClient.clear();
     };
 
+    // JWT'den türetilen kullanıcı bilgilerini (ör. profil fotoğrafı) access token
+    // yenilenmeden güncellemek için. localStorage persistence useEffect'i tarafından otomatik kaydedilir.
+    const updateUser = (patch: Partial<AuthenticatedUser>) => {
+        setUser((prev) => (prev ? { ...prev, ...patch } : prev));
+    };
+
     // Token refresh, axios interceptor tarafından 401 yanıtında otomatik yapılıyor.
     // Ek olarak, token süresi dolmak üzereyse proaktif refresh yapalım (tek seferlik kontrol).
     useEffect(() => {
@@ -128,6 +135,7 @@ export function AuthProvider({ children, locale }: { children: ReactNode; locale
             isLoading,
             login,
             logout,
+            updateUser,
             getAuthState: () => ({ accessToken, refreshToken }),
         }),
         [accessToken, refreshToken, user, isLoading]

@@ -554,6 +554,7 @@ export const enUSMessages = {
             profileImageAlt: "{name}'s profile picture",
             settings: "Profile settings",
             editBanner: "Edit banner",
+            editProfilePhoto: "Edit profile photo",
             updateCoverTitle: "Update profile banner",
             coverPreviewAlt: "Banner preview",
             coverPickerHint: "Choose an image for your banner (3:1 recommended)",

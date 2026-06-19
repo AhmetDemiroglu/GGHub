@@ -554,6 +554,7 @@ export const trMessages = {
             profileImageAlt: "{name} profil resmi",
             settings: "Profil ayarları",
             editBanner: "Kapak fotoğrafını düzenle",
+            editProfilePhoto: "Profil fotoğrafını düzenle",
             updateCoverTitle: "Kapak fotoğrafını güncelle",
             coverPreviewAlt: "Kapak fotoğrafı önizlemesi",
             coverPickerHint: "Kapak fotoğrafı için bir görsel seç (3:1 önerilir)",

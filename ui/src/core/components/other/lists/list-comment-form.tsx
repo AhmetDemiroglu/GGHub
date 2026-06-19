@@ -4,15 +4,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@core/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@core/components/ui/form";
-import { Textarea } from "@core/components/ui/textarea";
+import { Textarea } from "@/core/components/ui/textarea";
 import { Loader, Send } from "lucide-react";
 import type { UserListCommentForCreation } from "@/models/list/list.model";
-import { Avatar, AvatarFallback, AvatarImage } from "@core/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
 import { useForm, UseFormReturn } from "react-hook-form";
 import { forwardRef, useImperativeHandle } from "react";
 import { useAuth } from "@core/hooks/use-auth";
-import { useQueryClient } from "@tanstack/react-query";
-import type { Profile } from "@/models/profile/profile.model";
+import { useQuery } from "@tanstack/react-query";
+import { getMyProfile } from "@/api/profile/profile.api";
 import { getImageUrl } from "@/core/lib/get-image-url";
 
 const commentFormSchema = z.object({
@@ -31,8 +31,11 @@ interface ListCommentFormProps {
 
 export const ListCommentForm = forwardRef<{ reset: () => void }, ListCommentFormProps>(({ onSubmit, isPending, parentCommentId, onCancelReply, placeholder = "Yorumunuzu yazın..." }, ref) => {
     const { user } = useAuth();
-    const queryClient = useQueryClient();
-    const myProfile = queryClient.getQueryData<Profile>(["my-profile"]);
+    const { data: myProfile } = useQuery({
+        queryKey: ["my-profile"],
+        queryFn: getMyProfile,
+        staleTime: 5 * 60 * 1000,
+    });
 
     const form = useForm<CommentFormSchemaType>({
         resolver: zodResolver(commentFormSchema),
