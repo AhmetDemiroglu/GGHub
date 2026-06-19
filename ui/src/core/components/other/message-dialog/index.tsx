@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@core/components/ui/dialog";
 import { Button } from "@core/components/ui/button";
 import { Input } from "@core/components/ui/input";
@@ -44,6 +44,8 @@ export function MessageDialog({ open, onOpenChange, recipientUsername, recipient
         queryKey: ["message-dialog", recipientUsername],
         queryFn: () => getMessageThread(recipientUsername),
         enabled: open,
+        staleTime: 0,
+        refetchOnMount: "always",
     });
 
     const sendMutation = useMutation({
@@ -55,13 +57,20 @@ export function MessageDialog({ open, onOpenChange, recipientUsername, recipient
                 if (old.some((m) => m.id === sentMessage.id)) return old;
                 return [sentMessage, ...old];
             });
+            queryClient.setQueryData<MessageDto[]>(["messages", recipientUsername], (old) => {
+                if (!old) return [sentMessage];
+                if (old.some((m) => m.id === sentMessage.id)) return old;
+                return [sentMessage, ...old];
+            });
+            queryClient.invalidateQueries({ queryKey: ["conversations"] });
+            queryClient.invalidateQueries({ queryKey: ["recent-messages"] });
             scrollToBottom();
         },
     });
 
-    const scrollToBottom = () => {
+    const scrollToBottom = useCallback(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    };
+    }, []);
 
     useEffect(() => {
         if (open && messages && messages.length > 0) {
@@ -69,7 +78,7 @@ export function MessageDialog({ open, onOpenChange, recipientUsername, recipient
                 scrollToBottom();
             }, 100);
         }
-    }, [open]);
+    }, [open, messages, scrollToBottom]);
 
     const handleSend = () => {
         if (!content.trim()) return;

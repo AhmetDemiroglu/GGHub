@@ -16,6 +16,7 @@ import { UnauthorizedAccess } from "@core/components/other/unauthorized-access";
 import { AxiosError } from "axios";
 import { getImageUrl } from "@/core/lib/get-image-url";
 import { useI18n } from "@/core/contexts/locale-context";
+import { useSignalR } from "@/core/contexts/signalr-context";
 
 export default function MessageThreadPage() {
     const params = useParams();
@@ -23,6 +24,7 @@ export default function MessageThreadPage() {
     const { user } = useAuth();
     const t = useI18n();
     const queryClient = useQueryClient();
+    const { connection, connectionStatus, joinConversation, leaveConversation } = useSignalR();
 
     const [messageContent, setMessageContent] = useState("");
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -30,7 +32,37 @@ export default function MessageThreadPage() {
     const { data: messages, isLoading } = useQuery<MessageDto[]>({
         queryKey: ["messages", username],
         queryFn: () => getMessageThread(username),
+        enabled: !!username && !!user,
+        staleTime: 0,
+        refetchOnMount: "always",
     });
+
+    useEffect(() => {
+        if (!username || connectionStatus !== "connected") return;
+
+        joinConversation(username);
+        return () => {
+            leaveConversation(username);
+        };
+    }, [username, connectionStatus, joinConversation, leaveConversation]);
+
+    useEffect(() => {
+        if (!connection || !username) return;
+
+        const handleReceiveMessage = (message: MessageDto) => {
+            if (message.senderUsername !== username) return;
+
+            queryClient.invalidateQueries({ queryKey: ["messages", username] });
+            queryClient.invalidateQueries({ queryKey: ["conversations"] });
+            queryClient.invalidateQueries({ queryKey: ["recent-messages"] });
+            queryClient.invalidateQueries({ queryKey: ["unread-message-count"] });
+        };
+
+        connection.on("ReceiveMessage", handleReceiveMessage);
+        return () => {
+            connection.off("ReceiveMessage", handleReceiveMessage);
+        };
+    }, [connection, username, queryClient]);
 
     const sendMutation = useMutation({
         mutationFn: (data: MessageForCreationDto) => sendMessage(data),
@@ -41,6 +73,8 @@ export default function MessageThreadPage() {
                 if (old.some((m) => m.id === sentMessage.id)) return old;
                 return [sentMessage, ...old];
             });
+            queryClient.invalidateQueries({ queryKey: ["conversations"] });
+            queryClient.invalidateQueries({ queryKey: ["recent-messages"] });
             scrollToBottom();
         },
         onError: (error: unknown) => {
