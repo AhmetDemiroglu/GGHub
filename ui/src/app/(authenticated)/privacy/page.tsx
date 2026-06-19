@@ -29,7 +29,7 @@ const COPY = {
         contactLead: "For privacy questions or requests, write to us:",
         deletion: {
             title: "Account & Data Deletion",
-            lead: "You can delete your account and all your data yourself at any time — on the web or in the app:",
+            lead: "You can delete your account and all your data yourself at any time, from the web or the app:",
             webLabel: "On the website",
             webSteps: [
                 "Sign in at gghub.social and open your Profile page",
@@ -178,7 +178,7 @@ export default function PrivacyPage() {
                     </div>
                 </section>
 
-                {/* Account & Data Deletion — prominent, so reviewers see it even in the policy */}
+                {/* Account & Data Deletion section, prominent so reviewers see it even in the policy */}
                 <section className="rounded-2xl border border-rose-500/30 bg-gradient-to-br from-rose-500/[0.08] to-violet-500/5 p-6">
                     <div className="flex items-center gap-3">
                         <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/50 text-rose-400">

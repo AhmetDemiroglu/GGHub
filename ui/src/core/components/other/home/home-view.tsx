@@ -21,14 +21,14 @@ export default function HomeView() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Auth henüz yüklenmediyse fetch yapma — boş feed ve çift istek olmasın
+        // Auth henüz yüklenmediyse fetch yapma: boş feed ve çift istek olmasın
         if (authLoading) return;
 
         let cancelled = false;
         const fetchData = async () => {
             try {
                 setLoading(true);
-                // Paralel fetch — her iki isteği aynı anda başlat
+                // Paralel fetch: her iki isteği aynı anda başlat
                 const [homeData, feedData] = await Promise.all([
                     getHomeContent(),
                     isAuthenticated ? getPersonalizedFeed() : Promise.resolve([]),

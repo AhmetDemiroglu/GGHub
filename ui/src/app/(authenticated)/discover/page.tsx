@@ -92,7 +92,7 @@ function DiscoverPageContent() {
         setPage(1);
     }, [debouncedSearchTerm, ordering, selectedGenre, selectedPlatform, dateRange]);
 
-    // Sayfaya scroll — yeni veri gelince başa dön
+    // Sayfaya scroll: yeni veri gelince başa dön
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: "instant" });
     }, [data]);

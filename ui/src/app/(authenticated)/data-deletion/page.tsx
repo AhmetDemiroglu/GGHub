@@ -16,7 +16,7 @@ const META = [
 const COPY = {
     "en-US": {
         title: "Delete Your Account & Data",
-        intro: "You can permanently delete your GGHub account and all associated data at any time — on the web or in the app. This page explains how.",
+        intro: "You can permanently delete your GGHub account and all associated data at any time, from the web or the app. This page explains how.",
         updated: "Last updated: 19 June 2026",
         contactTitle: "Questions?",
         contactLead: "For anything about account or data deletion, contact us at:",
@@ -69,7 +69,7 @@ const COPY = {
     },
     tr: {
         title: "Hesabını ve Verilerini Sil",
-        intro: "GGHub hesabını ve ona bağlı tüm verileri istediğin zaman — web'den veya uygulamadan — kalıcı olarak silebilirsin. Bu sayfa nasıl yapacağını anlatır.",
+        intro: "GGHub hesabını ve ona bağlı tüm verileri, web'den veya uygulamadan, istediğin zaman kalıcı olarak silebilirsin. Bu sayfa nasıl yapacağını anlatır.",
         updated: "Son güncelleme: 19 Haziran 2026",
         contactTitle: "Soruların mı var?",
         contactLead: "Hesap veya veri silmeyle ilgili her şey için bize ulaş:",

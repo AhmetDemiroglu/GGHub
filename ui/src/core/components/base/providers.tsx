@@ -46,7 +46,7 @@ const handleGlobalError = (error: unknown, t: (key: string) => string) => {
 export const queryClient = new QueryClient({
     defaultOptions: {
         queries: {
-            staleTime: 2 * 60 * 1000, // 2 dk — gereksiz refetch'leri önler
+            staleTime: 2 * 60 * 1000, // 2 dk: gereksiz refetch'leri önler
             refetchOnWindowFocus: false,
             retry: (failureCount, error) => {
                 if (error instanceof AxiosError && (error.response?.status === 429 || error.response?.status === 401)) {
