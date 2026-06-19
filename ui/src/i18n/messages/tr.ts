@@ -57,6 +57,7 @@ export const trMessages = {
         about: "Hakkımızda",
         privacy: "Gizlilik politikası",
         terms: "Kullanım şartları",
+        dataDeletion: "Hesap silme",
         contact: "İletişim",
         community: "Topluluk",
         socialX: "GGHub X profili",

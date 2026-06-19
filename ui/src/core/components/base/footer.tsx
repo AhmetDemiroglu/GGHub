@@ -44,6 +44,9 @@ export function Footer() {
                                         <Link href={buildLocalizedPathname("/terms", locale)} className="w-fit text-sm text-foreground/80 transition-colors hover:text-primary">
                                             {t("footer.terms")}
                                         </Link>
+                                        <Link href={buildLocalizedPathname("/data-deletion", locale)} className="w-fit text-sm text-foreground/80 transition-colors hover:text-primary">
+                                            {t("footer.dataDeletion")}
+                                        </Link>
                                         <a
                                             href="mailto:info@gghub.social"
                                             title="info@gghub.social"
