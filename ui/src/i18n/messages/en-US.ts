@@ -58,6 +58,7 @@ export const enUSMessages = {
         privacy: "Privacy policy",
         terms: "Terms of use",
         dataDeletion: "Data deletion",
+        childSafety: "Child safety",
         contact: "Contact",
         community: "Community",
         socialX: "GGHub X profile",
