@@ -1,13 +1,14 @@
 "use client";
 
-import { Trash2, Smartphone, Mail, Database, Scale, Check } from "lucide-react";
+import { Trash2, Globe, Smartphone, Mail, Database, Scale, Check } from "lucide-react";
 import { useCurrentLocale } from "@/core/contexts/locale-context";
 
 type Section = { title: string; lead?: string; list?: string[]; after?: string };
 
 const META = [
-    { icon: Smartphone, color: "text-cyan-400" },
-    { icon: Mail, color: "text-violet-400" },
+    { icon: Globe, color: "text-cyan-400" },
+    { icon: Smartphone, color: "text-violet-400" },
+    { icon: Mail, color: "text-blue-400" },
     { icon: Database, color: "text-rose-400" },
     { icon: Scale, color: "text-emerald-400" },
 ];
@@ -15,25 +16,34 @@ const META = [
 const COPY = {
     "en-US": {
         title: "Delete Your Account & Data",
-        intro: "You can permanently delete your GGHub account and all associated data at any time. This page explains how.",
+        intro: "You can permanently delete your GGHub account and all associated data at any time — on the web or in the app. This page explains how.",
         updated: "Last updated: 19 June 2026",
         contactTitle: "Questions?",
         contactLead: "For anything about account or data deletion, contact us at:",
         sections: [
             {
-                title: "1. Delete in the app (fastest)",
-                lead: "If you can sign in, you can delete your account directly in the app:",
+                title: "1. Delete on the web (fastest)",
+                lead: "If you can sign in at gghub.social, you can delete your account directly:",
                 list: [
-                    "Open GGHub and sign in",
-                    "Go to Profile → Settings",
+                    "Sign in and open your Profile page",
                     "Scroll to the “Danger Zone” section",
-                    "Tap “Delete my account” and confirm",
+                    "Click “Delete my account” and confirm",
                 ],
-                after: "Your account is deleted immediately, and the action cannot be undone.",
+                after: "From the same section you can also “Export your data” (a downloadable copy of your profile, lists, and comments). Deletion is immediate and cannot be undone.",
             },
             {
-                title: "2. Request deletion by email",
-                lead: "If you can no longer access the app, send us a deletion request:",
+                title: "2. Delete in the app",
+                lead: "In the GGHub mobile app:",
+                list: [
+                    "Open the app and sign in",
+                    "Go to Profile → Settings",
+                    "Open the “Danger Zone” section",
+                    "Tap “Delete my account” and confirm",
+                ],
+            },
+            {
+                title: "3. Request deletion by email",
+                lead: "If you can no longer access the web or the app, send us a deletion request:",
                 list: [
                     "Email info@gghub.social from the address registered to your account",
                     "Use the subject line “Account deletion”",
@@ -42,7 +52,7 @@ const COPY = {
                 after: "After we verify ownership, your account and data are deleted within 30 days.",
             },
             {
-                title: "3. What gets deleted",
+                title: "4. What gets deleted",
                 lead: "Deleting your account permanently removes:",
                 list: [
                     "Your profile: username, email, bio, and photos",
@@ -52,32 +62,41 @@ const COPY = {
                 after: "Your account is permanently anonymized. There is no undo.",
             },
             {
-                title: "4. What we may retain",
+                title: "5. What we may retain",
                 lead: "We only keep records we are legally required to retain (for example, to meet legal or security obligations). These are kept solely for the period the law requires and then deleted.",
             },
         ] as Section[],
     },
     tr: {
         title: "Hesabını ve Verilerini Sil",
-        intro: "GGHub hesabını ve ona bağlı tüm verileri istediğin zaman kalıcı olarak silebilirsin. Bu sayfa nasıl yapacağını anlatır.",
+        intro: "GGHub hesabını ve ona bağlı tüm verileri istediğin zaman — web'den veya uygulamadan — kalıcı olarak silebilirsin. Bu sayfa nasıl yapacağını anlatır.",
         updated: "Son güncelleme: 19 Haziran 2026",
         contactTitle: "Soruların mı var?",
         contactLead: "Hesap veya veri silmeyle ilgili her şey için bize ulaş:",
         sections: [
             {
-                title: "1. Uygulama içinden sil (en hızlısı)",
-                lead: "Giriş yapabiliyorsan hesabını doğrudan uygulama içinden silebilirsin:",
+                title: "1. Web'den sil (en hızlısı)",
+                lead: "gghub.social'da giriş yapabiliyorsan hesabını doğrudan silebilirsin:",
                 list: [
-                    "GGHub'ı aç ve giriş yap",
-                    "Profil → Ayarlar adımına git",
-                    "“Tehlikeli Alan” bölümüne in",
-                    "“Hesabımı sil” seçeneğine dokun ve onayla",
+                    "Giriş yap ve Profil sayfanı aç",
+                    "“Tehlikeli Bölge” bölümüne in",
+                    "“Hesabımı Sil”e tıkla ve onayla",
                 ],
-                after: "Hesabın anında silinir ve bu işlem geri alınamaz.",
+                after: "Aynı bölümden “Verilerini Dışa Aktar” ile profilin, listelerin ve yorumlarının indirilebilir bir kopyasını da alabilirsin. Silme işlemi anında gerçekleşir ve geri alınamaz.",
             },
             {
-                title: "2. E-posta ile silme talebi",
-                lead: "Uygulamaya artık erişemiyorsan bize silme talebi gönder:",
+                title: "2. Uygulamadan sil",
+                lead: "GGHub mobil uygulamasında:",
+                list: [
+                    "Uygulamayı aç ve giriş yap",
+                    "Profil → Ayarlar adımına git",
+                    "“Tehlikeli Alan” bölümünü aç",
+                    "“Hesabımı Sil”e dokun ve onayla",
+                ],
+            },
+            {
+                title: "3. E-posta ile silme talebi",
+                lead: "Web'e veya uygulamaya artık erişemiyorsan bize silme talebi gönder:",
                 list: [
                     "Hesabına kayıtlı e-posta adresinden info@gghub.social adresine yaz",
                     "Konu satırına “Hesap silme” yaz",
@@ -86,7 +105,7 @@ const COPY = {
                 after: "Hesabın sahibi olduğunu doğruladıktan sonra hesabın ve verilerin 30 gün içinde silinir.",
             },
             {
-                title: "3. Neler silinir",
+                title: "4. Neler silinir",
                 lead: "Hesabını silmek şunları kalıcı olarak kaldırır:",
                 list: [
                     "Profilin: kullanıcı adı, e-posta, biyografi ve fotoğraflar",
@@ -96,7 +115,7 @@ const COPY = {
                 after: "Hesabın kalıcı olarak anonimleştirilir. Geri alınamaz.",
             },
             {
-                title: "4. Neleri saklayabiliriz",
+                title: "5. Neleri saklayabiliriz",
                 lead: "Yalnızca yasal olarak saklamak zorunda olduğumuz kayıtları (örneğin yasal veya güvenlik yükümlülüklerini karşılamak için) tutarız. Bunlar yalnızca yasanın gerektirdiği süre boyunca saklanır ve ardından silinir.",
             },
         ] as Section[],

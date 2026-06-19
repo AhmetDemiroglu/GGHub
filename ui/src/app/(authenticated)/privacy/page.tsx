@@ -1,8 +1,10 @@
 "use client";
 
-import { Shield, Info, Database, Target, Cookie, Share2, Clock, UserCheck, Lock, RefreshCw, Mail, Check } from "lucide-react";
+import { Shield, Info, Database, Target, Cookie, Share2, Clock, UserCheck, Lock, RefreshCw, Mail, Check, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { AppDownloadCTA } from "@core/components/other/public/app-cta";
 import { useCurrentLocale } from "@/core/contexts/locale-context";
+import { buildLocalizedPathname } from "@/i18n/config";
 
 type Section = { title: string; lead?: string; list?: string[]; after?: string };
 
@@ -25,6 +27,16 @@ const COPY = {
         updated: "Last updated: 17 June 2026",
         contactTitle: "10. Contact",
         contactLead: "For privacy questions or requests, write to us:",
+        deletion: {
+            title: "Account & Data Deletion",
+            lead: "You can delete your account and all associated data at any time:",
+            web: "On the web — sign in at gghub.social, open your Profile, scroll to the “Danger Zone”, and choose “Delete my account”. You can also export a copy of your data there.",
+            app: "In the app — go to Profile → Settings → “Danger Zone” → “Delete my account”.",
+            note: "Deletion permanently anonymizes your account and data and cannot be undone.",
+            moreBefore: "For full step-by-step details, see our ",
+            moreLink: "data deletion page",
+            moreAfter: ".",
+        },
         sections: [
             { title: "1. Purpose", lead: "This policy explains what information you share when using the GGHub platform, and how and why it is processed. The privacy and security of your personal data is our priority." },
             {
@@ -72,6 +84,16 @@ const COPY = {
         updated: "Son güncelleme: 17 Haziran 2026",
         contactTitle: "10. İletişim",
         contactLead: "Gizlilikle ilgili soruların veya taleplerin için bize yaz:",
+        deletion: {
+            title: "Hesap ve Veri Silme",
+            lead: "Hesabını ve ona bağlı tüm verileri istediğin zaman silebilirsin:",
+            web: "Web'de — gghub.social'da giriş yap, Profil sayfanı aç, “Tehlikeli Bölge” bölümüne in ve “Hesabımı Sil”i seç. Verilerinin bir kopyasını da buradan dışa aktarabilirsin.",
+            app: "Uygulamada — Profil → Ayarlar → “Tehlikeli Alan” → “Hesabımı Sil” adımını izle.",
+            note: "Silme işlemi hesabını ve verilerini kalıcı olarak anonimleştirir ve geri alınamaz.",
+            moreBefore: "Adım adım ayrıntılar için ",
+            moreLink: "veri silme sayfamıza",
+            moreAfter: " göz at.",
+        },
         sections: [
             { title: "1. Amaç", lead: "Bu politika, GGHub platformunu kullanırken paylaştığın bilgilerin hangi amaçlarla ve nasıl işlendiğini açıklar. Kişisel verilerinin gizliliği ve güvenliği bizim için önceliklidir." },
             {
@@ -135,6 +157,37 @@ export default function PrivacyPage() {
                         <h1 className="text-3xl font-bold tracking-tight md:text-4xl">{t.title}</h1>
                         <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">{t.intro}</p>
                         <p className="text-xs text-muted-foreground/70">{t.updated}</p>
+                    </div>
+                </section>
+
+                {/* Account & Data Deletion — prominent, so reviewers see it even in the policy */}
+                <section className="rounded-2xl border border-rose-500/30 bg-gradient-to-br from-rose-500/[0.08] to-violet-500/5 p-6">
+                    <div className="flex items-center gap-3">
+                        <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/50 text-rose-400">
+                            <Trash2 className="h-5 w-5" />
+                        </div>
+                        <h2 className="text-base font-semibold tracking-tight">{t.deletion.title}</h2>
+                    </div>
+                    <div className="mt-4 space-y-3 text-sm leading-relaxed text-muted-foreground">
+                        <p>{t.deletion.lead}</p>
+                        <ul className="space-y-2">
+                            <li className="flex items-start gap-2.5">
+                                <Check className="mt-0.5 h-4 w-4 shrink-0 text-rose-400/80" />
+                                <span>{t.deletion.web}</span>
+                            </li>
+                            <li className="flex items-start gap-2.5">
+                                <Check className="mt-0.5 h-4 w-4 shrink-0 text-rose-400/80" />
+                                <span>{t.deletion.app}</span>
+                            </li>
+                        </ul>
+                        <p className="font-medium text-foreground/80">{t.deletion.note}</p>
+                        <p>
+                            {t.deletion.moreBefore}
+                            <Link href={buildLocalizedPathname("/data-deletion", locale)} className="font-medium text-primary hover:underline">
+                                {t.deletion.moreLink}
+                            </Link>
+                            {t.deletion.moreAfter}
+                        </p>
                     </div>
                 </section>
 
