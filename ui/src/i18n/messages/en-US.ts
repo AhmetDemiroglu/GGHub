@@ -54,6 +54,7 @@ export const enUSMessages = {
         tagline: "The platform that brings together a gaming-first community.",
         version: "Version 2.0.0",
         company: "Company",
+        legal: "Legal",
         about: "About",
         privacy: "Privacy policy",
         terms: "Terms of use",

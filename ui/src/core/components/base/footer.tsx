@@ -31,13 +31,26 @@ export function Footer() {
                                 <p className={`text-lg font-medium tracking-tight text-foreground/40 ${font.className}`}>{t("footer.tagline")}</p>
                                 <p className="text-[11px] uppercase tracking-wide text-muted-foreground/30">{t("footer.version")}</p>
                             </div>
-                            <div className="grid grid-cols-2 gap-10 md:gap-14 lg:gap-16">
+                            <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 md:gap-12 lg:gap-16">
                                 <div className="flex flex-col gap-3">
                                     <h3 className="text-[11px] font-medium uppercase tracking-[0.3em] text-muted-foreground/60">{t("footer.company")}</h3>
                                     <div className="flex flex-col gap-2.5">
                                         <Link href={buildLocalizedPathname("/about", locale)} className="w-fit text-sm text-foreground/80 transition-colors hover:text-primary">
                                             {t("footer.about")}
                                         </Link>
+                                        <a
+                                            href="mailto:info@gghub.social"
+                                            title="info@gghub.social"
+                                            className="inline-flex w-fit items-center gap-1.5 text-sm text-foreground/80 transition-colors hover:text-primary"
+                                        >
+                                            <Mail className="h-3.5 w-3.5" />
+                                            {t("footer.contact")}
+                                        </a>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col gap-3">
+                                    <h3 className="text-[11px] font-medium uppercase tracking-[0.3em] text-muted-foreground/60">{t("footer.legal")}</h3>
+                                    <div className="flex flex-col gap-2.5">
                                         <Link href={buildLocalizedPathname("/privacy", locale)} className="w-fit text-sm text-foreground/80 transition-colors hover:text-primary">
                                             {t("footer.privacy")}
                                         </Link>
@@ -50,14 +63,6 @@ export function Footer() {
                                         <Link href={buildLocalizedPathname("/child-safety", locale)} className="w-fit text-sm text-foreground/80 transition-colors hover:text-primary">
                                             {t("footer.childSafety")}
                                         </Link>
-                                        <a
-                                            href="mailto:info@gghub.social"
-                                            title="info@gghub.social"
-                                            className="inline-flex w-fit items-center gap-1.5 text-sm text-foreground/80 transition-colors hover:text-primary"
-                                        >
-                                            <Mail className="h-3.5 w-3.5" />
-                                            {t("footer.contact")}
-                                        </a>
                                     </div>
                                 </div>
                                 <div className="flex flex-col gap-3">

@@ -54,6 +54,7 @@ export const trMessages = {
         tagline: "Oyun tutkunu toplulukla birleşen platform.",
         version: "Sürüm 2.0.0",
         company: "Şirket",
+        legal: "Yasal",
         about: "Hakkımızda",
         privacy: "Gizlilik politikası",
         terms: "Kullanım şartları",
