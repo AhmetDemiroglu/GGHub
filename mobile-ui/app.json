@@ -31,7 +31,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#0f172a",
+        "backgroundColor": "#d2c6f6",
         "foregroundImage": "./assets/images/adaptive-icon.png"
       },
       "package": "com.gghub.mobile",
