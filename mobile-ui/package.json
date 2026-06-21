@@ -1,12 +1,13 @@
 {
   "name": "mobile-ui",
   "main": "expo-router/entry",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "bump": "node scripts/bump-version.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",

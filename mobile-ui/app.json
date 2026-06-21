@@ -2,7 +2,7 @@
   "expo": {
     "name": "GGHub",
     "slug": "gghub",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon-beyaz.png",
     "scheme": "gghub",
@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.gghub.mobile",
-      "buildNumber": "2",
+      "buildNumber": "3",
       "usesAppleSignIn": true,
       "entitlements": {
         "aps-environment": "production"
@@ -35,7 +35,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png"
       },
       "package": "com.gghub.mobile",
-      "versionCode": 3,
+      "versionCode": 4,
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.CAMERA",
