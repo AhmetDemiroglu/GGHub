@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               if (!tokenToUse) return;
 
               const response = await axiosInstance.post('/auth/refresh', {
-                token: tokenToUse,
+                refreshToken: tokenToUse,
               });
               const { accessToken: newAccessToken, refreshToken: newRefreshToken } = response.data;
 
@@ -174,7 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               // Token expired, try to refresh
               try {
                 const response = await axiosInstance.post('/auth/refresh', {
-                  token: storedRefreshToken,
+                  refreshToken: storedRefreshToken,
                 });
                 const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
                   response.data;

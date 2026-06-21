@@ -105,7 +105,7 @@ axiosInstance.interceptors.response.use(
                     return Promise.reject(error);
                 }
 
-                const response = await axiosInstance.post("/auth/refresh", { token: refreshToken });
+                const response = await axiosInstance.post("/auth/refresh", { refreshToken });
                 const { accessToken: newAccessToken, refreshToken: newRefreshToken } = response.data;
 
                 authContextRef.login({ accessToken: newAccessToken, refreshToken: newRefreshToken });

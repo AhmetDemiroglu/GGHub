@@ -108,7 +108,13 @@ namespace GGHub.WebAPI.Controllers
         [HttpPost("refresh")]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto refreshTokenDto)
         {
-            var result = await _authService.RefreshTokenAsync(refreshTokenDto.RefreshToken);
+            var token = refreshTokenDto.RefreshToken ?? refreshTokenDto.Token;
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                return Unauthorized(new { message = AppText.Get("auth.invalidRefreshToken") });
+            }
+
+            var result = await _authService.RefreshTokenAsync(token);
             if (result == null)
             {
                 return Unauthorized(new { message = AppText.Get("auth.invalidRefreshToken") });

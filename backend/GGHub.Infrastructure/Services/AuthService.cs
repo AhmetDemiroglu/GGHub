@@ -98,7 +98,7 @@ namespace GGHub.Infrastructure.Services
                 Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
                 UserId = refreshToken.UserId,
                 CreatedAt = DateTime.UtcNow,
-                ExpiresAt = DateTime.UtcNow.AddDays(7)
+                ExpiresAt = DateTime.UtcNow.AddDays(30)
             };
 
             refreshToken.RevokedAt = DateTime.UtcNow;
@@ -598,7 +598,7 @@ namespace GGHub.Infrastructure.Services
                 Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
                 UserId = user.Id,
                 CreatedAt = DateTime.UtcNow,
-                ExpiresAt = DateTime.UtcNow.AddDays(7)
+                ExpiresAt = DateTime.UtcNow.AddDays(30)
             };
 
             await _context.RefreshTokens.AddAsync(refreshToken);

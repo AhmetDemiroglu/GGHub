@@ -94,36 +94,54 @@ export function AuthProvider({ children, locale }: { children: ReactNode; locale
     useEffect(() => {
         if (!accessToken || !refreshToken) return;
 
+        let cancelled = false;
+
+        // Refresh token ile yeni access token al. Basarisizsa hata firlatir.
+        const doRefresh = async () => {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/refresh`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept-Language": localStorage.getItem(localeStorageKey) || locale,
+                },
+                body: JSON.stringify({ refreshToken }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Refresh failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (!cancelled) {
+                login({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+            }
+        };
+
         const minutesRemaining = getTokenMinutesRemaining(accessToken);
+
+        // Token zaten suresi dolmussa: once yenilemeyi dene, yalnizca basarisizsa cikis yap.
+        // (Onceden dogrudan logout ediliyordu; bu yuzden tarayiciyi 1 saatten sonra acan
+        //  kullanici gecerli refresh token'i olsa bile aninda cikis goruyordu.)
         if (minutesRemaining <= 0) {
-            // Token zaten expired, logout
-            logout();
-            return;
+            doRefresh().catch(() => logout());
+            return () => {
+                cancelled = true;
+            };
         }
 
-        // Token expire olmadan 2 dk önce refresh planla
+        // Token expire olmadan 2 dk once refresh planla.
         const msUntilRefresh = Math.max((minutesRemaining - 2) * 60 * 1000, 0);
-        const timer = setTimeout(async () => {
-            try {
-                const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/refresh`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Accept-Language": localStorage.getItem(localeStorageKey) || locale,
-                    },
-                    body: JSON.stringify({ token: refreshToken }),
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    login({ accessToken: data.accessToken, refreshToken: data.refreshToken });
-                }
-            } catch (error) {
+        const timer = setTimeout(() => {
+            // Hata olursa axios interceptor bir sonraki 401'de yeniden dener.
+            doRefresh().catch((error) => {
                 console.error("Proactive token refresh failed:", error);
-            }
+            });
         }, msUntilRefresh);
 
-        return () => clearTimeout(timer);
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
     }, [accessToken, refreshToken, locale]);
 
     const value = useMemo<AuthContextValue>(
