@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
+import { useConfirm } from '@/src/components/common/ConfirmDialog';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
 import { StatsCard } from '@/src/components/admin/StatsCard';
@@ -22,6 +23,7 @@ export default function AdminDashboard() {
   const { messages } = useLocale();
   const router = useRouter();
   const { logout } = useAuth();
+  const confirm = useConfirm();
   const m = messages.admin;
 
   const handleBackToApp = useCallback(() => {
@@ -29,9 +31,16 @@ export default function AdminDashboard() {
   }, [router]);
 
   const handleLogout = useCallback(async () => {
+    const ok = await confirm({
+      title: messages.nav.logout,
+      message: messages.nav.logout + '?',
+      confirmLabel: messages.nav.logout,
+      destructive: true,
+    });
+    if (!ok) return;
     await logout();
     router.replace('/(auth)/login');
-  }, [logout, router]);
+  }, [confirm, messages, logout, router]);
 
   const statsQuery = useQuery({
     queryKey: ['admin', 'dashboard-stats'],

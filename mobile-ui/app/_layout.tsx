@@ -10,6 +10,7 @@ import { ThemeProvider } from '@/src/contexts/theme-context';
 import { SignalRProvider } from '@/src/contexts/signalr-context';
 import { ShellProvider } from '@/src/contexts/shell-context';
 import { ToastProvider } from '@/src/components/common/Toast';
+import { ConfirmProvider } from '@/src/components/common/ConfirmDialog';
 import { AuthPromptProvider } from '@/src/contexts/auth-prompt-context';
 import { AppSidebar } from '@/src/components/shell';
 import { useTheme } from '@/src/hooks/use-theme';
@@ -72,11 +73,13 @@ export default function RootLayout() {
               <SignalRProvider>
                 <ShellProvider>
                   <ToastProvider>
-                    <AuthPromptProvider>
-                      <AppSidebar>
-                        <RootLayoutNav />
-                      </AppSidebar>
-                    </AuthPromptProvider>
+                    <ConfirmProvider>
+                      <AuthPromptProvider>
+                        <AppSidebar>
+                          <RootLayoutNav />
+                        </AppSidebar>
+                      </AuthPromptProvider>
+                    </ConfirmProvider>
                   </ToastProvider>
                 </ShellProvider>
               </SignalRProvider>

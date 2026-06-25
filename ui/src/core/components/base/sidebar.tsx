@@ -47,6 +47,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar
 import { Badge } from "@/core/components/ui/badge";
 import { Button } from "@/core/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/core/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/core/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/core/components/ui/popover";
 import { Separator } from "@/core/components/ui/separator";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/core/components/ui/sheet";
@@ -114,6 +115,7 @@ function SidebarInner({ isMobile }: { isMobile: boolean }) {
 
     const [notificationOpen, setNotificationOpen] = useState(false);
     const [messagesOpen, setMessagesOpen] = useState(false);
+    const [logoutOpen, setLogoutOpen] = useState(false);
 
     const { data: notifications } = useNotifications(notificationOpen);
     const { data: recentMessages } = useRecentMessages(messagesOpen);
@@ -423,12 +425,35 @@ function SidebarInner({ isMobile }: { isMobile: boolean }) {
                                     </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive" onClick={handleLogout}>
+                                <DropdownMenuItem
+                                    className="cursor-pointer text-destructive focus:text-destructive"
+                                    onSelect={(e) => {
+                                        e.preventDefault();
+                                        setLogoutOpen(true);
+                                    }}
+                                >
                                     <LogOut className="mr-2 h-4 w-4" />
                                     <span>{t("nav.logout")}</span>
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
+                        <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>{t("nav.logout")}</AlertDialogTitle>
+                                    <AlertDialogDescription>{t("nav.logoutConfirm")}</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel className="cursor-pointer">{t("common.cancel")}</AlertDialogCancel>
+                                    <AlertDialogAction
+                                        onClick={handleLogout}
+                                        className="cursor-pointer bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                        {t("nav.logout")}
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                     </div>
                 ) : (
                     <div className={`${collapsed ? "space-y-2 px-2 py-3" : "flex gap-2 px-4 py-3"}`}>

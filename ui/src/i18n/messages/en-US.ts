@@ -44,6 +44,7 @@ export const enUSMessages = {
         favorites: "My favorites",
         myReports: "My reports",
         logout: "Log out",
+        logoutConfirm: "Are you sure you want to log out?",
         login: "Log in",
         register: "Sign up",
         logoutSuccess: "Signed out successfully.",

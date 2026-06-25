@@ -31,6 +31,8 @@ export const enUSMessages = {
         delete: "Delete",
         edit: "Edit",
         confirm: "Confirm",
+        showPassword: "Show password",
+        hidePassword: "Hide password",
         retry: "Retry",
         sortBy: "Sort By",
         create: "Create",

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TextInputProps } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, TextInputProps } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useSharedValue,
@@ -10,6 +10,7 @@ import Animated, {
   interpolateColor,
 } from 'react-native-reanimated';
 import { useTheme } from '@/src/hooks/use-theme';
+import { useLocale } from '@/src/hooks/use-locale';
 import { Spacing, FontSize, BorderRadius, Springs } from '@/src/constants/theme';
 
 interface InputProps extends TextInputProps {
@@ -21,9 +22,13 @@ interface InputProps extends TextInputProps {
   numberOfLines?: number;
 }
 
-export function Input({ label, error, icon, style, onFocus, onBlur, ...props }: InputProps) {
+export function Input({ label, error, icon, style, onFocus, onBlur, secureTextEntry, ...props }: InputProps) {
   const { colors } = useTheme();
+  const { messages } = useLocale();
   const [focused, setFocused] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const isPassword = !!secureTextEntry;
+  const useRow = !!icon || isPassword;
 
   // Focus border color animation
   const borderProgress = useSharedValue(0);
@@ -75,7 +80,7 @@ export function Input({ label, error, icon, style, onFocus, onBlur, ...props }: 
       ) : null}
       <Animated.View
         style={[
-          icon ? styles.inputRow : styles.inputRowNoIcon,
+          useRow ? styles.inputRow : styles.inputRowNoIcon,
           { backgroundColor: colors.inputBackground },
           borderAnimStyle,
         ]}
@@ -92,15 +97,33 @@ export function Input({ label, error, icon, style, onFocus, onBlur, ...props }: 
           style={[
             styles.input,
             { color: colors.text },
-            icon && { flex: 1, marginBottom: 0 },
+            useRow && { flex: 1, marginBottom: 0 },
             props.multiline && { textAlignVertical: 'top' as const },
             style,
           ]}
           placeholderTextColor={colors.placeholder}
+          secureTextEntry={isPassword && !showPassword}
           onFocus={handleFocus}
           onBlur={handleBlur}
           {...props}
         />
+        {isPassword ? (
+          <TouchableOpacity
+            onPress={() => setShowPassword((v) => !v)}
+            style={styles.eyeBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel={
+              showPassword ? messages.common.hidePassword : messages.common.showPassword
+            }
+          >
+            <Ionicons
+              name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+              size={20}
+              color={colors.placeholder}
+            />
+          </TouchableOpacity>
+        ) : null}
       </Animated.View>
       {error ? (
         <Text style={[styles.error, { color: colors.error }]}>{error}</Text>
@@ -141,5 +164,9 @@ const styles = StyleSheet.create({
   },
   icon: {
     marginRight: Spacing.sm,
+  },
+  eyeBtn: {
+    marginLeft: Spacing.sm,
+    padding: Spacing.xs,
   },
 });

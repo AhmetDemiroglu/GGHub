@@ -20,6 +20,7 @@ import { showDeleteListDialog } from '@/src/components/lists/DeleteListDialog';
 import { EmptyState } from '@/src/components/common/EmptyState';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
 import { useToast } from '@/src/components/common/Toast';
+import { useConfirm } from '@/src/components/common/ConfirmDialog';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
@@ -67,6 +68,7 @@ export default function ListsTabScreen() {
   const { messages } = useLocale();
   const { user, isAuthenticated } = useAuth();
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const router = useRouter();
   const queryClient = useQueryClient();
   const tabBarHeight = useTabBarHeight();
@@ -187,7 +189,7 @@ export default function ListsTabScreen() {
           <Pressable
             style={[styles.actionBtn, { backgroundColor: colors.surface }]}
             onPress={() =>
-              showDeleteListDialog({ listId: item.id, listName: item.name, messages, queryClient, showToast })
+              showDeleteListDialog({ listId: item.id, listName: item.name, messages, queryClient, showToast, confirm })
             }
           >
             <Ionicons name="trash-outline" size={16} color={colors.error} />
@@ -198,7 +200,7 @@ export default function ListsTabScreen() {
         </View>
       </View>
     ),
-    [colors, messages, queryClient, showToast],
+    [colors, messages, queryClient, showToast, confirm],
   );
 
   const renderFollowedItem = useCallback(

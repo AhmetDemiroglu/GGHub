@@ -31,6 +31,8 @@ export const trMessages = {
         delete: "Sil",
         edit: "Düzenle",
         confirm: "Onayla",
+        showPassword: "Şifreyi göster",
+        hidePassword: "Şifreyi gizle",
         retry: "Tekrar Dene",
         sortBy: "Sıralama",
         create: "Oluştur",

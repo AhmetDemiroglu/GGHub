@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, Pressable, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -9,6 +9,7 @@ import { useAuth } from '@/src/hooks/use-auth';
 import { Avatar } from '@/src/components/common/Avatar';
 import { Button } from '@/src/components/common/Button';
 import { useToast } from '@/src/components/common/Toast';
+import { useConfirm } from '@/src/components/common/ConfirmDialog';
 import {
   voteOnListComment,
   updateListComment,
@@ -27,6 +28,7 @@ export function CommentItem({ comment, listId }: CommentItemProps) {
   const { messages } = useLocale();
   const { user } = useAuth();
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
@@ -74,19 +76,14 @@ export function CommentItem({ comment, listId }: CommentItemProps) {
     voteMutation.mutate(newValue);
   };
 
-  const handleDelete = () => {
-    Alert.alert(
-      messages.commentsSection.deleteConfirmTitle,
-      messages.commentsSection.deleteConfirmMessage,
-      [
-        { text: messages.common.cancel, style: 'cancel' },
-        {
-          text: messages.common.delete,
-          style: 'destructive',
-          onPress: () => deleteMutation.mutate(),
-        },
-      ],
-    );
+  const handleDelete = async () => {
+    const ok = await confirm({
+      title: messages.commentsSection.deleteConfirmTitle,
+      message: messages.commentsSection.deleteConfirmMessage,
+      confirmLabel: messages.common.delete,
+      destructive: true,
+    });
+    if (ok) deleteMutation.mutate();
   };
 
   const handleSaveEdit = () => {

@@ -44,6 +44,7 @@ export const trMessages = {
         favorites: "Favorilerim",
         myReports: "Raporlarım",
         logout: "Çıkış yap",
+        logoutConfirm: "Çıkış yapmak istediğine emin misin?",
         login: "Giriş yap",
         register: "Kayıt ol",
         logoutSuccess: "Başarıyla çıkış yapıldı.",

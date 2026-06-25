@@ -24,6 +24,7 @@ import { useRouter, usePathname } from 'expo-router';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
+import { useConfirm } from '@/src/components/common/ConfirmDialog';
 import { Avatar } from '@/src/components/common/Avatar';
 import { useShell } from '@/src/contexts/shell-context';
 import {
@@ -173,6 +174,7 @@ export function AppSidebar({ children }: AppSidebarProps) {
   const { colors, themeMode, setThemeMode } = useTheme();
   const { locale, switchLocale, messages } = useLocale();
   const { user, logout, isAuthenticated } = useAuth();
+  const confirm = useConfirm();
   const { isSidebarOpen, openSidebar, closeSidebar } = useShell();
   const router = useRouter();
   const pathname = usePathname();
@@ -289,10 +291,17 @@ export function AppSidebar({ children }: AppSidebarProps) {
 
   const handleLogout = useCallback(async () => {
     haptics.impactHeavy();
+    const ok = await confirm({
+      title: messages.nav.logout,
+      message: messages.nav.logout + '?',
+      confirmLabel: messages.nav.logout,
+      destructive: true,
+    });
+    if (!ok) return;
     closeSidebar();
     await logout();
     setTimeout(() => router.replace('/(auth)/login'), 50);
-  }, [closeSidebar, logout, router]);
+  }, [confirm, messages, closeSidebar, logout, router]);
 
   const handleLocaleSwitch = useCallback(
     (next: AppLocale) => {

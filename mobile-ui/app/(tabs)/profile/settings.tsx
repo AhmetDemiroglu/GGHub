@@ -21,6 +21,7 @@ import { BlockedUsersDialog } from '@/src/components/profile/BlockedUsersDialog'
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
+import { useConfirm } from '@/src/components/common/ConfirmDialog';
 import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { getMyProfile, updateProfileVisibility, updateMessageSetting } from '@/src/api/profile';
 import {
@@ -35,6 +36,7 @@ export default function ProfileSettingsScreen() {
   const { colors } = useTheme();
   const { messages, locale, switchLocale } = useLocale();
   const { logout, user } = useAuth();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const tabBarHeight = useTabBarHeight();
   const h = messages.profile.header;
@@ -63,15 +65,14 @@ export default function ProfileSettingsScreen() {
     },
   });
 
-  const handleLogout = () => {
-    Alert.alert(messages.nav.logout, messages.nav.logout + '?', [
-      { text: messages.common.cancel, style: 'cancel' },
-      {
-        text: messages.nav.logout,
-        style: 'destructive',
-        onPress: () => logout(),
-      },
-    ]);
+  const handleLogout = async () => {
+    const ok = await confirm({
+      title: messages.nav.logout,
+      message: messages.nav.logout + '?',
+      confirmLabel: messages.nav.logout,
+      destructive: true,
+    });
+    if (ok) logout();
   };
 
   const handleExportData = () => {

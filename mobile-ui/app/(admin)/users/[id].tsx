@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Alert, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,7 @@ import { Button } from '@/src/components/common/Button';
 import { Input } from '@/src/components/common/Input';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
 import { BottomSheet } from '@/src/components/common/BottomSheet';
+import { useConfirm } from '@/src/components/common/ConfirmDialog';
 import { UserTabs } from '@/src/components/admin/UserTabs';
 import { getUserDetails, banUser, unbanUser, changeUserRole } from '@/src/api/admin';
 
@@ -22,6 +23,7 @@ export default function AdminUserDetailScreen() {
   const { messages } = useLocale();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const m = messages.admin;
 
   const [banSheetVisible, setBanSheetVisible] = useState(false);
@@ -56,23 +58,19 @@ export default function AdminUserDetailScreen() {
     },
   });
 
-  const handleBan = () => {
+  const handleBan = async () => {
     if (user?.isBanned) {
-      Alert.alert(m.unban, m.unbanConfirm, [
-        { text: messages.common.cancel, style: 'cancel' },
-        { text: messages.common.confirm, onPress: () => unbanMutation.mutate() },
-      ]);
+      const ok = await confirm({ title: m.unban, message: m.unbanConfirm });
+      if (ok) unbanMutation.mutate();
     } else {
       setBanSheetVisible(true);
     }
   };
 
-  const handleRoleChange = () => {
+  const handleRoleChange = async () => {
     const newRole = user?.role === 'Admin' ? 'User' : 'Admin';
-    Alert.alert(m.changeRole, m.changeRoleConfirm, [
-      { text: messages.common.cancel, style: 'cancel' },
-      { text: messages.common.confirm, onPress: () => roleMutation.mutate(newRole) },
-    ]);
+    const ok = await confirm({ title: m.changeRole, message: m.changeRoleConfirm });
+    if (ok) roleMutation.mutate(newRole);
   };
 
   if (isLoading || !user) {

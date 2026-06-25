@@ -18,6 +18,7 @@ import { EmptyState } from '@/src/components/common/EmptyState';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
 import { ListFormModal } from '@/src/components/lists/ListFormModal';
 import { showDeleteListDialog } from '@/src/components/lists/DeleteListDialog';
+import { useConfirm } from '@/src/components/common/ConfirmDialog';
 import { useToast } from '@/src/components/common/Toast';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
@@ -35,6 +36,7 @@ export default function MyListsScreen() {
   const { messages } = useLocale();
   const { user, isAuthenticated } = useAuth();
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const router = useRouter();
   const queryClient = useQueryClient();
   const tabBarHeight = useTabBarHeight();
@@ -85,6 +87,7 @@ export default function MyListsScreen() {
       messages,
       queryClient,
       showToast,
+      confirm,
     });
   };
 

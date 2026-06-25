@@ -1,7 +1,7 @@
-import { Alert } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { deleteList } from '@/src/api/list';
 import type { Messages } from '@/src/i18n';
+import type { ConfirmFn } from '@/src/components/common/ConfirmDialog';
 
 type ToastFn = (type: 'success' | 'error' | 'info', title: string, message?: string) => void;
 
@@ -11,36 +11,33 @@ interface ShowDeleteListDialogParams {
   messages: Messages;
   queryClient: ReturnType<typeof useQueryClient>;
   showToast: ToastFn;
+  confirm: ConfirmFn;
   onSuccess?: () => void;
 }
 
-export function showDeleteListDialog({
+export async function showDeleteListDialog({
   listId,
   listName,
   messages,
   queryClient,
   showToast,
+  confirm,
   onSuccess,
 }: ShowDeleteListDialogParams) {
-  Alert.alert(
-    messages.lists.deleteConfirmTitle,
-    messages.lists.deleteConfirmMessage.replace('{name}', listName),
-    [
-      { text: messages.common.cancel, style: 'cancel' },
-      {
-        text: messages.common.cancel === 'Cancel' ? 'Delete' : 'Sil',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteList(listId);
-            queryClient.invalidateQueries({ queryKey: ['myLists'] });
-            showToast('success', messages.lists.deleteSuccess.replace('{name}', listName));
-            onSuccess?.();
-          } catch {
-            showToast('error', messages.lists.deleteError);
-          }
-        },
-      },
-    ],
-  );
+  const ok = await confirm({
+    title: messages.lists.deleteConfirmTitle,
+    message: messages.lists.deleteConfirmMessage.replace('{name}', listName),
+    confirmLabel: messages.common.delete,
+    destructive: true,
+  });
+  if (!ok) return;
+
+  try {
+    await deleteList(listId);
+    queryClient.invalidateQueries({ queryKey: ['myLists'] });
+    showToast('success', messages.lists.deleteSuccess.replace('{name}', listName));
+    onSuccess?.();
+  } catch {
+    showToast('error', messages.lists.deleteError);
+  }
 }

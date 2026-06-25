@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, Alert, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation } from '@tanstack/react-query';
 import { Button } from '@/src/components/common/Button';
 import { useToast } from '@/src/components/common/Toast';
+import { useConfirm } from '@/src/components/common/ConfirmDialog';
 import * as haptics from '@/src/utils/haptics';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
@@ -20,6 +21,7 @@ export function DangerZone({ onExportData }: DangerZoneProps) {
   const { messages } = useLocale();
   const { logout } = useAuth();
   const { showToast } = useToast();
+  const confirm = useConfirm();
   const dz = messages.profile.dangerZone;
 
   const deleteMutation = useMutation({
@@ -35,16 +37,16 @@ export function DangerZone({ onExportData }: DangerZoneProps) {
     },
   });
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     haptics.impactHeavy();
-    Alert.alert(dz.confirmTitle, dz.confirmDescription, [
-      { text: dz.cancelButton, style: 'cancel' },
-      {
-        text: dz.confirmDelete,
-        style: 'destructive',
-        onPress: () => deleteMutation.mutate(),
-      },
-    ]);
+    const ok = await confirm({
+      title: dz.confirmTitle,
+      message: dz.confirmDescription,
+      confirmLabel: dz.confirmDelete,
+      cancelLabel: dz.cancelButton,
+      destructive: true,
+    });
+    if (ok) deleteMutation.mutate();
   };
 
   return (
