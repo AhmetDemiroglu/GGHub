@@ -15,6 +15,9 @@ export const enUSMessages = {
         tba: "TBA",
         showMore: "Show more",
         showLess: "Show less",
+        appStore: "App Store",
+        googlePlay: "Google Play",
+        soon: "Soon",
     },
     seo: {
         defaultTitle: "GGHub",
@@ -232,6 +235,9 @@ export const enUSMessages = {
         },
     },
     home: {
+        promoBadge: "Now live",
+        promoTitle: "Our mobile app is live!",
+        promoSubtitle: "Take GGHub with you — discover games, rate them, build lists and stay close to the community wherever you are.",
         heroCta: "Start Reviewing",
         joinTitle: "Join the community",
         joinDescription: "Follow your friends, keep up with their activity, and stay close to the gaming scene.",

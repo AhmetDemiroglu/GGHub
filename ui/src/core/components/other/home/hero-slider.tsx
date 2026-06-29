@@ -13,6 +13,7 @@ import { buildLocalizedPathname } from "@/i18n/config";
 import { Button } from "@/core/components/ui/button";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/core/components/ui/carousel";
 import { PlatformIcons } from "@/core/components/other/platform-icons";
+import { StoreButtons } from "@/core/components/other/public/store-buttons";
 import logoSrc from "@core/assets/logo.png";
 import metacriticLogoSrc from "@core/assets/metacritic_logo.png";
 import rawgLogoSrc from "@core/assets/rawg_logo.png";
@@ -33,15 +34,11 @@ const normalizeDescription = (value: string | null | undefined) => {
     return plainText || null;
 };
 
-export default function HeroSlider({ games }: HeroSliderProps) {
+export default function HeroSlider({ games = [] }: HeroSliderProps) {
     const locale = useCurrentLocale();
     const t = useI18n();
     const plugin = useRef(Autoplay({ delay: 3000, stopOnInteraction: false }));
     const [descriptionOverrides, setDescriptionOverrides] = useState<Record<string, string>>({});
-
-    if (!games || games.length === 0) {
-        return null;
-    }
 
     useEffect(() => {
         let cancelled = false;
@@ -102,6 +99,39 @@ export default function HeroSlider({ games }: HeroSliderProps) {
         <div className="group relative w-full">
             <Carousel plugins={[plugin.current]} className="w-full" onMouseEnter={plugin.current.stop} onMouseLeave={plugin.current.reset}>
                 <CarouselContent>
+                    {/* Static promo slide — always first; the live mobile app CTA. */}
+                    <CarouselItem key="app-promo">
+                        <div className="relative h-[300px] w-full overflow-hidden rounded-2xl border border-border/50 bg-background shadow-2xl md:h-[360px]">
+                            <div className="absolute inset-0 z-0 bg-gradient-to-br from-cyan-500/25 via-background to-violet-600/30" />
+                            <div aria-hidden className="pointer-events-none absolute -left-16 -top-16 z-0 h-64 w-64 rounded-full bg-cyan-500/20 blur-3xl" />
+                            <div aria-hidden className="pointer-events-none absolute -bottom-20 right-10 z-0 h-64 w-64 rounded-full bg-violet-600/20 blur-3xl" />
+                            <div className="relative z-10 flex h-full flex-col items-center justify-center gap-5 p-6 text-center md:flex-row md:justify-between md:gap-8 md:p-12 md:text-left lg:px-16">
+                                <div className="flex max-w-xl flex-col items-center gap-3 md:items-start">
+                                    <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-400/40 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-300">
+                                        <span className="relative flex h-2 w-2">
+                                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-75" />
+                                            <span className="relative inline-flex h-2 w-2 rounded-full bg-cyan-400" />
+                                        </span>
+                                        {t("home.promoBadge")}
+                                    </span>
+                                    <h2 className="text-2xl font-black tracking-tighter text-foreground drop-shadow-xl md:text-3xl lg:text-4xl">{t("home.promoTitle")}</h2>
+                                    <p className="max-w-md text-xs text-muted-foreground md:text-sm">{t("home.promoSubtitle")}</p>
+                                    <div className="w-full pt-2 sm:max-w-sm">
+                                        <StoreButtons appStoreLabel={t("common.appStore")} googlePlayLabel={t("common.googlePlay")} soonText={t("common.soon")} />
+                                    </div>
+                                </div>
+                                <div className="relative hidden h-52 w-28 shrink-0 rotate-3 overflow-hidden rounded-2xl border border-white/15 shadow-2xl transition-transform duration-500 hover:rotate-0 md:block lg:h-64 lg:w-36">
+                                    <Image
+                                        src={locale === "tr" ? "/gghub-app-tr.jpg" : "/gghub-app-en.jpg"}
+                                        alt={t("common.appName")}
+                                        fill
+                                        className="object-cover"
+                                        sizes="160px"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </CarouselItem>
                     {games.map((game) => {
                         const descriptionKey = `${locale}:${game.id || game.rawgId}`;
                         const resolvedDescription = normalizeDescription(game.description) ?? descriptionOverrides[descriptionKey] ?? null;

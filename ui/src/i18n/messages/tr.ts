@@ -15,6 +15,9 @@ export const trMessages = {
         tba: "TBA",
         showMore: "Daha fazla göster",
         showLess: "Daha az göster",
+        appStore: "App Store",
+        googlePlay: "Google Play",
+        soon: "Yakında",
     },
     seo: {
         defaultTitle: "GGHub",
@@ -232,6 +235,9 @@ export const trMessages = {
         },
     },
     home: {
+        promoBadge: "Yayında",
+        promoTitle: "Mobil uygulamamız yayında!",
+        promoSubtitle: "GGHub'ı yanına al — oyunları keşfet, puanla, listeler oluştur ve nerede olursan ol topluluğa yakın kal.",
         heroCta: "İncelemeye Başla",
         joinTitle: "Topluluğa Katıl",
         joinDescription: "Arkadaşlarını takip et, aktivitelerini kaçırma ve oyun dünyasının nabzını tut.",
