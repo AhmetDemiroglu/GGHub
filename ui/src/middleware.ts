@@ -43,7 +43,7 @@ export function middleware(request: NextRequest) {
         pathname.startsWith("/api") ||
         pathname.startsWith("/images") ||
         pathname.startsWith("/og") ||
-        pathname === "/download-app" ||
+        pathname.startsWith("/download-app") ||
         pathname === "/download" ||
         publicFilePattern.test(pathname)
     ) {
