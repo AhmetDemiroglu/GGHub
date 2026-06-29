@@ -99,35 +99,35 @@ export default function HeroSlider({ games = [] }: HeroSliderProps) {
         <div className="group relative w-full">
             <Carousel plugins={[plugin.current]} className="w-full" onMouseEnter={plugin.current.stop} onMouseLeave={plugin.current.reset}>
                 <CarouselContent>
-                    {/* Static promo slide — always first; the live mobile app CTA. */}
+                    {/* Static promo slide, always first: the live mobile app CTA. */}
                     <CarouselItem key="app-promo">
-                        <div className="relative h-[300px] w-full overflow-hidden rounded-2xl border border-border/50 bg-background shadow-2xl md:h-[360px]">
-                            <div className="absolute inset-0 z-0 bg-gradient-to-br from-cyan-500/25 via-background to-violet-600/30" />
-                            <div aria-hidden className="pointer-events-none absolute -left-16 -top-16 z-0 h-64 w-64 rounded-full bg-cyan-500/20 blur-3xl" />
-                            <div aria-hidden className="pointer-events-none absolute -bottom-20 right-10 z-0 h-64 w-64 rounded-full bg-violet-600/20 blur-3xl" />
-                            <div className="relative z-10 flex h-full flex-col items-center justify-center gap-5 p-6 text-center md:flex-row md:justify-between md:gap-8 md:p-12 md:text-left lg:px-16">
-                                <div className="flex max-w-xl flex-col items-center gap-3 md:items-start">
-                                    <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-400/40 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-300">
-                                        <span className="relative flex h-2 w-2">
-                                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-75" />
-                                            <span className="relative inline-flex h-2 w-2 rounded-full bg-cyan-400" />
-                                        </span>
-                                        {t("home.promoBadge")}
-                                    </span>
-                                    <h2 className="text-2xl font-black tracking-tighter text-foreground drop-shadow-xl md:text-3xl lg:text-4xl">{t("home.promoTitle")}</h2>
-                                    <p className="max-w-md text-xs text-muted-foreground md:text-sm">{t("home.promoSubtitle")}</p>
-                                    <div className="w-full pt-2 sm:max-w-sm">
-                                        <StoreButtons appStoreLabel={t("common.appStore")} googlePlayLabel={t("common.googlePlay")} soonText={t("common.soon")} />
-                                    </div>
+                        <div className="relative h-[300px] w-full overflow-hidden rounded-2xl border border-border/50 bg-[#0a0b14] shadow-2xl md:h-[360px]">
+                            <div className="absolute inset-0 z-0 bg-gradient-to-br from-cyan-500/25 via-[#0a0b14] to-violet-600/30" />
+                            <div aria-hidden className="pointer-events-none absolute -left-20 -top-20 z-0 h-72 w-72 rounded-full bg-cyan-500/20 blur-3xl" />
+                            <div aria-hidden className="pointer-events-none absolute -bottom-24 right-1/4 z-0 h-80 w-80 rounded-full bg-violet-600/25 blur-3xl" />
+                            <div className="relative z-10 flex h-full max-w-[600px] flex-col items-center justify-center gap-4 p-6 text-center md:max-w-[60%] md:items-start md:p-12 md:text-left lg:px-16">
+                                <h2 className="text-2xl font-black tracking-tight text-white drop-shadow-xl md:text-3xl lg:text-[2.6rem] lg:leading-[1.05]">{t("home.promoTitle")}</h2>
+                                <p className="max-w-md text-sm text-white/70 md:text-base">{t("home.promoSubtitle")}</p>
+                                <div className="w-full pt-2 sm:max-w-sm">
+                                    <StoreButtons appStoreLabel={t("common.appStore")} googlePlayLabel={t("common.googlePlay")} soonText={t("common.soon")} />
                                 </div>
-                                <div className="relative hidden h-52 w-28 shrink-0 rotate-3 overflow-hidden rounded-2xl border border-white/15 shadow-2xl transition-transform duration-500 hover:rotate-0 md:block lg:h-64 lg:w-36">
-                                    <Image
-                                        src={locale === "tr" ? "/gghub-app-tr.jpg" : "/gghub-app-en.jpg"}
-                                        alt={t("common.appName")}
-                                        fill
-                                        className="object-cover"
-                                        sizes="160px"
-                                    />
+                            </div>
+                            {/* iPhone mockup peeking from the bottom-right; lifts on hover */}
+                            <div className="absolute right-3 top-9 z-10 hidden w-[180px] md:block lg:right-14 lg:top-11 lg:w-[250px]">
+                                <div className="rotate-[5deg] transition-transform duration-500 ease-out will-change-transform hover:-translate-y-3 hover:rotate-0">
+                                    <div className="relative rounded-[2.4rem] bg-zinc-900 p-[7px] shadow-[0_30px_70px_-20px_rgba(0,0,0,0.85)] ring-1 ring-white/10">
+                                        <div className="absolute left-1/2 top-[11px] z-20 h-[15px] w-[66px] -translate-x-1/2 rounded-full bg-black" />
+                                        <div className="overflow-hidden rounded-[1.9rem] bg-black">
+                                            <Image
+                                                src={locale === "tr" ? "/gghub-app-tr.jpg" : "/gghub-app-en.jpg"}
+                                                alt={t("common.appName")}
+                                                width={540}
+                                                height={1174}
+                                                className="block h-auto w-full"
+                                                sizes="250px"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

@@ -6,7 +6,7 @@
  * state. When the Play listing is approved, set GOOGLE_PLAY_URL to the listing
  * URL (id below) and the buttons become active automatically.
  */
-export const APP_STORE_URL = "https://apps.apple.com/app/id6781281375";
+export const APP_STORE_URL = "https://apps.apple.com/us/app/gghub-games-community/id6781281375";
 
 export const GOOGLE_PLAY_URL: string | null = null;
 
