@@ -27,9 +27,16 @@ type SearchParams = Promise<{ lang?: string | string[] }>;
 
 export async function generateMetadata({ searchParams }: { searchParams: SearchParams }): Promise<Metadata> {
     const { lang } = await searchParams;
-    const l = resolveLang(lang);
+    // When shared without ?lang, crawlers (WhatsApp/Facebook/etc.) have no browser
+    // locale to read, so default the card to Turkish — the primary audience and the
+    // language of our other social cards. ?lang=en still yields the English card.
+    const l = lang ? resolveLang(lang) : "tr";
     const m = META[l];
-    const ogImage = `${siteUrl}/download-app/og?lang=${l}`;
+    // Static, pre-rendered card (~56 KB). The previous dynamic next/og route could
+    // take 5s+ on a cold start and WhatsApp's crawler timed out before the image
+    // loaded, so the shared link showed no thumbnail. A static file is served
+    // instantly and reliably by every crawler.
+    const ogImage = `${siteUrl}/og/download-app-${l}.jpg`;
 
     return {
         title: m.title,
@@ -42,7 +49,7 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
             locale: l === "tr" ? "tr_TR" : "en_US",
             title: m.title,
             description: m.description,
-            images: [{ url: ogImage, width: 1200, height: 630, alt: m.ogAlt, type: "image/png" }],
+            images: [{ url: ogImage, width: 1200, height: 630, alt: m.ogAlt, type: "image/jpeg" }],
         },
         twitter: {
             card: "summary_large_image",

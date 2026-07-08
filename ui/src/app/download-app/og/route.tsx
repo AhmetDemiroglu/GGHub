@@ -1,6 +1,14 @@
 import { ImageResponse } from "next/og";
 
-// Social-share card for /download-app. Language-aware via ?lang (tr|en, default en).
+// Design source for the /download-app social-share card (language-aware via ?lang).
+//
+// NOTE: page.tsx no longer points the OG/Twitter tags at this route. Rendering it
+// on demand took 5s+ on a cold start (Satori + fetching the phone shot & logo), so
+// WhatsApp's crawler timed out and the shared link showed no thumbnail. The cards
+// are now pre-rendered to static files served instantly:
+//   public/og/download-app-en.jpg  ·  public/og/download-app-tr.jpg
+// To refresh them after editing this layout: deploy, fetch
+//   /download-app/og?lang=en|tr, then flatten→JPEG (sharp) into public/og/.
 export const runtime = "edge";
 
 const COPY = {
