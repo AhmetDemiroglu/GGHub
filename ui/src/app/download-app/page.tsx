@@ -60,9 +60,8 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
     };
 }
 
-export default async function DownloadAppPage({ searchParams }: { searchParams: SearchParams }) {
-    const { lang } = await searchParams;
-    // Only force the page language when ?lang is present; otherwise the client uses the browser locale.
-    const langParam = lang ? resolveLang(lang) : undefined;
-    return <DownloadAppClient langParam={langParam} />;
+export default function DownloadAppPage() {
+    // The page renders both languages at once (see download-app-client.tsx), so it
+    // needs no language prop. ?lang still selects the shared card via generateMetadata.
+    return <DownloadAppClient />;
 }
