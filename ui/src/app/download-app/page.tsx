@@ -5,12 +5,12 @@ const siteUrl = "https://gghub.social";
 
 const META = {
     tr: {
-        title: "GGHub'ı indir | iOS'ta yayında",
+        title: "GGHub'ı indir | App Store ve Google Play'de",
         description: "GGHub App Store ve Google Play'de yayında. Oyunları keşfet, puanla, listeler oluştur ve oyuncu topluluğuna katıl.",
         ogAlt: "GGHub mobil uygulaması yayında",
     },
     en: {
-        title: "Download GGHub | Live on the App Store",
+        title: "Download GGHub | On the App Store and Google Play",
         description: "GGHub is live on the App Store and Google Play. Discover games, rate what you play, build lists and join the gaming community.",
         ogAlt: "GGHub mobile app is live",
     },
