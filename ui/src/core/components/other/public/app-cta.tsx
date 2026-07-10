@@ -7,14 +7,14 @@ import { StoreButtons } from "@/core/components/other/public/store-buttons";
 const COPY = {
     "en-US": {
         downloadTitle: "Download the app",
-        downloadDesc: "GGHub is live on the App Store. The Android version is coming very soon to Google Play.",
+        downloadDesc: "GGHub is live on the App Store and Google Play. Get it on your device.",
         contactTitle: "Get in touch",
         contactDesc: "Write to us with questions, feedback, or collaboration ideas.",
         soon: "Soon",
     },
     tr: {
         downloadTitle: "Uygulamayı indir",
-        downloadDesc: "GGHub App Store'da yayında. Android sürümü çok yakında Google Play'de.",
+        downloadDesc: "GGHub App Store ve Google Play'de yayında. Cihazına hemen indir.",
         contactTitle: "İletişime geç",
         contactDesc: "Soruların, geri bildirimin veya iş birliği için bize yaz.",
         soon: "Yakında",
