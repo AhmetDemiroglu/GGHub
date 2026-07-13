@@ -9,6 +9,7 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/tr";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
 import { getImageUrl } from "@/core/lib/get-image-url";
+import placeholderGame from "@/core/assets/placeholder.png";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 import { buildLocalizedPathname } from "@/i18n/config";
 
@@ -64,7 +65,7 @@ export default function ActivityFeed({ activities }: ActivityFeedProps) {
                                 className="flex gap-4 p-3 rounded-lg border bg-card/50 hover:bg-card hover:border-primary/30 transition-all group/card"
                             >
                                 <div className="shrink-0 w-12 h-16 bg-muted rounded overflow-hidden relative">
-                                    <img src={activity.reviewData.game.coverImage || undefined} className="w-full h-full object-cover" alt="" />
+                                    <img src={activity.reviewData.game.coverImage || activity.reviewData.game.backgroundImage || placeholderGame.src} className="w-full h-full object-cover" alt="" />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1">

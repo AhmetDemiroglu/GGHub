@@ -11,6 +11,7 @@ import { buildLocalizedPathname } from "@/i18n/config";
 import { enUSMessages } from "@/i18n/messages/en-US";
 import { trMessages } from "@/i18n/messages/tr";
 import { getImageUrl } from "@/core/lib/get-image-url";
+import placeholderGame from "@/core/assets/placeholder.png";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/core/components/ui/tabs";
 import { Activity as ActivityIcon, Flame, List, Star, UserPlus } from "lucide-react";
@@ -132,7 +133,7 @@ function ReviewCard({ activity, timeAgo, locale }: { activity: Activity; timeAgo
                         className="mt-2 flex items-start gap-3 rounded-lg border border-transparent bg-background/60 p-2.5 transition-all hover:border-border/50 hover:bg-background"
                     >
                         <div className="relative h-16 w-12 shrink-0 overflow-hidden rounded-md shadow-sm">
-                            <Image src={getImageUrl(review.game.coverImage) || ""} alt={review.game.name} fill className="object-cover" />
+                            <Image src={getImageUrl(review.game.coverImage || review.game.backgroundImage) || placeholderGame.src} alt={review.game.name} fill className="object-cover" />
                         </div>
                         <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-bold">{review.game.name}</p>

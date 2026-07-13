@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar
 import { ScrollArea } from "@/core/components/ui/scroll-area";
 import { Star, List, UserPlus, Activity as ActivityIcon } from "lucide-react";
 import { getImageUrl } from "@/core/lib/get-image-url";
+import placeholderGame from "@/core/assets/placeholder.png";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
 
@@ -103,7 +104,7 @@ function renderActivityItem(activity: Activity) {
                         </p>
                         <Link href={`/games/${review.game.slug}`} className="flex items-start gap-3 bg-background/50 p-2 rounded-md hover:bg-background transition-colors border border-transparent hover:border-border">
                             <div className="relative w-10 h-14 shrink-0 rounded overflow-hidden">
-                                <Image src={getImageUrl(review.game.coverImage) || ""} alt={review.game.name} fill className="object-cover" />
+                                <Image src={getImageUrl(review.game.coverImage || review.game.backgroundImage) || placeholderGame.src} alt={review.game.name} fill className="object-cover" />
                             </div>
                             <div className="min-w-0">
                                 <p className="text-sm font-bold truncate">{review.game.name}</p>
