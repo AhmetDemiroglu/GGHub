@@ -290,7 +290,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                         </Avatar>
                     )}
 
-                    <div className={`flex gap-2 pt-4 ${bannerSrc ? "sm:pt-20 md:pt-24" : "sm:pt-10 md:pt-12"}`}>
+                    <div className={`flex flex-wrap gap-2 pt-4 ${bannerSrc ? "sm:pt-20 md:pt-24" : "sm:pt-10 md:pt-12"}`}>
                         {isOwnProfile ? (
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -387,13 +387,14 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                                 {user && (
                                     <Button
                                         variant="outline"
+                                        size="sm"
                                         className="cursor-pointer text-destructive hover:bg-destructive/10 hover:text-destructive"
                                         onClick={() => setIsReportDialogOpen(true)}
                                         title={t("profile.header.reportButton")}
                                         aria-label={t("profile.header.reportButton")}
                                     >
                                         <Flag className="h-4 w-4" />
-                                        <span className="sm:inline ml-1">{t("profile.header.reportButton")}</span>
+                                        <span className="hidden sm:inline ml-1">{t("profile.header.reportButton")}</span>
                                     </Button>
                                 )}
                             </>

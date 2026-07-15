@@ -11,6 +11,7 @@ import { useAuth } from "@/core/hooks/use-auth";
 import { useCurrentLocale } from "@/core/contexts/locale-context";
 import { Skeleton } from "@/core/components/ui/skeleton";
 import HeroSlider from "./hero-slider";
+import HomeMobileRails from "./home-mobile-rails";
 import HomePeopleSuggestions from "./home-people-suggestions";
 import HomeRightSidebar from "./home-right-sidebar";
 import HomeSocialFeed from "./home-social-feed";
@@ -79,12 +80,19 @@ export default function HomeView() {
             ) : null}
 
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-                <div className="xl:col-span-8">
+                {/* Feed sütunu: mobilde trending/liderlik kompakt şeritler üstte,
+                    ardından akış en altta kesintisiz sonsuz scroll olarak akar. */}
+                <div className="space-y-5 xl:col-span-8">
+                    <div className="xl:hidden">
+                        <HomeMobileRails trending={content.trendingLocal} leaders={content.topGamers} />
+                    </div>
                     <HomeSocialFeed initialActivities={feed} isAuthenticated={isAuthenticated} />
                 </div>
 
-                <aside className="xl:col-span-4">
-                    <div className="sticky top-4">
+                {/* Desktop sidebar: viewport'a sabit; içeriği taşarsa sayfa dışına
+                    çıkmak yerine kendi içinde kayar (liderlik tablosu hep erişilebilir). */}
+                <aside className="hidden xl:col-span-4 xl:block">
+                    <div className="no-scrollbar sticky top-4 max-h-[calc(100dvh-2rem)] overflow-y-auto">
                         <HomeRightSidebar trending={content.trendingLocal} leaders={content.topGamers} />
                     </div>
                 </aside>

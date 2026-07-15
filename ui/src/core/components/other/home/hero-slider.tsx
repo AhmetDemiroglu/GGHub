@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Play, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { gameApi } from "@/api/gaming/game.api";
 import { HomeGame } from "@/models/home/home.model";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
@@ -173,14 +173,18 @@ export default function HeroSlider({ games = [] }: HeroSliderProps) {
                             <div aria-hidden className="pointer-events-none absolute -left-24 -top-24 z-0 h-80 w-80 rounded-full bg-cyan-500/15 blur-3xl" />
                             <div aria-hidden className="pointer-events-none absolute -bottom-28 right-1/4 z-0 h-96 w-96 rounded-full bg-violet-600/20 blur-3xl" />
 
-                            <div className="relative z-10 flex h-full max-w-[620px] flex-col items-center justify-center gap-4 p-6 pb-16 text-center md:max-w-[58%] md:items-start md:p-12 md:pb-16 md:text-left lg:px-16">
-                                <div className="flex items-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-300">
-                                    <Sparkles className="h-3 w-3" />
-                                    {t("common.appName")}
-                                </div>
+                            <div className="relative z-10 flex h-full max-w-[620px] flex-col items-center justify-center gap-3 p-5 pb-14 text-center md:max-w-[58%] md:items-start md:gap-4 md:p-12 md:pb-16 md:text-left lg:px-16">
+                                <Image
+                                    src={logoSrc}
+                                    alt={t("common.appName")}
+                                    width={150}
+                                    height={42}
+                                    priority
+                                    className="h-7 w-auto drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)] md:h-9"
+                                />
                                 <h2 className="text-2xl font-black tracking-tight text-white drop-shadow-xl md:text-3xl lg:text-[2.6rem] lg:leading-[1.05]">{t("home.promoTitle")}</h2>
-                                <p className="max-w-md text-sm text-white/65 md:text-base">{t("home.promoSubtitle")}</p>
-                                <div className="w-full pt-2 sm:max-w-sm">
+                                <p className="line-clamp-2 max-w-md text-sm text-white/65 md:line-clamp-none md:text-base">{t("home.promoSubtitle")}</p>
+                                <div className="w-full pt-1 sm:max-w-sm md:pt-2">
                                     <StoreButtons appStoreLabel={t("common.appStore")} googlePlayLabel={t("common.googlePlay")} soonText={t("common.soon")} />
                                 </div>
                             </div>

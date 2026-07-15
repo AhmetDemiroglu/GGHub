@@ -93,7 +93,7 @@ export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
                 <div className="absolute inset-0 bg-linear-to-r from-background via-background/50 to-transparent" />
             </div>
 
-            <div className="relative h-full flex flex-col justify-end pt-62 pb-0 md:px-12 md:pb-10 lg:px-16 lg:pb-12 z-10">
+            <div className="relative h-full flex flex-col justify-end px-5 pt-40 pb-7 md:px-12 md:pt-62 md:pb-10 lg:px-16 lg:pb-12 z-10">
                 <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-white/80 mb-4">
                     {releaseDate && (
                         <div className="flex items-center gap-1.5 bg-black/30 px-3 py-1.5 rounded-full backdrop-blur-md border border-white/10">
@@ -109,10 +109,10 @@ export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
                     )}
                 </div>
 
-                <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-white mb-8 leading-[0.9] tracking-tight drop-shadow-2xl">{game.name}</h1>
+                <h1 className="text-4xl md:text-7xl lg:text-8xl font-black text-white mb-4 md:mb-8 leading-[0.95] md:leading-[0.9] tracking-tight drop-shadow-2xl">{game.name}</h1>
 
                 {heroDescription ? (
-                    <p className="mb-8 max-w-4xl text-sm leading-7 text-white/70 md:text-base line-clamp-4">
+                    <p className="mb-5 md:mb-8 max-w-4xl text-sm leading-7 text-white/70 md:text-base line-clamp-3 md:line-clamp-4">
                         {heroDescription}
                     </p>
                 ) : null}
