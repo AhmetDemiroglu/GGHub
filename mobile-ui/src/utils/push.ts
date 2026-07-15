@@ -34,9 +34,13 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
   }
 
   if (Platform.OS === 'android') {
+    // HIGH: heads-up banner + ses (DEFAULT bunlari her zaman gostermiyordu). Kanal kimligi
+    // 'default' backend push payload'undaki channelId ile bire bir eslesir.
     await Notifications.setNotificationChannelAsync('default', {
       name: 'default',
-      importance: Notifications.AndroidImportance.DEFAULT,
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#0f172a',
     });
   }
 

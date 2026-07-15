@@ -346,11 +346,20 @@ namespace GGHub.Infrastructure.Services
 
             if (unreadMessages.Any())
             {
+                var now = DateTime.UtcNow;
                 foreach (var message in unreadMessages)
                 {
-                    message.ReadAt = DateTime.UtcNow;
+                    message.ReadAt = now;
                 }
                 await _context.SaveChangesAsync();
+
+                // Yaniti self-tutarli yap: yeni okunanlarin ReadAt'i donen listede de dolsun
+                // (projeksiyon guncellemeden once yapildigi icin bunlar aksi halde null donuyordu).
+                var readIds = unreadMessages.Select(m => m.Id).ToHashSet();
+                foreach (var dto in messages.Where(d => readIds.Contains(d.Id)))
+                {
+                    dto.ReadAt = now;
+                }
 
                 // Notify the sender that their messages have been read
                 var reader = await _context.Users.FindAsync(userId);
@@ -362,6 +371,24 @@ namespace GGHub.Infrastructure.Services
                 // Update unread message count for the reader
                 var readerUnreadCount = await GetUnreadMessageCountAsync(userId);
                 await _hubNotificationService.UpdateUnreadMessageCountAsync(userId, readerUnreadCount);
+
+                // Okuyucunun konusma listesindeki per-konusma rozeti aninda sifirlansin.
+                // Gonderim yolu (SendMessageAsync) iki tarafa da ConversationUpdated atarken,
+                // okuma yolu okuyucuya hic atmiyordu -> rozet bayatliyordu.
+                var latest = messages.FirstOrDefault();
+                if (latest != null)
+                {
+                    var readerConversation = new ConversationDto
+                    {
+                        PartnerId = partner.Id,
+                        PartnerUsername = partner.Username,
+                        PartnerProfileImageUrl = partner.ProfileImageUrl,
+                        LastMessage = latest.Content,
+                        LastMessageSentAt = latest.SentAt,
+                        UnreadCount = 0
+                    };
+                    await _hubNotificationService.UpdateConversationAsync(userId, readerConversation);
+                }
             }
 
             return messages;

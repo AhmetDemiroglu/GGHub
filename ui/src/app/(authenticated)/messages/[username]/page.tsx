@@ -46,6 +46,16 @@ export default function MessageThreadPage() {
         };
     }, [username, connectionStatus, joinConversation, leaveConversation]);
 
+    // Thread acilinca backend GET okunmamislari okundu isaretler. Konusma listesi +
+    // sayaci hemen tazele; boylece SignalR echo'su gecikse/dusse bile per-konusma rozeti
+    // ve aggregate sayac aninda sifirlanir (acilista bayat rozet kalmaz).
+    useEffect(() => {
+        if (!messages) return;
+        queryClient.invalidateQueries({ queryKey: ["conversations"] });
+        queryClient.invalidateQueries({ queryKey: ["recent-messages"] });
+        queryClient.invalidateQueries({ queryKey: ["unread-message-count"] });
+    }, [messages, queryClient]);
+
     useEffect(() => {
         if (!connection || !username) return;
 

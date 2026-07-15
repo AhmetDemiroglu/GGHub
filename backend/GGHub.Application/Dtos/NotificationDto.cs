@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using GGHub.Core.Enums;
 
 namespace GGHub.Application.Dtos
 {
@@ -8,6 +9,7 @@ namespace GGHub.Application.Dtos
         public string Message { get; set; }
         public string? Link { get; set; }
         public bool IsRead { get; set; }
+        public NotificationType Type { get; set; }
         public DateTime CreatedAt { get; set; }
     }
 }

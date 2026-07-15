@@ -8,6 +8,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ScreenWrapper } from '@/src/components/common/ScreenWrapper';
@@ -33,6 +34,7 @@ export default function NotificationsScreen() {
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const tabBarHeight = useTabBarHeight();
+  const isFocused = useIsFocused();
   const nav = messages.nav;
 
   const { onReceiveNotification } = useContext(SignalRContext);
@@ -54,6 +56,7 @@ export default function NotificationsScreen() {
     mutationFn: markAllNotificationsAsRead,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-notification-count'] });
     },
   });
 
@@ -77,6 +80,15 @@ export default function NotificationsScreen() {
   );
 
   const hasUnread = (notificationsQuery.data ?? []).some((n) => !n.isRead);
+
+  // Ekran her odaklandiginda (ve odaktayken yeni bildirim geldiginde) okunmamislari
+  // otomatik okundu yap -> zil rozeti aninda temizlensin (X/Instagram tarzi).
+  useEffect(() => {
+    if (isFocused && hasUnread && !markAllMutation.isPending) {
+      markAllMutation.mutate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFocused, hasUnread]);
 
   if (!isAuthenticated) return <AuthRequiredView />;
 

@@ -79,6 +79,10 @@ namespace GGHub.Infrastructure.Services
                     title,
                     body,
                     sound = "default",
+                    // Android: uygulamanin olusturdugu 'default' kanalini kullan (heads-up + ses)
+                    // ve yuksek oncelikle hemen teslim et. iOS bu iki alani gormezden gelir.
+                    channelId = "default",
+                    priority = "high",
                     data = new { link }
                 });
 

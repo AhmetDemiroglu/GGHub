@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import { useRouter } from 'expo-router';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useAuth } from '@/src/hooks/use-auth';
 import { useShell } from '@/src/contexts/shell-context';
-import { useSignalR } from '@/src/hooks/use-signalr';
+import { useUnreadCounts } from '@/src/hooks/use-unread-counts';
 import { Avatar } from '@/src/components/common/Avatar';
 import { Spacing, FontSize } from '@/src/constants/theme';
 import * as haptics from '@/src/utils/haptics';
@@ -44,23 +44,9 @@ export function AppTopBar({ title, showLogo = false, rightExtra, blur = false }:
   const { user } = useAuth();
   const { openSidebar } = useShell();
   const router = useRouter();
-  const { onUnreadMessageCountUpdated, onUnreadNotificationCountUpdated } = useSignalR();
-
-  const [unreadMessages, setUnreadMessages] = useState(0);
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
-
-  useEffect(() => {
-    const unsubMsg = onUnreadMessageCountUpdated((count: unknown) => {
-      if (typeof count === 'number') setUnreadMessages(count);
-    });
-    const unsubNotif = onUnreadNotificationCountUpdated((count: unknown) => {
-      if (typeof count === 'number') setUnreadNotifications(count);
-    });
-    return () => {
-      unsubMsg();
-      unsubNotif();
-    };
-  }, [onUnreadMessageCountUpdated, onUnreadNotificationCountUpdated]);
+  // Sayaclar paylasimli react-query cache'inden gelir (global, navigasyonda sifirlanmaz).
+  // SignalR context'i ayni anahtarlari canli gunceller; hydrate/foreground refetch tazeler.
+  const { unreadMessages, unreadNotifications } = useUnreadCounts();
 
   const handleMenu = () => {
     haptics.impactLight();

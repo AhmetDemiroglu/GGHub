@@ -9,6 +9,10 @@ buildscript {
     classpath('com.android.tools.build:gradle')
     classpath('com.facebook.react:react-native-gradle-plugin')
     classpath('org.jetbrains.kotlin:kotlin-gradle-plugin')
+    // FCM (Android push) icin Google Services plugin. Uygulama plugin'i yalnizca
+    // google-services.json mevcutsa uygulanir (app/build.gradle), boylece dosya
+    // yokken build BOZULMAZ.
+    classpath('com.google.gms:google-services:4.4.2')
   }
 }
 

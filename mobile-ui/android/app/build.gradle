@@ -180,3 +180,10 @@ dependencies {
         implementation jscFlavor
     }
 }
+
+// FCM (Android push): google-services plugin YALNIZCA google-services.json varsa uygulanir.
+// Boylece dosya olmadan build BOZULMAZ; dosya android/app/ icine eklenince Android push
+// otomatik aktiflesir (Firebase kurulumu + Expo'ya FCM V1 yuklemesi kullaniciya kalir).
+if (file('google-services.json').exists()) {
+    apply plugin: 'com.google.gms.google-services'
+}

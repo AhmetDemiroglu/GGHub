@@ -5,6 +5,7 @@ import {
   HubConnectionState,
   LogLevel,
 } from '@microsoft/signalr';
+import { useQueryClient } from '@tanstack/react-query';
 import { API_BASE_URL, APP_CONFIG } from '@/src/constants/config';
 import { useAuth } from '@/src/hooks/use-auth';
 
@@ -68,6 +69,7 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
   const connectionRef = useRef<HubConnection | null>(null);
   const { register, invoke } = useEventCallbacks();
+  const queryClient = useQueryClient();
 
   const joinConversation = useCallback(async (conversationId: string) => {
     const connection = connectionRef.current;
@@ -122,6 +124,17 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
 
     events.forEach((event) => {
       connection.on(event, (...args: unknown[]) => {
+        // Paylasimli react-query cache'ini de guncelle: rozet sayaclari ve konusma
+        // listesi canli dogru kalsin ve tab navigasyonunda hayatta kalsin (web deseni).
+        if (event === 'UnreadMessageCountUpdated' && typeof args[0] === 'number') {
+          queryClient.setQueryData(['unread-message-count'], { count: args[0] });
+        } else if (event === 'UnreadNotificationCountUpdated' && typeof args[0] === 'number') {
+          queryClient.setQueryData(['unread-notification-count'], { count: args[0] });
+        } else if (event === 'ConversationUpdated' || event === 'ReceiveMessage') {
+          queryClient.invalidateQueries({ queryKey: ['conversations'] });
+        } else if (event === 'ReceiveNotification') {
+          queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        }
         invoke(event, ...args);
       });
     });
@@ -132,6 +145,10 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
 
     connection.onreconnected(() => {
       setConnectionStatus('connected');
+      // Baglanti kopukken kacirilan event'ler icin sayac + konusma listesini tazele.
+      queryClient.invalidateQueries({ queryKey: ['unread-message-count'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-notification-count'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
     });
 
     connection.onclose(() => {
@@ -155,7 +172,7 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
       connectionRef.current = null;
       setConnectionStatus('disconnected');
     };
-  }, [isAuthenticated, accessToken, invoke]);
+  }, [isAuthenticated, accessToken, invoke, queryClient]);
 
   const onReceiveMessage = useCallback(
     (callback: SignalRCallback) => register('ReceiveMessage', callback),

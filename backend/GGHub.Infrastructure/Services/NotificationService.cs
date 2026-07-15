@@ -37,6 +37,7 @@ namespace GGHub.Infrastructure.Services
                 Message = notification.Message,
                 Link = notification.Link,
                 IsRead = false,
+                Type = notification.Type,
                 CreatedAt = notification.CreatedAt
             };
             await _hubNotificationService.SendNotificationAsync(recipientUserId, notificationDto);
@@ -60,6 +61,7 @@ namespace GGHub.Infrastructure.Services
                     Message = n.Message,
                     Link = n.Link,
                     IsRead = n.IsRead,
+                    Type = n.Type,
                     CreatedAt = n.CreatedAt
                 })
                 .ToListAsync();
@@ -78,9 +80,16 @@ namespace GGHub.Infrastructure.Services
                 .FirstOrDefaultAsync(n => n.Id == notificationId && n.RecipientUserId == userId);
 
             if (notification == null) return false;
+            if (notification.IsRead) return true;
 
             notification.IsRead = true;
-            return await _context.SaveChangesAsync() > 0;
+            var saved = await _context.SaveChangesAsync() > 0;
+
+            // Zil rozeti anlik dussun: guncel okunmamis sayacini yayinla.
+            var unreadCount = await GetUnreadCountAsync(userId);
+            await _hubNotificationService.UpdateUnreadNotificationCountAsync(userId, unreadCount);
+
+            return saved;
         }
         public async Task<bool> MarkAllAsReadAsync(int userId)
         {
@@ -93,7 +102,12 @@ namespace GGHub.Infrastructure.Services
                 notification.IsRead = true;
             }
 
-            return await _context.SaveChangesAsync() > 0;
+            var saved = await _context.SaveChangesAsync() > 0;
+
+            // Tumu okundu: rozet temizlensin.
+            await _hubNotificationService.UpdateUnreadNotificationCountAsync(userId, 0);
+
+            return saved;
         }
     }
 }

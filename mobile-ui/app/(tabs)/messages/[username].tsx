@@ -71,8 +71,13 @@ export default function MessageThreadScreen() {
         (a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime(),
       );
       setLocalMessages(sorted);
+      // Backend bu GET'te okunmamislari okundu isaretledi. Konusma listesi + topbar
+      // sayacini hemen tazele; boylece SignalR echo'su dusse bile (Android doze)
+      // rozet guncellenir ve "gir-cik okundu olmuyor" sorunu kalmaz.
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-message-count'] });
     }
-  }, [threadQuery.data]);
+  }, [threadQuery.data, queryClient]);
 
   useEffect(() => {
     if (!username) return;

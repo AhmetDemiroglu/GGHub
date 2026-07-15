@@ -12,6 +12,7 @@ export default function ListsLayout() {
         contentStyle: { backgroundColor: colors.background },
         animation: 'slide_from_right',
         gestureEnabled: true,
+        fullScreenGestureEnabled: true,
       }}
     >
       <Stack.Screen name="index" />
