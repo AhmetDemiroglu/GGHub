@@ -1,2 +1,6 @@
 # macOS
 .DS_Store
+
+# Root-level Markdown files (keep the main README tracked)
+/*.md
+!/README.md
