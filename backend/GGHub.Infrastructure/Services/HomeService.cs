@@ -79,22 +79,30 @@ namespace GGHub.Infrastructure.Services
                 })
                 .ToList();
 
-            // Trending oyunları da cache'le (5 dk) — sık değişmez
+            // Trending oyunları da cache'le (5 dk) — sık değişmez.
+            // Zaman-ağırlıklı skor: son 7 gün x3, son 30 gün x2, son 90 gün x1.
+            // Toplam sayı/puan tiebreaker olarak kalır ki az veri olsa da liste dolsun.
             var trendingGameIds = await _cache.GetOrCreateAsync("trending-game-ids", async entry =>
             {
                 entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5);
+                var now = DateTime.UtcNow;
+                var d7 = now.AddDays(-7);
+                var d30 = now.AddDays(-30);
+                var d90 = now.AddDays(-90);
                 return await _context.Reviews
                     .AsNoTracking()
                     .GroupBy(r => r.GameId)
                     .Select(g => new
                     {
                         GameId = g.Key,
-                        RecentReviewCount = g.Count(),
-                        RecentAvgRating = g.Average(r => r.Rating)
+                        TrendScore = g.Sum(r => r.CreatedAt >= d7 ? 3 : r.CreatedAt >= d30 ? 2 : r.CreatedAt >= d90 ? 1 : 0),
+                        ReviewCount = g.Count(),
+                        AvgRating = g.Average(r => r.Rating)
                     })
-                    .Where(x => x.RecentReviewCount >= 1 && x.RecentAvgRating >= 7.0)
-                    .OrderByDescending(x => x.RecentReviewCount)
-                    .ThenByDescending(x => x.RecentAvgRating)
+                    .Where(x => x.ReviewCount >= 1 && x.AvgRating >= 7.0)
+                    .OrderByDescending(x => x.TrendScore)
+                    .ThenByDescending(x => x.ReviewCount)
+                    .ThenByDescending(x => x.AvgRating)
                     .Take(10)
                     .Select(x => x.GameId)
                     .ToListAsync();

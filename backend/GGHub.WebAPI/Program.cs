@@ -103,6 +103,7 @@ builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddHttpClient<IPushNotificationService, ExpoPushNotificationService>();
 builder.Services.AddScoped<ISocialService, SocialService>();
+builder.Services.AddScoped<IUserSuggestionService, UserSuggestionService>();
 builder.Services.AddScoped<IEmailService, ResendEmailService>();
 builder.Services.AddScoped<ISearchService, SearchService>();
 builder.Services.AddScoped<IPhotoService, PhotoService>();

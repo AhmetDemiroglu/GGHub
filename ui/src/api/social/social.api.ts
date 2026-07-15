@@ -1,5 +1,9 @@
 import { axiosInstance } from "@core/lib/axios";
-import type { SocialProfile, BlockedUser, BlockStatus } from "@/models/social/social.model";
+import type { SocialProfile, BlockedUser, BlockStatus, SuggestedUser } from "@/models/social/social.model";
+
+export const getSuggestedUsers = (limit: number = 10): Promise<SuggestedUser[]> => {
+    return axiosInstance.get<SuggestedUser[]>(`/profiles/suggested?limit=${limit}`).then((response) => response.data);
+};
 
 
 export const followUser = (username: string): Promise<void> => {

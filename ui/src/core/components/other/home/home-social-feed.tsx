@@ -2,10 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { enUS, tr } from "date-fns/locale";
-import { Activity, ActivityType } from "@/models/activity/activity.model";
+import { getPersonalizedFeed } from "@/api/activity/activity.api";
+import { Activity, ActivityActor, ActivityType } from "@/models/activity/activity.model";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 import { buildLocalizedPathname } from "@/i18n/config";
 import { enUSMessages } from "@/i18n/messages/en-US";
@@ -14,17 +15,81 @@ import { getImageUrl } from "@/core/lib/get-image-url";
 import placeholderGame from "@/core/assets/placeholder.png";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/core/components/ui/tabs";
-import { Activity as ActivityIcon, Flame, List, Star, UserPlus } from "lucide-react";
+import { Skeleton } from "@/core/components/ui/skeleton";
+import { Activity as ActivityIcon, Flame, List, Loader2, Star, UserPlus } from "lucide-react";
+
+const FEED_PAGE_SIZE = 10;
 
 interface HomeSocialFeedProps {
-    activities: Activity[];
+    initialActivities: Activity[];
     isAuthenticated: boolean;
 }
 
-export default function HomeSocialFeed({ activities, isAuthenticated }: HomeSocialFeedProps) {
+export default function HomeSocialFeed({ initialActivities, isAuthenticated }: HomeSocialFeedProps) {
     const locale = useCurrentLocale();
     const t = useI18n();
     const [activeTab, setActiveTab] = useState("all");
+    const [activities, setActivities] = useState<Activity[]>(initialActivities);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(initialActivities.length >= FEED_PAGE_SIZE);
+    const sentinelRef = useRef<HTMLDivElement | null>(null);
+    const loadingRef = useRef(false);
+    // loadMore closure'ının her render'da güncel listeyi görmesi için ref tutuyoruz.
+    const activitiesRef = useRef(activities);
+    activitiesRef.current = activities;
+
+    useEffect(() => {
+        setActivities(initialActivities);
+        setHasMore(initialActivities.length >= FEED_PAGE_SIZE);
+    }, [initialActivities]);
+
+    const loadMore = useCallback(async () => {
+        if (loadingRef.current) return;
+        loadingRef.current = true;
+        setLoadingMore(true);
+
+        try {
+            // Sayfa içi sıralama skor bazlı olduğundan cursor son eleman değil,
+            // eldeki en eski occurredAt olmalı; yoksa kayıt atlanır/yinelenir.
+            const oldest = activitiesRef.current.reduce<string | null>(
+                (min, activity) => (min === null || activity.occurredAt < min ? activity.occurredAt : min),
+                null,
+            );
+            if (!oldest) return;
+
+            const nextPage = await getPersonalizedFeed(FEED_PAGE_SIZE, oldest);
+
+            setActivities((current) => {
+                const seen = new Set(current.map(getActivityKey));
+                const fresh = nextPage.filter((activity) => !seen.has(getActivityKey(activity)));
+                return [...current, ...fresh];
+            });
+            setHasMore(nextPage.length >= FEED_PAGE_SIZE);
+        } catch {
+            setHasMore(false);
+        } finally {
+            loadingRef.current = false;
+            setLoadingMore(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!isAuthenticated || !hasMore) return;
+        const sentinel = sentinelRef.current;
+        if (!sentinel) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0]?.isIntersecting) {
+                    void loadMore();
+                }
+            },
+            { rootMargin: "400px 0px" },
+        );
+
+        observer.observe(sentinel);
+        return () => observer.disconnect();
+    }, [isAuthenticated, hasMore, loadMore]);
 
     if (!isAuthenticated) {
         return (
@@ -38,7 +103,7 @@ export default function HomeSocialFeed({ activities, isAuthenticated }: HomeSoci
                 </div>
                 <Link
                     href={buildLocalizedPathname("/login", locale)}
-                    className="mx-auto flex h-10 items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                    className="mx-auto flex h-10 w-fit items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                 >
                     {t("home.joinCta")}
                 </Link>
@@ -91,6 +156,23 @@ export default function HomeSocialFeed({ activities, isAuthenticated }: HomeSoci
                                 <p className="mt-1 text-xs">{t("home.activityEmptyDescription")}</p>
                             </div>
                         )}
+
+                        {loadingMore ? (
+                            <div className="space-y-3">
+                                <Skeleton className="h-28 rounded-xl" />
+                                <Skeleton className="h-28 rounded-xl" />
+                            </div>
+                        ) : null}
+
+                        {hasMore && activities.length > 0 ? (
+                            <div ref={sentinelRef} className="flex h-10 items-center justify-center">
+                                {loadingMore ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : null}
+                            </div>
+                        ) : null}
+
+                        {!hasMore && activities.length > 0 ? (
+                            <p className="py-4 text-center text-xs text-muted-foreground/70">{t("home.feedEnd")}</p>
+                        ) : null}
                     </div>
                 </TabsContent>
             </Tabs>
@@ -113,41 +195,89 @@ function FeedCard({ activity, locale }: { activity: Activity; locale: "tr" | "en
     }
 }
 
+/** Kart başlığı: aktör avatarı + kullanıcı adı + eylem + zaman. Aktör yoksa (eski API) ikon gösterilir. */
+function CardHeader({
+    actor,
+    fallbackIcon,
+    actionText,
+    timeAgo,
+    locale,
+}: {
+    actor: ActivityActor | null | undefined;
+    fallbackIcon: React.ReactNode;
+    actionText: string;
+    timeAgo: string;
+    locale: "tr" | "en-US";
+}) {
+    if (!actor) {
+        return (
+            <div className="flex items-start gap-3">
+                {fallbackIcon}
+                <div className="flex flex-wrap items-center gap-2 pt-1.5">
+                    <span className="text-sm font-semibold">{actionText}</span>
+                    <span className="text-xs text-muted-foreground">{timeAgo}</span>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex items-center gap-3">
+            <Link href={buildLocalizedPathname(`/profiles/${actor.username}`, locale)} className="shrink-0">
+                <Avatar className="h-9 w-9 border border-border transition-transform hover:scale-105">
+                    <AvatarImage src={getImageUrl(actor.profileImageUrl) || ""} className="object-cover" />
+                    <AvatarFallback className="text-xs">{actor.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+            </Link>
+            <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                <Link
+                    href={buildLocalizedPathname(`/profiles/${actor.username}`, locale)}
+                    className="max-w-[160px] truncate text-sm font-bold hover:text-primary hover:underline"
+                >
+                    {actor.username}
+                </Link>
+                <span className="text-sm text-muted-foreground">{actionText}</span>
+                <span className="text-xs text-muted-foreground/70">· {timeAgo}</span>
+            </div>
+        </div>
+    );
+}
+
 function ReviewCard({ activity, timeAgo, locale }: { activity: Activity; timeAgo: string; locale: "tr" | "en-US" }) {
     const review = activity.reviewData!;
     const text = locale === "tr" ? trMessages : enUSMessages;
 
     return (
         <div className="rounded-xl border border-border/50 bg-card/50 p-4 transition-colors hover:bg-card/80">
-            <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-500/10">
-                    <Star className="h-4 w-4 text-blue-500" />
+            <CardHeader
+                actor={activity.actor}
+                fallbackIcon={
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-500/10">
+                        <Star className="h-4 w-4 text-blue-500" />
+                    </div>
+                }
+                actionText={text.home.reviewShared}
+                timeAgo={timeAgo}
+                locale={locale}
+            />
+            <Link
+                href={buildLocalizedPathname(`/games/${review.game.slug}`, locale)}
+                className="mt-3 flex items-start gap-3 rounded-lg border border-transparent bg-background/60 p-2.5 transition-all hover:border-border/50 hover:bg-background"
+            >
+                <div className="relative h-16 w-12 shrink-0 overflow-hidden rounded-md shadow-sm">
+                    <Image src={getImageUrl(review.game.coverImage || review.game.backgroundImage) || placeholderGame.src} alt={review.game.name} fill className="object-cover" />
                 </div>
                 <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm font-semibold">{text.home.reviewShared}</span>
-                        <span className="text-xs text-muted-foreground">{timeAgo}</span>
+                    <p className="truncate text-sm font-bold">{review.game.name}</p>
+                    <div className="mt-1 flex items-center gap-1.5">
+                        <div className="flex items-center gap-0.5 rounded bg-yellow-500/10 px-1.5 py-0.5">
+                            <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
+                            <span className="text-xs font-bold text-yellow-600 dark:text-yellow-400">{review.rating}</span>
+                        </div>
                     </div>
-                    <Link
-                        href={buildLocalizedPathname(`/games/${review.game.slug}`, locale)}
-                        className="mt-2 flex items-start gap-3 rounded-lg border border-transparent bg-background/60 p-2.5 transition-all hover:border-border/50 hover:bg-background"
-                    >
-                        <div className="relative h-16 w-12 shrink-0 overflow-hidden rounded-md shadow-sm">
-                            <Image src={getImageUrl(review.game.coverImage || review.game.backgroundImage) || placeholderGame.src} alt={review.game.name} fill className="object-cover" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-bold">{review.game.name}</p>
-                            <div className="mt-1 flex items-center gap-1.5">
-                                <div className="flex items-center gap-0.5 rounded bg-yellow-500/10 px-1.5 py-0.5">
-                                    <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
-                                    <span className="text-xs font-bold text-yellow-600 dark:text-yellow-400">{review.rating}</span>
-                                </div>
-                            </div>
-                            {review.contentSnippet ? <p className="mt-1.5 line-clamp-2 text-xs italic text-muted-foreground">"{review.contentSnippet}"</p> : null}
-                        </div>
-                    </Link>
+                    {review.contentSnippet ? <p className="mt-1.5 line-clamp-2 text-xs italic text-muted-foreground">"{review.contentSnippet}"</p> : null}
                 </div>
-            </div>
+            </Link>
         </div>
     );
 }
@@ -158,35 +288,35 @@ function ListCard({ activity, timeAgo, locale }: { activity: Activity; timeAgo: 
 
     return (
         <div className="rounded-xl border border-border/50 bg-card/50 p-4 transition-colors hover:bg-card/80">
-            <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500/10">
-                    <List className="h-4 w-4 text-amber-500" />
-                </div>
-                <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm font-semibold">{text.home.listCreated}</span>
-                        <span className="text-xs text-muted-foreground">{timeAgo}</span>
+            <CardHeader
+                actor={activity.actor}
+                fallbackIcon={
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500/10">
+                        <List className="h-4 w-4 text-amber-500" />
                     </div>
-                    <Link
-                        href={buildLocalizedPathname(`/lists/${list.listId}`, locale)}
-                        className="group mt-2 block rounded-lg border border-transparent bg-background/60 p-2.5 transition-all hover:border-border/50 hover:bg-background"
-                    >
-                        <p className="text-sm font-bold transition-colors group-hover:text-primary">{list.name}</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">
-                            {list.gameCount} {text.home.gamesSuffix}
-                        </p>
-                        {list.previewImages.length > 0 ? (
-                            <div className="mt-2 flex gap-1">
-                                {list.previewImages.slice(0, 4).map((image, index) => (
-                                    <div key={index} className="relative h-12 w-9 overflow-hidden rounded-md bg-muted shadow-sm">
-                                        {image ? <Image src={getImageUrl(image) || ""} alt="Game" fill className="object-cover" /> : null}
-                                    </div>
-                                ))}
+                }
+                actionText={text.home.listCreated}
+                timeAgo={timeAgo}
+                locale={locale}
+            />
+            <Link
+                href={buildLocalizedPathname(`/lists/${list.listId}`, locale)}
+                className="group mt-3 block rounded-lg border border-transparent bg-background/60 p-2.5 transition-all hover:border-border/50 hover:bg-background"
+            >
+                <p className="text-sm font-bold transition-colors group-hover:text-primary">{list.name}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                    {list.gameCount} {text.home.gamesSuffix}
+                </p>
+                {list.previewImages.length > 0 ? (
+                    <div className="mt-2 flex gap-1">
+                        {list.previewImages.slice(0, 4).map((image, index) => (
+                            <div key={index} className="relative h-12 w-9 overflow-hidden rounded-md bg-muted shadow-sm">
+                                {image ? <Image src={getImageUrl(image) || ""} alt="Game" fill className="object-cover" /> : null}
                             </div>
-                        ) : null}
-                    </Link>
-                </div>
-            </div>
+                        ))}
+                    </div>
+                ) : null}
+            </Link>
         </div>
     );
 }
@@ -197,30 +327,30 @@ function FollowCard({ activity, timeAgo, locale }: { activity: Activity; timeAgo
 
     return (
         <div className="rounded-xl border border-border/50 bg-card/50 p-4 transition-colors hover:bg-card/80">
-            <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-500/10">
-                    <UserPlus className="h-4 w-4 text-emerald-500" />
-                </div>
-                <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm font-semibold">{text.home.startedFollowing}</span>
-                        <span className="text-xs text-muted-foreground">{timeAgo}</span>
+            <CardHeader
+                actor={activity.actor}
+                fallbackIcon={
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-500/10">
+                        <UserPlus className="h-4 w-4 text-emerald-500" />
                     </div>
-                    <Link
-                        href={buildLocalizedPathname(`/profiles/${follow.username}`, locale)}
-                        className="mt-2 flex items-center gap-3 rounded-lg border border-transparent bg-background/60 p-2.5 transition-all hover:border-border/50 hover:bg-background"
-                    >
-                        <Avatar className="h-9 w-9 border border-border">
-                            <AvatarImage src={getImageUrl(follow.profileImageUrl) || ""} className="object-cover" />
-                            <AvatarFallback className="text-xs">{follow.username.substring(0, 2).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                            <p className="text-sm font-semibold">{follow.username}</p>
-                            <p className="text-xs text-muted-foreground">{text.home.viewProfile}</p>
-                        </div>
-                    </Link>
+                }
+                actionText={text.home.startedFollowing}
+                timeAgo={timeAgo}
+                locale={locale}
+            />
+            <Link
+                href={buildLocalizedPathname(`/profiles/${follow.username}`, locale)}
+                className="mt-3 flex items-center gap-3 rounded-lg border border-transparent bg-background/60 p-2.5 transition-all hover:border-border/50 hover:bg-background"
+            >
+                <Avatar className="h-9 w-9 border border-border">
+                    <AvatarImage src={getImageUrl(follow.profileImageUrl) || ""} className="object-cover" />
+                    <AvatarFallback className="text-xs">{follow.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div>
+                    <p className="text-sm font-semibold">{follow.username}</p>
+                    <p className="text-xs text-muted-foreground">{text.home.viewProfile}</p>
                 </div>
-            </div>
+            </Link>
         </div>
     );
 }
@@ -232,7 +362,7 @@ function getActivityKey(activity: Activity) {
         case ActivityType.ListCreated:
             return `list-${activity.listData?.listId ?? activity.id}-${activity.occurredAt}`;
         case ActivityType.FollowUser:
-            return `follow-${activity.followData?.username?.trim() || "unknown"}-${activity.occurredAt}`;
+            return `follow-${activity.actor?.username ?? ""}-${activity.followData?.username?.trim() || "unknown"}-${activity.occurredAt}`;
         default:
             return `activity-${activity.type}-${activity.id}-${activity.occurredAt}`;
     }

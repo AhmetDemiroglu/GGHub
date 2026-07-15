@@ -185,6 +185,40 @@
     background: radial-gradient(circle at 20% 0%, rgba(45, 212, 191, 0.18), transparent 45%), radial-gradient(circle at 80% 100%, rgba(129, 140, 248, 0.22), transparent 45%);
 }
 
+/* Hero slider: sinematik yavaş zoom (aktif slaytta yeniden tetiklenir) */
+@keyframes hero-kenburns {
+    from {
+        transform: scale(1.02);
+    }
+    to {
+        transform: scale(1.1);
+    }
+}
+
+.hero-kenburns {
+    animation: hero-kenburns 9s ease-out forwards;
+    will-change: transform;
+}
+
+/* Hero slider: aktif segmentin autoplay süresiyle dolan ilerleme çubuğu */
+@keyframes hero-progress {
+    from {
+        transform: scaleX(0);
+    }
+    to {
+        transform: scaleX(1);
+    }
+}
+
+.hero-progress-fill {
+    transform-origin: left center;
+    animation: hero-progress 6s linear forwards;
+}
+
+.group\/hero:hover .hero-progress-fill {
+    animation-play-state: paused;
+}
+
 @utility ease-bouncy {
     transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
 }

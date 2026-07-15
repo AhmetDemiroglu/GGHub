@@ -29,10 +29,19 @@ export interface FollowActivityData {
     lastName?: string | null;
 }
 
+export interface ActivityActor {
+    id: number;
+    username: string;
+    profileImageUrl: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+}
+
 export interface Activity {
     id: number;
     type: ActivityType;
     occurredAt: string;
+    actor?: ActivityActor | null;
     reviewData?: ReviewActivityData;
     listData?: ListActivityData;
     followData?: FollowActivityData;

@@ -21,3 +21,12 @@ export interface BlockStatus {
     isBlockedByMe: boolean;
     isBlockingMe: boolean;
 }
+export type SuggestionReason = "mutual" | "taste" | "follows_you" | "popular";
+
+export interface SuggestedUser extends SocialProfile {
+    mutualFollowerCount: number;
+    sharedGameCount: number;
+    followsYou: boolean;
+    followerCount: number;
+    reason: SuggestionReason;
+}

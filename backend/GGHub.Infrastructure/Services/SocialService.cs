@@ -15,13 +15,15 @@ namespace GGHub.Infrastructure.Services
         private readonly IGamificationService _gamificationService;
         private readonly IHubNotificationService _hubNotificationService;
         private readonly IPushNotificationService _pushNotificationService;
-        public SocialService(GGHubDbContext context, INotificationService notificationService, IGamificationService gamificationService, IHubNotificationService hubNotificationService, IPushNotificationService pushNotificationService)
+        private readonly IUserSuggestionService _userSuggestionService;
+        public SocialService(GGHubDbContext context, INotificationService notificationService, IGamificationService gamificationService, IHubNotificationService hubNotificationService, IPushNotificationService pushNotificationService, IUserSuggestionService userSuggestionService)
         {
             _context = context;
             _notificationService = notificationService;
             _gamificationService = gamificationService;
             _hubNotificationService = hubNotificationService;
             _pushNotificationService = pushNotificationService;
+            _userSuggestionService = userSuggestionService;
         }
         public async Task<bool> FollowUserAsync(int followerId, string followeeUsername)
         {
@@ -57,6 +59,9 @@ namespace GGHub.Infrastructure.Services
                     await _gamificationService.AddXpAsync(followerId, 20, "UserFollowed");
                     await _gamificationService.CheckAchievementsAsync(followee.Id, "FollowerGained");
                 }
+
+                _userSuggestionService.InvalidateSuggestions(followerId);
+                _userSuggestionService.InvalidateSuggestions(followee.Id);
             }
             return success;
         }
@@ -75,6 +80,7 @@ namespace GGHub.Infrastructure.Services
             if (success)
             {
                 await _gamificationService.AddXpAsync(followerId, -20, "UserUnfollowed");
+                _userSuggestionService.InvalidateSuggestions(followerId);
             }
 
             return success;

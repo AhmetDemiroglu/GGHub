@@ -2,16 +2,15 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import Autoplay from "embla-carousel-autoplay";
-import { Play } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, Play, Sparkles } from "lucide-react";
 import { gameApi } from "@/api/gaming/game.api";
 import { HomeGame } from "@/models/home/home.model";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 import { getImageUrl } from "@/core/lib/get-image-url";
 import { buildLocalizedPathname } from "@/i18n/config";
 import { Button } from "@/core/components/ui/button";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/core/components/ui/carousel";
+import { Carousel, CarouselApi, CarouselContent, CarouselItem } from "@/core/components/ui/carousel";
 import { PlatformIcons } from "@/core/components/other/platform-icons";
 import { StoreButtons } from "@/core/components/other/public/store-buttons";
 import logoSrc from "@core/assets/logo.png";
@@ -21,6 +20,8 @@ import rawgLogoSrc from "@core/assets/rawg_logo.png";
 interface HeroSliderProps {
     games: HomeGame[];
 }
+
+const AUTOPLAY_DELAY = 6000;
 
 const normalizeDescription = (value: string | null | undefined) => {
     if (!value) return null;
@@ -34,11 +35,52 @@ const normalizeDescription = (value: string | null | undefined) => {
     return plainText || null;
 };
 
+function ScoreBadge({ score, logo, logoAlt, accentClassName }: { score: string; logo: typeof logoSrc; logoAlt: string; accentClassName: string }) {
+    return (
+        <div
+            className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/45 py-1 pl-1.5 pr-2.5 backdrop-blur-md"
+            title={logoAlt}
+        >
+            <span className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-black/60 ring-1 ring-white/10">
+                <Image src={logo} alt={logoAlt} width={12} height={12} className="object-contain" />
+            </span>
+            <span className={`text-sm font-bold leading-none ${accentClassName}`}>{score}</span>
+        </div>
+    );
+}
+
 export default function HeroSlider({ games = [] }: HeroSliderProps) {
     const locale = useCurrentLocale();
     const t = useI18n();
-    const plugin = useRef(Autoplay({ delay: 3000, stopOnInteraction: false }));
+    const [api, setApi] = useState<CarouselApi>();
+    const [selectedIndex, setSelectedIndex] = useState(0);
+    const [isHovering, setIsHovering] = useState(false);
+    // Hover'dan çıkınca autoplay tam süreden yeniden başlar; progress barı da aynı anda sıfırlıyoruz.
+    const [progressCycle, setProgressCycle] = useState(0);
     const [descriptionOverrides, setDescriptionOverrides] = useState<Record<string, string>>({});
+
+    const slideCount = games.length + 1;
+
+    useEffect(() => {
+        if (!api) return;
+        const onSelect = () => {
+            setSelectedIndex(api.selectedScrollSnap());
+            setProgressCycle((cycle) => cycle + 1);
+        };
+        onSelect();
+        api.on("select", onSelect);
+        return () => {
+            api.off("select", onSelect);
+        };
+    }, [api]);
+
+    // Autoplay: plugin yerine deterministik zamanlayıcı. Hover'da durur,
+    // her slayt değişiminde (manuel dahil) tam süreden yeniden başlar.
+    useEffect(() => {
+        if (!api || isHovering) return;
+        const timer = setInterval(() => api.scrollNext(), AUTOPLAY_DELAY);
+        return () => clearInterval(timer);
+    }, [api, isHovering, selectedIndex, progressCycle]);
 
     useEffect(() => {
         let cancelled = false;
@@ -95,25 +137,56 @@ export default function HeroSlider({ games = [] }: HeroSliderProps) {
         };
     }, [games, locale, descriptionOverrides]);
 
+    const handleMouseEnter = useCallback(() => {
+        setIsHovering(true);
+    }, []);
+
+    const handleMouseLeave = useCallback(() => {
+        setIsHovering(false);
+        setProgressCycle((cycle) => cycle + 1);
+    }, []);
+
     return (
-        <div className="group relative w-full">
-            <Carousel plugins={[plugin.current]} className="w-full" onMouseEnter={plugin.current.stop} onMouseLeave={plugin.current.reset}>
+        <div className="group/hero relative w-full">
+            <Carousel
+                setApi={setApi}
+                opts={{ loop: true }}
+                className="w-full"
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+            >
                 <CarouselContent>
-                    {/* Static promo slide, always first: the live mobile app CTA. */}
+                    {/* Sabit tanıtım slaytı: canlı mobil uygulama CTA'sı her zaman ilk sırada. */}
                     <CarouselItem key="app-promo">
-                        <div className="relative h-[300px] w-full overflow-hidden rounded-2xl border border-border/50 bg-[#0a0b14] shadow-2xl md:h-[360px]">
-                            <div className="absolute inset-0 z-0 bg-gradient-to-br from-cyan-500/25 via-[#0a0b14] to-violet-600/30" />
-                            <div aria-hidden className="pointer-events-none absolute -left-20 -top-20 z-0 h-72 w-72 rounded-full bg-cyan-500/20 blur-3xl" />
-                            <div aria-hidden className="pointer-events-none absolute -bottom-24 right-1/4 z-0 h-80 w-80 rounded-full bg-violet-600/25 blur-3xl" />
-                            <div className="relative z-10 flex h-full max-w-[600px] flex-col items-center justify-center gap-4 p-6 text-center md:max-w-[60%] md:items-start md:p-12 md:text-left lg:px-16">
+                        <div className="relative h-[340px] w-full overflow-hidden rounded-2xl bg-[#080910] ring-1 ring-white/10 md:h-[420px]">
+                            <div className="absolute inset-0 z-0 bg-gradient-to-br from-cyan-500/20 via-[#080910] to-violet-600/25" />
+                            <div
+                                aria-hidden
+                                className="absolute inset-0 z-0 opacity-[0.35]"
+                                style={{
+                                    backgroundImage:
+                                        "linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px)",
+                                    backgroundSize: "56px 56px",
+                                    maskImage: "radial-gradient(ellipse 90% 70% at 30% 40%, black 30%, transparent 75%)",
+                                }}
+                            />
+                            <div aria-hidden className="pointer-events-none absolute -left-24 -top-24 z-0 h-80 w-80 rounded-full bg-cyan-500/15 blur-3xl" />
+                            <div aria-hidden className="pointer-events-none absolute -bottom-28 right-1/4 z-0 h-96 w-96 rounded-full bg-violet-600/20 blur-3xl" />
+
+                            <div className="relative z-10 flex h-full max-w-[620px] flex-col items-center justify-center gap-4 p-6 pb-16 text-center md:max-w-[58%] md:items-start md:p-12 md:pb-16 md:text-left lg:px-16">
+                                <div className="flex items-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-300">
+                                    <Sparkles className="h-3 w-3" />
+                                    {t("common.appName")}
+                                </div>
                                 <h2 className="text-2xl font-black tracking-tight text-white drop-shadow-xl md:text-3xl lg:text-[2.6rem] lg:leading-[1.05]">{t("home.promoTitle")}</h2>
-                                <p className="max-w-md text-sm text-white/70 md:text-base">{t("home.promoSubtitle")}</p>
+                                <p className="max-w-md text-sm text-white/65 md:text-base">{t("home.promoSubtitle")}</p>
                                 <div className="w-full pt-2 sm:max-w-sm">
                                     <StoreButtons appStoreLabel={t("common.appStore")} googlePlayLabel={t("common.googlePlay")} soonText={t("common.soon")} />
                                 </div>
                             </div>
-                            {/* iPhone mockup peeking from the bottom-right; lifts on hover */}
-                            <div className="absolute right-3 top-9 z-10 hidden w-[180px] md:block lg:right-14 lg:top-11 lg:w-[250px]">
+
+                            {/* Sağ alttan taşan iPhone mockup; hover'da doğrulur */}
+                            <div className="absolute right-4 top-10 z-10 hidden w-[190px] md:block lg:right-16 lg:top-12 lg:w-[270px]">
                                 <div className="rotate-[5deg] transition-transform duration-500 ease-out will-change-transform hover:-translate-y-3 hover:rotate-0">
                                     <div className="relative rounded-[2.4rem] bg-zinc-900 p-[7px] shadow-[0_30px_70px_-20px_rgba(0,0,0,0.85)] ring-1 ring-white/10">
                                         <div className="absolute left-1/2 top-[11px] z-20 h-[15px] w-[66px] -translate-x-1/2 rounded-full bg-black" />
@@ -124,7 +197,7 @@ export default function HeroSlider({ games = [] }: HeroSliderProps) {
                                                 width={540}
                                                 height={1174}
                                                 className="block h-auto w-full"
-                                                sizes="250px"
+                                                sizes="270px"
                                             />
                                         </div>
                                     </div>
@@ -132,96 +205,126 @@ export default function HeroSlider({ games = [] }: HeroSliderProps) {
                             </div>
                         </div>
                     </CarouselItem>
-                    {games.map((game) => {
+
+                    {games.map((game, index) => {
                         const descriptionKey = `${locale}:${game.id || game.rawgId}`;
                         const resolvedDescription = normalizeDescription(game.description) ?? descriptionOverrides[descriptionKey] ?? null;
+                        const isActive = selectedIndex === index + 1;
+                        const releaseYear = game.releaseDate ? new Date(game.releaseDate).getFullYear() : null;
 
                         return (
                             <CarouselItem key={game.id}>
-                                <div className="relative h-[300px] w-full overflow-hidden rounded-2xl border border-border/50 bg-background shadow-2xl md:h-[360px]">
-                                <div className="absolute inset-0 z-0">
-                                    <Image
-                                        src={getImageUrl(game.backgroundImage) || "/assets/placeholder-game.jpg"}
-                                        alt={game.name}
-                                        fill
-                                        className="scale-105 object-cover opacity-60 blur-sm"
-                                        priority
-                                    />
-                                    <div className="absolute inset-0 bg-linear-to-t from-background via-background/60 to-transparent" />
-                                    <div className="absolute inset-0 bg-linear-to-r from-background via-background/40 to-transparent" />
-                                </div>
-
-                                <div className="relative z-10 flex h-full flex-col items-center justify-center gap-6 p-6 text-center md:flex-row md:justify-start md:p-12 md:text-left lg:px-16">
-                                    <div className="relative hidden h-48 w-32 shrink-0 -rotate-2 overflow-hidden rounded-lg border border-white/10 shadow-2xl transition-transform duration-500 hover:rotate-0 md:block lg:h-56 lg:w-40">
-                                        <Image src={getImageUrl(game.backgroundImage) || "/assets/placeholder-game.jpg"} alt={game.name} fill className="object-cover" />
+                                <div className="relative h-[340px] w-full overflow-hidden rounded-2xl bg-[#080910] ring-1 ring-white/10 md:h-[420px]">
+                                    {/* Tam kanlı keskin görsel + sinematik zoom */}
+                                    <div className="absolute inset-0 z-0 overflow-hidden">
+                                        <Image
+                                            src={getImageUrl(game.backgroundImage) || "/assets/placeholder-game.jpg"}
+                                            alt={game.name}
+                                            fill
+                                            className={`object-cover ${isActive ? "hero-kenburns" : "scale-[1.02]"}`}
+                                            priority={index === 0}
+                                            sizes="(max-width: 1600px) 100vw, 1600px"
+                                        />
+                                        {/* Katmanlı karartma: alt ağırlıklı + sol vurgulu, metin her görselde okunur */}
+                                        <div className="absolute inset-0 bg-gradient-to-t from-[#080910] via-[#080910]/45 to-transparent" />
+                                        <div className="absolute inset-0 bg-gradient-to-r from-[#080910]/85 via-[#080910]/30 to-transparent" />
                                     </div>
 
-                                    <div className="flex max-w-2xl flex-col items-center space-y-4 md:items-start">
-                                        <div className="mt-2 flex flex-wrap items-center gap-4">
-                                            {game.metacriticScore != null && game.metacriticScore > 0 ? (
-                                                <div className="group relative flex h-[50px] min-w-[50px] items-center justify-center rounded-2xl border border-green-500/30 bg-black/40 shadow-[0_0_15px_rgba(34,197,94,0.2)] backdrop-blur-md transition-all duration-300 hover:shadow-[0_0_25px_rgba(34,197,94,0.4)]" title="Metacritic">
-                                                    <div className="absolute inset-0 rounded-2xl bg-green-500/10" />
-                                                    <span className="text-xl font-black text-green-400 drop-shadow-[0_0_5px_rgba(34,197,94,0.8)]">{game.metacriticScore}</span>
-                                                    <div className="absolute -right-2 -top-2 rounded-full border border-green-500/30 bg-black p-0.5">
-                                                        <Image src={metacriticLogoSrc} alt="Metacritic" width={14} height={14} className="object-contain" />
-                                                    </div>
-                                                </div>
-                                            ) : null}
+                                    {/* Sinematik alt-sol içerik bloğu */}
+                                    <div className="relative z-10 flex h-full flex-col justify-end p-6 pb-14 md:p-12 md:pb-16 lg:px-16">
+                                        <div className="flex max-w-2xl flex-col items-start gap-3.5">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                {game.metacriticScore != null && game.metacriticScore > 0 ? (
+                                                    <ScoreBadge score={String(game.metacriticScore)} logo={metacriticLogoSrc} logoAlt="Metacritic" accentClassName="text-green-400" />
+                                                ) : null}
+                                                {game.rawgRating != null && game.rawgRating > 0 ? (
+                                                    <ScoreBadge score={game.rawgRating.toFixed(1)} logo={rawgLogoSrc} logoAlt="RAWG" accentClassName="text-sky-400" />
+                                                ) : null}
+                                                {game.gghubRating > 0 ? (
+                                                    <ScoreBadge score={game.gghubRating.toFixed(1)} logo={logoSrc} logoAlt="GGHub" accentClassName="text-violet-400" />
+                                                ) : null}
 
-                                            {game.rawgRating != null && game.rawgRating > 0 ? (
-                                                <div className="group relative flex h-[50px] min-w-[60px] items-center justify-center rounded-2xl border border-blue-500/30 bg-black/40 shadow-[0_0_15px_rgba(59,130,246,0.2)] backdrop-blur-md transition-all duration-300 hover:shadow-[0_0_25px_rgba(59,130,246,0.4)]" title="RAWG">
-                                                    <div className="absolute inset-0 rounded-2xl bg-blue-500/10" />
-                                                    <span className="text-xl font-black text-blue-400 drop-shadow-[0_0_5px_rgba(59,130,246,0.8)]">{game.rawgRating.toFixed(1)}</span>
-                                                    <div className="absolute -right-2 -top-2 rounded-full border border-blue-500/30 bg-black p-0.5">
-                                                        <Image src={rawgLogoSrc} alt="RAWG" width={14} height={14} className="object-contain" />
-                                                    </div>
-                                                </div>
-                                            ) : null}
+                                                <span className="rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-xs font-medium text-white/70 backdrop-blur-md">
+                                                    {releaseYear ?? t("common.tba")}
+                                                </span>
 
-                                            {game.gghubRating > 0 ? (
-                                                <div className="group relative flex h-[50px] min-w-[60px] items-center justify-center rounded-2xl border border-purple-500/30 bg-black/40 shadow-[0_0_15px_rgba(168,85,247,0.2)] backdrop-blur-md transition-all duration-300 hover:shadow-[0_0_25px_rgba(168,85,247,0.4)]" title="GGHub">
-                                                    <div className="absolute inset-0 rounded-2xl bg-purple-500/10" />
-                                                    <span className="text-xl font-black text-purple-400 drop-shadow-[0_0_5px_rgba(168,85,247,0.8)]">{game.gghubRating.toFixed(1)}</span>
-                                                    <div className="absolute -right-2 -top-2 rounded-full border border-purple-500/30 bg-black p-0.5">
-                                                        <Image src={logoSrc} alt="GGHub" width={14} height={14} className="object-contain" />
-                                                    </div>
-                                                </div>
-                                            ) : null}
-
-                                            <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-1.5 text-xs font-medium text-white/70 backdrop-blur-sm">
-                                                {game.releaseDate ? new Date(game.releaseDate).getFullYear() : t("common.tba")}
+                                                {game.platforms && game.platforms.length > 0 ? (
+                                                    <span className="rounded-full border border-white/10 bg-black/45 px-2.5 py-1 backdrop-blur-md">
+                                                        <PlatformIcons platforms={game.platforms} />
+                                                    </span>
+                                                ) : null}
                                             </div>
 
-                                            {game.platforms && game.platforms.length > 0 ? (
-                                                <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-1.5 backdrop-blur-sm">
-                                                    <PlatformIcons platforms={game.platforms} />
-                                                </div>
+                                            <h2 className="line-clamp-2 text-3xl font-black tracking-tight text-white drop-shadow-[0_2px_16px_rgba(0,0,0,0.7)] md:text-4xl lg:text-5xl">
+                                                {game.name}
+                                            </h2>
+
+                                            {resolvedDescription ? (
+                                                <p className="line-clamp-2 max-w-xl text-xs leading-relaxed text-white/60 md:text-sm">{resolvedDescription}</p>
                                             ) : null}
-                                        </div>
 
-                                        <h2 className="line-clamp-2 text-2xl font-black tracking-tighter text-foreground drop-shadow-xl md:text-3xl lg:text-4xl">{game.name}</h2>
-
-                                        {resolvedDescription ? <p className="line-clamp-2 max-w-xl text-xs text-muted-foreground md:text-sm">{resolvedDescription}</p> : null}
-
-                                        <div className="flex justify-center pt-2 md:justify-start">
-                                            <Link href={buildLocalizedPathname(`/games/${game.slug || game.rawgId}`, locale)}>
-                                                <Button size="lg" className="cursor-pointer gap-2 text-md font-semibold transition-transform hover:scale-105">
-                                                    <Play className="h-4 w-4 fill-current" />
-                                                    {t("home.heroCta")}
-                                                </Button>
-                                            </Link>
+                                            <div className="pt-1.5">
+                                                <Link href={buildLocalizedPathname(`/games/${game.slug || game.rawgId}`, locale)}>
+                                                    <Button size="lg" className="text-md cursor-pointer gap-2 font-semibold shadow-[0_8px_30px_-8px_rgba(0,0,0,0.6)] transition-transform hover:scale-[1.03]">
+                                                        <Play className="h-4 w-4 fill-current" />
+                                                        {t("home.heroCta")}
+                                                    </Button>
+                                                </Link>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+
+                                    {/* Slayt sayacı */}
+                                    <div className="absolute right-5 top-5 z-10 rounded-full border border-white/10 bg-black/40 px-2.5 py-1 font-mono text-[11px] tracking-widest text-white/60 backdrop-blur-md md:right-8 md:top-6">
+                                        {String(index + 2).padStart(2, "0")}&thinsp;/&thinsp;{String(slideCount).padStart(2, "0")}
+                                    </div>
                                 </div>
                             </CarouselItem>
                         );
                     })}
                 </CarouselContent>
 
-                <div className="absolute bottom-12 right-12 flex gap-2 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                    <CarouselPrevious className="static translate-y-0 border-border bg-background/50 backdrop-blur" />
-                    <CarouselNext className="static translate-y-0 border-border bg-background/50 backdrop-blur" />
+                {/* Segmentli ilerleme göstergeleri: aktif segment autoplay ile dolar, tıklanınca slayta gider */}
+                <div className="absolute bottom-5 left-6 z-20 flex items-center gap-1.5 md:left-12 lg:left-16">
+                    {Array.from({ length: slideCount }).map((_, index) => {
+                        const isActive = selectedIndex === index;
+                        return (
+                            <button
+                                key={index}
+                                type="button"
+                                aria-label={`Slide ${index + 1}`}
+                                aria-current={isActive}
+                                onClick={() => api?.scrollTo(index)}
+                                className={`h-1 cursor-pointer overflow-hidden rounded-full transition-all duration-400 ${
+                                    isActive ? "w-10 bg-white/20" : "w-4 bg-white/15 hover:bg-white/30"
+                                }`}
+                            >
+                                {isActive ? (
+                                    <span key={`${selectedIndex}-${progressCycle}`} className="hero-progress-fill block h-full w-full rounded-full bg-white/90" />
+                                ) : null}
+                            </button>
+                        );
+                    })}
+                </div>
+
+                {/* Oklar: hover'da görünen minimal cam butonlar */}
+                <div className="absolute bottom-4 right-5 z-20 flex gap-2 opacity-0 transition-opacity duration-300 group-hover/hero:opacity-100 md:right-8">
+                    <button
+                        type="button"
+                        aria-label="Previous slide"
+                        onClick={() => api?.scrollPrev()}
+                        className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/10 bg-black/40 text-white/80 backdrop-blur-md transition-colors hover:bg-black/60 hover:text-white"
+                    >
+                        <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <button
+                        type="button"
+                        aria-label="Next slide"
+                        onClick={() => api?.scrollNext()}
+                        className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/10 bg-black/40 text-white/80 backdrop-blur-md transition-colors hover:bg-black/60 hover:text-white"
+                    >
+                        <ChevronRight className="h-4 w-4" />
+                    </button>
                 </div>
             </Carousel>
         </div>

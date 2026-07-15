@@ -129,8 +129,19 @@ namespace GGHub.Infrastructure.Services
 
             return feed;
         }
-        public async Task<IEnumerable<ActivityDto>> GetPersonalizedFeedAsync(int currentUserId, int limit = 20)
+        public async Task<IEnumerable<ActivityDto>> GetPersonalizedFeedAsync(int currentUserId, int limit = 20, DateTime? cursor = null)
         {
+            if (limit <= 0) limit = 20;
+            if (limit > 50) limit = 50;
+
+            // Npgsql timestamptz için UTC Kind zorunlu; query-string binding Local/Unspecified verebilir.
+            if (cursor.HasValue && cursor.Value.Kind != DateTimeKind.Utc)
+            {
+                cursor = cursor.Value.Kind == DateTimeKind.Local
+                    ? cursor.Value.ToUniversalTime()
+                    : DateTime.SpecifyKind(cursor.Value, DateTimeKind.Utc);
+            }
+
             var followingIds = await _context.Follows
                 .AsNoTracking()
                 .Where(f => f.FollowerId == currentUserId)
@@ -139,68 +150,117 @@ namespace GGHub.Infrastructure.Services
 
             if (!followingIds.Any()) return Enumerable.Empty<ActivityDto>();
 
-            var activities = new List<ActivityDto>();
-
-            var reviews = await _context.Reviews
+            // Engel listesi (iki yönlü): takip kartlarının hedefi engelli kullanıcı olabilir.
+            var blockedIds = await _context.UserBlocks
                 .AsNoTracking()
-                .Where(r => followingIds.Contains(r.UserId))
-                .Include(r => r.Game)
+                .Where(b => b.BlockerId == currentUserId || b.BlockedId == currentUserId)
+                .Select(b => b.BlockerId == currentUserId ? b.BlockedId : b.BlockerId)
+                .ToListAsync();
+            var blockedSet = blockedIds.ToHashSet();
+
+            // Karşılıklı takip (affinity sinyali): beni de takip eden takip ettiklerim.
+            var mutualIds = (await _context.Follows
+                .AsNoTracking()
+                .Where(f => f.FolloweeId == currentUserId && followingIds.Contains(f.FollowerId))
+                .Select(f => f.FollowerId)
+                .ToListAsync()).ToHashSet();
+
+            var candidates = new List<(ActivityDto Dto, int Engagement)>();
+
+            var reviewsQuery = _context.Reviews
+                .AsNoTracking()
+                .Where(r => followingIds.Contains(r.UserId) && !r.User.IsDeleted && !r.User.IsBanned);
+            if (cursor.HasValue) reviewsQuery = reviewsQuery.Where(r => r.CreatedAt < cursor.Value);
+
+            var reviews = await reviewsQuery
                 .OrderByDescending(r => r.CreatedAt)
                 .Take(limit)
-                .Select(r => new ActivityDto
+                .Select(r => new
                 {
-                    Id = r.Id,
-                    Type = ActivityType.Review,
-                    OccurredAt = r.CreatedAt,
-                    ReviewData = new ReviewActivityDto
+                    Dto = new ActivityDto
                     {
-                        ReviewId = r.Id,
-                        Rating = r.Rating,
-                        ContentSnippet = r.Content.Length > 100 ? r.Content.Substring(0, 100) + "..." : r.Content,
-                        Game = new GameSummaryDto
+                        Id = r.Id,
+                        Type = ActivityType.Review,
+                        OccurredAt = r.CreatedAt,
+                        Actor = new UserDto
                         {
-                            Id = r.Game.Id,
-                            RawgId = r.Game.RawgId,
-                            Name = r.Game.Name,
-                            Slug = r.Game.Slug,
-                            CoverImage = r.Game.CoverImage,
-                            BackgroundImage = r.Game.BackgroundImage,
-                            Released = r.Game.Released
+                            Id = r.User.Id,
+                            Username = r.User.Username,
+                            ProfileImageUrl = r.User.ProfileImageUrl,
+                            FirstName = r.User.FirstName,
+                            LastName = r.User.LastName
+                        },
+                        ReviewData = new ReviewActivityDto
+                        {
+                            ReviewId = r.Id,
+                            Rating = r.Rating,
+                            ContentSnippet = r.Content.Length > 100 ? r.Content.Substring(0, 100) + "..." : r.Content,
+                            Game = new GameSummaryDto
+                            {
+                                Id = r.Game.Id,
+                                RawgId = r.Game.RawgId,
+                                Name = r.Game.Name,
+                                Slug = r.Game.Slug,
+                                CoverImage = r.Game.CoverImage,
+                                BackgroundImage = r.Game.BackgroundImage,
+                                Released = r.Game.Released
+                            }
                         }
-                    }
+                    },
+                    Engagement = r.ReviewVotes.Count
                 })
                 .ToListAsync();
-            activities.AddRange(reviews);
+            candidates.AddRange(reviews.Select(r => (r.Dto, r.Engagement)));
 
-            var lists = await _context.UserLists
+            var listsQuery = _context.UserLists
                 .AsNoTracking()
-                .Where(l => followingIds.Contains(l.UserId) &&
-                           (l.Visibility == ListVisibilitySetting.Public || l.Visibility == ListVisibilitySetting.Followers))
+                .Where(l => followingIds.Contains(l.UserId) && !l.User.IsDeleted && !l.User.IsBanned &&
+                           (l.Visibility == ListVisibilitySetting.Public || l.Visibility == ListVisibilitySetting.Followers));
+            if (cursor.HasValue) listsQuery = listsQuery.Where(l => l.CreatedAt < cursor.Value);
+
+            var lists = await listsQuery
                 .OrderByDescending(l => l.CreatedAt)
                 .Take(limit)
-                .Select(l => new ActivityDto
+                .Select(l => new
                 {
-                    Id = l.Id,
-                    Type = ActivityType.ListCreated,
-                    OccurredAt = l.CreatedAt,
-                    ListData = new ListActivityDto
+                    Dto = new ActivityDto
                     {
-                        ListId = l.Id,
-                        Name = l.Name,
-                        GameCount = l.UserListGames.Count,
-                        PreviewImages = l.UserListGames
-                                         .OrderBy(ulg => ulg.AddedAt)
-                                         .Take(3)
-                                         .Select(ulg => ulg.Game.CoverImage)
-                                         .ToList()
-                    }
+                        Id = l.Id,
+                        Type = ActivityType.ListCreated,
+                        OccurredAt = l.CreatedAt,
+                        Actor = new UserDto
+                        {
+                            Id = l.User.Id,
+                            Username = l.User.Username,
+                            ProfileImageUrl = l.User.ProfileImageUrl,
+                            FirstName = l.User.FirstName,
+                            LastName = l.User.LastName
+                        },
+                        ListData = new ListActivityDto
+                        {
+                            ListId = l.Id,
+                            Name = l.Name,
+                            GameCount = l.UserListGames.Count,
+                            PreviewImages = l.UserListGames
+                                             .OrderBy(ulg => ulg.AddedAt)
+                                             .Take(3)
+                                             .Select(ulg => ulg.Game.CoverImage)
+                                             .ToList()
+                        }
+                    },
+                    Engagement = l.RatingCount + l.Followers.Count + l.Comments.Count
                 })
                 .ToListAsync();
-            activities.AddRange(lists);
+            candidates.AddRange(lists.Select(l => (l.Dto, l.Engagement)));
 
-            var followDtos = await _context.Follows
+            var followsQuery = _context.Follows
                 .AsNoTracking()
-                .Where(f => followingIds.Contains(f.FollowerId))
+                .Where(f => followingIds.Contains(f.FollowerId) &&
+                            !f.Follower.IsDeleted && !f.Follower.IsBanned &&
+                            !f.Followee.IsDeleted && !f.Followee.IsBanned);
+            if (cursor.HasValue) followsQuery = followsQuery.Where(f => f.CreatedAt < cursor.Value);
+
+            var followDtos = await followsQuery
                 .OrderByDescending(f => f.CreatedAt)
                 .Take(limit)
                 .Select(f => new ActivityDto
@@ -208,6 +268,14 @@ namespace GGHub.Infrastructure.Services
                     Id = 0,
                     Type = ActivityType.FollowUser,
                     OccurredAt = f.CreatedAt,
+                    Actor = new UserDto
+                    {
+                        Id = f.Follower.Id,
+                        Username = f.Follower.Username,
+                        ProfileImageUrl = f.Follower.ProfileImageUrl,
+                        FirstName = f.Follower.FirstName,
+                        LastName = f.Follower.LastName
+                    },
                     FollowData = new UserDto
                     {
                         Id = f.FolloweeId,
@@ -218,11 +286,57 @@ namespace GGHub.Infrastructure.Services
                     }
                 })
                 .ToListAsync();
-            activities.AddRange(followDtos);
+            candidates.AddRange(followDtos
+                .Where(f => f.FollowData == null || !blockedSet.Contains(f.FollowData.Id))
+                .Select(f => (f, 0)));
 
-            return activities
-                .OrderByDescending(a => a.OccurredAt)
-                .Take(limit);
+            // Sayfa = cursor sonrası kronolojik ilk `limit` kayıt (cursor tutarlılığı için).
+            // Sıralama = sayfa içinde skorlamalı (recency decay x tip ağırlığı + engagement + affinity).
+            var page = candidates
+                .OrderByDescending(c => c.Dto.OccurredAt)
+                .Take(limit)
+                .ToList();
+
+            var now = DateTime.UtcNow;
+            var scored = page
+                .Select(c => (c.Dto, Score: ComputeFeedScore(c.Dto, c.Engagement, now, mutualIds)))
+                .OrderByDescending(x => x.Score)
+                .ToList();
+
+            // Yazar çeşitliliği: aynı kullanıcının ardışık kartları sayfayı domine etmesin.
+            var actorSeen = new Dictionary<int, int>();
+            var reranked = scored
+                .Select(x =>
+                {
+                    var actorId = x.Dto.Actor?.Id ?? 0;
+                    actorSeen.TryGetValue(actorId, out var n);
+                    actorSeen[actorId] = n + 1;
+                    return (x.Dto, Score: x.Score * Math.Pow(0.85, n));
+                })
+                .OrderByDescending(x => x.Score)
+                .Select(x => x.Dto)
+                .ToList();
+
+            return reranked;
+        }
+
+        private static double ComputeFeedScore(ActivityDto activity, int engagement, DateTime now, HashSet<int> mutualIds)
+        {
+            var hours = Math.Max(0, (now - activity.OccurredAt).TotalHours);
+            var recency = Math.Exp(-hours / 36.0);
+
+            var typeWeight = activity.Type switch
+            {
+                ActivityType.Review => 1.0,
+                ActivityType.ListCreated => 0.92,
+                ActivityType.FollowUser => 0.55,
+                _ => 0.5
+            };
+
+            var engagementBoost = Math.Log10(1 + Math.Min(engagement, 50)) * 0.15;
+            var affinityBoost = activity.Actor != null && mutualIds.Contains(activity.Actor.Id) ? 0.10 : 0.0;
+
+            return recency * typeWeight + engagementBoost + affinityBoost;
         }
     }
 }

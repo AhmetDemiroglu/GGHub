@@ -12,13 +12,24 @@ public class ProfilesController : ControllerBase
 {
     private readonly ISocialService _socialService;
     private readonly IProfileService _profileService;
+    private readonly IUserSuggestionService _userSuggestionService;
     private readonly GGHubDbContext _context;
 
-    public ProfilesController(ISocialService socialService, IProfileService profileService, GGHubDbContext context)
+    public ProfilesController(ISocialService socialService, IProfileService profileService, IUserSuggestionService userSuggestionService, GGHubDbContext context)
     {
         _socialService = socialService;
         _profileService = profileService;
+        _userSuggestionService = userSuggestionService;
         _context = context;
+    }
+
+    [HttpGet("suggested")]
+    [Authorize]
+    public async Task<IActionResult> GetSuggestedUsers([FromQuery] int limit = 10)
+    {
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var suggestions = await _userSuggestionService.GetSuggestedUsersAsync(userId, limit);
+        return Ok(suggestions);
     }
 
     [HttpGet("{username}")]

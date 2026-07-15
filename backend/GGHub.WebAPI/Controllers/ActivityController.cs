@@ -32,10 +32,10 @@ namespace GGHub.WebAPI.Controllers
 
         [HttpGet("feed")]
         [Authorize]
-        public async Task<IActionResult> GetPersonalizedFeed([FromQuery] int limit = 10)
+        public async Task<IActionResult> GetPersonalizedFeed([FromQuery] int limit = 10, [FromQuery] DateTime? cursor = null)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-            var feed = await _activityService.GetPersonalizedFeedAsync(userId, limit);
+            var feed = await _activityService.GetPersonalizedFeedAsync(userId, limit, cursor);
             return Ok(feed);
         }
     }

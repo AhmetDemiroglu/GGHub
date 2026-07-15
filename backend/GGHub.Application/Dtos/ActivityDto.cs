@@ -10,9 +10,12 @@ namespace GGHub.Application.Dtos
 
     public class ActivityDto
     {
-        public int Id { get; set; } 
+        public int Id { get; set; }
         public ActivityType Type { get; set; }
         public DateTime OccurredAt { get; set; }
+
+        // Aktiviteyi yapan kullanıcı (kişisel feed'de kartın kimden geldiğini gösterir).
+        public UserDto? Actor { get; set; }
 
         public ReviewActivityDto? ReviewData { get; set; }
         public ListActivityDto? ListData { get; set; }
