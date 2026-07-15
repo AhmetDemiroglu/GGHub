@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "702811724236",
+    "project_id": "gghub-1f479",
+    "storage_bucket": "gghub-1f479.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:702811724236:android:0859c37758b213564b6569",
+        "android_client_info": {
+          "package_name": "com.gghub.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDU2CWAXVcCOFJM-RFV0pIHZdLkdUFu4I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

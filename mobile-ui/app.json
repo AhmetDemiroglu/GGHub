@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.gghub.mobile",
-      "buildNumber": "3",
+      "buildNumber": "4",
       "usesAppleSignIn": true,
       "entitlements": {
         "aps-environment": "production"
@@ -36,6 +36,7 @@
       },
       "package": "com.gghub.mobile",
       "versionCode": 5,
+      "googleServicesFile": "./android/app/google-services.json",
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.CAMERA",
