@@ -16,10 +16,12 @@ import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
 import { getHomeContent } from '@/src/api/home';
 import { getPersonalizedFeed } from '@/src/api/activity';
+import { getSuggestedUsers } from '@/src/api/social';
 import { HeroSlider } from '@/src/components/home/HeroSlider';
 import { StatsBar } from '@/src/components/home/StatsBar';
 import { ActivityFeed } from '@/src/components/home/ActivityFeed';
 import { BentoGrid } from '@/src/components/home/BentoGrid';
+import { PeopleYouMayKnow } from '@/src/components/home/PeopleYouMayKnow';
 
 function HomeSkeleton() {
   const { colors } = useTheme();
@@ -63,6 +65,12 @@ export default function HomeScreen() {
   const { data: activities } = useQuery({
     queryKey: ['activityFeed'],
     queryFn: () => getPersonalizedFeed(10),
+    enabled: isAuthenticated,
+  });
+
+  const { data: suggestions } = useQuery({
+    queryKey: ['suggestedUsers'],
+    queryFn: () => getSuggestedUsers(12),
     enabled: isAuthenticated,
   });
 
@@ -126,6 +134,10 @@ export default function HomeScreen() {
           leaderboard={homeContent.topGamers}
           showJoinCta={!isAuthenticated}
         />
+
+        {isAuthenticated && suggestions && suggestions.length > 0 && (
+          <PeopleYouMayKnow suggestions={suggestions} />
+        )}
 
         {isAuthenticated && activities && activities.length > 0 && (
           <ActivityFeed activities={activities} />

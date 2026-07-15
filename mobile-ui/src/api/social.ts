@@ -3,7 +3,14 @@ import type {
   SocialProfile,
   BlockedUser,
   BlockStatus,
+  SuggestedUser,
 } from '../models/social';
+
+export const getSuggestedUsers = (limit: number = 10): Promise<SuggestedUser[]> => {
+  return axiosInstance
+    .get<SuggestedUser[]>(`/profiles/suggested?limit=${limit}`)
+    .then((response) => response.data);
+};
 
 export const followUser = (username: string): Promise<void> => {
   return axiosInstance
