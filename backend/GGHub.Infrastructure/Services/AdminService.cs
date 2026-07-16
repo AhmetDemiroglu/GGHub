@@ -487,6 +487,22 @@ namespace GGHub.Infrastructure.Services
                     }
                     break;
 
+                case "ReviewComment":
+                    var reviewComment = await _context.ReviewComments
+                        .Include(c => c.User)
+                        .Include(c => c.Review).ThenInclude(r => r.Game)
+                        .FirstOrDefaultAsync(c => c.Id == report.EntityId);
+
+                    if (reviewComment != null)
+                    {
+                        dto.ReportedContent = reviewComment.Content;
+                        dto.ReportedEntityTitle = $"'{reviewComment.Review.Game.Name}' İncelemesindeki Yorum";
+                        dto.AccusedUserId = reviewComment.UserId;
+                        dto.AccusedUsername = reviewComment.User.Username;
+                        dto.AccusedProfileImage = reviewComment.User.ProfileImageUrl;
+                    }
+                    break;
+
                 case "List":
                     var list = await _context.UserLists
                         .Include(l => l.User)

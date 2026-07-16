@@ -58,12 +58,13 @@ export function SignalRProvider({ children }: { children: ReactNode }) {
                 queryClient.setQueryData(["unread-notification-count"], { count });
             });
 
-            connection.on("ReceiveNotification", (notification: NotificationDto) => {
-                queryClient.setQueryData<NotificationDto[]>(["notifications"], (old) => {
-                    if (!old) return [notification];
-                    if (old.some((n) => n.id === notification.id)) return old;
-                    return [notification, ...old];
-                });
+            connection.on("ReceiveNotification", () => {
+                // Yuku onbellege DOGRUDAN yazmiyoruz, bilerek tazeliyoruz.
+                // Bildirim, onu TETIKLEYEN kullanicinin istegi uzerinde uretilir; oradaki
+                // ambient dil aktorun dilidir. Yuku oldugu gibi yazsaydik canli gelen bildirim
+                // yanlis dilde gorunurdu. GET /notifications ise ALICININ Accept-Language'i ile
+                // gider, yani metni her zaman dogru dilde uretir.
+                queryClient.invalidateQueries({ queryKey: ["notifications"] });
             });
 
             connection.on("ConversationUpdated", (conversation: ConversationDto) => {

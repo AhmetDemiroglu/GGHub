@@ -14,12 +14,14 @@ namespace GGHub.Infrastructure.Services
         private readonly IGameService _gameService;
         private readonly INotificationService _notificationService;
         private readonly IGamificationService _gamificationService;
-        public ReviewService(GGHubDbContext context, IGameService gameService, INotificationService notificationService, IGamificationService gamificationService)
+        private readonly IUserDtoEnricher _userDtoEnricher;
+        public ReviewService(GGHubDbContext context, IGameService gameService, INotificationService notificationService, IGamificationService gamificationService, IUserDtoEnricher userDtoEnricher)
         {
             _context = context;
             _gameService = gameService;
             _notificationService = notificationService;
             _gamificationService = gamificationService;
+            _userDtoEnricher = userDtoEnricher;
         }
 
         public async Task<Review> CreateReviewAsync(ReviewForCreationDto reviewDto, int userId)
@@ -52,36 +54,6 @@ namespace GGHub.Infrastructure.Services
             await _gamificationService.CheckAchievementsAsync(userId, "ReviewCreated");
 
             return review;
-        }
-        public async Task<IEnumerable<ReviewDto>> GetReviewsForGameAsync(int rawgGameId)
-        {
-            var gameInDb = await _context.Games.FirstOrDefaultAsync(g => g.RawgId == rawgGameId);
-
-            if (gameInDb == null)
-            {
-                return Enumerable.Empty<ReviewDto>();
-            }
-
-            var reviews = await _context.Reviews
-                .Where(r => r.GameId == gameInDb.Id)
-                .Include(r => r.User)
-                .OrderByDescending(r => r.CreatedAt)
-                .Select(r => new ReviewDto
-                {
-                    Id = r.Id,
-                    Content = r.Content,
-                    Rating = r.Rating,
-                    CreatedAt = r.CreatedAt,
-                    User = new UserDto
-                    {
-                        Id = r.User.Id,
-                        Username = r.User.Username,
-                        ProfileImageUrl = r.User.ProfileImageUrl
-                    }
-                })
-                .ToListAsync();
-
-            return reviews;
         }
         public async Task<bool> DeleteReviewAsync(int reviewId, int userId)
         {
@@ -130,7 +102,7 @@ namespace GGHub.Infrastructure.Services
             await _context.SaveChangesAsync();
             await UpdateGameRatingStatisticsAsync(review.GameId);
 
-            return new ReviewDto
+            var dto = new ReviewDto
             {
                 Id = review.Id,
                 Content = review.Content,
@@ -140,9 +112,14 @@ namespace GGHub.Infrastructure.Services
                 {
                     Id = review.User.Id,
                     Username = review.User.Username,
-                    ProfileImageUrl = review.User.ProfileImageUrl
+                    ProfileImageUrl = review.User.ProfileImageUrl,
+                    FirstName = review.User.FirstName,
+                    LastName = review.User.LastName
                 }
             };
+
+            await _userDtoEnricher.EnrichAsync(dto.User, userId);
+            return dto;
         }
         public async Task VoteOnReviewAsync(int reviewId, int userId, int value)
         {
@@ -183,19 +160,20 @@ namespace GGHub.Infrastructure.Services
             }
 
             await _context.SaveChangesAsync();
-            var voter = await _context.Users.FindAsync(userId);
-            if (voter != null && review.UserId != userId)
+            // Oy veren kullanici artik yalnizca aktor ID'si olarak geciliyor; adini almak icin
+            // ayrica cekmeye gerek yok (bildirim metni okuma aninda aktorden cozuluyor).
+            if (review.UserId != userId)
             {
-                var game = await _context.Games.AsNoTracking().FirstOrDefaultAsync(g => g.Id == review.GameId);
-
-                if (game != null)
-                {
-                    var message = AppText.Get(value == 1 ? "reviews.reviewVoteNotificationPositive" : "reviews.reviewVoteNotificationNegative", new Dictionary<string, object?> { ["username"] = voter.Username });
-                    var gameIdentifier = !string.IsNullOrEmpty(game.Slug) ? game.Slug : game.RawgId.ToString();
-                    var link = $"/games/{gameIdentifier}#review-{review.Id}";
-
-                    await _notificationService.CreateNotificationAsync(review.UserId, message, NotificationType.Review, link);
-                }
+                // Kalici inceleme baglantisi. Onceki bicim ("/games/{slug}#review-{id}") mobilde
+                // kaybediliyordu: derin baglanti eslemesi #fragment'i siliyor ve kullanici
+                // incelemeye degil oyun sayfasinin basina dusuyordu. Oyun kaydini cekmeye de
+                // gerek kalmadi.
+                await _notificationService.CreateNotificationAsync(
+                    review.UserId,
+                    NotificationType.Review,
+                    value == 1 ? "reviews.reviewVoteNotificationPositive" : "reviews.reviewVoteNotificationNegative",
+                    link: $"/reviews/{review.Id}",
+                    actorUserId: userId);
             }
         }
         public async Task<(double Average, int Count)> GetGameRatingSummaryAsync(int gameId)
@@ -221,7 +199,7 @@ namespace GGHub.Infrastructure.Services
 
             if (review == null) return null;
 
-            return new ReviewDto
+            var dto = new ReviewDto
             {
                 Id = review.Id,
                 Content = review.Content,
@@ -231,9 +209,56 @@ namespace GGHub.Infrastructure.Services
                 {
                     Id = review.User.Id,
                     Username = review.User.Username,
-                    ProfileImageUrl = review.User.ProfileImageUrl
+                    ProfileImageUrl = review.User.ProfileImageUrl,
+                    FirstName = review.User.FirstName,
+                    LastName = review.User.LastName
                 }
             };
+
+            await _userDtoEnricher.EnrichAsync(dto.User, userId);
+            return dto;
+        }
+
+        public async Task<ReviewDto?> GetReviewByIdAsync(int reviewId, int? currentUserId)
+        {
+            var review = await _context.Reviews
+                .AsNoTracking()
+                .Where(r => r.Id == reviewId)
+                .Select(r => new ReviewDto
+                {
+                    Id = r.Id,
+                    Content = r.Content,
+                    Rating = r.Rating,
+                    CreatedAt = r.CreatedAt,
+                    VoteScore = r.ReviewVotes.Sum(v => v.Value),
+                    CurrentUserVote = currentUserId.HasValue
+                        ? r.ReviewVotes.Where(v => v.UserId == currentUserId).Select(v => (int?)v.Value).FirstOrDefault()
+                        : null,
+                    User = new UserDto
+                    {
+                        Id = r.User.Id,
+                        Username = r.User.Username,
+                        ProfileImageUrl = r.User.ProfileImageUrl,
+                        FirstName = r.User.FirstName,
+                        LastName = r.User.LastName
+                    },
+                    Game = new GameSummaryDto
+                    {
+                        Id = r.Game.Id,
+                        RawgId = r.Game.RawgId,
+                        Name = r.Game.Name,
+                        Slug = r.Game.Slug,
+                        CoverImage = r.Game.CoverImage,
+                        BackgroundImage = r.Game.BackgroundImage,
+                        Released = r.Game.Released
+                    }
+                })
+                .FirstOrDefaultAsync();
+
+            if (review == null) return null;
+
+            await _userDtoEnricher.EnrichAsync(review.User, currentUserId);
+            return review;
         }
 
         public async Task<IEnumerable<ReviewDto>> GetReviewsForGameAsync(int rawgGameId, int? userId = null)
@@ -264,11 +289,14 @@ namespace GGHub.Infrastructure.Services
                     {
                         Id = r.User.Id,
                         Username = r.User.Username,
-                        ProfileImageUrl = r.User.ProfileImageUrl
+                        ProfileImageUrl = r.User.ProfileImageUrl,
+                        FirstName = r.User.FirstName,
+                        LastName = r.User.LastName
                     }
                 })
                 .ToListAsync();
 
+            await _userDtoEnricher.EnrichAsync(reviews.Select(r => r.User), userId);
             return reviews;
         }
 
@@ -298,7 +326,9 @@ namespace GGHub.Infrastructure.Services
                     {
                         Id = r.User.Id,
                         Username = r.User.Username,
-                        ProfileImageUrl = r.User.ProfileImageUrl
+                        ProfileImageUrl = r.User.ProfileImageUrl,
+                        FirstName = r.User.FirstName,
+                        LastName = r.User.LastName
                     },
                     Game = new GameSummaryDto
                     {
@@ -313,6 +343,7 @@ namespace GGHub.Infrastructure.Services
                 })
                 .ToListAsync();
 
+            await _userDtoEnricher.EnrichAsync(reviews.Select(r => r.User), currentUserId);
             return reviews;
         }
 

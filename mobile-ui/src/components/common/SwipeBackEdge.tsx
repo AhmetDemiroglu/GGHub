@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { StyleSheet, useWindowDimensions } from 'react-native';
+import { useWindowDimensions } from 'react-native';
 import { router, usePathname } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS } from 'react-native-reanimated';
@@ -15,13 +15,20 @@ const TAB_ROOTS = ['/', '/discover', '/search', '/lists', '/profile'];
 
 interface SwipeBackEdgeProps {
   enabled?: boolean;
+  children: React.ReactNode;
 }
 
 /**
  * Sol kenardan sağa çekerek geri gitme jesti.
  * Bottom tab köklerinde sidebar gesture'ı kazanır; detay/alt sayfalarda back çalışır.
+ *
+ * İçeriği KAPLAMAZ, SARAR. Daha önce burada absolute + zIndex:1000 transparan bir
+ * Animated.View children'ın üstüne basılıyordu; RN'de transparan bir View de hit-test
+ * edildiği için o şerit sol %30'daki TÜM dokunmaları yutuyordu (avatar ve kullanıcı adı
+ * tam olarak orada duruyor). Jestin aktivasyon alanı artık `hitSlop` ile sınırlanıyor:
+ * hareketsiz bir dokunuş Pan'i aktive etmediği için dokunmalar çocuklara ulaşıyor.
  */
-export function SwipeBackEdge({ enabled = true }: SwipeBackEdgeProps) {
+export function SwipeBackEdge({ enabled = true, children }: SwipeBackEdgeProps) {
   const pathname = usePathname();
   const { width } = useWindowDimensions();
   const isTabRoot = TAB_ROOTS.includes(pathname);
@@ -36,6 +43,9 @@ export function SwipeBackEdge({ enabled = true }: SwipeBackEdgeProps) {
   const backGesture = useMemo(() => {
     return Gesture.Pan()
       .enabled(isEnabled)
+      // Jest yalnızca sol şeritte BAŞLAYABİLİR; şeridin dışı ve hareketsiz dokunuşlar
+      // hiç ilgilendirmez, dolayısıyla altdaki Touchable'lara sorunsuz geçer.
+      .hitSlop({ left: 0, width: edgeWidth })
       // Yatay niyeti biraz daha net iste; geniş şeritte dikey scroll'u yanlış yakalamayı azaltır.
       .activeOffsetX(10)
       .failOffsetY([-24, 24])
@@ -44,25 +54,14 @@ export function SwipeBackEdge({ enabled = true }: SwipeBackEdgeProps) {
           runOnJS(goBackIfPossible)();
         }
       });
-  }, [goBackIfPossible, isEnabled]);
+  }, [goBackIfPossible, isEnabled, edgeWidth]);
 
-  if (!isEnabled) return null;
+  // Jest kapalıysa hiç sarma: etkilenmeyen ekranlarda layout ağacı bire bir aynı kalsın.
+  if (!isEnabled) return <>{children}</>;
 
   return (
     <GestureDetector gesture={backGesture}>
-      <Animated.View style={[styles.edge, { width: edgeWidth }]} />
+      <Animated.View style={{ flex: 1 }}>{children}</Animated.View>
     </GestureDetector>
   );
 }
-
-const styles = StyleSheet.create({
-  edge: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    zIndex: 1000,
-    elevation: 1000,
-    backgroundColor: 'transparent',
-  },
-});

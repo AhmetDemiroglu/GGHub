@@ -30,6 +30,8 @@ namespace GGHub.Infrastructure.Persistence
         public DbSet<UserListRating> UserListRatings { get; set; }
         public DbSet<UserListComment> UserListComments { get; set; }
         public DbSet<UserListCommentVote> UserListCommentVotes { get; set; }
+        public DbSet<ReviewComment> ReviewComments { get; set; }
+        public DbSet<ReviewCommentVote> ReviewCommentVotes { get; set; }
         public DbSet<Level> Levels { get; set; }
         public DbSet<Achievement> Achievements { get; set; }
         public DbSet<UserAchievement> UserAchievements { get; set; }
@@ -70,6 +72,26 @@ namespace GGHub.Infrastructure.Persistence
                 .WithMany(c => c.Replies)
                 .HasForeignKey(c => c.ParentCommentId)
                 .OnDelete(DeleteBehavior.ClientSetNull);
+
+            modelBuilder.Entity<ReviewCommentVote>()
+                .HasKey(v => new { v.UserId, v.ReviewCommentId });
+
+            // BILEREK UserListComment'ten AYRILIYORUZ: orada ClientSetNull var, burada Cascade.
+            // Sebep: DeleteCommentAsync yorumu FindAsync ile cekiyor, Replies'i Include ETMIYOR.
+            // ClientSetNull'da EF yuklenmemis cocuklarin FK'sini null'layamaz ve yaniti olan bir
+            // yorum silinmeye calisilinca DbUpdateException firlatir (referanstaki gizli hata).
+            // Cascade'de silmeyi Postgres ustleniyor; cok seviyeli self-referencing cascade'i
+            // sorunsuz isliyor, yaniti olan yorum da temiz siliniyor.
+            modelBuilder.Entity<ReviewComment>()
+                .HasOne(c => c.ParentComment)
+                .WithMany(c => c.Replies)
+                .HasForeignKey(c => c.ParentCommentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Koklerin sayfalanmasi icin (ReviewId + ParentCommentId == null sorgusu).
+            modelBuilder.Entity<ReviewComment>()
+                .HasIndex(c => new { c.ReviewId, c.ParentCommentId })
+                .HasDatabaseName("IX_ReviewComments_ReviewId_ParentCommentId");
 
             modelBuilder.Entity<UserListGame>()
                 .HasKey(ulg => new { ulg.UserListId, ulg.GameId });
@@ -147,6 +169,15 @@ namespace GGHub.Infrastructure.Persistence
 
                 entity.HasIndex(n => new { n.RecipientUserId, n.CreatedAt })
                     .HasDatabaseName("IX_Notifications_RecipientUserId_CreatedAt");
+
+                // Users'a ikinci FK (RecipientUserId'nin yanina Actor). Ayni tabloya iki
+                // iliski oldugu icin konvansiyon yetmez, ACIKCA tanimlanmali.
+                // SetNull: aktor hesabi silinirse bildirim satiri kalir, yalnizca aktor bilgisi
+                // dusar (istemci Actor == null halini zaten metne duserek karsiliyor).
+                entity.HasOne(n => n.Actor)
+                    .WithMany()
+                    .HasForeignKey(n => n.ActorUserId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             // Follow FolloweeId indeksi (takipçi sayısı sorguları için)

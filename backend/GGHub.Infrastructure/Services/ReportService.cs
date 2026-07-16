@@ -77,6 +77,15 @@ namespace GGHub.Infrastructure.Services
 
             await _context.SaveChangesAsync();
         }
+        public async Task ReportReviewCommentAsync(int commentId, int reporterUserId, ReportForCreationDto reportDto)
+        {
+            var comment = await _context.ReviewComments.FindAsync(commentId);
+            if (comment == null) throw new KeyNotFoundException(AppText.Get("report.reviewCommentNotFound"));
+
+            await CheckAndCreateReportAsync("ReviewComment", commentId, reporterUserId, reportDto, comment.UserId);
+
+            await _context.SaveChangesAsync();
+        }
         public async Task<IEnumerable<MyReportSummaryDto>> GetMyReportsAsync(int reporterUserId)
         {
             var reports = await _context.ContentReports

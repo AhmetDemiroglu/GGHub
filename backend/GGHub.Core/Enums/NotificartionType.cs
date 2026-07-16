@@ -10,6 +10,15 @@
         ListComment,
         CommentReply,
         CommentLike,
-        ListRating
+        ListRating,
+        // 8+ : inceleme yorumlari ve etiketleme. Yine SONA eklendi; eski mobil surumler
+        // bilmedikleri tipte jenerik ikona duser (istemci haritalari fallback'li).
+        // Tip kaba bir kategoridir (ikon/renk); asil metni Notification.MessageKey tasir,
+        // bu yuzden "incelemede etiketlendin" ve "yorumda etiketlendin" tek Mention degeriyle
+        // ifade edilir, enum sismez.
+        ReviewComment,
+        ReviewCommentReply,
+        ReviewCommentLike,
+        Mention
     }
 }

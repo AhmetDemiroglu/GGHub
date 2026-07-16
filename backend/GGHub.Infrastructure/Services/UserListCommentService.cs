@@ -14,11 +14,13 @@ namespace GGHub.Infrastructure.Services
         private readonly GGHubDbContext _context;
         private readonly IGamificationService _gamificationService;
         private readonly INotificationService _notificationService;
-        public UserListCommentService(GGHubDbContext context, IGamificationService gamificationService, INotificationService notificationService)
+        private readonly IUserDtoEnricher _userDtoEnricher;
+        public UserListCommentService(GGHubDbContext context, IGamificationService gamificationService, INotificationService notificationService, IUserDtoEnricher userDtoEnricher)
         {
             _context = context;
             _gamificationService = gamificationService;
             _notificationService = notificationService;
+            _userDtoEnricher = userDtoEnricher;
         }
         private async Task CheckListVisibility(int listId, int? userId)
         {
@@ -83,9 +85,12 @@ namespace GGHub.Infrastructure.Services
                         .FirstOrDefaultAsync();
                     if (parentAuthorId != 0 && parentAuthorId != userId)
                     {
-                        var msg = AppText.Get("social.commentReplyNotification",
-                            new Dictionary<string, object?> { ["username"] = user.Username });
-                        await _notificationService.CreateNotificationAsync(parentAuthorId, msg, NotificationType.CommentReply, $"/lists/{listId}");
+                        await _notificationService.CreateNotificationAsync(
+                            parentAuthorId,
+                            NotificationType.CommentReply,
+                            "social.commentReplyNotification",
+                            link: $"/lists/{listId}",
+                            actorUserId: userId);
                     }
                 }
                 else
@@ -96,14 +101,20 @@ namespace GGHub.Infrastructure.Services
                         .FirstOrDefaultAsync();
                     if (owner != null && owner.UserId != userId)
                     {
-                        var msg = AppText.Get("social.listCommentNotification",
-                            new Dictionary<string, object?> { ["username"] = user.Username, ["listName"] = owner.Name });
-                        await _notificationService.CreateNotificationAsync(owner.UserId, msg, NotificationType.ListComment, $"/lists/{listId}");
+                        await _notificationService.CreateNotificationAsync(
+                            owner.UserId,
+                            NotificationType.ListComment,
+                            "social.listCommentNotification",
+                            new Dictionary<string, string> { ["listName"] = owner.Name },
+                            $"/lists/{listId}",
+                            userId);
                     }
                 }
             }
 
-            return MapToCommentDto(comment, user, 0, 0, 0, userId);
+            var created = MapToCommentDto(comment, user, 0, 0, 0, userId);
+            await _userDtoEnricher.EnrichAsync(created.Owner, userId);
+            return created;
         }
 
         public async Task<bool> UpdateCommentAsync(int commentId, int userId, UserListCommentForUpdateDto dto)
@@ -183,6 +194,9 @@ namespace GGHub.Infrastructure.Services
                 return MapToCommentDto(comment, comment.User, upvotes, downvotes, currentUserVote, currentUserId);
             }).ToList();
 
+            // Ic ice yanitlarin sahipleri dahil, tum agac icin tek batch.
+            await _userDtoEnricher.EnrichAsync(CollectOwners(dtos), currentUserId);
+
             return new PaginatedResult<UserListCommentDto>
             {
                 Items = dtos,
@@ -236,13 +250,12 @@ namespace GGHub.Infrastructure.Services
             // Self zaten yukarida engelli (comment.UserId == userId -> throw).
             if (success && willUpvote)
             {
-                var voter = await _context.Users.FindAsync(userId);
-                if (voter != null)
-                {
-                    var msg = AppText.Get("social.commentLikeNotification",
-                        new Dictionary<string, object?> { ["username"] = voter.Username });
-                    await _notificationService.CreateNotificationAsync(comment.UserId, msg, NotificationType.CommentLike, $"/lists/{comment.UserListId}");
-                }
+                await _notificationService.CreateNotificationAsync(
+                    comment.UserId,
+                    NotificationType.CommentLike,
+                    "social.commentLikeNotification",
+                    link: $"/lists/{comment.UserListId}",
+                    actorUserId: userId);
             }
 
             return success;
@@ -267,8 +280,27 @@ namespace GGHub.Infrastructure.Services
             var downvotes = comment.Votes.Count(v => v.Value == -1);
             var currentUserVote = comment.Votes.FirstOrDefault(v => v.UserId == currentUserId)?.Value ?? 0;
 
-            return MapToCommentDto(comment, comment.User, upvotes, downvotes, currentUserVote, currentUserId);
+            var dto = MapToCommentDto(comment, comment.User, upvotes, downvotes, currentUserVote, currentUserId);
+            await _userDtoEnricher.EnrichAsync(CollectOwners(new[] { dto }), currentUserId);
+            return dto;
         }
+
+        /// <summary>
+        /// Yorum agacindaki tum sahipleri (yanitlarin yanitlari dahil) duzlestirir.
+        /// Enricher tek batch calissin diye; agac basina iki sorgu yeter.
+        /// </summary>
+        private static IEnumerable<UserDto?> CollectOwners(IEnumerable<UserListCommentDto> dtos)
+        {
+            foreach (var dto in dtos)
+            {
+                yield return dto.Owner;
+                foreach (var nested in CollectOwners(dto.Replies))
+                {
+                    yield return nested;
+                }
+            }
+        }
+
         private UserListCommentDto MapToCommentDto(UserListComment comment, User user, int up, int down, int vote, int? currentUserId)
         {
             var dto = new UserListCommentDto

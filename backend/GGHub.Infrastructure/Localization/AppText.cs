@@ -88,12 +88,14 @@ public static class AppText
         ["report.userReported"] = "Kullanıcı başarıyla raporlandı.",
         ["report.listReported"] = "Liste başarıyla raporlandı.",
         ["report.commentReported"] = "Yorum başarıyla raporlandı.",
+        ["report.reviewCommentReported"] = "İnceleme yorumu başarıyla raporlandı.",
         ["report.cannotReportOwnContent"] = "Kendi içeriğinizi veya profilinizi raporlayamazsınız.",
         ["report.alreadyReported"] = "Bu içeriği zaten raporladınız.",
         ["report.reviewNotFound"] = "Raporlanacak yorum bulunamadı.",
         ["report.userNotFound"] = "Raporlanacak kullanıcı bulunamadı.",
         ["report.listNotFound"] = "Raporlanacak liste bulunamadı.",
         ["report.commentNotFound"] = "Raporlanacak liste yorumu bulunamadı.",
+        ["report.reviewCommentNotFound"] = "Raporlanacak inceleme yorumu bulunamadı.",
         ["search.minSearchLength"] = "Arama metni en az 3 karakter olmalıdır.",
         ["search.minQueryLength"] = "Arama sorgusu en az 3 karakter olmalıdır.",
         ["reviews.alreadyReviewed"] = "Bu oyuna zaten bir yorum yapmışsınız.",
@@ -112,6 +114,17 @@ public static class AppText
         ["comments.cannotVoteOwnComment"] = "Kendi yorumunuzu oylayamazsınız.",
         ["comments.invalidVoteValue"] = "Oy değeri 1 veya -1 olmalıdır.",
         ["comments.viewPermissionDenied"] = "Bu listeyi görme (ve yorum yapma) yetkiniz yok.",
+        ["reviewComments.updateFailed"] = "Yorum güncellenemedi.",
+        ["reviewComments.deleteFailed"] = "Yorum silinemedi.",
+        ["reviewComments.voteFailed"] = "Oylama işlemi başarısız.",
+        ["reviewComments.notFound"] = "Yorum bulunamadı.",
+        ["reviewComments.editPermissionDenied"] = "Bu yorumu düzenleme yetkiniz yok.",
+        ["reviewComments.deletePermissionDenied"] = "Bu yorumu silme yetkiniz yok.",
+        ["reviewComments.parentNotFound"] = "Cevap yazılmak istenen ana yorum bulunamadı.",
+        ["reviewComments.cannotVoteOwnComment"] = "Kendi yorumunuzu oylayamazsınız.",
+        ["reviewComments.invalidVoteValue"] = "Oy değeri 1 veya -1 olmalıdır.",
+        ["reviewComments.reviewNotFound"] = "İnceleme bulunamadı.",
+        ["reviewComments.blocked"] = "Bu incelemeye yorum yapamazsınız.",
         ["ratings.cannotRateOwnList"] = "Kendi listenizi puanlayamazsınız.",
         ["ratings.viewPermissionDenied"] = "Bu listeyi görme (ve puanlama) yetkiniz yok.",
         ["ratings.followersOnly"] = "Bu listeyi sadece sahibinin takipçileri puanlayabilir.",
@@ -127,6 +140,7 @@ public static class AppText
         ["social.commentReplyNotification"] = "{username} yorumuna yanıt verdi.",
         ["social.commentLikeNotification"] = "{username} yorumunu beğendi.",
         ["social.listRatingNotification"] = "{username}, '{listName}' adlı listeni puanladı.",
+        ["social.reviewCommentNotification"] = "{username}, incelemene yorum yaptı.",
         ["config.geminiApiKeyMissing"] = "Gemini API Key bulunamadı.",
         ["rawg.gameNotFoundById"] = "RAWG API'sinde {rawgId} ID'li oyun bulunamadı.",
         ["metacritic.noResponse30Seconds"] = "30 saniye içinde yanıt alınamadı.",
@@ -216,12 +230,14 @@ public static class AppText
         ["report.userReported"] = "User reported successfully.",
         ["report.listReported"] = "List reported successfully.",
         ["report.commentReported"] = "Comment reported successfully.",
+        ["report.reviewCommentReported"] = "Review comment reported successfully.",
         ["report.cannotReportOwnContent"] = "You cannot report your own content or profile.",
         ["report.alreadyReported"] = "You have already reported this content.",
         ["report.reviewNotFound"] = "The review to report was not found.",
         ["report.userNotFound"] = "The user to report was not found.",
         ["report.listNotFound"] = "The list to report was not found.",
         ["report.commentNotFound"] = "The list comment to report was not found.",
+        ["report.reviewCommentNotFound"] = "The review comment to report was not found.",
         ["search.minSearchLength"] = "Search text must be at least 3 characters.",
         ["search.minQueryLength"] = "Search query must be at least 3 characters.",
         ["reviews.alreadyReviewed"] = "You have already reviewed this game.",
@@ -240,6 +256,17 @@ public static class AppText
         ["comments.cannotVoteOwnComment"] = "You cannot vote on your own comment.",
         ["comments.invalidVoteValue"] = "Vote value must be 1 or -1.",
         ["comments.viewPermissionDenied"] = "You do not have permission to view or comment on this list.",
+        ["reviewComments.updateFailed"] = "Comment could not be updated.",
+        ["reviewComments.deleteFailed"] = "Comment could not be deleted.",
+        ["reviewComments.voteFailed"] = "Voting failed.",
+        ["reviewComments.notFound"] = "Comment not found.",
+        ["reviewComments.editPermissionDenied"] = "You do not have permission to edit this comment.",
+        ["reviewComments.deletePermissionDenied"] = "You do not have permission to delete this comment.",
+        ["reviewComments.parentNotFound"] = "The parent comment you are trying to reply to was not found.",
+        ["reviewComments.cannotVoteOwnComment"] = "You cannot vote on your own comment.",
+        ["reviewComments.invalidVoteValue"] = "Vote value must be 1 or -1.",
+        ["reviewComments.reviewNotFound"] = "Review not found.",
+        ["reviewComments.blocked"] = "You cannot comment on this review.",
         ["ratings.cannotRateOwnList"] = "You cannot rate your own list.",
         ["ratings.viewPermissionDenied"] = "You do not have permission to view or rate this list.",
         ["ratings.followersOnly"] = "Only the owner's followers can rate this list.",
@@ -255,15 +282,27 @@ public static class AppText
         ["social.commentReplyNotification"] = "{username} replied to your comment.",
         ["social.commentLikeNotification"] = "{username} liked your comment.",
         ["social.listRatingNotification"] = "{username} rated your list '{listName}'.",
+        ["social.reviewCommentNotification"] = "{username} commented on your review.",
         ["config.geminiApiKeyMissing"] = "Gemini API Key was not found.",
         ["rawg.gameNotFoundById"] = "Game with RAWG ID {rawgId} was not found.",
         ["metacritic.noResponse30Seconds"] = "No response was received within 30 seconds.",
     };
 
+    /// <summary>
+    /// Metni ISTEGIN dilinde döndürür (ambient CultureInfo.CurrentUICulture).
+    /// Dikkat: bildirim gövdesi gibi, üretildiği istek ile OKUYACAK kişi farklı olduğunda
+    /// bu yanlıştır; o durumda GetFor ile alıcının dili açıkça verilmelidir.
+    /// </summary>
     public static string Get(string key, IDictionary<string, object?>? values = null)
+        => GetFor(ResolveLocale(), key, values);
+
+    /// <summary>
+    /// Metni AÇIKÇA verilen dilde döndürür. Push gövdesi (alıcının PushToken.Locale'i) ve
+    /// bildirim listesi (alıcının Accept-Language'i) bunu kullanır.
+    /// </summary>
+    public static string GetFor(string? locale, string key, IDictionary<string, object?>? values = null)
     {
-        var locale = ResolveLocale();
-        var template = locale == "tr"
+        var template = NormalizeLocale(locale) == "tr"
             ? Tr.GetValueOrDefault(key)
             : EnUs.GetValueOrDefault(key) ?? Tr.GetValueOrDefault(key);
 
@@ -282,15 +321,20 @@ public static class AppText
         return template;
     }
 
-    private static string ResolveLocale()
+    /// <summary>Desteklenen iki dilden birine indirger: "tr" veya "en-US".</summary>
+    public static string NormalizeLocale(string? raw)
     {
-        var current = CultureInfo.CurrentUICulture.Name;
-        if (string.Equals(current, "tr", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(current, "tr-TR", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(raw, "tr", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(raw, "tr-TR", StringComparison.OrdinalIgnoreCase))
         {
             return "tr";
         }
 
         return "en-US";
     }
+
+    /// <summary>İçinde bulunulan isteğin dili. Push token kaydında yakalamak için.</summary>
+    public static string CurrentLocale() => ResolveLocale();
+
+    private static string ResolveLocale() => NormalizeLocale(CultureInfo.CurrentUICulture.Name);
 }

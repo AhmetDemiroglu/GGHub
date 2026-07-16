@@ -140,9 +140,12 @@ namespace GGHub.Infrastructure.Services
                             relativeUrl = urlElement.GetString() ?? string.Empty;
                         }
 
+                        // Metacritic puansiz oyunlar icin 0 donuyor; gercek metascore araligi 1-100.
+                        // 0'i gecerli puan sayarsak DB'ye "0 puan almis oyun" diye yaziyoruz.
                         if (scoreSummaryElement.TryGetProperty("score", out var scoreElement) &&
                             scoreElement.ValueKind == JsonValueKind.Number &&
-                            scoreElement.TryGetInt32(out var parsedScore))
+                            scoreElement.TryGetInt32(out var parsedScore) &&
+                            parsedScore >= 1 && parsedScore <= 100)
                         {
                             score = parsedScore;
                         }
@@ -157,11 +160,16 @@ namespace GGHub.Infrastructure.Services
                         ? releaseDateElement.GetString()
                         : null;
 
+                    var parsedTitle = item.TryGetProperty("title", out var titleElement)
+                        ? titleElement.GetString()
+                        : null;
+
                     results.Add(new MetacriticResult
                     {
                         Score = score,
                         Url = $"https://www.metacritic.com{relativeUrl}",
-                        ReleaseDate = parsedReleaseDate
+                        ReleaseDate = parsedReleaseDate,
+                        Title = parsedTitle
                     });
                 }
             }

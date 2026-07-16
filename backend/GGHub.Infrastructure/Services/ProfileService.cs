@@ -1,6 +1,7 @@
 ﻿using GGHub.Application.Dtos;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Enums;
+using GGHub.Core.Specifications;
 using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -11,11 +12,13 @@ namespace GGHub.Infrastructure.Services
     {
         private readonly GGHubDbContext _context;
         private readonly IAuditService _auditService;
+        private readonly IUserDtoEnricher _userDtoEnricher;
 
-        public ProfileService(GGHubDbContext context, IAuditService auditService) 
+        public ProfileService(GGHubDbContext context, IAuditService auditService, IUserDtoEnricher userDtoEnricher)
         {
             _context = context;
             _auditService = auditService;
+            _userDtoEnricher = userDtoEnricher;
         }
 
         public async Task<ProfileDto?> GetProfileAsync(int userId)
@@ -153,19 +156,16 @@ namespace GGHub.Infrastructure.Services
                 };
             }
 
-            if (profileUser.ProfileVisibility == ProfileVisibilitySetting.Private && profileUser.Id != currentUserId)
+            // isFollowing gorunurluk kapisindan ONCE hesaplanir: kapinin sordugu
+            // "currentUser bu profili takip ediyor mu" sorusu birebir ayni sorgu idi,
+            // boylece ayni round-trip iki kez atilmiyor ve kural tek kaynaktan geciyor.
+            var isFollowing = currentUserId.HasValue &&
+                                await _context.Follows.AnyAsync(f => f.FollowerId == currentUserId.Value && f.FolloweeId == profileUser.Id);
+
+            if (!ProfileAccess.CanView(profileUser.ProfileVisibility, profileUser.Id, currentUserId, isFollowing))
             {
                 return null;
             }
-            if (profileUser.ProfileVisibility == ProfileVisibilitySetting.Followers && profileUser.Id != currentUserId)
-            {
-                if (currentUserId == null || !await _context.Follows.AnyAsync(f => f.FolloweeId == profileUser.Id && f.FollowerId == currentUserId))
-                {
-                    return null;
-                }
-            }
-            var isFollowing = currentUserId.HasValue &&
-                                await _context.Follows.AnyAsync(f => f.FollowerId == currentUserId.Value && f.FolloweeId == profileUser.Id);
 
             var isFollowedBy = currentUserId.HasValue &&
                                 await _context.Follows.AnyAsync(f => f.FollowerId == profileUser.Id && f.FolloweeId == currentUserId.Value);
@@ -256,7 +256,9 @@ namespace GGHub.Infrastructure.Services
                         User = new UserDto
                         {
                             Id = r.User.Id,
-                            Username = r.User.Username
+                            Username = r.User.Username,
+                            FirstName = r.User.FirstName,
+                            LastName = r.User.LastName
                         }
                     })
                     .ToListAsync();
@@ -297,6 +299,10 @@ namespace GGHub.Infrastructure.Services
                         }).ToList()
                     })
                     .ToListAsync();
+
+                // Disa aktarim tamamen kendi verisi; hem review hem liste sahibi userId'nin kendisi.
+                await _userDtoEnricher.EnrichAsync(userReviews.Select(r => r.User), userId);
+                await _userDtoEnricher.EnrichAsync(userLists.Select(l => l.Owner), userId);
 
                 var userMessages = await _context.Messages
                     .Where(m => m.SenderId == userId || m.RecipientId == userId)

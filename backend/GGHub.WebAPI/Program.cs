@@ -93,6 +93,7 @@ builder.Services.AddHttpClient<IResend, ResendClient>();
 builder.Services.AddScoped<IGameService, RawgGameService>();
 builder.Services.AddScoped<IDiscoverService, DiscoverService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IUserDtoEnricher, UserDtoEnricher>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<IUserListService, UserListService>();
 builder.Services.AddScoped<IProfileService, ProfileService>();
@@ -109,6 +110,7 @@ builder.Services.AddScoped<ISearchService, SearchService>();
 builder.Services.AddScoped<IPhotoService, PhotoService>();
 builder.Services.AddScoped<IUserListRatingService, UserListRatingService>();
 builder.Services.AddScoped<IUserListCommentService, UserListCommentService>();
+builder.Services.AddScoped<IReviewCommentService, ReviewCommentService>();
 builder.Services.AddSingleton<IEmailQueue, EmailQueue>();
 builder.Services.AddHostedService<BackgroundEmailService>();
 builder.Services.AddHttpClient<IGeminiService, GeminiService>(client =>
@@ -126,27 +128,12 @@ builder.Services.AddHttpClient("Metacritic")
     });
 builder.Services.AddScoped<IMetacriticService, MetacriticService>();
 
-var metacriticJobEnabled = builder.Configuration.GetValue<bool>("Jobs:MetacriticSync:Enabled");
-if (metacriticJobEnabled)
-{
-    builder.Services.AddHostedService<MetacriticSyncJob>();
-}
-
-// RAWG Import Job - ONLY runs in Development environment (double safety check in job itself)
-builder.Services.Configure<RawgImportSettings>(builder.Configuration.GetSection("Jobs:RawgImport"));
-var rawgImportEnabled = builder.Configuration.GetValue<bool>("Jobs:RawgImport:Enabled");
-if (rawgImportEnabled && builder.Environment.IsDevelopment())
-{
-    builder.Services.AddHostedService<RawgImportJob>();
-}
-
-// Future-dated Metacritic cleanup — günde bir kez, prod + dev. Yeni sync'ler zaten
-// SanitizeMetacritic ile filtreliyor; bu job mevcut hatalı kayıtlar için.
-var futureCleanupEnabled = builder.Configuration.GetValue<bool?>("Jobs:FutureMetacriticCleanup:Enabled") ?? true;
-if (futureCleanupEnabled)
-{
-    builder.Services.AddHostedService<FutureMetacriticCleanupJob>();
-}
+// Katalog job'lari (Metacritic sync, RAWG import/backfill, ceviri) BILEREK burada kayitli degil.
+// Hepsi GGHub.Worker konsol projesinde calisir ve yalnizca gelistirici makinesinde acilir.
+// Railway bu Dockerfile ile GGHub.WebAPI'yi derledigi icin job'lari calistiramaz; boylece
+// surekli calisan bir crawler'in prod container'inda CPU yakmasi yapisal olarak imkansiz.
+// Buraya yeni bir AddHostedService eklemeden once bunu oku: GGHub.Worker'a ekle.
+// Tek istisna BackgroundEmailService: kullaniciya mail gonderiyor, prod'da calismasi sart.
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 

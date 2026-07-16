@@ -2,6 +2,7 @@
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
 using GGHub.Core.Enums;
+using GGHub.Core.Specifications;
 using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -53,9 +54,13 @@ namespace GGHub.Infrastructure.Services
                 var follower = await _context.Users.FindAsync(followerId);
                 if (follower != null)
                 {
-                    var message = AppText.Get("social.followNotification", new Dictionary<string, object?> { ["username"] = follower.Username });
-                    await _notificationService.CreateNotificationAsync(followee.Id, message, NotificationType.Follow, $"/profiles/{follower.Username}");
-                    
+                    await _notificationService.CreateNotificationAsync(
+                        followee.Id,
+                        NotificationType.Follow,
+                        "social.followNotification",
+                        link: $"/profiles/{follower.Username}",
+                        actorUserId: followerId);
+
                     await _gamificationService.AddXpAsync(followerId, 20, "UserFollowed");
                     await _gamificationService.CheckAchievementsAsync(followee.Id, "FollowerGained");
                 }
@@ -108,12 +113,13 @@ namespace GGHub.Infrastructure.Services
 
             if (success)
             {
-                var follower = await _context.Users.FindAsync(userId);
-                if (follower != null)
-                {
-                    var message = AppText.Get("social.listFollowNotification", new Dictionary<string, object?> { ["username"] = follower.Username, ["listName"] = listToFollow.Name });
-                    await _notificationService.CreateNotificationAsync(listToFollow.UserId, message, NotificationType.ListFollow, $"/lists/{listToFollow.Id}");
-                }
+                await _notificationService.CreateNotificationAsync(
+                    listToFollow.UserId,
+                    NotificationType.ListFollow,
+                    "social.listFollowNotification",
+                    new Dictionary<string, string> { ["listName"] = listToFollow.Name },
+                    $"/lists/{listToFollow.Id}",
+                    userId);
             }
             return success;
         }
@@ -155,10 +161,11 @@ namespace GGHub.Infrastructure.Services
                 FirstName = follow.Follower.FirstName,
                 LastName = follow.Follower.LastName,
                 IsFollowing = followingSet.Contains(follow.Follower.Id),
-                IsProfileAccessible = follow.Follower.ProfileVisibility == ProfileVisibilitySetting.Public ||
-                    follow.Follower.Id == currentUserId ||
-                    (follow.Follower.ProfileVisibility == ProfileVisibilitySetting.Followers &&
-                     followingSet.Contains(follow.Follower.Id))
+                IsProfileAccessible = ProfileAccess.CanView(
+                    follow.Follower.ProfileVisibility,
+                    follow.Follower.Id,
+                    currentUserId,
+                    followingSet.Contains(follow.Follower.Id))
             }).ToList();
 
             return result;
@@ -193,10 +200,11 @@ namespace GGHub.Infrastructure.Services
                 FirstName = follow.Followee.FirstName,
                 LastName = follow.Followee.LastName,
                 IsFollowing = followingSet.Contains(follow.Followee.Id),
-                IsProfileAccessible = follow.Followee.ProfileVisibility == ProfileVisibilitySetting.Public ||
-                    follow.Followee.Id == currentUserId ||
-                    (follow.Followee.ProfileVisibility == ProfileVisibilitySetting.Followers &&
-                     followingSet.Contains(follow.Followee.Id))
+                IsProfileAccessible = ProfileAccess.CanView(
+                    follow.Followee.ProfileVisibility,
+                    follow.Followee.Id,
+                    currentUserId,
+                    followingSet.Contains(follow.Followee.Id))
             }).ToList();
 
             return result;

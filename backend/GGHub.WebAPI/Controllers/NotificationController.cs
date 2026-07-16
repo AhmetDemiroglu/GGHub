@@ -68,7 +68,9 @@ namespace GGHub.WebAPI.Controllers
             }
 
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            await _pushNotificationService.RegisterTokenAsync(userId, dto.Token, dto.Platform ?? "unknown");
+            // Locale gonderilmediyse servis istegin Accept-Language'ini kullanir; mobil istemci
+            // uygulama ici dili zaten her isteğe ekliyor, yani eski surumler de dogru dili verir.
+            await _pushNotificationService.RegisterTokenAsync(userId, dto.Token, dto.Platform ?? "unknown", dto.Locale);
             return Ok();
         }
 

@@ -1,6 +1,7 @@
 ﻿using GGHub.Application.Dtos;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Enums;
+using GGHub.Core.Specifications;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,10 +10,25 @@ namespace GGHub.Infrastructure.Services
     public class ActivityService : IActivityService
     {
         private readonly GGHubDbContext _context;
+        private readonly IUserDtoEnricher _userDtoEnricher;
 
-        public ActivityService(GGHubDbContext context)
+        public ActivityService(GGHubDbContext context, IUserDtoEnricher userDtoEnricher)
         {
             _context = context;
+            _userDtoEnricher = userDtoEnricher;
+        }
+
+        /// <summary>
+        /// Bir aktivite kartinda okuyucuya bagli alani olan tum UserDto'lari duzlestirir.
+        /// Enricher sayfa basina tek batch calissin diye.
+        /// </summary>
+        private static IEnumerable<UserDto?> CollectUsers(IEnumerable<ActivityDto> activities)
+        {
+            foreach (var activity in activities)
+            {
+                yield return activity.Actor;
+                yield return activity.FollowData;
+            }
         }
 
         public async Task<IEnumerable<ActivityDto>> GetUserActivityFeedAsync(string username, int? currentUserId = null, int limit = 20)
@@ -27,17 +43,9 @@ namespace GGHub.Infrastructure.Services
             var isFollowing = currentUserId.HasValue &&
                               await _context.Follows.AnyAsync(f => f.FollowerId == currentUserId.Value && f.FolloweeId == user.Id);
 
-            if (!isOwner)
+            if (!ProfileAccess.CanView(user.ProfileVisibility, user.Id, currentUserId, isFollowing))
             {
-                if (user.ProfileVisibility == ProfileVisibilitySetting.Private)
-                {
-                    return Enumerable.Empty<ActivityDto>();
-                }
-
-                if (user.ProfileVisibility == ProfileVisibilitySetting.Followers && !isFollowing)
-                {
-                    return Enumerable.Empty<ActivityDto>();
-                }
+                return Enumerable.Empty<ActivityDto>();
             }
 
             // 1. REVIEWS (Son X adet)
@@ -126,6 +134,9 @@ namespace GGHub.Infrastructure.Services
                 .OrderByDescending(a => a.OccurredAt)
                 .Take(limit)
                 .ToList();
+
+            // Yalnizca donen sayfa zenginlestirilir; Take'ten once cagirmak bosa is olurdu.
+            await _userDtoEnricher.EnrichAsync(CollectUsers(feed), currentUserId);
 
             return feed;
         }
@@ -316,6 +327,8 @@ namespace GGHub.Infrastructure.Services
                 .OrderByDescending(x => x.Score)
                 .Select(x => x.Dto)
                 .ToList();
+
+            await _userDtoEnricher.EnrichAsync(CollectUsers(reranked), currentUserId);
 
             return reranked;
         }

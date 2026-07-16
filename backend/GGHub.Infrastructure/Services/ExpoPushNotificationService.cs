@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
+using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -26,15 +27,21 @@ namespace GGHub.Infrastructure.Services
             _logger = logger;
         }
 
-        public async Task RegisterTokenAsync(int userId, string token, string platform)
+        public async Task RegisterTokenAsync(int userId, string token, string platform, string? locale = null)
         {
             if (string.IsNullOrWhiteSpace(token)) return;
+
+            // Locale gecilmediyse istegin kendi Accept-Language'inden yakala. Mobil istemci
+            // her isteğe uygulama ici dili zaten ekliyor (bkz. mobile-ui/src/api/client.ts),
+            // dolayisiyla bu, mobilde hicbir degisiklik gerektirmeden dogru dili verir.
+            var resolvedLocale = AppText.NormalizeLocale(locale ?? AppText.CurrentLocale());
 
             var existing = await _context.PushTokens.FirstOrDefaultAsync(t => t.Token == token);
             if (existing != null)
             {
                 existing.UserId = userId;
                 existing.Platform = platform;
+                existing.Locale = resolvedLocale;
                 existing.UpdatedAt = DateTime.UtcNow;
             }
             else
@@ -43,7 +50,8 @@ namespace GGHub.Infrastructure.Services
                 {
                     UserId = userId,
                     Token = token,
-                    Platform = platform
+                    Platform = platform,
+                    Locale = resolvedLocale
                 });
             }
 
@@ -62,28 +70,75 @@ namespace GGHub.Infrastructure.Services
             }
         }
 
-        public async Task SendToUserAsync(int userId, string title, string body, string? link = null)
+        public async Task SendToUserAsync(int userId, string title, string body, string? link = null, int? notificationId = null)
+        {
+            var tokens = await GetTokensAsync(userId);
+            if (tokens.Count == 0) return;
+
+            await SendAsync(userId, tokens.Select(t => (t.Token, title, body)).ToList(), link, notificationId);
+        }
+
+        public async Task SendLocalizedToUserAsync(
+            int userId,
+            string bodyKey,
+            IDictionary<string, object?>? bodyArgs = null,
+            string? link = null,
+            int? notificationId = null,
+            string? title = null)
+        {
+            var tokens = await GetTokensAsync(userId);
+            if (tokens.Count == 0) return;
+
+            // Govde her cihazin KENDI dilinde render edilir. Ayni kullanici farkli dillerde
+            // iki cihaz kullaniyor olabilir; render dil basina bir kez yapilip paylasilir.
+            var byLocale = new Dictionary<string, string>();
+            var payloads = new List<(string Token, string Title, string Body)>(tokens.Count);
+
+            foreach (var token in tokens)
+            {
+                var locale = AppText.NormalizeLocale(token.Locale);
+                if (!byLocale.TryGetValue(locale, out var body))
+                {
+                    body = AppText.GetFor(locale, bodyKey, bodyArgs);
+                    byLocale[locale] = body;
+                }
+
+                payloads.Add((token.Token, title ?? "GGHub", body));
+            }
+
+            await SendAsync(userId, payloads, link, notificationId);
+        }
+
+        private async Task<List<PushToken>> GetTokensAsync(int userId)
+        {
+            return await _context.PushTokens
+                .AsNoTracking()
+                .Where(t => t.UserId == userId)
+                .ToListAsync();
+        }
+
+        private async Task SendAsync(
+            int userId,
+            List<(string Token, string Title, string Body)> payloads,
+            string? link,
+            int? notificationId)
         {
             try
             {
-                var tokens = await _context.PushTokens
-                    .Where(t => t.UserId == userId)
-                    .Select(t => t.Token)
-                    .ToListAsync();
+                if (payloads.Count == 0) return;
 
-                if (tokens.Count == 0) return;
-
-                var messages = tokens.Select(t => new
+                var messages = payloads.Select(p => new
                 {
-                    to = t,
-                    title,
-                    body,
+                    to = p.Token,
+                    title = p.Title,
+                    body = p.Body,
                     sound = "default",
                     // Android: uygulamanin olusturdugu 'default' kanalini kullan (heads-up + ses)
                     // ve yuksek oncelikle hemen teslim et. iOS bu iki alani gormezden gelir.
                     channelId = "default",
                     priority = "high",
-                    data = new { link }
+                    // notificationId: bildirime dokununca istemci tam o satiri okundu yapabilsin diye.
+                    data = new { link, notificationId }
                 });
 
                 var response = await _httpClient.PostAsJsonAsync(ExpoPushUrl, messages);
@@ -94,7 +149,7 @@ namespace GGHub.Infrastructure.Services
                 }
 
                 var json = await response.Content.ReadAsStringAsync();
-                await RemoveUnregisteredTokensAsync(json, tokens);
+                await RemoveUnregisteredTokensAsync(json, payloads.Select(p => p.Token).ToList());
             }
             catch (Exception ex)
             {

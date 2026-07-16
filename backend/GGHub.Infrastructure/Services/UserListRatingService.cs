@@ -83,13 +83,13 @@ namespace GGHub.Infrastructure.Services
                 // Yalnizca YENI puanda liste sahibine bildir (self zaten yukarida engelli).
                 if (isNewRating)
                 {
-                    var rater = await _context.Users.FindAsync(userId);
-                    if (rater != null)
-                    {
-                        var msg = AppText.Get("social.listRatingNotification",
-                            new Dictionary<string, object?> { ["username"] = rater.Username, ["listName"] = list.Name });
-                        await _notificationService.CreateNotificationAsync(list.UserId, msg, NotificationType.ListRating, $"/lists/{listId}");
-                    }
+                    await _notificationService.CreateNotificationAsync(
+                        list.UserId,
+                        NotificationType.ListRating,
+                        "social.listRatingNotification",
+                        new Dictionary<string, string> { ["listName"] = list.Name },
+                        $"/lists/{listId}",
+                        userId);
                 }
             }
         }

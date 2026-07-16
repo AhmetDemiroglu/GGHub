@@ -2,9 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { useRootNavigationState, useRouter } from 'expo-router';
 import * as Notifications from 'expo-notifications';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from './use-auth';
 import { registerForPushNotificationsAsync } from '@/src/utils/push';
 import { registerPushToken, unregisterPushToken } from '@/src/api/push';
+import { markNotificationAsRead } from '@/src/api/notifications';
 import { toMobileRoute } from '@/src/utils/route';
 
 // Ilk POST ag nedeniyle duserse oturum boyunca push kaybolmasin diye birkac kez dene.
@@ -33,8 +35,10 @@ async function postWithRetry(fn: () => Promise<unknown>, attempts: number): Prom
 export function usePushNotifications() {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const rootNavigationState = useRootNavigationState();
   const [pendingLink, setPendingLink] = useState<string | null>(null);
+  const [pendingNotificationId, setPendingNotificationId] = useState<number | null>(null);
   const registeredTokenRef = useRef<string | null>(null);
   const inFlightRef = useRef(false);
 
@@ -88,10 +92,15 @@ export function usePushNotifications() {
   // bekletilir, asagidaki flush effect router hazir olunca uygular.
   useEffect(() => {
     const queueFromResponse = (response: Notifications.NotificationResponse) => {
-      const data = response.notification.request.content.data as { link?: string } | undefined;
-      const link = data?.link;
-      if (link) {
-        setPendingLink(link);
+      const data = response.notification.request.content.data as
+        | { link?: string; notificationId?: number }
+        | undefined;
+      if (data?.link) {
+        setPendingLink(data.link);
+      }
+      // Ayri kuyruk: link'ten farkli olarak bu, oturum acilana kadar beklemeli (bkz. asagi).
+      if (typeof data?.notificationId === 'number') {
+        setPendingNotificationId(data.notificationId);
       }
     };
 
@@ -117,4 +126,24 @@ export function usePushNotifications() {
     setPendingLink(null);
     router.push(toMobileRoute(pendingLink) as never);
   }, [isNavigationReady, pendingLink, router]);
+
+  // Push'a dokunulan bildirimi okundu yap. Eskiden push'tan icerige gidince rozet
+  // dusmuyordu; okundu olmasi icin zil ekranini tekrar acmak gerekiyordu.
+  //
+  // Link kuyrugundan AYRI ve isAuthenticated'a bagli tutuluyor: link'ler oturumsuz da
+  // acilabilmeli (public deep-link), ama mark-read auth ister ve oturum yokken 401 doner.
+  // Ikisini ayni effect'e koymak, oturum acilana kadar navigasyonu da bekletirdi.
+  useEffect(() => {
+    if (!isAuthenticated || pendingNotificationId === null) return;
+    const notificationId = pendingNotificationId;
+    setPendingNotificationId(null);
+
+    markNotificationAsRead(notificationId)
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        queryClient.invalidateQueries({ queryKey: ['unread-notification-count'] });
+      })
+      // Best-effort: 404 (silinmis ya da bana ait olmayan bildirim) sessizce gecilir.
+      .catch(() => {});
+  }, [isAuthenticated, pendingNotificationId, queryClient]);
 }

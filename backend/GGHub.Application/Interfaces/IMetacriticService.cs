@@ -9,6 +9,7 @@
         public int? Score { get; set; }
         public string Url { get; set; } = string.Empty;
         public string? ReleaseDate { get; set; }
+        public string? Title { get; set; }
         public string? DebugInfo { get; set; }
     }
 }

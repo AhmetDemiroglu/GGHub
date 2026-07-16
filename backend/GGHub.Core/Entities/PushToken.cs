@@ -9,6 +9,14 @@ namespace GGHub.Core.Entities
         public User User { get; set; }
         public string Token { get; set; }      // Expo push token, e.g. ExponentPushToken[...]
         public string Platform { get; set; }    // "ios" | "android"
+
+        /// <summary>
+        /// Cihazın uygulama içi dili ("tr" | "en-US"), kayıt anındaki Accept-Language'dan alınır.
+        /// Push, bildirimi TETİKLEYEN kullanıcının isteği üzerinde üretilir; oradaki ambient
+        /// CultureInfo alıcının değil aktörün dilidir. Bu yüzden push gövdesi bu alanla
+        /// AÇIKÇA render edilir. Nullable: eski token satırlarında yok, en-US'a düşer.
+        /// </summary>
+        public string? Locale { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }

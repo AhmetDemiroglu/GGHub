@@ -15,13 +15,15 @@ namespace GGHub.Infrastructure.Services
         private readonly IGameService _gameService;
         private readonly INotificationService _notificationService;
         private readonly IGamificationService _gamificationService;
+        private readonly IUserDtoEnricher _userDtoEnricher;
 
-        public UserListService(GGHubDbContext context, IGameService gameService, INotificationService notificationService, IGamificationService gamificationService)
+        public UserListService(GGHubDbContext context, IGameService gameService, INotificationService notificationService, IGamificationService gamificationService, IUserDtoEnricher userDtoEnricher)
         {
             _context = context;
             _gameService = gameService;
             _notificationService = notificationService;
             _gamificationService = gamificationService;
+            _userDtoEnricher = userDtoEnricher;
         }
 
         public async Task<UserList> CreateListAsync(UserListForCreationDto listDto, int userId)
@@ -100,12 +102,19 @@ namespace GGHub.Infrastructure.Services
 
             if (followers.Any())
             {
-                var notificationMessage = AppText.Get("lists.newGameAddedNotification", new Dictionary<string, object?> { ["name"] = list.Name });
                 foreach (var follower in followers)
                 {
                     if (follower.FollowerUserId != list.UserId)
                     {
-                        await _notificationService.CreateNotificationAsync(follower.FollowerUserId, notificationMessage, NotificationType.ListFollow, $"/lists/{list.Id}");
+                        // Aktor = listeye oyunu ekleyen liste sahibi. Metinde adi gecmiyor
+                        // ama istemci avatarini gostersin diye aktor yine de baglaniyor.
+                        await _notificationService.CreateNotificationAsync(
+                            follower.FollowerUserId,
+                            NotificationType.ListFollow,
+                            "lists.newGameAddedNotification",
+                            new Dictionary<string, string> { ["name"] = list.Name },
+                            $"/lists/{list.Id}",
+                            list.UserId);
                     }
                 }
             }
@@ -148,6 +157,9 @@ namespace GGHub.Infrastructure.Services
                 })
                 .ToListAsync();
 
+            // Owner burada her zaman userId'nin kendisi; enricher yine de tek noktadan doldursun.
+            await _userDtoEnricher.EnrichAsync(listDtos.Select(l => l.Owner), userId);
+
             return listDtos;
         }
         public async Task<UserListDetailDto?> GetMyListDetailAsync(int listId, int userId)
@@ -189,6 +201,8 @@ namespace GGHub.Infrastructure.Services
                     }).ToList()
                 })
                 .FirstOrDefaultAsync();
+
+            await _userDtoEnricher.EnrichAsync(list?.Owner, userId);
 
             return list;
         }
@@ -265,6 +279,8 @@ namespace GGHub.Infrastructure.Services
                 })
                 .FirstOrDefaultAsync();
 
+            await _userDtoEnricher.EnrichAsync(detail?.Owner, currentUserId);
+
             return detail!;
         }
 
@@ -320,8 +336,8 @@ namespace GGHub.Infrastructure.Services
                         Id = l.User.Id,
                         Username = l.User.Username,
                         ProfileImageUrl = l.User.ProfileImageUrl,
-                        IsFollowing = currentUserId.HasValue &&
-                            _context.Follows.Any(f => f.FollowerId == currentUserId.Value && f.FolloweeId == l.UserId)
+                        FirstName = l.User.FirstName,
+                        LastName = l.User.LastName
                     },
                     Visibility = l.Visibility,
                     FirstGameImageUrls = l.UserListGames
@@ -331,6 +347,10 @@ namespace GGHub.Infrastructure.Services
                                          .ToList()
                 })
                 .ToListAsync();
+
+            // IsFollowing eskiden satir basina korelasyonlu alt sorguydu; artik erisim bayragiyla
+            // birlikte tek batch'te doluyor.
+            await _userDtoEnricher.EnrichAsync(itemDtos.Select(i => i.Owner), currentUserId);
 
             return new PaginatedResult<UserListPublicDto>
             {
@@ -388,7 +408,8 @@ namespace GGHub.Infrastructure.Services
                         Id = l.User.Id,
                         Username = l.User.Username,
                         ProfileImageUrl = l.User.ProfileImageUrl,
-                        IsFollowing = _context.Follows.Any(f => f.FollowerId == currentUserId && f.FolloweeId == l.UserId)
+                        FirstName = l.User.FirstName,
+                        LastName = l.User.LastName
                     },
                     Visibility = l.Visibility,
                     FirstGameImageUrls = l.UserListGames
@@ -399,6 +420,10 @@ namespace GGHub.Infrastructure.Services
                     IsFollowing = _context.UserListFollows.Any(f => f.FollowerUserId == currentUserId && f.FollowedListId == l.Id)
                 })
                 .ToListAsync();
+
+            // Not: yukaridaki IsFollowing liste takibi (UserListFollows), asagidaki ise Owner'in
+            // kullanici takibi. Ikisi farkli; yalnizca Owner'inki enricher'a devredildi.
+            await _userDtoEnricher.EnrichAsync(itemDtos.Select(i => i.Owner), currentUserId);
 
             return new PaginatedResult<UserListPublicDto>
             {
@@ -552,7 +577,7 @@ namespace GGHub.Infrastructure.Services
 
         public async Task<UserListDetailDto?> GetWishlistForUserAsync(int userId)
         {
-            return await _context.UserLists
+            var wishlist = await _context.UserLists
                 .Where(l => l.UserId == userId && l.Type == UserListType.Wishlist)
                 .Select(l => new UserListDetailDto
                 {
@@ -591,6 +616,10 @@ namespace GGHub.Infrastructure.Services
                     IsFollowing = false
                 })
                 .FirstOrDefaultAsync();
+
+            await _userDtoEnricher.EnrichAsync(wishlist?.Owner, userId);
+
+            return wishlist;
         }
         public async Task<IEnumerable<UserListDto>> GetListsByUsernameAsync(string username, int? currentUserId)
         {
@@ -613,7 +642,7 @@ namespace GGHub.Infrastructure.Services
                 );
             }
 
-            return await query
+            var listDtos = await query
                 .OrderByDescending(l => l.UpdatedAt)
                 .Select(l => new UserListDto
                 {
@@ -651,6 +680,10 @@ namespace GGHub.Infrastructure.Services
                         .ToList()
                 })
                 .ToListAsync();
+
+            await _userDtoEnricher.EnrichAsync(listDtos.Select(l => l.Owner), currentUserId);
+
+            return listDtos;
         }
         public async Task<bool> ToggleFavoriteAsync(int userId, int rawgGameId)
         {

@@ -1,6 +1,7 @@
 ﻿using GGHub.Application.Dtos;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Enums;
+using GGHub.Core.Specifications;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -148,6 +149,11 @@ namespace GGHub.Infrastructure.Services
                 .AsNoTracking()
                 .Where(u => candidateIds.Contains(u.Id) &&
                             !u.IsDeleted && !u.IsBanned &&
+                            // Sadece Private elenir. "Followers" gorunurluklu hesaplar BILEREK
+                            // havuzda kalir: profilleri acilmasa da oneri kartindaki Takip Et
+                            // butonu onlar icin dogru kesif yolu (takip et -> profil acilir).
+                            // Bu yuzden burada WhereVisibleTo KULLANILMAZ; erisilebilirlik
+                            // asagida IsProfileAccessible bayragiyla ifade edilir.
                             u.ProfileVisibility != ProfileVisibilitySetting.Private)
                 .Select(u => new
                 {
@@ -189,7 +195,12 @@ namespace GGHub.Infrastructure.Services
                             FirstName = u.FirstName,
                             LastName = u.LastName,
                             IsFollowing = false,
-                            IsProfileAccessible = u.ProfileVisibility == ProfileVisibilitySetting.Public,
+                            // followingIds zaten "benim takip ettiklerim" kumesi (me -> them).
+                            // Aday havuzu IsExcluded ile takip ettiklerimi eledigi icin bu bugun
+                            // hep false; kurali yine de tek kaynaktan gecirip eleme degisirse
+                            // dogru kalmasini sagliyoruz.
+                            IsProfileAccessible = ProfileAccess.CanView(
+                                u.ProfileVisibility, u.Id, currentUserId, followingIds.Contains(u.Id)),
                             MutualFollowerCount = mutual,
                             SharedGameCount = shared,
                             FollowsYou = followsYou,

@@ -83,15 +83,11 @@ namespace GGHub.Infrastructure.Services
             }
 
             // Username araması — yıl token'larını username sorgusuna karıştırma; orijinal user input'u kullan.
-            var lower = query.ToLower();
+            // ToLowerInvariant: tr-TR kulturunde "I".ToLower() => "ı" olur ve arama sessizce bozulur.
+            var lower = query.ToLowerInvariant();
             var accessibleUsers = await _context.Users
                 .Where(u => u.Username.ToLower().Contains(lower) && !u.IsDeleted)
-                .Where(u =>
-                    u.ProfileVisibility == ProfileVisibilitySetting.Public ||
-                    u.Id == currentUserId ||
-                    (u.ProfileVisibility == ProfileVisibilitySetting.Followers &&
-                     currentUserId != null &&
-                     _context.Follows.Any(f => f.FolloweeId == u.Id && f.FollowerId == currentUserId)))
+                .WhereVisibleTo(_context, currentUserId)
                 .Take(5)
                 .Select(u => new SearchResultDto
                 {

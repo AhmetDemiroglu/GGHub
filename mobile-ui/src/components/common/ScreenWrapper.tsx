@@ -50,16 +50,14 @@ export function ScreenWrapper({
     }
     return (
       <SafeAreaView {...safeAreaProps}>
-        {children}
-        <SwipeBackEdge enabled={swipeBackEnabled} />
+        <SwipeBackEdge enabled={swipeBackEnabled}>{children}</SwipeBackEdge>
       </SafeAreaView>
     );
   }
 
   return (
     <View style={[containerStyle, style]}>
-      {children}
-      <SwipeBackEdge enabled={swipeBackEnabled} />
+      <SwipeBackEdge enabled={swipeBackEnabled}>{children}</SwipeBackEdge>
     </View>
   );
 }

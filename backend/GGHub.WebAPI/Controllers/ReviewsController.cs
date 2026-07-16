@@ -52,6 +52,30 @@ namespace GGHub.WebAPI.Controllers
             return Ok(reviews);
         }
 
+        // Kalici inceleme baglantisi (/reviews/{id}). Bildirim linkleri buraya isaret ediyor;
+        // anonim erisime acik, cunku incelemeler zaten oyun sayfasinda herkese gorunuyor.
+        [HttpGet("/api/reviews/{reviewId}")]
+        public async Task<IActionResult> GetReviewById(int reviewId)
+        {
+            int? userId = null;
+            if (User.Identity != null && User.Identity.IsAuthenticated)
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+                if (userIdClaim != null && int.TryParse(userIdClaim.Value, out var parsedId))
+                {
+                    userId = parsedId;
+                }
+            }
+
+            var review = await _reviewService.GetReviewByIdAsync(reviewId, userId);
+            if (review == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(review);
+        }
+
         [HttpDelete("/api/reviews/{reviewId}")]
         [Authorize]
         public async Task<IActionResult> DeleteReview(int reviewId)

@@ -27,3 +27,13 @@ export const markAllNotificationsAsRead = (): Promise<void> => {
             throw error;
         });
 };
+
+/** Tek bir bildirimi okundu yapar. */
+export const markNotificationAsRead = (notificationId: number): Promise<void> => {
+    return axiosInstance
+        .put(`/notifications/${notificationId}/mark-read`)
+        .then((response) => response.data)
+        .catch((error) => {
+            throw error;
+        });
+};
