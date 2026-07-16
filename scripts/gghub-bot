@@ -6,6 +6,7 @@
 #   gghub-bot status    -> calisiyor mu + bu ayki Gemini harcamasi + kalan kuyruk
 #   gghub-bot logs      -> canli log
 #   gghub-bot update    -> repodan yeniden derle + kur + yeniden baslat
+#   gghub-bot uninstall -> TAMAMEN kaldir: durdur + acilista baslatmayi iptal + dosyalari sil
 #
 # Bot NEDEN burada calisiyor: Railway'de 7/24 donen bir crawler prod container'inda CPU yakiyor
 # ve faturayi yukseltiyordu. Job'lar artik GGHub.Worker'da ve yalnizca bu makinede calisiyor;
@@ -184,6 +185,45 @@ cmd_update() {
   [ "$was_running" -eq 1 ] && { launchctl load "$PLIST"; c_grn "Yeniden baslatildi."; } || c_ylw "Bot durmus durumda; baslatmak icin: gghub-bot start"
 }
 
+# Botu tamamen ortadan kaldirir: calisan surec, acilista baslatma ve kurulum dosyalari.
+# Prod veritabanina yazilmis veriye DOKUNMAZ (aciklamalar, ceviriler, puanlar yerinde kalir);
+# bot yalnizca veriyi uretiyor, sahibi degil.
+cmd_uninstall() {
+  echo
+  c_ylw "Bot tamamen kaldirilacak:"
+  echo "  - calisan surec durdurulacak"
+  echo "  - acilista otomatik baslatma iptal edilecek ($PLIST)"
+  echo "  - kurulum dizini silinecek ($APP_DIR)"
+  echo
+  echo "  KALACAKLAR: DB'deki veriler, ayar dosyan ve loglar"
+  echo "              ($CONFIG)"
+  echo
+  printf "Devam edilsin mi? [e/H] "
+  read -r answer
+  case "$answer" in
+    e|E|y|Y|evet|Evet) ;;
+    *) c_ylw "Iptal edildi, hicbir sey yapilmadi."; return 0 ;;
+  esac
+
+  if is_loaded; then
+    launchctl unload "$PLIST" 2>/dev/null || true
+    c_grn "Durduruldu ve acilis kaydi kaldirildi."
+  fi
+
+  # Sureci launchctl kacirirsa diye ikinci emniyet
+  pkill -f "$APP_DIR/GGHub.Worker" 2>/dev/null || true
+
+  [ -f "$PLIST" ] && { rm -f "$PLIST"; c_grn "Silindi: $PLIST"; }
+  [ -d "$APP_DIR" ] && { rm -rf "$APP_DIR"; c_grn "Silindi: $APP_DIR"; }
+
+  echo
+  c_grn "Bot tamamen kaldirildi. Artik hicbir sey calismiyor."
+  c_dim "Ayarlarin ve loglarin duruyor: $BOT_HOME"
+  c_dim "Onlari da silmek icin:  rm -rf $BOT_HOME"
+  c_dim "Geri kurmak icin:       ./scripts/gghub-bot install"
+  echo
+}
+
 cmd_logs() {
   local f="$LOG_DIR/stdout.log"
   [ -f "$f" ] || die "Henuz log yok: $f"
@@ -257,15 +297,28 @@ SQL
 }
 
 case "${1:-}" in
-  install) cmd_install ;;
-  start)   cmd_start ;;
-  stop)    cmd_stop ;;
-  restart) cmd_restart ;;
-  update)  cmd_update ;;
-  status)  cmd_status ;;
-  logs)    cmd_logs ;;
+  install)   cmd_install ;;
+  start)     cmd_start ;;
+  stop)      cmd_stop ;;
+  restart)   cmd_restart ;;
+  update)    cmd_update ;;
+  status)    cmd_status ;;
+  logs)      cmd_logs ;;
+  uninstall) cmd_uninstall ;;
   *)
-    echo "Kullanim: gghub-bot {install|start|stop|restart|status|logs|update}"
+    cat <<'USAGE'
+Kullanim: gghub-bot <komut>
+
+  install     Derle, kur ve her acilista otomatik baslat (bir kez calistir)
+  status      Calisiyor mu + bu ayki Gemini harcamasi + kalan kuyruk
+  logs        Canli log akisi (Ctrl-C ile cik)
+  stop        Botu durdur (acilista yine baslar)
+  start       Durmus botu baslat
+  restart     Durdur ve baslat
+  update      Repodan yeniden derle, kur, yeniden baslat
+  uninstall   TAMAMEN kaldir: durdur + acilis kaydini sil + dosyalari sil
+
+USAGE
     exit 1
     ;;
 esac

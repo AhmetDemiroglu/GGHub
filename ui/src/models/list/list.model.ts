@@ -1,3 +1,5 @@
+import type { SocialProfile } from "@/models/social/social.model";
+
 import { Game } from "../gaming/game.model";
 export interface ListOwner {
     id: number;
@@ -116,38 +118,13 @@ export interface UserListCommentVote {
     value: number;
 }
 
+/** Backend UserListCommentDto aynasi. Owner, UserDto ile ayni sekle sahip (SocialProfile). */
 export interface UserListComment {
     id: number;
     content: string;
     createdAt: string;
     updatedAt?: string;
-    owner: ListOwner;
-    listId: number;
-    parentCommentId?: number;
-    upvotes: number;
-    downvotes: number;
-    currentUserVote: number;
-}
-
-export interface UserListCommentForCreation {
-    content: string;
-    parentCommentId?: number;
-}
-
-export interface UserListCommentForUpdate {
-    content: string;
-}
-
-export interface UserListCommentVote {
-    value: number;
-}
-
-export interface UserListComment {
-    id: number;
-    content: string;
-    createdAt: string;
-    updatedAt?: string;
-    owner: ListOwner;
+    owner: SocialProfile;
     listId: number;
     parentCommentId?: number;
     upvotes: number;
