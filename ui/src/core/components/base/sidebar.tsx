@@ -21,9 +21,11 @@ import {
     List,
     LogIn,
     LogOut,
+    Heart,
     Mail,
     Menu,
     MessageSquare,
+    Reply,
     PanelLeftClose,
     PanelLeftOpen,
     Search,
@@ -155,6 +157,14 @@ function SidebarInner({ isMobile }: { isMobile: boolean }) {
                 return <List className="h-5 w-5 text-green-500" />;
             case NotificationType.Review:
                 return <Star className="h-5 w-5 text-yellow-500" />;
+            case NotificationType.ListComment:
+                return <MessageSquare className="h-5 w-5 text-sky-500" />;
+            case NotificationType.CommentReply:
+                return <Reply className="h-5 w-5 text-teal-500" />;
+            case NotificationType.CommentLike:
+                return <Heart className="h-5 w-5 text-red-500" />;
+            case NotificationType.ListRating:
+                return <Star className="h-5 w-5 text-amber-500" />;
             default:
                 return <Bell className="h-5 w-5 text-muted-foreground" />;
         }

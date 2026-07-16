@@ -13,10 +13,12 @@ namespace GGHub.Infrastructure.Services
     {
         private readonly GGHubDbContext _context;
         private readonly IGamificationService _gamificationService;
-        public UserListCommentService(GGHubDbContext context, IGamificationService gamificationService)
+        private readonly INotificationService _notificationService;
+        public UserListCommentService(GGHubDbContext context, IGamificationService gamificationService, INotificationService notificationService)
         {
             _context = context;
             _gamificationService = gamificationService;
+            _notificationService = notificationService;
         }
         private async Task CheckListVisibility(int listId, int? userId)
         {
@@ -69,6 +71,38 @@ namespace GGHub.Infrastructure.Services
             await _context.SaveChangesAsync();
 
             await _gamificationService.AddXpAsync(userId, 5, "CommentCreated");
+
+            // Bildirim (self haric): yanit -> ust yorum sahibine; ust yorum -> liste sahibine.
+            if (user != null)
+            {
+                if (dto.ParentCommentId.HasValue)
+                {
+                    var parentAuthorId = await _context.UserListComments
+                        .Where(c => c.Id == dto.ParentCommentId.Value)
+                        .Select(c => c.UserId)
+                        .FirstOrDefaultAsync();
+                    if (parentAuthorId != 0 && parentAuthorId != userId)
+                    {
+                        var msg = AppText.Get("social.commentReplyNotification",
+                            new Dictionary<string, object?> { ["username"] = user.Username });
+                        await _notificationService.CreateNotificationAsync(parentAuthorId, msg, NotificationType.CommentReply, $"/lists/{listId}");
+                    }
+                }
+                else
+                {
+                    var owner = await _context.UserLists.AsNoTracking()
+                        .Where(l => l.Id == listId)
+                        .Select(l => new { l.UserId, l.Name })
+                        .FirstOrDefaultAsync();
+                    if (owner != null && owner.UserId != userId)
+                    {
+                        var msg = AppText.Get("social.listCommentNotification",
+                            new Dictionary<string, object?> { ["username"] = user.Username, ["listName"] = owner.Name });
+                        await _notificationService.CreateNotificationAsync(owner.UserId, msg, NotificationType.ListComment, $"/lists/{listId}");
+                    }
+                }
+            }
+
             return MapToCommentDto(comment, user, 0, 0, 0, userId);
         }
 
@@ -173,6 +207,9 @@ namespace GGHub.Infrastructure.Services
             var existingVote = await _context.UserListCommentVotes
                 .FirstOrDefaultAsync(v => v.UserListCommentId == commentId && v.UserId == userId);
 
+            // Yalnizca upvote'a GECISTE bildir (yeni upvote ya da down->up). Unvote/downvote'ta bildirme.
+            bool willUpvote = dto.Value == 1 && (existingVote == null || existingVote.Value != dto.Value);
+
             if (existingVote == null)
             {
                 await _context.UserListCommentVotes.AddAsync(new UserListCommentVote
@@ -194,7 +231,21 @@ namespace GGHub.Infrastructure.Services
                 }
             }
 
-            return await _context.SaveChangesAsync() > 0;
+            var success = await _context.SaveChangesAsync() > 0;
+
+            // Self zaten yukarida engelli (comment.UserId == userId -> throw).
+            if (success && willUpvote)
+            {
+                var voter = await _context.Users.FindAsync(userId);
+                if (voter != null)
+                {
+                    var msg = AppText.Get("social.commentLikeNotification",
+                        new Dictionary<string, object?> { ["username"] = voter.Username });
+                    await _notificationService.CreateNotificationAsync(comment.UserId, msg, NotificationType.CommentLike, $"/lists/{comment.UserListId}");
+                }
+            }
+
+            return success;
         }
 
         public async Task<UserListCommentDto> GetCommentByIdAsync(int commentId, int currentUserId)

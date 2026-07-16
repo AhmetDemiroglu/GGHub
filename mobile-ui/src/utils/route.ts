@@ -6,5 +6,8 @@
  */
 export function toMobileRoute(link: string): string {
   if (!link) return link;
-  return link.replace(/^\/games\//, '/game/');
+  // Backend bazen `#review-123` gibi bir fragment ekliyor ( or. inceleme-oyu linki).
+  // Mobil route param'ini (game/[id]) bozmamasi icin fragment'i at.
+  const withoutFragment = link.replace(/#.*$/, '');
+  return withoutFragment.replace(/^\/games\//, '/game/');
 }

@@ -14,10 +14,12 @@ namespace GGHub.Infrastructure.Services
     public class UserListRatingService : IUserListRatingService
     {
         private readonly GGHubDbContext _context;
+        private readonly INotificationService _notificationService;
 
-        public UserListRatingService(GGHubDbContext context)
+        public UserListRatingService(GGHubDbContext context, INotificationService notificationService)
         {
             _context = context;
+            _notificationService = notificationService;
         }
 
         public async Task SubmitRatingAsync(int listId, int userId, UserListRatingForUpsertDto dto)
@@ -53,6 +55,8 @@ namespace GGHub.Infrastructure.Services
             var existingRating = await _context.UserListRatings
                 .FirstOrDefaultAsync(r => r.UserListId == listId && r.UserId == userId);
 
+            bool isNewRating = existingRating == null;
+
             if (existingRating == null)
             {
                 var newRating = new UserListRating
@@ -75,6 +79,18 @@ namespace GGHub.Infrastructure.Services
             if (success)
             {
                 await UpdateListDenormalizedRatings(listId);
+
+                // Yalnizca YENI puanda liste sahibine bildir (self zaten yukarida engelli).
+                if (isNewRating)
+                {
+                    var rater = await _context.Users.FindAsync(userId);
+                    if (rater != null)
+                    {
+                        var msg = AppText.Get("social.listRatingNotification",
+                            new Dictionary<string, object?> { ["username"] = rater.Username, ["listName"] = list.Name });
+                        await _notificationService.CreateNotificationAsync(list.UserId, msg, NotificationType.ListRating, $"/lists/{listId}");
+                    }
+                }
             }
         }
 

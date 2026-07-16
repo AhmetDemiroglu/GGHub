@@ -5,6 +5,11 @@
         Follow,
         ListFollow,
         Message,
-        Review
+        Review,
+        // Append-only: mevcut degerlerin (0-3) sayilari sabit kalmali (istemci enum'lari ile uyum).
+        ListComment,
+        CommentReply,
+        CommentLike,
+        ListRating
     }
 }
