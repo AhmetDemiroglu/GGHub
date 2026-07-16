@@ -102,7 +102,13 @@ export default function ListDetailScreen() {
     mutationFn: () => followList(numericId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['listDetail', numericId] });
-      showToast('success', messages.listDetail.followSuccess);
+      showToast(
+        'success',
+        messages.listDetail.followSuccess.replace(
+          '{name}',
+          list?.name ?? messages.listDetail.fallbackListName,
+        ),
+      );
     },
     onError: () => {
       showToast('error', messages.listDetail.followError);
@@ -113,7 +119,13 @@ export default function ListDetailScreen() {
     mutationFn: () => unfollowList(numericId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['listDetail', numericId] });
-      showToast('success', messages.listDetail.unfollowSuccess);
+      showToast(
+        'success',
+        messages.listDetail.unfollowSuccess.replace(
+          '{name}',
+          list?.name ?? messages.listDetail.fallbackListName,
+        ),
+      );
     },
     onError: () => {
       showToast('error', messages.listDetail.unfollowError);

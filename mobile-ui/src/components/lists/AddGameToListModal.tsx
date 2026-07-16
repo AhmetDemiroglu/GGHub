@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { useToast } from '@/src/components/common/Toast';
 import { gameApi } from '@/src/api/game';
 import { addGameToList, removeGameFromList } from '@/src/api/list';
 import { getImageUrl } from '@/src/utils/image';
+import * as haptics from '@/src/utils/haptics';
 import type { Game } from '@/src/models/game';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 
@@ -55,34 +56,107 @@ export function AddGameToListModal({
     enabled: debouncedSearch.length >= 2,
   });
 
-  const addMutation = useMutation({
-    mutationFn: (gameId: number) => addGameToList(listId, gameId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['listDetail', listId] });
+  // İyimser durum: ikon DOKUNUR DOKUNMAZ döner; sunucu yanıtı + listDetail
+  // refetch'i arkadan gelir. Eskiden ikon ancak invalidate -> refetch ->
+  // parent prop güncellemesi zincirinden sonra değişiyordu; yavaş ağda
+  // buton "basmıyor" hissi verip art arda dokunmaya yol açıyordu.
+  const [overrides, setOverrides] = useState<Map<number, boolean>>(new Map());
+  const [pendingIds, setPendingIds] = useState<Set<number>>(new Set());
+  const pendingIdsRef = useRef<Set<number>>(new Set());
+
+  const currentGameRawgIds = useMemo(
+    () => new Set(currentGames.map((game) => game.rawgId)),
+    [currentGames],
+  );
+
+  const setOverride = useCallback((rawgId: number, inList: boolean) => {
+    setOverrides((prev) => new Map(prev).set(rawgId, inList));
+  }, []);
+
+  const setPending = useCallback((rawgId: number, pending: boolean) => {
+    if (pending) pendingIdsRef.current.add(rawgId);
+    else pendingIdsRef.current.delete(rawgId);
+
+    setPendingIds((prev) => {
+      const next = new Set(prev);
+      if (pending) next.add(rawgId);
+      else next.delete(rawgId);
+      return next;
+    });
+  }, []);
+
+  // Parent'taki liste yeni sunucu durumunu aldığında artık gereksiz kalan
+  // override'ları temizle. Böylece modal açık kaldığında da yerel durum birikmez.
+  useEffect(() => {
+    setOverrides((prev) => {
+      const next = new Map(prev);
+      let changed = false;
+
+      next.forEach((inList, rawgId) => {
+        if (currentGameRawgIds.has(rawgId) === inList) {
+          next.delete(rawgId);
+          changed = true;
+        }
+      });
+
+      return changed ? next : prev;
+    });
+  }, [currentGameRawgIds]);
+
+  const { mutate: mutateAdd } = useMutation({
+    mutationFn: (rawgId: number) => addGameToList(listId, rawgId),
+    onSuccess: async () => {
       showToast('success', messages.listDetail.gameAdded);
+      // Butonu refetch tamamlanana kadar kilitli tut; ağ hızlıysa art arda gelen
+      // sonraki dokunuşun yeni görünen eksi butonunu tetiklemesini de önler.
+      await queryClient
+        .invalidateQueries({ queryKey: ['listDetail', listId] })
+        .catch(() => undefined);
     },
-    onError: () => {
+    onError: (_e, rawgId) => {
+      setOverride(rawgId, false);
       showToast('error', messages.common.genericError);
     },
+    onSettled: (_d, _e, rawgId) => setPending(rawgId, false),
   });
 
-  const removeMutation = useMutation({
-    mutationFn: (gameId: number) => removeGameFromList(listId, gameId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['listDetail', listId] });
+  const { mutate: mutateRemove } = useMutation({
+    mutationFn: (rawgId: number) => removeGameFromList(listId, rawgId),
+    onSuccess: async () => {
       showToast('success', messages.listDetail.gameRemoved);
+      await queryClient
+        .invalidateQueries({ queryKey: ['listDetail', listId] })
+        .catch(() => undefined);
     },
-    onError: () => {
+    onError: (_e, rawgId) => {
+      setOverride(rawgId, true);
       showToast('error', messages.common.genericError);
     },
+    onSettled: (_d, _e, rawgId) => setPending(rawgId, false),
   });
 
-  // rawgId: her zaman mevcut ve benzersiz; id=0 edge case'ine karşı güvenli
-  const currentGameRawgIds = new Set(currentGames.map((g) => g.rawgId));
+  // Ref, React yeniden render etmeden önce gelen ikinci dokunuşu da engeller.
+  const handleAdd = useCallback((rawgId: number) => {
+    if (pendingIdsRef.current.has(rawgId)) return;
+    setPending(rawgId, true);
+    setOverride(rawgId, true);
+    haptics.impactLight();
+    mutateAdd(rawgId);
+  }, [mutateAdd, setOverride, setPending]);
+
+  const handleRemove = useCallback((rawgId: number) => {
+    if (pendingIdsRef.current.has(rawgId)) return;
+    setPending(rawgId, true);
+    setOverride(rawgId, false);
+    haptics.impactLight();
+    mutateRemove(rawgId);
+  }, [mutateRemove, setOverride, setPending]);
 
   const renderSearchResult = useCallback(
     ({ item }: { item: Game }) => {
-      const isInList = currentGameRawgIds.has(item.rawgId);
+      // İyimser override sunucu durumunu geçersiz kılar (anlık ikon dönüşü).
+      const isInList = overrides.get(item.rawgId) ?? currentGameRawgIds.has(item.rawgId);
+      const isPending = pendingIds.has(item.rawgId);
       const imageUrl = getImageUrl(item.coverImage ?? item.backgroundImage);
       return (
         <View style={[styles.gameRow, { borderBottomColor: colors.border }]}>
@@ -112,10 +186,15 @@ export function AddGameToListModal({
             <Pressable
               // Backend rawgId bekler (GetOrCreateGameByRawgId); internal id
               // gonderilirse yanlis oyuna islem yapilabilir.
-              onPress={() => removeMutation.mutate(item.rawgId)}
+              onPress={() => handleRemove(item.rawgId)}
+              disabled={isPending}
+              hitSlop={10}
               style={[
                 styles.actionButton,
-                { backgroundColor: colors.error + '20' },
+                {
+                  backgroundColor: colors.error + '20',
+                  opacity: isPending ? 0.5 : 1,
+                },
               ]}
             >
               <Ionicons
@@ -126,10 +205,15 @@ export function AddGameToListModal({
             </Pressable>
           ) : (
             <Pressable
-              onPress={() => addMutation.mutate(item.rawgId)}
+              onPress={() => handleAdd(item.rawgId)}
+              disabled={isPending}
+              hitSlop={10}
               style={[
                 styles.actionButton,
-                { backgroundColor: colors.success + '20' },
+                {
+                  backgroundColor: colors.success + '20',
+                  opacity: isPending ? 0.5 : 1,
+                },
               ]}
             >
               <Ionicons
@@ -142,12 +226,20 @@ export function AddGameToListModal({
         </View>
       );
     },
-    [currentGameRawgIds, colors, addMutation, removeMutation],
+    [
+      colors,
+      currentGameRawgIds,
+      handleAdd,
+      handleRemove,
+      overrides,
+      pendingIds,
+    ],
   );
 
   const renderCurrentGame = useCallback(
     ({ item }: { item: Game }) => {
       const imageUrl = getImageUrl(item.coverImage ?? item.backgroundImage);
+      const isPending = pendingIds.has(item.rawgId);
       return (
         <View style={[styles.gameRow, { borderBottomColor: colors.border }]}>
           <View
@@ -173,10 +265,15 @@ export function AddGameToListModal({
             {item.name}
           </Text>
           <Pressable
-            onPress={() => removeMutation.mutate(item.id)}
+            onPress={() => handleRemove(item.rawgId)}
+            disabled={isPending}
+            hitSlop={10}
             style={[
               styles.actionButton,
-              { backgroundColor: colors.error + '20' },
+              {
+                backgroundColor: colors.error + '20',
+                opacity: isPending ? 0.5 : 1,
+              },
             ]}
           >
             <Ionicons name="trash-outline" size={18} color={colors.error} />
@@ -184,10 +281,13 @@ export function AddGameToListModal({
         </View>
       );
     },
-    [colors, removeMutation],
+    [colors, handleRemove, pendingIds],
   );
 
   const searchItems = searchResults?.items ?? [];
+  const visibleCurrentGames = currentGames.filter(
+    (game) => overrides.get(game.rawgId) !== false,
+  );
 
   return (
     <Modal
@@ -243,18 +343,22 @@ export function AddGameToListModal({
               keyExtractor={(item) => String(item.rawgId)}
               renderItem={renderSearchResult}
               contentContainerStyle={styles.listContent}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
             />
           )
         ) : (
           <>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              {messages.listDetail.currentGames} ({currentGames.length})
+              {messages.listDetail.currentGames} ({visibleCurrentGames.length})
             </Text>
             <FlatList
-              data={currentGames}
+              data={visibleCurrentGames}
               keyExtractor={(item) => String(item.rawgId)}
               renderItem={renderCurrentGame}
               contentContainerStyle={styles.listContent}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
               ListEmptyComponent={
                 <Text style={[styles.emptyText, { color: colors.textMuted }]}>
                   {messages.listDetail.empty}
