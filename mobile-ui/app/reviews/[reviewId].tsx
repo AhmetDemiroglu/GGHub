@@ -169,7 +169,10 @@ export default function ReviewDetailScreen() {
                 {formatTimeAgo(review.createdAt)}
               </Text>
             </UserLinkName>
-            <StarRating rating={Math.round(review.rating / 2)} maxStars={5} size={16} />
+            <View style={styles.ratingCol}>
+              <StarRating rating={Math.round(review.rating / 2)} maxStars={5} size={16} />
+              <Text style={[styles.ratingValue, { color: colors.star }]}>{review.rating}/10</Text>
+            </View>
           </View>
 
           {game ? (
@@ -287,6 +290,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.md,
     marginBottom: Spacing.md,
+  },
+  ratingCol: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  ratingValue: {
+    fontSize: FontSize.xs,
+    fontWeight: '700',
   },
   userInfo: {
     flex: 1,

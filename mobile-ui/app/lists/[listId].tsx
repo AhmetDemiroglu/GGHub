@@ -173,7 +173,9 @@ export default function ListDetailScreen() {
               style={styles.removeBadge}
               onPress={(e) => {
                 e.stopPropagation();
-                removeGameMutation.mutate(item.id);
+                // Backend rawgId bekler (RemoveGameFromListAsync: g.RawgId == gameId);
+                // internal item.id gonderilince oyun bulunamiyor ve 404 donuyordu.
+                removeGameMutation.mutate(item.rawgId);
               }}
               hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
@@ -306,9 +308,18 @@ export default function ListDetailScreen() {
             {messages.listDetail.gamesTitle.replace('{count}', String(list.games.length))}
           </Text>
           {list.games.length === 0 ? (
-            <Text style={[styles.emptyGames, { color: colors.textMuted }]}>
-              {messages.listDetail.empty}
-            </Text>
+            <View style={styles.emptyGamesWrap}>
+              <Text style={[styles.emptyGames, { color: colors.textMuted }]}>
+                {messages.listDetail.empty}
+              </Text>
+              {isOwner ? (
+                <Button
+                  title={messages.listDetail.addGame}
+                  size="sm"
+                  onPress={() => setShowAddGameModal(true)}
+                />
+              ) : null}
+            </View>
           ) : (
             <FlatList
               data={list.games}
@@ -317,6 +328,23 @@ export default function ListDetailScreen() {
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.gamesListContent}
+              // Sahibi icin ilk karo: oyun ekleme girisi. Modal (arama + ekle/cikar)
+              // zaten vardi ama onu acan hicbir tetikleyici yoktu; ozellik erisilemezdi.
+              ListHeaderComponent={
+                isOwner ? (
+                  <Pressable
+                    style={[styles.addGameTile, { borderColor: colors.border }]}
+                    onPress={() => setShowAddGameModal(true)}
+                  >
+                    <View style={[styles.addGameIcon, { backgroundColor: colors.surfaceHighlight }]}>
+                      <Ionicons name="add" size={26} color={colors.primary} />
+                    </View>
+                    <Text style={[styles.addGameLabel, { color: colors.textSecondary }]} numberOfLines={2}>
+                      {messages.listDetail.addGame}
+                    </Text>
+                  </Pressable>
+                ) : null
+              }
             />
           )}
         </View>
@@ -419,6 +447,34 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     textAlign: 'center',
     paddingVertical: Spacing.lg,
+  },
+  emptyGamesWrap: {
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingBottom: Spacing.md,
+  },
+  addGameTile: {
+    width: 140,
+    height: 180,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+  },
+  addGameIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addGameLabel: {
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+    textAlign: 'center',
+    paddingHorizontal: Spacing.sm,
   },
   gamesListContent: {
     gap: Spacing.md,

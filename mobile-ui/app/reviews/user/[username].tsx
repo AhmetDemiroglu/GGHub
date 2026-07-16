@@ -51,17 +51,22 @@ export default function UserReviewsScreen() {
     ? messages.nav.screenTitles.myReviews
     : messages.nav.screenTitles.userReviews.replace('{username}', resolvedUsername ?? '');
 
+  // Puanlar 10 üzerinden; 5 yıldıza ölçeklenir (8/10 -> 4 yıldız) ve sayısal
+  // "x/10" etiketi eklenir. Eskiden 10'luk puan ham basılıyordu: 5+ olan her
+  // puan 5 yıldız doluyordu ve inceleme detayıyla çelişiyordu.
   const renderStars = (rating: number) => {
+    const filled = Math.round(rating / 2);
     return (
       <View style={styles.starsRow}>
         {[1, 2, 3, 4, 5].map((star) => (
           <Ionicons
             key={star}
-            name={star <= rating ? 'star' : 'star-outline'}
+            name={star <= filled ? 'star' : 'star-outline'}
             size={14}
             color={colors.star}
           />
         ))}
+        <Text style={[styles.ratingValue, { color: colors.star }]}>{rating}/10</Text>
       </View>
     );
   };
@@ -220,8 +225,14 @@ const styles = StyleSheet.create({
   },
   starsRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 2,
     marginBottom: Spacing.xs,
+  },
+  ratingValue: {
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    marginLeft: 4,
   },
   reviewText: {
     fontSize: FontSize.sm,

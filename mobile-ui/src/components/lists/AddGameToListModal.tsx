@@ -110,7 +110,9 @@ export function AddGameToListModal({
           </Text>
           {isInList ? (
             <Pressable
-              onPress={() => removeMutation.mutate(item.id)}
+              // Backend rawgId bekler (GetOrCreateGameByRawgId); internal id
+              // gonderilirse yanlis oyuna islem yapilabilir.
+              onPress={() => removeMutation.mutate(item.rawgId)}
               style={[
                 styles.actionButton,
                 { backgroundColor: colors.error + '20' },
@@ -124,7 +126,7 @@ export function AddGameToListModal({
             </Pressable>
           ) : (
             <Pressable
-              onPress={() => addMutation.mutate(item.id)}
+              onPress={() => addMutation.mutate(item.rawgId)}
               style={[
                 styles.actionButton,
                 { backgroundColor: colors.success + '20' },
