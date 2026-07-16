@@ -86,9 +86,11 @@ export const ReviewCard = ({ review, onVote, onDelete, onUpdate }: ReviewCardPro
     };
 
     return (
-        // pb-4 sart: kartin alt dolgusu hic yoktu, yorumlar acilinca son eleman
-        // kart kenarina sifir mesafede yapisiyordu.
-        <div id={`review-${review.id}`} className="bg-card/50 border border-border rounded-xl pt-4 px-4 pb-4 hover:border-border/80 transition-colors">
+        // pb-0 bilincli: kartin alt bosluguna aksiyon satirinin KENDI py-2.5'i karar verir.
+        // Kartta ayrica pb-4 olsaydi alt bosluk ust bosluga eklenir, satir ayirici cizgiye
+        // yapisip altinda genis bir bosluk birakirdi (kullanicinin gordugu asimetri).
+        // Yorumlar acikken alt boslugu ReviewCommentSection'in kendi pb-4'u saglar.
+        <div id={`review-${review.id}`} className="bg-card/50 border border-border rounded-xl pt-4 px-4 pb-0 hover:border-border/80 transition-colors">
             {/* Üst Kısım: Avatar ve Info */}
             <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -147,7 +149,7 @@ export const ReviewCard = ({ review, onVote, onDelete, onUpdate }: ReviewCardPro
             </div>
 
             {/* Alt Aksiyonlar */}
-            <div className="flex items-center justify-between border-t border-border py-1">
+            <div className="flex items-center justify-between border-t border-border py-2.5">
                 {/* Sol Taraf */}
                 {!isOwner && (
                     <div className="flex items-center gap-4">
@@ -225,7 +227,7 @@ export const ReviewCard = ({ review, onVote, onDelete, onUpdate }: ReviewCardPro
                 </div>
             </div>
 
-            {showComments && <ReviewCommentSection reviewId={review.id} hideTitle className="mt-0 border-t-0 pt-3 pb-0" />}
+            {showComments && <ReviewCommentSection reviewId={review.id} hideTitle className="mt-0 border-t-0 pt-1 pb-4" />}
 
             <ReportDialog isOpen={isReportDialogOpen} onOpenChange={setIsReportDialogOpen} entityType="Review" entityId={review.id} />
         </div>
