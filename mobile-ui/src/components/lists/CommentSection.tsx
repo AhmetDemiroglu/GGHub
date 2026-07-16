@@ -1,15 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
-import { useAuth } from '@/src/hooks/use-auth';
 import { CommentItem } from './CommentItem';
-import { CommentComposer } from '@/src/components/comments/CommentComposer';
-import { useToast } from '@/src/components/common/Toast';
-import { getListComments, createListComment } from '@/src/api/list-comment';
-import { fillErrorTemplate } from '@/src/utils/format';
+import { getListComments } from '@/src/api/list-comment';
 import { APP_CONFIG } from '@/src/constants/config';
 import { Spacing, FontSize } from '@/src/constants/theme';
 
@@ -17,14 +12,15 @@ interface CommentSectionProps {
   listId: number;
 }
 
+/**
+ * Yalnizca BASLIK + LISTE. Kok yorum kutusu bu bolumun icinde degil, ekranin
+ * altina sabitlenmis halde durur (lists/ListCommentComposer): boylece klavye
+ * acildiginda kutu klavyenin tam ustune oturur. Iki bolum de ayni sorgu
+ * anahtarini kullanir, kutu gonderimden sonra onu gecersizlestirir.
+ */
 export function CommentSection({ listId }: CommentSectionProps) {
   const { colors } = useTheme();
   const { messages } = useLocale();
-  const { isAuthenticated } = useAuth();
-  const { showToast } = useToast();
-  const queryClient = useQueryClient();
-  const router = useRouter();
-  const [commentText, setCommentText] = useState('');
   const pageSize = APP_CONFIG.paginationDefaults.pageSize;
   const t = messages.commentsSection;
 
@@ -41,60 +37,14 @@ export function CommentSection({ listId }: CommentSectionProps) {
       },
     });
 
-  const createMutation = useMutation({
-    mutationFn: (content: string) => createListComment(listId, { content }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['listComments', listId] });
-      setCommentText('');
-      showToast('success', t.added);
-    },
-    onError: () => {
-      showToast('error', fillErrorTemplate(t.addError));
-    },
-  });
-
-  const handleSend = () => {
-    if (!commentText.trim() || createMutation.isPending) return;
-    createMutation.mutate(commentText.trim());
-  };
-
   const comments = useMemo(() => (data?.pages ?? []).flatMap((page) => page.items), [data]);
   const totalCount = data?.pages[0]?.totalCount ?? 0;
-
-  // Composer LISTENIN USTUNDE durur. Sunucu kokleri yeniden eskiye siralar
-  // (UserListCommentService: OrderByDescending(CreatedAt)), yani yeni yorum listenin
-  // BASINA eklenir. Composer altta olsaydi kullanici yorumunu yazip gonderdikten
-  // sonra ekranin gorunmeyen tepesine eklenirdi ve "gitmedi" sanirdi. Web ve X de boyle.
-  const composer = isAuthenticated ? (
-    <CommentComposer
-      value={commentText}
-      onChangeText={setCommentText}
-      placeholder={t.placeholder}
-      onSend={handleSend}
-      isSending={createMutation.isPending}
-      style={styles.composer}
-    />
-  ) : (
-    <View style={styles.loginRow}>
-      <Text style={[styles.loginPrompt, { color: colors.textSecondary }]}>{t.loginPrompt}</Text>
-      <Pressable
-        onPress={() => router.push('/(auth)/login')}
-        hitSlop={10}
-        accessibilityRole="link"
-        accessibilityLabel={t.loginLink}
-      >
-        <Text style={[styles.loginLink, { color: colors.primary }]}>{t.loginLink}</Text>
-      </Pressable>
-    </View>
-  );
 
   return (
     <View style={styles.container}>
       <Text style={[styles.title, { color: colors.text }]}>
         {t.title.replace('{count}', String(totalCount))}
       </Text>
-
-      {composer}
 
       {isLoading ? (
         <ActivityIndicator size="small" color={colors.primary} style={styles.loader} />
@@ -130,7 +80,6 @@ export function CommentSection({ listId }: CommentSectionProps) {
           ) : null}
         </>
       )}
-
     </View>
   );
 }
@@ -169,23 +118,5 @@ const styles = StyleSheet.create({
   loadMoreText: {
     fontSize: FontSize.md,
     fontWeight: '600',
-  },
-  composer: {
-    marginTop: Spacing.md,
-  },
-  loginRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: Spacing.xs,
-    marginTop: Spacing.md,
-  },
-  loginPrompt: {
-    fontSize: FontSize.sm,
-  },
-  loginLink: {
-    fontSize: FontSize.sm,
-    fontWeight: '700',
   },
 });

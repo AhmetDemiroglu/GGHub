@@ -1080,6 +1080,7 @@ export const enUSMessages = {
     },
     commentsSection: {
         title: "Comments ({count})",
+        open: "Comments",
         added: "Your comment was added.",
         addError: "Comment could not be added: {message}",
         voteSaved: "Your vote has been saved.",

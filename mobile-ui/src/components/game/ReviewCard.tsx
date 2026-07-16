@@ -1,7 +1,9 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useLocale } from '@/src/hooks/use-locale';
 import { useTheme } from '@/src/hooks/use-theme';
 import { FontSize, Spacing, BorderRadius, Shadows } from '@/src/constants/theme';
 import { formatTimeAgo } from '@/src/utils/format';
@@ -19,6 +21,8 @@ interface ReviewCardProps {
 
 export function ReviewCard({ review, gameId }: ReviewCardProps) {
   const { colors } = useTheme();
+  const { messages } = useLocale();
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   const voteMutation = useMutation({
@@ -29,13 +33,17 @@ export function ReviewCard({ review, gameId }: ReviewCardProps) {
   });
 
   const handleVote = (value: number) => {
-    if (review.currentUserVote === value) {
-      haptics.impactLight();
-      voteMutation.mutate(0);
-    } else {
-      haptics.success();
-      voteMutation.mutate(value);
-    }
+    // Oyu geri cekmek icin AYNI degeri tekrar gonder; backend toggle ediyor
+    // (ReviewService.VoteOnReviewAsync: existingVote.Value == value -> Remove).
+    // Eskiden 0 gonderiliyordu, ReviewsController ise "Value != 1 && Value != -1"
+    // ise 400 doner: yani mobilde inceleme oyunu geri cekmek hep hata veriyordu.
+    haptics.impactLight();
+    voteMutation.mutate(value);
+  };
+
+  const openComments = () => {
+    haptics.impactLight();
+    router.push(`/reviews/${review.id}`);
   };
 
   return (
@@ -55,12 +63,16 @@ export function ReviewCard({ review, gameId }: ReviewCardProps) {
         <StarRating rating={Math.round(review.rating / 2)} maxStars={5} size={14} />
       </View>
 
+      {/* Govdeye dokunmak yorumlari acar (X deseni: gonderiye dokun, yanitlar acilsin).
+          MentionText kendi @etiketlerini yakalar, onlar profile gider. */}
       {review.content ? (
-        <MentionText
-          body={review.content}
-          style={[styles.reviewText, { color: colors.textSecondary }]}
-          numberOfLines={6}
-        />
+        <Pressable onPress={openComments}>
+          <MentionText
+            body={review.content}
+            style={[styles.reviewText, { color: colors.textSecondary }]}
+            numberOfLines={6}
+          />
+        </Pressable>
       ) : null}
 
       <View style={styles.footer}>
@@ -86,6 +98,21 @@ export function ReviewCard({ review, gameId }: ReviewCardProps) {
             size={16}
             color={review.currentUserVote === -1 ? colors.error : colors.textMuted}
           />
+        </Pressable>
+
+        {/* Inceleme yorumlarina giris kapisi. Bu yoksa /reviews/{id} ekranina
+            hicbir yerden ulasilamiyordu: ozellik mobilde tamamen erisilemezdi. */}
+        <Pressable
+          style={styles.commentButton}
+          onPress={openComments}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={messages.commentsSection.open}
+        >
+          <Ionicons name="chatbubble-outline" size={15} color={colors.textMuted} />
+          <Text style={[styles.commentLabel, { color: colors.textMuted }]}>
+            {messages.commentsSection.open}
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -123,6 +150,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
+  },
+  commentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginLeft: 'auto',
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
+  },
+  commentLabel: {
+    fontSize: FontSize.sm,
+    fontWeight: '500',
   },
   voteButton: {
     padding: Spacing.sm,

@@ -1032,6 +1032,7 @@ export const trMessages = {
     },
     commentsSection: {
         title: "Yorumlar ({count})",
+        open: "Yorumlar",
         added: "Yorumunuz eklendi.",
         addError: "Yorum eklenemedi: {message}",
         voteSaved: "Oyunuz kaydedildi.",

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,9 @@ import {
   ScrollView,
   Image,
   Pressable,
-  KeyboardAvoidingView,
-  Platform,
+  type LayoutChangeEvent,
 } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,8 +21,10 @@ import { StarRating } from '@/src/components/common/StarRating';
 import { MentionText } from '@/src/components/common/MentionText';
 import { UserLinkAvatar, UserLinkName } from '@/src/components/common/UserLink';
 import { ReviewCommentSection } from '@/src/components/reviews/ReviewCommentSection';
+import { ReviewCommentComposer } from '@/src/components/reviews/ReviewCommentComposer';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
+import { useKeyboardDock } from '@/src/hooks/use-keyboard-dock';
 import { getReviewById } from '@/src/api/review';
 import { getImageUrl } from '@/src/utils/image';
 import { formatTimeAgo } from '@/src/utils/format';
@@ -42,9 +44,27 @@ export default function ReviewDetailScreen() {
   const { messages } = useLocale();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const scrollRef = useRef<ScrollView>(null);
+  const commentsOffsetRef = useRef(0);
 
   const numericId = Number(reviewId);
   const t = messages.reviewDetail;
+
+  // Bu ekran KOK stack'te: tab bar YOK. Klavye kapaliyken kutu home
+  // indicator'un hemen ustunde dinlenir, acilinca klavyenin tam ustune oturur.
+  const dockStyle = useKeyboardDock(insets.bottom);
+
+  // Yorum bolumunun kayan icerik icindeki dikey konumu. Gonderim sonrasi
+  // oraya kaydirmak icin: sunucu yeni yorumu listenin BASINA koyuyor
+  // (ReviewCommentService: OrderByDescending(CreatedAt)) ve kutu altta sabit
+  // oldugu icin kullanici yoksa hicbir sey olmamis saniyor.
+  const handleCommentsLayout = useCallback((event: LayoutChangeEvent) => {
+    commentsOffsetRef.current = event.nativeEvent.layout.y;
+  }, []);
+
+  const scrollToComments = useCallback(() => {
+    scrollRef.current?.scrollTo({ y: commentsOffsetRef.current, animated: true });
+  }, []);
 
   const {
     data: review,
@@ -74,18 +94,19 @@ export default function ReviewDetailScreen() {
     <ScreenWrapper noPadding safeArea={false} swipeBackEnabled={false}>
       <ScreenHeader title={messages.nav.screenTitles.reviewDetail} />
       {/*
-        Klavye acikken yorum kutusu ekranda kalmali (Android'de manifest zaten
-        adjustResize; iOS'ta bunu KAV yapar) ve keyboardShouldPersistTaps olmadan
-        dis ScrollView ilk dokunusu "klavyeyi kapat" diye yutuyordu: bahis cipi,
-        gonder, yanitla, oy ve sil ilk dokunusta calismiyordu.
+        Kayan icerik ve alta sabit yorum kutusu, paddingBottom'u klavyeyle
+        birlikte UI thread'de akan TEK bir kabin icinde durur (useKeyboardDock):
+        kutu klavyenin tam ustune oturur, icerik alani da o kadar kisalir.
+
+        keyboardShouldPersistTaps olmadan dis ScrollView ilk dokunusu "klavyeyi
+        kapat" diye yutuyordu: bahis cipi, gonder, yanitla, oy ve sil ilk
+        dokunusta calismiyordu.
       */}
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <Animated.View style={[styles.flex, dockStyle]}>
         <ScrollView
+          ref={scrollRef}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingBottom: insets.bottom + Spacing.xl }}
+          contentContainerStyle={styles.scrollContent}
         >
         <View style={[styles.reviewCard, { backgroundColor: colors.surface }]}>
           <View style={styles.header}>
@@ -153,9 +174,13 @@ export default function ReviewDetailScreen() {
           </View>
         </View>
 
-        <ReviewCommentSection reviewId={numericId} />
+        <View onLayout={handleCommentsLayout}>
+          <ReviewCommentSection reviewId={numericId} />
+        </View>
         </ScrollView>
-      </KeyboardAvoidingView>
+
+        <ReviewCommentComposer reviewId={numericId} onPosted={scrollToComments} />
+      </Animated.View>
     </ScreenWrapper>
   );
 }
@@ -163,6 +188,12 @@ export default function ReviewDetailScreen() {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
+  },
+  scrollContent: {
+    // Yorum kutusu kayan icerigin UZERINE binmez, ALTINDA kardes olarak durur;
+    // burada sadece son yorumun kutunun ust cizgisine yapismamasi icin nefes
+    // payi birakilir. Alt guvenli alan bosluguna kap zaten bakiyor.
+    paddingBottom: Spacing.md,
   },
   reviewCard: {
     margin: Spacing.lg,

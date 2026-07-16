@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -7,9 +7,9 @@ import {
   Image,
   Pressable,
   FlatList,
-  KeyboardAvoidingView,
-  Platform,
+  type LayoutChangeEvent,
 } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -22,6 +22,7 @@ import { EmptyState } from '@/src/components/common/EmptyState';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
 import { ListRating } from '@/src/components/lists/ListRating';
 import { CommentSection } from '@/src/components/lists/CommentSection';
+import { ListCommentComposer } from '@/src/components/lists/ListCommentComposer';
 import { ListFormModal } from '@/src/components/lists/ListFormModal';
 import { AddGameToListModal } from '@/src/components/lists/AddGameToListModal';
 import { useToast } from '@/src/components/common/Toast';
@@ -29,6 +30,7 @@ import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
 import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
+import { useKeyboardDock } from '@/src/hooks/use-keyboard-dock';
 import { getListDetail, followList, unfollowList, removeGameFromList } from '@/src/api/list';
 import { useRequireAuth } from '@/src/contexts/auth-prompt-context';
 import { getImageUrl } from '@/src/utils/image';
@@ -59,10 +61,29 @@ export default function ListDetailScreen() {
   const requireAuth = useRequireAuth();
   const queryClient = useQueryClient();
   const tabBarHeight = useTabBarHeight();
+  const scrollRef = useRef<ScrollView>(null);
+  const commentsOffsetRef = useRef(0);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddGameModal, setShowAddGameModal] = useState(false);
 
   const numericId = Number(listId);
+
+  // Bu ekran tabs grubunda: tab bar HER ZAMAN gorunur ve icerigin uzerine biner
+  // (AppTabBar position:'absolute'). Klavye kapaliyken kutu tab bar'in hemen
+  // ustunde dinlenir, acilinca klavyenin tam ustune oturur.
+  const dockStyle = useKeyboardDock(tabBarHeight);
+
+  // Yorum bolumunun kayan icerik icindeki dikey konumu. Gonderim sonrasi oraya
+  // kaydirmak icin: sunucu yeni yorumu listenin BASINA koyuyor
+  // (UserListCommentService: OrderByDescending(CreatedAt)) ve kutu altta sabit
+  // oldugu icin kullanici yoksa hicbir sey olmamis saniyor.
+  const handleCommentsLayout = useCallback((event: LayoutChangeEvent) => {
+    commentsOffsetRef.current = event.nativeEvent.layout.y;
+  }, []);
+
+  const scrollToComments = useCallback(() => {
+    scrollRef.current?.scrollTo({ y: commentsOffsetRef.current, animated: true });
+  }, []);
 
   const {
     data: list,
@@ -168,21 +189,19 @@ export default function ListDetailScreen() {
     <ScreenWrapper noPadding safeArea={false} swipeBackEnabled={false}>
       <ScreenHeader title={list.name || messages.nav.screenTitles.listDetail} />
       {/*
-        Klavye acikken yorum kutusu ekranda kalmali (Android'de manifest zaten
-        adjustResize; iOS'ta bunu KAV yapar) ve keyboardShouldPersistTaps olmadan
-        dis ScrollView ilk dokunusu "klavyeyi kapat" diye yutuyordu: bahis cipi,
-        gonder, yanitla, oy ve sil ilk dokunusta calismiyordu.
+        Kayan icerik ve alta sabit yorum kutusu, paddingBottom'u klavyeyle
+        birlikte UI thread'de akan TEK bir kabin icinde durur (useKeyboardDock):
+        kutu klavyenin tam ustune oturur, icerik alani da o kadar kisalir.
+
+        keyboardShouldPersistTaps olmadan dis ScrollView ilk dokunusu "klavyeyi
+        kapat" diye yutuyordu: bahis cipi, gonder, yanitla, oy ve sil ilk
+        dokunusta calismiyordu.
       */}
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <Animated.View style={[styles.flex, dockStyle]}>
         <ScrollView
+          ref={scrollRef}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: tabBarHeight + Spacing.md },
-          ]}
+          contentContainerStyle={styles.scrollContent}
         >
         <View style={styles.headerSection}>
           <View style={styles.titleRow}>
@@ -296,9 +315,13 @@ export default function ListDetailScreen() {
           )}
         </View>
 
-        <CommentSection listId={numericId} />
+        <View onLayout={handleCommentsLayout}>
+          <CommentSection listId={numericId} />
+        </View>
         </ScrollView>
-      </KeyboardAvoidingView>
+
+        <ListCommentComposer listId={numericId} onPosted={scrollToComments} />
+      </Animated.View>
 
       {isOwner && list ? (
         <>
@@ -323,7 +346,12 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
-  scrollContent: {},
+  scrollContent: {
+    // Yorum kutusu kayan icerigin UZERINE binmez, ALTINDA kardes olarak durur;
+    // burada sadece son yorumun kutunun ust cizgisine yapismamasi icin nefes
+    // payi birakilir. Tab bar bosluguna kap zaten bakiyor.
+    paddingBottom: Spacing.md,
+  },
   headerSection: {
     padding: Spacing.lg,
   },
