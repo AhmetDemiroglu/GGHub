@@ -16,5 +16,6 @@ export * from './activity';
 export * from './home';
 export * from './stats';
 export * from './list-comment';
+export * from './review-comment';
 export * from './list-rating';
 export * from './gamification';

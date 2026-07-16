@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Enums;
+using GGHub.Core.Specifications;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -127,15 +128,23 @@ namespace GGHub.Infrastructure.Services
             string link,
             IEnumerable<int>? excludeUserIds)
         {
-            // ToLowerInvariant: C# tarafi kultur bagimsiz kucultur. Sorgudaki u.Username.ToLower()
-            // ise EF tarafindan SQL LOWER'a cevrilir; o da istek kulturune bagli degildir.
-            var lowerHandles = handles.Select(h => h.ToLowerInvariant()).Distinct().ToList();
+            // Handle'lari normalize edilmis anahtara cevir: eski u.Username.ToLower() ile ayni
+            // niyet, ama artik hem indeksli (IX_Users_UsernameNormalized) hem de katlama-farkinda.
+            // Boylece "@Ahmet" ve "@ahmetdemiroğlu" dogru kisiye cozulur.
+            // Bos anahtarlar elenir; aksi halde cozulemeyen bir handle rastgele hesaba eslesebilirdi.
+            var normalizedHandles = handles
+                .Select(UsernameNormalizer.Normalize)
+                .Where(h => h.Length > 0)
+                .Distinct()
+                .ToList();
+
+            if (normalizedHandles.Count == 0) return;
 
             var excluded = excludeUserIds?.ToHashSet() ?? new HashSet<int>();
 
             var recipients = await _context.Users
                 .AsNoTracking()
-                .Where(u => lowerHandles.Contains(u.Username.ToLower()) && !u.IsDeleted && !u.IsBanned)
+                .Where(u => normalizedHandles.Contains(u.UsernameNormalized!) && !u.IsDeleted && !u.IsBanned)
                 .WhereVisibleTo(_context, actorUserId)
                 .WhereNotBlockedWith(_context, actorUserId)
                 .Select(u => u.Id)

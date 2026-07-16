@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ScreenWrapper } from '@/src/components/common/ScreenWrapper';
 import { ScreenHeader } from '@/src/components/shell';
-import { Avatar } from '@/src/components/common/Avatar';
+import { UserLinkAvatar, UserLinkName } from '@/src/components/common/UserLink';
 import { Badge } from '@/src/components/common/Badge';
 import { Button } from '@/src/components/common/Button';
 import { EmptyState } from '@/src/components/common/EmptyState';
@@ -179,21 +179,14 @@ export default function ListDetailScreen() {
             </Text>
           ) : null}
 
-          <Pressable
-            style={styles.ownerRow}
-            onPress={() => router.push(`/profiles/${list.owner.username}`)}
-          >
-            <Avatar
-              uri={list.owner.profileImageUrl}
-              name={list.owner.username}
-              size={36}
+          <View style={styles.ownerRow}>
+            <UserLinkAvatar user={list.owner} size={36} />
+            <UserLinkName
+              user={list.owner}
+              variant="handle"
+              style={[styles.ownerName, { color: colors.text }]}
             />
-            <View>
-              <Text style={[styles.ownerName, { color: colors.text }]}>
-                @{list.owner.username}
-              </Text>
-            </View>
-          </Pressable>
+          </View>
 
           <View style={styles.statsRow}>
             <View style={styles.stat}>

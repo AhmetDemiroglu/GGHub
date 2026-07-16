@@ -2,6 +2,7 @@ export * from './auth';
 export * from './game';
 export * from './list';
 export * from './review';
+export * from './review-comment';
 export * from './profile';
 export * from './message';
 export * from './notification';

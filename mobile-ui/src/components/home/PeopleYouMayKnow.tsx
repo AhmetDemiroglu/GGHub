@@ -1,13 +1,14 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation } from '@tanstack/react-query';
 import { Avatar } from '@/src/components/common/Avatar';
+import { useUserLink } from '@/src/components/common/UserLink';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { FontSize, Spacing, BorderRadius, Shadows } from '@/src/constants/theme';
 import { followUser, unfollowUser } from '@/src/api/social';
+import { displayName } from '@/src/utils/display-name';
 import type { SuggestedUser } from '@/src/models/social';
 import * as haptics from '@/src/utils/haptics';
 
@@ -20,7 +21,7 @@ const CARD_WIDTH = 150;
 export function PeopleYouMayKnow({ suggestions }: PeopleYouMayKnowProps) {
   const { colors } = useTheme();
   const { messages } = useLocale();
-  const router = useRouter();
+  const { canOpen, openProfile } = useUserLink();
   const pymk = messages.home.pymk;
 
   const [dismissed, setDismissed] = useState<Set<number>>(new Set());
@@ -78,9 +79,10 @@ export function PeopleYouMayKnow({ suggestions }: PeopleYouMayKnowProps) {
   const renderItem = useCallback(
     ({ item }: { item: SuggestedUser }) => {
       const isFollowing = followState[item.id] ?? false;
-      const displayName = [item.firstName, item.lastName].filter(Boolean).join(' ') || item.username;
+      const name = displayName(item);
       const reason = reasonLabel(item);
       const isPending = pending.has(item.id);
+      const profileOpenable = canOpen(item);
 
       return (
         <View style={[styles.card, { backgroundColor: colors.surface }, Shadows.sm]}>
@@ -94,14 +96,15 @@ export function PeopleYouMayKnow({ suggestions }: PeopleYouMayKnowProps) {
 
           <Pressable
             style={styles.cardTop}
+            disabled={!profileOpenable}
             onPress={() => {
               haptics.impactLight();
-              router.push(`/profiles/${item.username}`);
+              openProfile(item);
             }}
           >
-            <Avatar uri={item.profileImageUrl} name={item.username} size={60} />
+            <Avatar uri={item.profileImageUrl} name={name} size={60} />
             <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
-              {displayName}
+              {name}
             </Text>
             <Text style={[styles.handle, { color: colors.textSecondary }]} numberOfLines={1}>
               @{item.username}
@@ -143,7 +146,7 @@ export function PeopleYouMayKnow({ suggestions }: PeopleYouMayKnowProps) {
         </View>
       );
     },
-    [colors, followState, pending, reasonLabel, handleToggleFollow, router, pymk],
+    [colors, followState, pending, reasonLabel, handleToggleFollow, canOpen, openProfile, pymk],
   );
 
   const visible = suggestions.filter((s) => !dismissed.has(s.id));

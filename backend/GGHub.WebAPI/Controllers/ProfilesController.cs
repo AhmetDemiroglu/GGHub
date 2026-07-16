@@ -1,4 +1,5 @@
 using GGHub.Application.Interfaces;
+using GGHub.Core.Specifications;
 using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
@@ -124,7 +125,7 @@ public class ProfilesController : ControllerBase
             return Unauthorized();
         }
 
-        var targetUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == username && !u.IsDeleted);
+        var targetUser = await _context.Users.FirstOrDefaultAsync(u => u.UsernameNormalized == UsernameNormalizer.Normalize(username) && !u.IsDeleted);
         if (targetUser == null)
         {
             return NotFound(AppText.Get("common.userNotFound"));

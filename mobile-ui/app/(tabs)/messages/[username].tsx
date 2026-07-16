@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ScreenWrapper } from '@/src/components/common/ScreenWrapper';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
-import { Avatar } from '@/src/components/common/Avatar';
+import { UserLinkAvatar, UserLinkName } from '@/src/components/common/UserLink';
 import { MessageBubble } from '@/src/components/messages/MessageBubble';
 import { ChatInput } from '@/src/components/messages/ChatInput';
 import { useTheme } from '@/src/hooks/use-theme';
@@ -168,14 +168,20 @@ export default function MessageThreadScreen() {
     return <LoadingScreen />;
   }
 
-  // Partner avatarını thread mesajlarından türet; MessageDto gönderen/alıcı
-  // profil resmini taşıyor, böylece header'da web'deki gibi resim görünür.
+  // Thread'in karsi tarafi. MessageDto artik gonderen/aliciyi tam UserDto olarak
+  // tasiyor: gercek ad ve isProfileAccessible buradan gelir. Eski yanitlar icin
+  // username + duz resim alanina duseriz.
   const partnerAvatarUrl =
     localMessages.find((m) => m.senderUsername === username && m.senderProfileImageUrl)
       ?.senderProfileImageUrl ??
     localMessages.find((m) => m.recipientUsername === username && m.recipientProfileImageUrl)
       ?.recipientProfileImageUrl ??
     null;
+
+  const partnerUser =
+    localMessages.find((m) => m.senderUsername === username)?.sender ??
+    localMessages.find((m) => m.recipientUsername === username)?.recipient ??
+    { username, profileImageUrl: partnerAvatarUrl };
 
   return (
     <ScreenWrapper noPadding edges={['top']} swipeBackEnabled={false}>
@@ -189,8 +195,12 @@ export default function MessageThreadScreen() {
         >
           <Ionicons name="chevron-back" size={26} color={colors.text} />
         </TouchableOpacity>
-        <Avatar uri={partnerAvatarUrl} name={username} size={36} />
-        <Text style={[styles.headerUsername, { color: colors.text }]}>{username}</Text>
+        <UserLinkAvatar user={partnerUser} size={36} />
+        <UserLinkName
+          user={partnerUser}
+          variant="username"
+          style={[styles.headerUsername, { color: colors.text }]}
+        />
       </View>
 
       <View style={[styles.securityBanner, { backgroundColor: colors.surfaceHighlight }]}>

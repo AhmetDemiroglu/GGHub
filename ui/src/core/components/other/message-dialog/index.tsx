@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@core/componen
 import { Button } from "@core/components/ui/button";
 import { Input } from "@core/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@core/components/ui/avatar";
+import { UserLink } from "@core/components/base/user-link";
 import { Send } from "lucide-react";
 import { sendMessage, getMessageThread } from "@/api/messages/messages.api";
 import { MessageDto, MessageForCreationDto } from "@/models/messages/message.model";
@@ -102,12 +103,23 @@ export function MessageDialog({ open, onOpenChange, recipientUsername, recipient
                 {/* Header */}
                 <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
                     <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10">
-                            <AvatarImage src={avatarSrc} alt={recipientUsername} />
-                            <AvatarFallback>{recipientUsername.charAt(0).toUpperCase()}</AvatarFallback>
-                        </Avatar>
+                        {/* Alici ad/soyad bilgisi tasinmiyor; displayName() username'e duser. */}
+                        <UserLink
+                            user={{ username: recipientUsername, profileImageUrl: recipientProfileImageUrl }}
+                            variant="avatar"
+                            avatarClassName="h-10 w-10"
+                            avatarFallback={recipientUsername.charAt(0).toUpperCase()}
+                            onNavigate={() => onOpenChange(false)}
+                        />
                         <div>
-                            <DialogTitle className="text-base">{recipientUsername}</DialogTitle>
+                            <DialogTitle className="text-base">
+                                <UserLink
+                                    user={{ username: recipientUsername }}
+                                    variant="name"
+                                    className="hover:underline"
+                                    onNavigate={() => onOpenChange(false)}
+                                />
+                            </DialogTitle>
                             <p className="text-xs text-muted-foreground">{t("messages.title")}</p>
                         </div>
                     </div>

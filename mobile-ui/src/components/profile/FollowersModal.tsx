@@ -9,18 +9,18 @@ import {
   Modal,
   StyleSheet,
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Avatar } from '@/src/components/common/Avatar';
 import { Button } from '@/src/components/common/Button';
+import { useUserLink } from '@/src/components/common/UserLink';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
 import { getFollowers, getFollowing, followUser, unfollowUser } from '@/src/api/social';
+import { displayName } from '@/src/utils/display-name';
 import type { SocialProfile } from '@/src/models/social';
-import { getImageUrl } from '@/src/utils/image';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 
 interface FollowersModalProps {
@@ -41,7 +41,7 @@ export function FollowersModal({
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
-  const router = useRouter();
+  const { canOpen, openProfile } = useUserLink();
   const fm = messages.profile.followersModal;
 
   const [activeTab, setActiveTab] = useState<'followers' | 'following'>(initialTab);
@@ -97,23 +97,25 @@ export function FollowersModal({
     }
   };
 
-  const handleOpenProfile = (targetUsername: string) => {
-    onClose();
-    router.push(`/profiles/${targetUsername}`);
-  };
-
   const renderItem = ({ item }: { item: SocialProfile }) => {
     const isMe = user?.username === item.username;
-    const displayName = [item.firstName, item.lastName].filter(Boolean).join(' ') || item.username;
+    const name = displayName(item);
+    // Gizli profil, profil ekraninda 404 verir; satir o zaman link OLMAZ.
+    // (Bu kontrol eskiden hic yoktu ve gizli profillere de gidiliyordu.)
+    const profileOpenable = canOpen(item);
 
     return (
       <Pressable
         style={[styles.userRow, { borderBottomColor: colors.border }]}
-        onPress={() => handleOpenProfile(item.username)}
+        disabled={!profileOpenable}
+        onPress={() => {
+          onClose();
+          openProfile(item);
+        }}
       >
-        <Avatar uri={item.profileImageUrl} name={displayName} size={44} />
+        <Avatar uri={item.profileImageUrl} name={name} size={44} />
         <View style={styles.userInfo}>
-          <Text style={[styles.userName, { color: colors.text }]}>{displayName}</Text>
+          <Text style={[styles.userName, { color: colors.text }]}>{name}</Text>
           <Text style={[styles.userHandle, { color: colors.textSecondary }]}>@{item.username}</Text>
         </View>
         {!isMe ? (

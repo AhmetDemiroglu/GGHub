@@ -336,6 +336,32 @@ if (app.Environment.IsProduction())
     }
 }
 
+// DIKKAT - SIRALAMA: bu seeder BILEREK migration'dan SONRA calisir; GamificationSeeder'in
+// yanina (yukariya) konulamaz. Cunku "UsernameNormalized" kolonunu ilk yaratan sey
+// migration'in kendisi. Yukarida calissaydi ilk production deploy'unda kolon henuz
+// yokken sorgu atar, patlar, hata yutulur ve uygulama TUM UsernameNormalized degerleri
+// null halde hizmet vermeye baslardi: kullanici adiyla giris ve profil aramalari bozulurdu.
+//
+// DIKKAT - ORTAM: migration ile AYNI kosula bagli, bu bilincli.
+// 1) Bu seeder kullanici adlarini YENIDEN ADLANDIRIYOR (geri donusu olmayan, kullaniciya
+//    gorunen bir islem). Gelistirme baglantisi CANLI Railway Postgres'i gosteriyor
+//    (bkz. appsettings.Development.json, bilincli bir tercih), yani bu kosul olmasaydi
+//    yerelde "dotnet run" demek canli hesaplari gelistirici makinesinden yeniden
+//    adlandirmak anlamina gelirdi.
+// 2) Development'ta Migrate() calismadigi icin kolon henuz yokken sorgu atilirdi.
+if (app.Environment.IsProduction())
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var services = scope.ServiceProvider;
+        var context = services.GetRequiredService<GGHubDbContext>();
+        var seederLogger = services.GetRequiredService<ILogger<Program>>();
+        var auditService = services.GetRequiredService<IAuditService>();
+
+        await UsernameNormalizationSeeder.SeedAsync(context, seederLogger, auditService);
+    }
+}
+
 app.UseSerilogRequestLogging();
 
 if (app.Environment.IsProduction())

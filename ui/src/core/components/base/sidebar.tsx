@@ -10,6 +10,7 @@ import "dayjs/locale/en";
 import "dayjs/locale/tr";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+    AtSign,
     Bell,
     Crown,
     FileText,
@@ -31,6 +32,7 @@ import {
     Search,
     Settings,
     Star,
+    ThumbsUp,
     User,
     UserPlus,
 } from "lucide-react";
@@ -42,8 +44,11 @@ import { useSidebar } from "@/core/contexts/sidebar-context";
 import { useMediaQuery } from "@/core/hooks/use-media-query";
 import { useNavigationData, useNotifications, useRecentMessages } from "@/core/hooks/use-navigation-data";
 import { getImageUrl } from "@/core/lib/get-image-url";
-import { markAllNotificationsAsRead } from "@/api/notifications/notifications.api";
-import { NotificationType } from "@/models/notifications/notification.model";
+import { displayName } from "@/core/lib/display-name";
+import { cn } from "@/core/lib/utils";
+import { markAllNotificationsAsRead, markNotificationAsRead } from "@/api/notifications/notifications.api";
+import { NotificationType, type NotificationDto } from "@/models/notifications/notification.model";
+import { UserLink } from "@/core/components/base/user-link";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
 import { Badge } from "@/core/components/ui/badge";
@@ -58,9 +63,64 @@ import { CommandSearch } from "@/core/components/other/search/command-search";
 import { LanguageSwitcher } from "@/core/components/base/language-switcher";
 import { ThemeToggleButton } from "@/core/components/base/theme-toggle-button";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
-import { buildLocalizedPathname } from "@/i18n/config";
+import { useLocalizedHref } from "@/core/hooks/use-localized-href";
 
 dayjs.extend(relativeTime);
+
+// ─── Notification icon map ───────────────────────────────────────────────────
+type IconComponent = React.ComponentType<{ className?: string }>;
+
+/** Tur basina ikon + renk. Avatar rozetinde ve aktoru olmayan bildirimlerde ayni kaynak kullanilir. */
+const notificationIconMeta = (type: NotificationType): { Icon: IconComponent; color: string } => {
+    switch (type) {
+        case NotificationType.Follow:
+            return { Icon: UserPlus, color: "text-blue-500" };
+        case NotificationType.ListFollow:
+            return { Icon: List, color: "text-green-500" };
+        case NotificationType.Review:
+            return { Icon: Star, color: "text-yellow-500" };
+        case NotificationType.ListComment:
+            return { Icon: MessageSquare, color: "text-sky-500" };
+        case NotificationType.CommentReply:
+            return { Icon: Reply, color: "text-teal-500" };
+        case NotificationType.CommentLike:
+            return { Icon: Heart, color: "text-red-500" };
+        case NotificationType.ListRating:
+            return { Icon: Star, color: "text-amber-500" };
+        case NotificationType.ReviewComment:
+            return { Icon: MessageSquare, color: "text-indigo-500" };
+        case NotificationType.ReviewCommentReply:
+            return { Icon: Reply, color: "text-violet-500" };
+        case NotificationType.ReviewCommentLike:
+            return { Icon: ThumbsUp, color: "text-pink-500" };
+        case NotificationType.Mention:
+            return { Icon: AtSign, color: "text-orange-500" };
+        default:
+            return { Icon: Bell, color: "text-muted-foreground" };
+    }
+};
+
+/**
+ * Bildirim metni. Backend mesaji okuyucunun dilinde TAM cumle uretir ve basina aktorun
+ * gorunen adini koyar. Ad basta ise kalin + link yapilir, degilse mesaj duz basilir.
+ * Eslesmezse sessizce duz metne duser; asla patlamaz.
+ */
+function NotificationMessage({ notification, onNavigate }: { notification: NotificationDto; onNavigate?: () => void }) {
+    const actor = notification.actor;
+    const name = actor ? displayName(actor) : "";
+
+    if (!actor || !name || !notification.message.startsWith(name)) {
+        return <p className="text-sm">{notification.message}</p>;
+    }
+
+    return (
+        <p className="text-sm">
+            {/* z-20: satiri kaplayan link'in USTUNDE kalip kendi tiklamasini almali. */}
+            <UserLink user={actor} variant="name" className="relative z-20 font-semibold hover:underline" onNavigate={onNavigate} />
+            {notification.message.slice(name.length)}
+        </p>
+    );
+}
 
 // ─── Sidebar Trigger (hamburger button for mobile) ───────────────────────────
 export function SidebarTrigger() {
@@ -110,6 +170,7 @@ function SidebarInner({ isMobile }: { isMobile: boolean }) {
     const t = useI18n();
     const locale = useCurrentLocale();
     const pathname = usePathname();
+    const localizeHref = useLocalizedHref();
     const { isCollapsed, toggleCollapsed, setMobileOpen } = useSidebar();
     const { isAuthenticated, user, logout } = useAuth();
     const { unreadNotifCount, unreadMsgCount, profile } = useNavigationData();
@@ -129,14 +190,13 @@ function SidebarInner({ isMobile }: { isMobile: boolean }) {
         dayjs.locale(locale === "tr" ? "tr" : "en");
     }, [locale]);
 
-    const localizeHref = (href: string) => buildLocalizedPathname(href, locale);
-
     const handleLogout = () => {
         logout();
         toast.info(t("nav.logoutSuccess"));
         if (isMobile) setMobileOpen(false);
     };
 
+    // Popover acilinca hepsini okundu isaretle. BILEREK boyle: X/Instagram deseni.
     const handleNotificationOpen = (open: boolean) => {
         setNotificationOpen(open);
         if (open && unreadNotifCount && unreadNotifCount.count > 0) {
@@ -149,25 +209,14 @@ function SidebarInner({ isMobile }: { isMobile: boolean }) {
         }
     };
 
-    const notificationIcon = (type: NotificationType) => {
-        switch (type) {
-            case NotificationType.Follow:
-                return <UserPlus className="h-5 w-5 text-blue-500" />;
-            case NotificationType.ListFollow:
-                return <List className="h-5 w-5 text-green-500" />;
-            case NotificationType.Review:
-                return <Star className="h-5 w-5 text-yellow-500" />;
-            case NotificationType.ListComment:
-                return <MessageSquare className="h-5 w-5 text-sky-500" />;
-            case NotificationType.CommentReply:
-                return <Reply className="h-5 w-5 text-teal-500" />;
-            case NotificationType.CommentLike:
-                return <Heart className="h-5 w-5 text-red-500" />;
-            case NotificationType.ListRating:
-                return <Star className="h-5 w-5 text-amber-500" />;
-            default:
-                return <Bell className="h-5 w-5 text-muted-foreground" />;
-        }
+    /** Tek bildirime tiklanınca da okundu isaretle (best-effort; hata akisi bozmaz). */
+    const handleNotificationClick = (notification: NotificationDto) => {
+        markNotificationAsRead(notification.id)
+            .then(() => {
+                queryClient.invalidateQueries({ queryKey: ["notifications"] });
+                queryClient.invalidateQueries({ queryKey: ["unread-notification-count"] });
+            })
+            .catch(() => undefined);
     };
 
     const isActive = (href: string) => {
@@ -247,30 +296,53 @@ function SidebarInner({ isMobile }: { isMobile: boolean }) {
                                         notifications
                                             .filter((n) => n.type !== NotificationType.Message)
                                             .map((notification) => {
-                                                const content = (
-                                                    <div className="flex items-start gap-3">
-                                                        {notificationIcon(notification.type)}
-                                                        <div className="min-w-0 flex-1">
-                                                            <p className="text-sm">{notification.message}</p>
-                                                            <p className="mt-1 text-xs text-muted-foreground">{dayjs(notification.createdAt).fromNow()}</p>
-                                                        </div>
-                                                    </div>
-                                                );
-                                                return notification.link ? (
-                                                    <Link
+                                                const { Icon, color } = notificationIconMeta(notification.type);
+                                                const closePopover = () => {
+                                                    setNotificationOpen(false);
+                                                    onLinkClick();
+                                                };
+
+                                                return (
+                                                    // Satiri kaplayan link deseni: profil linkini ic ice <a> yapmadan
+                                                    // hem satirin tamami hem de avatar/ad ayri ayri tiklanabilir kalir.
+                                                    <div
                                                         key={notification.id}
-                                                        href={localizeHref(notification.link)}
-                                                        className={`block cursor-pointer border-b p-3 hover:bg-accent ${!notification.isRead ? "bg-accent/50" : ""}`}
-                                                        onClick={() => {
-                                                            setNotificationOpen(false);
-                                                            onLinkClick();
-                                                        }}
+                                                        className={`relative border-b p-3 hover:bg-accent ${!notification.isRead ? "bg-accent/50" : ""}`}
                                                     >
-                                                        {content}
-                                                    </Link>
-                                                ) : (
-                                                    <div key={notification.id} className={`border-b p-3 ${!notification.isRead ? "bg-accent/50" : ""}`}>
-                                                        {content}
+                                                        {notification.link && (
+                                                            <Link
+                                                                href={localizeHref(notification.link)}
+                                                                className="absolute inset-0 z-10 cursor-pointer"
+                                                                aria-label={notification.message}
+                                                                onClick={() => {
+                                                                    handleNotificationClick(notification);
+                                                                    closePopover();
+                                                                }}
+                                                            />
+                                                        )}
+                                                        <div className="flex items-start gap-3">
+                                                            {notification.actor ? (
+                                                                <div className="relative z-20 shrink-0">
+                                                                    <UserLink
+                                                                        user={notification.actor}
+                                                                        variant="avatar"
+                                                                        avatarClassName="h-9 w-9"
+                                                                        onNavigate={closePopover}
+                                                                    />
+                                                                    {/* Dekoratif rozet: pointer-events-none olmasa avatarin kosesinde olu tiklama alani olurdu. */}
+                                                                    <span className="pointer-events-none absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-background ring-1 ring-border">
+                                                                        <Icon className={cn("h-2.5 w-2.5", color)} />
+                                                                    </span>
+                                                                </div>
+                                                            ) : (
+                                                                // Eski satirlar / silinmis hesaplar: aktor yok, genel ikona duseriz.
+                                                                <Icon className={cn("h-5 w-5 shrink-0", color)} />
+                                                            )}
+                                                            <div className="min-w-0 flex-1">
+                                                                <NotificationMessage notification={notification} onNavigate={closePopover} />
+                                                                <p className="mt-1 text-xs text-muted-foreground">{dayjs(notification.createdAt).fromNow()}</p>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 );
                                             })
@@ -293,33 +365,54 @@ function SidebarInner({ isMobile }: { isMobile: boolean }) {
                                     </div>
                                     <div className="max-h-80 overflow-y-auto">
                                         {recentMessages?.length ? (
-                                            recentMessages.slice(0, 5).map((conversation) => (
-                                                <Link
-                                                    key={conversation.partnerId}
-                                                    href={localizeHref(`/messages/${conversation.partnerUsername}`)}
-                                                    className="block cursor-pointer border-b p-3 hover:bg-accent"
-                                                    onClick={() => setMessagesOpen(false)}
-                                                >
-                                                    <div className="flex items-center gap-3">
-                                                        <Avatar className="h-9 w-9 shrink-0">
-                                                            <AvatarImage src={getImageUrl(conversation.partnerProfileImageUrl)} alt={conversation.partnerUsername} />
-                                                            <AvatarFallback>{conversation.partnerUsername.charAt(0).toUpperCase()}</AvatarFallback>
-                                                        </Avatar>
-                                                        <div className="min-w-0 flex-1">
-                                                            <div className="mb-0.5 flex items-center justify-between">
-                                                                <p className="truncate text-sm font-semibold">{conversation.partnerUsername}</p>
-                                                                {conversation.unreadCount > 0 && (
-                                                                    <Badge variant="default" className="ml-2 flex h-5 w-5 shrink-0 items-center justify-center p-0 text-xs">
-                                                                        {conversation.unreadCount}
-                                                                    </Badge>
-                                                                )}
+                                            recentMessages.slice(0, 5).map((conversation) => {
+                                                // ConversationDto ad/soyad tasimiyor; displayName() username'e duser.
+                                                // Gercek ad + isProfileAccessible icin tam UserDto; eski yanitlarda duz alanlara duseriz.
+                                                const partner = conversation.partner ?? {
+                                                    username: conversation.partnerUsername,
+                                                    profileImageUrl: conversation.partnerProfileImageUrl,
+                                                };
+                                                const closePopover = () => setMessagesOpen(false);
+
+                                                return (
+                                                    // Satiri kaplayan link: thread'e gider; avatar/ad z-20 ile ustte kalip profile gider.
+                                                    <div key={conversation.partnerId} className="relative border-b p-3 hover:bg-accent">
+                                                        <Link
+                                                            href={localizeHref(`/messages/${conversation.partnerUsername}`)}
+                                                            className="absolute inset-0 z-10 cursor-pointer"
+                                                            aria-label={t("nav.messagesTitle")}
+                                                            onClick={closePopover}
+                                                        />
+                                                        <div className="flex items-center gap-3">
+                                                            <UserLink
+                                                                user={partner}
+                                                                variant="avatar"
+                                                                className="relative z-20 shrink-0"
+                                                                avatarClassName="h-9 w-9"
+                                                                avatarFallback={conversation.partnerUsername.charAt(0).toUpperCase()}
+                                                                onNavigate={closePopover}
+                                                            />
+                                                            <div className="min-w-0 flex-1">
+                                                                <div className="mb-0.5 flex items-center justify-between">
+                                                                    <UserLink
+                                                                        user={partner}
+                                                                        variant="name"
+                                                                        className="relative z-20 truncate text-sm font-semibold hover:underline"
+                                                                        onNavigate={closePopover}
+                                                                    />
+                                                                    {conversation.unreadCount > 0 && (
+                                                                        <Badge variant="default" className="ml-2 flex h-5 w-5 shrink-0 items-center justify-center p-0 text-xs">
+                                                                            {conversation.unreadCount}
+                                                                        </Badge>
+                                                                    )}
+                                                                </div>
+                                                                <p className="truncate text-xs text-muted-foreground">{conversation.lastMessage}</p>
+                                                                <p className="mt-0.5 text-xs text-muted-foreground">{dayjs(conversation.lastMessageSentAt).fromNow()}</p>
                                                             </div>
-                                                            <p className="truncate text-xs text-muted-foreground">{conversation.lastMessage}</p>
-                                                            <p className="mt-0.5 text-xs text-muted-foreground">{dayjs(conversation.lastMessageSentAt).fromNow()}</p>
                                                         </div>
                                                     </div>
-                                                </Link>
-                                            ))
+                                                );
+                                            })
                                         ) : (
                                             <div className="p-8 text-center text-sm text-muted-foreground">{t("nav.noMessages")}</div>
                                         )}

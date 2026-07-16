@@ -761,6 +761,9 @@ namespace GGHub.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("UsernameNormalized")
+                        .HasColumnType("text");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AppleId")
@@ -776,6 +779,9 @@ namespace GGHub.Infrastructure.Migrations
 
                     b.HasIndex("Username")
                         .IsUnique();
+
+                    b.HasIndex("UsernameNormalized")
+                        .HasDatabaseName("IX_Users_UsernameNormalized");
 
                     b.ToTable("Users");
                 });

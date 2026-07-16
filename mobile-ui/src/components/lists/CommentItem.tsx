@@ -1,269 +1,86 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, TextInput } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
-import { useAuth } from '@/src/hooks/use-auth';
-import { Avatar } from '@/src/components/common/Avatar';
-import { Button } from '@/src/components/common/Button';
 import { useToast } from '@/src/components/common/Toast';
-import { useConfirm } from '@/src/components/common/ConfirmDialog';
+import { CommentThreadItem } from '@/src/components/comments/CommentThreadItem';
 import {
   voteOnListComment,
   updateListComment,
   deleteListComment,
+  createListComment,
 } from '@/src/api/list-comment';
+import { fillErrorTemplate } from '@/src/utils/format';
 import type { UserListComment } from '@/src/models/list';
-import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 
 interface CommentItemProps {
   comment: UserListComment;
   listId: number;
 }
 
+/**
+ * Bir kok liste yorumu ve tum yanit agaci. Gorunumun tamami paylasilan
+ * CommentThreadItem'dan gelir; bu dosya yalnizca liste yorumu API'sini baglar
+ * (inceleme yorumlarinin aynadaki karsiligi: reviews/ReviewCommentItem).
+ */
 export function CommentItem({ comment, listId }: CommentItemProps) {
-  const { colors } = useTheme();
   const { messages } = useLocale();
-  const { user } = useAuth();
   const { showToast } = useToast();
-  const confirm = useConfirm();
-  const router = useRouter();
   const queryClient = useQueryClient();
-  const [isEditing, setIsEditing] = useState(false);
-  const [editContent, setEditContent] = useState(comment.content);
+  const t = messages.commentsSection;
 
-  const isOwner = user && Number(user.id) === comment.owner.id;
-  const score = comment.upvotes - comment.downvotes;
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['listComments', listId] });
+  };
 
   const voteMutation = useMutation({
-    mutationFn: (value: number) => voteOnListComment(comment.id, { value }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['listComments', listId] });
-    },
-    onError: () => {
-      showToast('error', messages.commentsSection.voteError);
-    },
+    mutationFn: ({ commentId, value }: { commentId: number; value: number }) =>
+      voteOnListComment(commentId, { value }),
+    onSuccess: invalidate,
+    onError: () => showToast('error', fillErrorTemplate(t.voteError)),
   });
 
   const updateMutation = useMutation({
-    mutationFn: (content: string) => updateListComment(comment.id, { content }),
+    mutationFn: ({ commentId, content }: { commentId: number; content: string }) =>
+      updateListComment(commentId, { content }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['listComments', listId] });
-      setIsEditing(false);
-      showToast('success', messages.commentsSection.updated);
+      invalidate();
+      showToast('success', t.updated);
     },
-    onError: () => {
-      showToast('error', messages.commentsSection.updateError);
-    },
+    onError: () => showToast('error', fillErrorTemplate(t.updateError)),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => deleteListComment(comment.id),
+    mutationFn: (commentId: number) => deleteListComment(commentId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['listComments', listId] });
-      showToast('success', messages.commentsSection.deleted);
+      invalidate();
+      showToast('success', t.deleted);
     },
-    onError: () => {
-      showToast('error', messages.commentsSection.deleteError);
-    },
+    onError: () => showToast('error', fillErrorTemplate(t.deleteError)),
   });
 
-  const handleVote = (value: number) => {
-    if (!user) return;
-    const newValue = comment.currentUserVote === value ? 0 : value;
-    voteMutation.mutate(newValue);
-  };
-
-  const handleDelete = async () => {
-    const ok = await confirm({
-      title: messages.commentsSection.deleteConfirmTitle,
-      message: messages.commentsSection.deleteConfirmMessage,
-      confirmLabel: messages.common.delete,
-      destructive: true,
-    });
-    if (ok) deleteMutation.mutate();
-  };
-
-  const handleSaveEdit = () => {
-    if (!editContent.trim()) return;
-    updateMutation.mutate(editContent.trim());
-  };
-
-  const timeAgo = new Date(comment.createdAt).toLocaleDateString();
-  const openOwnerProfile = () => {
-    router.push(`/profiles/${comment.owner.username}`);
-  };
+  const replyMutation = useMutation({
+    mutationFn: ({ parentCommentId, content }: { parentCommentId: number; content: string }) =>
+      createListComment(listId, { content, parentCommentId }),
+    onSuccess: () => {
+      invalidate();
+      showToast('success', t.added);
+    },
+    onError: () => showToast('error', fillErrorTemplate(t.addError)),
+  });
 
   return (
-    <View style={[styles.container, { borderBottomColor: colors.border }]}>
-      <View style={styles.header}>
-        <Pressable onPress={openOwnerProfile} hitSlop={6}>
-          <Avatar
-            uri={comment.owner.profileImageUrl}
-            name={comment.owner.username}
-            size={32}
-          />
-        </Pressable>
-        <Pressable style={styles.headerInfo} onPress={openOwnerProfile}>
-          <Text style={[styles.username, { color: colors.text }]}>
-            @{comment.owner.username}
-          </Text>
-          <Text style={[styles.timestamp, { color: colors.textMuted }]}>{timeAgo}</Text>
-        </Pressable>
-        {isOwner && !isEditing ? (
-          <View style={styles.actions}>
-            <Pressable onPress={() => setIsEditing(true)} hitSlop={8}>
-              <Ionicons name="pencil-outline" size={16} color={colors.textMuted} />
-            </Pressable>
-            <Pressable onPress={handleDelete} hitSlop={8}>
-              <Ionicons name="trash-outline" size={16} color={colors.error} />
-            </Pressable>
-          </View>
-        ) : null}
-      </View>
-
-      {isEditing ? (
-        <View style={styles.editContainer}>
-          <TextInput
-            style={[
-              styles.editInput,
-              {
-                backgroundColor: colors.inputBackground,
-                borderColor: colors.inputBorder,
-                color: colors.text,
-              },
-            ]}
-            value={editContent}
-            onChangeText={setEditContent}
-            multiline
-            placeholderTextColor={colors.placeholder}
-          />
-          <View style={styles.editActions}>
-            <Button
-              title={messages.common.cancel}
-              variant="ghost"
-              size="sm"
-              onPress={() => {
-                setIsEditing(false);
-                setEditContent(comment.content);
-              }}
-            />
-            <Button
-              title={messages.common.save}
-              size="sm"
-              onPress={handleSaveEdit}
-              loading={updateMutation.isPending}
-            />
-          </View>
-        </View>
-      ) : (
-        <Text style={[styles.content, { color: colors.text }]}>{comment.content}</Text>
-      )}
-
-      <View style={styles.voteRow}>
-        <Pressable onPress={() => handleVote(1)} style={styles.voteButton} hitSlop={4}>
-          <Ionicons
-            name={
-              comment.currentUserVote === 1
-                ? 'chevron-up-circle'
-                : 'chevron-up-circle-outline'
-            }
-            size={20}
-            color={comment.currentUserVote === 1 ? colors.success : colors.textMuted}
-          />
-        </Pressable>
-        <Text
-          style={[
-            styles.score,
-            {
-              color:
-                score > 0
-                  ? colors.success
-                  : score < 0
-                    ? colors.error
-                    : colors.textMuted,
-            },
-          ]}
-        >
-          {score}
-        </Text>
-        <Pressable onPress={() => handleVote(-1)} style={styles.voteButton} hitSlop={4}>
-          <Ionicons
-            name={
-              comment.currentUserVote === -1
-                ? 'chevron-down-circle'
-                : 'chevron-down-circle-outline'
-            }
-            size={20}
-            color={comment.currentUserVote === -1 ? colors.error : colors.textMuted}
-          />
-        </Pressable>
-      </View>
-    </View>
+    <CommentThreadItem
+      comment={comment}
+      onVote={(commentId, value) => voteMutation.mutate({ commentId, value })}
+      onUpdate={(commentId, content) => updateMutation.mutate({ commentId, content })}
+      onDelete={(commentId) => deleteMutation.mutate(commentId)}
+      onReply={(parentCommentId, content) => replyMutation.mutate({ parentCommentId, content })}
+      pendingReplyFor={
+        replyMutation.isPending ? (replyMutation.variables?.parentCommentId ?? null) : null
+      }
+      pendingUpdateFor={
+        updateMutation.isPending ? (updateMutation.variables?.commentId ?? null) : null
+      }
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    paddingVertical: Spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Spacing.sm,
-  },
-  headerInfo: {
-    flex: 1,
-    marginLeft: Spacing.sm,
-  },
-  username: {
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-  },
-  timestamp: {
-    fontSize: FontSize.xs,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: Spacing.md,
-  },
-  content: {
-    fontSize: FontSize.md,
-    lineHeight: 20,
-    marginBottom: Spacing.sm,
-  },
-  editContainer: {
-    marginBottom: Spacing.sm,
-  },
-  editInput: {
-    borderWidth: 1,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.sm,
-    fontSize: FontSize.md,
-    minHeight: 60,
-    textAlignVertical: 'top',
-  },
-  editActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: Spacing.sm,
-    marginTop: Spacing.sm,
-  },
-  voteRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-  },
-  voteButton: {
-    padding: 2,
-  },
-  score: {
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-    minWidth: 20,
-    textAlign: 'center',
-  },
-});

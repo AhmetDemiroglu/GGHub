@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Avatar } from '@/src/components/common/Avatar';
+import { UserLinkAvatar, UserLinkName } from '@/src/components/common/UserLink';
 import { Badge } from '@/src/components/common/Badge';
 import { useTheme } from '@/src/hooks/use-theme';
 import * as haptics from '@/src/utils/haptics';
 import type { ConversationDto } from '@/src/models/message';
-import { Spacing, FontSize, BorderRadius, Shadows } from '@/src/constants/theme';
+import { Spacing, FontSize } from '@/src/constants/theme';
 
 interface ConversationItemProps {
   conversation: ConversationDto;
@@ -35,30 +35,37 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
     onPress();
   };
 
+  // ConversationDto artik karsi tarafi tam UserDto olarak tasiyor: gercek ad ve
+  // isProfileAccessible buradan gelir. Ikincisi onemli, cunku gizli bir profilin
+  // avatarini linklemek 404'e goturuyordu. Eski yanitlar icin duz alanlara duseriz.
+  const partner = conversation.partner ?? {
+    username: conversation.partnerUsername,
+    profileImageUrl: conversation.partnerProfileImageUrl,
+  };
+
   return (
     <TouchableOpacity
       style={[styles.container, { borderBottomColor: colors.border }, hasUnread && { backgroundColor: `${colors.primary}08` }]}
       onPress={handlePress}
       activeOpacity={0.7}
     >
+      {/* Avatar ve ad kendi dokunma hedefleridir -> profil. Satirin geri kalani
+          sohbete gider: RN'de en derindeki hedef responder'i kazanir. */}
       <View style={hasUnread && [styles.unreadAvatarRing, { borderColor: colors.primary }]}>
-        <Avatar
-          uri={conversation.partnerProfileImageUrl}
-          name={conversation.partnerUsername}
-          size={50}
-        />
+        <UserLinkAvatar user={partner} size={50} />
       </View>
       <View style={styles.content}>
         <View style={styles.topRow}>
-          <Text
+          <UserLinkName
+            user={partner}
+            variant="username"
+            numberOfLines={1}
+            containerStyle={styles.usernameWrap}
             style={[
               styles.username,
               { color: colors.text, fontWeight: hasUnread ? '700' : '600' },
             ]}
-            numberOfLines={1}
-          >
-            {conversation.partnerUsername}
-          </Text>
+          />
           <Text style={[styles.time, { color: colors.textMuted }]}>
             {formatTime(conversation.lastMessageSentAt)}
           </Text>
@@ -103,9 +110,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  usernameWrap: {
+    flex: 1,
+  },
   username: {
     fontSize: FontSize.md,
-    flex: 1,
   },
   time: {
     fontSize: FontSize.xs,

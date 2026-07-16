@@ -1,0 +1,74 @@
+#!/bin/bash
+# Entity'ler ile son migration uyusuyor mu?
+#
+# NEDEN VAR: 17 Haziran 2026'daki AddPushTokens'tan sonra ReviewComment, ReviewCommentVote,
+# Notification.ActorUserId ve PushToken.Locale entity'leri eklendi ama migration olusturulmadi.
+# Kod main'e push edildi, Railway deploy etti, Database.Migrate() uygulayacak bir sey bulamadi
+# ve prod'da tablolar hic olusmadi. Sonuc: yorum yanitlari ucu aylarca 500 dondu ve kimse
+# fark etmedi, cunku derleme de testler de yesildi.
+#
+# Bu script o sinifi hatayi push ANINDA yakalar (push = Railway deploy).
+#
+# Kullanim:  scripts/check-migrations
+# Otomatik:  scripts/install-hooks   (pre-push hook olarak kurar)
+
+set -uo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BACKEND="$(cd "$SCRIPT_DIR/.." && pwd)/backend"
+
+export DOTNET_ROOT="${DOTNET_ROOT:-$HOME/.dotnet}"
+export PATH="$HOME/.dotnet/tools:$PATH"
+
+if ! command -v dotnet >/dev/null 2>&1 && [ ! -x "$HOME/.dotnet/dotnet" ]; then
+  echo "check-migrations: dotnet bulunamadi, kontrol atlandi." >&2
+  exit 0
+fi
+
+if [ ! -d "$BACKEND" ]; then
+  echo "check-migrations: backend/ bulunamadi ($BACKEND), kontrol atlandi." >&2
+  exit 0
+fi
+
+cd "$BACKEND" || exit 0
+
+output="$(dotnet ef migrations has-pending-model-changes \
+  --project GGHub.Infrastructure \
+  --startup-project GGHub.WebAPI 2>&1)"
+status=$?
+
+if [ $status -eq 0 ]; then
+  echo "check-migrations: model ile migration'lar uyumlu."
+  exit 0
+fi
+
+# EF, bekleyen model degisikligi VARSA sifirdan farkli donuyor. Ama derleme hatasi, eksik arac
+# veya baglanti sorunu da sifirdan farkli doner; bunlari "kayma" diye raporlayip push'u
+# bosuna engellemeyelim.
+if ! grep -qi "pending changes\|changes have been made" <<<"$output"; then
+  echo "check-migrations: kontrol calistirilamadi, atlandi. Cikti:" >&2
+  echo "$output" | tail -5 >&2
+  exit 0
+fi
+
+cat >&2 <<'MSG'
+
+  ============================================================
+   MIGRATION EKSIK: entity'ler degismis ama migration yok.
+  ============================================================
+
+  Bu haliyle push edersen Railway deploy eder, Database.Migrate()
+  uygulayacak bir sey bulamaz ve prod veritabaninda kolonlar/tablolar
+  OLUSMAZ. Kod onlari kullandigi icin ilgili uclar 500 dondurur.
+  Tam olarak bu, 17 Haziran - 16 Temmuz 2026 arasinda yasandi.
+
+  Cozum:
+    cd backend
+    export DOTNET_ROOT=$HOME/.dotnet
+    dotnet ef migrations add <AciklayiciIsim> \
+      --project GGHub.Infrastructure --startup-project GGHub.WebAPI
+
+  Kontrolu bilerek atlamak icin:  git push --no-verify
+
+MSG
+exit 1

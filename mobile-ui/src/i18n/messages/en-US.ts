@@ -106,6 +106,7 @@ export const enUSMessages = {
             privacy: "Privacy Policy",
             listDetail: "List Details",
             publicLists: "Lists",
+            reviewDetail: "Review",
         },
     },
     footer: {
@@ -1098,6 +1099,11 @@ export const enUSMessages = {
         deleteComment: "Delete Comment",
         deleteConfirmTitle: "Delete Comment",
         deleteConfirmMessage: "Are you sure you want to delete this comment?",
+        reply: "Reply",
+        replyPlaceholder: "Reply to {username}...",
+        showReplies: "Show {count} replies",
+        hideReplies: "Hide replies",
+        edited: "(edited)",
     },
     reviewList: {
         voteSuccess: "Your feedback has been received",
@@ -1143,6 +1149,10 @@ export const enUSMessages = {
         listed: "Listed",
         followers: "Followers",
         recentActivities: "Recent Activities",
+    },
+    reviewDetail: {
+        notFound: "Review not found.",
+        ratingValue: "Rated {rating}/10",
     },
     profileReviews: {
         emptyTitle: "No reviews yet",

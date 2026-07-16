@@ -19,6 +19,7 @@ namespace GGHub.Infrastructure.Services
         private readonly ILogger<FutureMetacriticCleanupJob> _logger;
         private readonly TimeSpan _interval;
         private readonly TimeSpan _initialDelay;
+        private readonly bool _enabled;
 
         public FutureMetacriticCleanupJob(
             IServiceProvider serviceProvider,
@@ -27,6 +28,11 @@ namespace GGHub.Infrastructure.Services
         {
             _serviceProvider = serviceProvider;
             _logger = logger;
+
+            // Bayrak kontrolu job'in ICINDE: eskiden Program.cs'te durdugu icin, kayit yeri
+            // degisince kontrol tamamen kayboluyordu ve job Enabled=false iken calisiyordu.
+            // Varsayilan false: prod DB'ye yazan bir job kazara calismamali.
+            _enabled = configuration.GetValue<bool>("Jobs:FutureMetacriticCleanup:Enabled");
 
             // Varsayılan: günde bir tur. Override edilebilir.
             var hours = configuration.GetValue<double?>("Jobs:FutureMetacriticCleanup:RunIntervalHours") ?? 24.0;
@@ -39,6 +45,12 @@ namespace GGHub.Infrastructure.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            if (!_enabled)
+            {
+                _logger.LogInformation("[FutureMetacriticCleanup] Job kapali.");
+                return;
+            }
+
             _logger.LogInformation(
                 "[FutureMetacriticCleanup] Started. Initial delay: {Delay}. Interval: {Interval}.",
                 _initialDelay, _interval);

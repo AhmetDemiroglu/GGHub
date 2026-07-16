@@ -111,7 +111,7 @@ namespace GGHub.Infrastructure.Services
         }
         public async Task<ProfileDto?> GetProfileByUsernameAsync(string username, int? currentUserId = null)
         {
-            var profileUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            var profileUser = await _context.Users.FirstOrDefaultAsync(u => u.UsernameNormalized == UsernameNormalizer.Normalize(username));
             if (profileUser == null || profileUser.IsDeleted) return null;
 
             bool isBlockedByMe = false;

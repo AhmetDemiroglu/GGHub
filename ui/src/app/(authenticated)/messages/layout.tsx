@@ -20,14 +20,17 @@ import { useDebounce } from "@core/hooks/use-debounce";
 import Link from "next/link";
 import { useAuth } from "@core/hooks/use-auth";
 import { UnauthorizedAccess } from "@core/components/other/unauthorized-access";
+import { UserLink } from "@core/components/base/user-link";
 import { getImageUrl } from "@/core/lib/get-image-url";
 import { useI18n, useCurrentLocale } from "@/core/contexts/locale-context";
+import { useLocalizedHref } from "@/core/hooks/use-localized-href";
 
 dayjs.extend(relativeTime);
 
 export default function MessagesLayout({ children }: { children: React.ReactNode }) {
     const t = useI18n();
     const locale = useCurrentLocale();
+    const localizeHref = useLocalizedHref();
     const { user, isLoading: isAuthLoading } = useAuth();
     const pathname = usePathname();
     const [sidebarExpanded, setSidebarExpanded] = useState(false);
@@ -107,27 +110,50 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
                     ) : conversations && conversations.length > 0 ? (
                         <div>
                             {conversations.map((conversation) => {
-                                const avatarSrc = getImageUrl(conversation.partnerProfileImageUrl);
                                 const timeAgo = dayjs(conversation.lastMessageSentAt).fromNow();
                                 const active = isActive(conversation.partnerUsername);
+                                // ConversationDto ad/soyad tasimiyor; displayName() username'e duser.
+                                // ConversationDto artik karsi tarafi tam UserDto olarak tasiyor:
+                                // gercek ad ve isProfileAccessible buradan gelir. Ikincisi onemli,
+                                // cunku gizli bir profilin avatarini linklemek 404'e goturuyordu.
+                                // Eski yanitlar icin duz alanlara duseriz.
+                                const partner = conversation.partner ?? {
+                                    username: conversation.partnerUsername,
+                                    profileImageUrl: conversation.partnerProfileImageUrl,
+                                };
 
                                 return (
-                                    <Link
+                                    // Satiri kaplayan link deseni: profil linkini thread link'inin ICINE koymak
+                                    // gecersiz HTML olurdu (ic ice <a>). Bunun yerine thread link'i mutlak konumda
+                                    // satiri kapliyor; avatar ve ad z-20 ile onun ustunde kendi tiklamasini aliyor.
+                                    <div
                                         key={conversation.partnerId}
-                                        href={`/messages/${conversation.partnerUsername}`}
                                         className={`group relative flex items-center gap-3 px-3 py-3 transition-colors hover:bg-accent/50 ${active ? "bg-accent" : ""}`}
                                     >
-                                        {active && <span className="absolute left-0 top-1/2 h-8 w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />}
+                                        {active && <span className="absolute left-0 top-1/2 h-8 w-[3px] -translate-y-1/2 rounded-r-full bg-primary z-20" />}
 
-                                        <Avatar className={`${sidebarExpanded ? "h-10 w-10" : "h-9 w-9"} shrink-0 ring-2 ring-transparent ${active ? "ring-primary/30" : ""}`}>
-                                            <AvatarImage src={avatarSrc} alt={conversation.partnerUsername} />
-                                            <AvatarFallback className="text-xs">{conversation.partnerUsername.charAt(0).toUpperCase()}</AvatarFallback>
-                                        </Avatar>
+                                        <Link
+                                            href={localizeHref(`/messages/${conversation.partnerUsername}`)}
+                                            className="absolute inset-0 z-10 cursor-pointer"
+                                            aria-label={t("messages.openConversation", { name: conversation.partnerUsername })}
+                                        />
+
+                                        <UserLink
+                                            user={partner}
+                                            variant="avatar"
+                                            className="relative z-20 shrink-0"
+                                            avatarClassName={`${sidebarExpanded ? "h-10 w-10" : "h-9 w-9"} ring-2 ring-transparent ${active ? "ring-primary/30" : ""}`}
+                                            avatarFallback={conversation.partnerUsername.charAt(0).toUpperCase()}
+                                        />
 
                                         {sidebarExpanded && (
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center justify-between mb-0.5">
-                                                    <p className={`text-sm truncate ${active ? "font-semibold" : "font-medium"}`}>{conversation.partnerUsername}</p>
+                                                    <UserLink
+                                                        user={partner}
+                                                        variant="name"
+                                                        className={`relative z-20 text-sm truncate hover:underline ${active ? "font-semibold" : "font-medium"}`}
+                                                    />
                                                     <span className="text-[11px] text-muted-foreground shrink-0 ml-2">{timeAgo}</span>
                                                 </div>
                                                 <div className="flex items-center justify-between">
@@ -144,7 +170,7 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
                                         {!sidebarExpanded && conversation.unreadCount > 0 && (
                                             <span className="absolute right-1.5 top-2 h-2.5 w-2.5 rounded-full bg-primary" />
                                         )}
-                                    </Link>
+                                    </div>
                                 );
                             })}
                         </div>
@@ -196,7 +222,7 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
                                             {searchResults.map((result) => (
                                                 <Link
                                                     key={result.id}
-                                                    href={`/messages/${result.id}`}
+                                                    href={localizeHref(`/messages/${result.id}`)}
                                                     className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-accent"
                                                     onClick={() => {
                                                         setSearchQuery("");

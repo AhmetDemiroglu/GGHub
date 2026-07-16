@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { searchAll } from "@/api/search/search.api";
 import { useCurrentLocale } from "@/core/contexts/locale-context";
+import { useLocalizedHref } from "@/core/hooks/use-localized-href";
 import { getImageUrl } from "@/core/lib/get-image-url";
-import { buildLocalizedPathname } from "@/i18n/config";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
 import { Button } from "@/core/components/ui/button";
 import {
@@ -26,6 +26,7 @@ interface CommandSearchProps {
 
 export function CommandSearch({ variant = "default", collapsed = false }: CommandSearchProps) {
     const locale = useCurrentLocale();
+    const localizeHref = useLocalizedHref();
     const router = useRouter();
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState("");
@@ -47,11 +48,6 @@ export function CommandSearch({ variant = "default", collapsed = false }: Comman
         enabled: query.length >= 3,
         staleTime: 30000,
     });
-
-    const localizeHref = useCallback(
-        (href: string) => (href.startsWith("/") ? buildLocalizedPathname(href, locale) : href),
-        [locale]
-    );
 
     const handleSelect = (link: string) => {
         setOpen(false);

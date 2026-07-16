@@ -17,11 +17,20 @@ import { Textarea } from "@/core/components/ui/textarea";
 import { Label } from "@/core/components/ui/label";
 import { Button } from "@/core/components/ui/button";
 
-import { reportComment, reportList, reportReview, reportUser } from "@/api/report/report.api";
+import { reportComment, reportList, reportReview, reportReviewComment, reportUser } from "@/api/report/report.api";
 import type { ReportForCreation } from "@/models/report/report.model";
 import { useI18n } from "@/core/contexts/locale-context";
 
-export type ReportableEntityType = "Review" | "User" | "List" | "Comment";
+export type ReportableEntityType = "Review" | "User" | "List" | "Comment" | "ReviewComment";
+
+/** Record kullanildi: yeni bir entity tipi eklenirse derleyici eksik basligi yakalar. */
+const titleKeyByEntityType: Record<ReportableEntityType, string> = {
+    Review: "report.dialog.title.review",
+    User: "report.dialog.title.user",
+    List: "report.dialog.title.list",
+    Comment: "report.dialog.title.comment",
+    ReviewComment: "report.dialog.title.reviewComment",
+};
 
 interface ReportDialogProps {
     isOpen: boolean;
@@ -43,6 +52,8 @@ export const ReportDialog = ({ isOpen, onOpenChange, entityType, entityId }: Rep
                 return (data: ReportForCreation) => reportList(entityId, data);
             case "Comment":
                 return (data: ReportForCreation) => reportComment(entityId, data);
+            case "ReviewComment":
+                return (data: ReportForCreation) => reportReviewComment(entityId, data);
             default:
                 throw new Error(t("report.dialog.invalidType"));
         }
@@ -69,14 +80,7 @@ export const ReportDialog = ({ isOpen, onOpenChange, entityType, entityId }: Rep
         }
         onOpenChange(open);
     };
-    const titleKey =
-        entityType === "User"
-            ? "report.dialog.title.user"
-            : entityType === "List"
-              ? "report.dialog.title.list"
-              : entityType === "Comment"
-                ? "report.dialog.title.comment"
-                : "report.dialog.title.review";
+    const titleKey = titleKeyByEntityType[entityType] ?? "report.dialog.title.review";
 
     return (
         <AlertDialog open={isOpen} onOpenChange={handleOpenChange}>

@@ -13,6 +13,10 @@ export const reportList = (listId: number, data: ReportForCreation) => {
 export const reportComment = (commentId: number, data: ReportForCreation) => {
     return axiosInstance.post(`/report/comment/${commentId}`, data);
 };
+/** Inceleme yorumu raporu. Liste yorumundan AYRI bir uc nokta. */
+export const reportReviewComment = (commentId: number, data: ReportForCreation) => {
+    return axiosInstance.post(`/report/review-comment/${commentId}`, data);
+};
 export const getMyReports = () => {
     return axiosInstance.get<MyReportSummary[]>("/report/my-reports");
 };

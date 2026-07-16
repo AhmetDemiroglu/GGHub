@@ -25,3 +25,7 @@ export const getMyReview = (rawgGameId: number) => {
 export const getReviewsByUser = (username: string): Promise<Review[]> => {
     return axiosInstance.get<Review[]>(`/reviews/user/${username}`).then((response) => response.data);
 };
+/** Kalici inceleme baglantisi (/reviews/{id}) icin. Yoksa 404 firlatir. */
+export const getReviewById = (reviewId: number): Promise<Review> => {
+    return axiosInstance.get<Review>(`/reviews/${reviewId}`).then((res) => res.data);
+};

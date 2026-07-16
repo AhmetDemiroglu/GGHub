@@ -6,14 +6,15 @@ import { Loader, Search } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { searchAll } from "@/api/search/search.api";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
+import { useLocalizedHref } from "@/core/hooks/use-localized-href";
 import { getImageUrl } from "@/core/lib/get-image-url";
-import { buildLocalizedPathname } from "@/i18n/config";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
 import { Input } from "@/core/components/ui/input";
 
 export function SearchBar() {
     const t = useI18n();
     const locale = useCurrentLocale();
+    const localizeHref = useLocalizedHref();
     const [query, setQuery] = useState("");
     const [isOpen, setIsOpen] = useState(false);
     const searchRef = useRef<HTMLDivElement>(null);
@@ -35,8 +36,6 @@ export function SearchBar() {
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
-
-    const localizeHref = (href: string) => (href.startsWith("/") ? buildLocalizedPathname(href, locale) : href);
 
     return (
         <div ref={searchRef} className="relative w-full max-w-lg lg:max-w-2xl">

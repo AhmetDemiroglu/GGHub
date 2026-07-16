@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  TextInput,
   Pressable,
   ActivityIndicator,
   StyleSheet,
@@ -10,6 +9,7 @@ import {
 } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { BottomSheet } from '@/src/components/common/BottomSheet';
+import { MentionInput } from '@/src/components/common/MentionInput';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
@@ -145,7 +145,7 @@ export function ReviewModal({ visible, onClose, gameId, gameSlug, existingReview
         </View>
       </View>
 
-      <TextInput
+      <MentionInput
         style={[
           styles.textInput,
           {
@@ -155,7 +155,6 @@ export function ReviewModal({ visible, onClose, gameId, gameSlug, existingReview
           },
         ]}
         placeholder={messages.games.reviewPlaceholder}
-        placeholderTextColor={colors.placeholder}
         value={content}
         onChangeText={setContent}
         multiline

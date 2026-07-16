@@ -1,6 +1,7 @@
 using GGHub.Application.Dtos;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Enums;
+using GGHub.Core.Specifications;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
@@ -83,10 +84,14 @@ namespace GGHub.Infrastructure.Services
             }
 
             // Username araması — yıl token'larını username sorgusuna karıştırma; orijinal user input'u kullan.
-            // ToLowerInvariant: tr-TR kulturunde "I".ToLower() => "ı" olur ve arama sessizce bozulur.
-            var lower = query.ToLowerInvariant();
-            var accessibleUsers = await _context.Users
-                .Where(u => u.Username.ToLower().Contains(lower) && !u.IsDeleted)
+            // Normalize edilmis anahtar uzerinden arama: "Ahmet" de "ahmetdemiroğlu" da dogru kisiyi bulur.
+            // Contains semantigi korunuyor. Anahtar bosalirsa (ornegin sorgu tamamen Latin disi ise)
+            // kullanici aramasi atlanir; aksi halde Contains("") HERKESI dondururdu.
+            var lower = UsernameNormalizer.Normalize(query);
+            var accessibleUsers = lower.Length == 0
+                ? new List<SearchResultDto>()
+                : await _context.Users
+                .Where(u => u.UsernameNormalized!.Contains(lower) && !u.IsDeleted)
                 .WhereVisibleTo(_context, currentUserId)
                 .Take(5)
                 .Select(u => new SearchResultDto
@@ -132,8 +137,14 @@ namespace GGHub.Infrastructure.Services
             }
             else
             {
-                var lower = query.ToLower();
-                messageable = messageable.Where(u => u.Username.ToLower().Contains(lower));
+                // Normalize edilmis anahtar uzerinden ara: hem indexli, hem "Ahmet" yazinca
+                // "ahmet"i bulur, hem de "ahmetdemiroglu" yazinca "ahmetdemiroğlu"yu bulur.
+                // Eski hali kulture duyarli ToLower() idi: tr-TR'de "I" => "ı" olup sessizce bozuluyordu.
+                var normalized = UsernameNormalizer.Normalize(query);
+                if (normalized.Length > 0)
+                {
+                    messageable = messageable.Where(u => u.UsernameNormalized != null && u.UsernameNormalized.Contains(normalized));
+                }
             }
 
             var results = await messageable
@@ -158,13 +169,14 @@ namespace GGHub.Infrastructure.Services
             // "@a" yazan kullanici ilk karakterden itibaren oneri gormeli.
             if (string.IsNullOrWhiteSpace(query)) return Array.Empty<UserDto>();
 
-            // ToLowerInvariant: tr-TR kulturunde "I".ToLower() => "ı" olur ve arama sessizce bozulur.
-            // Sorgu icindeki u.Username.ToLower() ise EF tarafindan SQL LOWER'a cevrilir; o kultur bagimsizdir.
-            var lower = query.Trim().ToLowerInvariant();
+            // Normalize edilmis anahtar uzerinden arama: "@Ahmet" ve "@ahmetdemiroğlu" ayni kisiyi
+            // bulur. Contains semantigi korunuyor, sadece eslesilen alan degisti.
+            var lower = UsernameNormalizer.Normalize(query);
+            if (lower.Length == 0) return Array.Empty<UserDto>();
 
             var candidates = _context.Users
                 .AsNoTracking()
-                .Where(u => !u.IsDeleted && !u.IsBanned && u.Username.ToLower().Contains(lower))
+                .Where(u => !u.IsDeleted && !u.IsBanned && u.UsernameNormalized!.Contains(lower))
                 .WhereVisibleTo(_context, currentUserId)
                 .WhereNotBlockedWith(_context, currentUserId);
 
@@ -179,7 +191,7 @@ namespace GGHub.Infrastructure.Services
                     u.FirstName,
                     u.LastName,
                     IsFollowing = _context.Follows.Any(f => f.FollowerId == currentUserId && f.FolloweeId == u.Id),
-                    IsPrefixMatch = u.Username.ToLower().StartsWith(lower),
+                    IsPrefixMatch = u.UsernameNormalized!.StartsWith(lower),
                     FollowerCount = u.Followers.Count
                 })
                 .OrderByDescending(x => x.IsPrefixMatch)

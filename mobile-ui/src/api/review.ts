@@ -12,6 +12,13 @@ export const getGameReviews = (rawgGameId: number) => {
     .then((res) => res.data);
 };
 
+/** Tek inceleme (kalici link ekrani / bildirim hedefi). Yoksa 404. */
+export const getReviewById = (reviewId: number) => {
+  return axiosInstance
+    .get<Review>(`/reviews/${reviewId}`)
+    .then((res) => res.data);
+};
+
 export const createReview = (data: CreateReviewRequest) => {
   return axiosInstance
     .post<Review>('/reviews', data)

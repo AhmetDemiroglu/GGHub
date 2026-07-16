@@ -27,6 +27,18 @@ export function formatTimeAgo(dateString: string): string {
 }
 
 /**
+ * i18n hata şablonlarındaki {message} yer tutucusunu doldurur. Web bu yuvaya
+ * ham hata metnini basar; mobilde elimizde kullanıcıya gösterilebilir bir detay
+ * olmadığı için yer tutucu ve onu bağlayan noktalama birlikte atılır. Aksi halde
+ * bildirimde düz metin olarak "{message}" görünür.
+ *   "Yorum eklenemedi: {message}" -> "Yorum eklenemedi"
+ */
+export function fillErrorTemplate(template: string, detail?: string | null): string {
+  if (detail) return template.replace('{message}', detail);
+  return template.replace(/\s*:?\s*\{message\}/, '').trim();
+}
+
+/**
  * Locale-duyarlı büyük harf. CSS textTransform:'uppercase' Türkçe İ'yi bozar
  * (i -> I). Bu yardımcı tr için 'tr-TR' kullanır (i -> İ).
  */

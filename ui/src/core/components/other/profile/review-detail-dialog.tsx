@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { voteReview, deleteReview, updateReview } from "@/api/review/review.api";
 import { ReportDialog } from "@/core/components/base/report-dialog";
+import { MentionText } from "@/core/components/base/mention-text";
 
 interface ReviewDetailDialogProps {
     isOpen: boolean;
@@ -41,11 +42,8 @@ export function ReviewDetailDialog({ isOpen, onClose, review }: ReviewDetailDial
         }
     }, [review, isOpen]);
 
-    if (!review || !review.game) return null;
-
-    const isOwner = currentUserId === review.user.id;
-    const imageSrc = review.game.coverImage || review.game.backgroundImage || placeholderGame.src;
-
+    // NOT: Erken return TUM hook'lardan SONRA. Daha once mutation'larin ustundeydi ve
+    // hook sirasini bozuyordu (rules of hooks ihlali).
     const voteMutation = useMutation({
         mutationFn: ({ id, val }: { id: number, val: number }) => voteReview(id, { value: val }),
         onSuccess: () => {
@@ -57,7 +55,10 @@ export function ReviewDetailDialog({ isOpen, onClose, review }: ReviewDetailDial
     });
 
     const updateMutation = useMutation({
-        mutationFn: () => updateReview(review.id, { content: editContent, rating: review.rating }),
+        mutationFn: () => {
+            if (!review) return Promise.reject(new Error("review yok"));
+            return updateReview(review.id, { content: editContent, rating: review.rating });
+        },
         onSuccess: () => {
             toast.success("İnceleme güncellendi");
             setIsEditing(false);
@@ -68,7 +69,10 @@ export function ReviewDetailDialog({ isOpen, onClose, review }: ReviewDetailDial
     });
 
     const deleteMutation = useMutation({
-        mutationFn: () => deleteReview(review.id),
+        mutationFn: () => {
+            if (!review) return Promise.reject(new Error("review yok"));
+            return deleteReview(review.id);
+        },
         onSuccess: () => {
             toast.success("İnceleme silindi");
             onClose();
@@ -76,6 +80,11 @@ export function ReviewDetailDialog({ isOpen, onClose, review }: ReviewDetailDial
         },
         onError: () => toast.error("Silme işlemi başarısız")
     });
+
+    if (!review || !review.game) return null;
+
+    const isOwner = currentUserId === review.user.id;
+    const imageSrc = review.game.coverImage || review.game.backgroundImage || placeholderGame.src;
 
     const handleVote = (value: number) => {
         if (!user) {
@@ -174,7 +183,7 @@ export function ReviewDetailDialog({ isOpen, onClose, review }: ReviewDetailDial
                         <div className="relative pl-4 md:pl-6 border-l-4 border-muted/50">
                             <Quote className="absolute -left-2.5 -top-2 h-5 w-5 text-muted-foreground/30 bg-background p-0.5" />
                             <p className="text-base md:text-lg leading-relaxed text-foreground/90 whitespace-pre-wrap">
-                                {review.content}
+                                <MentionText text={review.content} onNavigate={onClose} />
                             </p>
                         </div>
                     )}

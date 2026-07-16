@@ -2,6 +2,7 @@
 using GGHub.Application.DTOs.Common;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Enums;
+using GGHub.Core.Specifications;
 using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -11,10 +12,12 @@ namespace GGHub.Infrastructure.Services
     public class AdminService : IAdminService
     {
         private readonly GGHubDbContext _context;
+        private readonly IAuditService _auditService;
 
-        public AdminService(GGHubDbContext context)
+        public AdminService(GGHubDbContext context, IAuditService auditService)
         {
             _context = context;
+            _auditService = auditService;
         }
 
         public async Task<PaginatedResult<AdminReportDto>> GetContentReportsAsync(ReportFilterParams filterParams)
@@ -275,6 +278,56 @@ namespace GGHub.Infrastructure.Services
             user.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+            return true;
+        }
+
+        /// <summary>
+        /// Kullanici adini admin olarak degistirir. Yeniden adlandirma BILEREK yalnizca admin
+        /// yetkisinde; kullaniciya acik bir rename akisi yok.
+        /// </summary>
+        public async Task<bool> ChangeUsernameAsync(int userId, ChangeUsernameRequestDto dto, int adminUserId)
+        {
+            if (!UsernameNormalizer.IsValidFormat(dto.Username))
+            {
+                throw new InvalidOperationException(AppText.Get("admin.usernameInvalidFormat"));
+            }
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null)
+            {
+                return false;
+            }
+
+            var newUsername = dto.Username.Trim();
+            var normalized = UsernameNormalizer.Normalize(newUsername);
+
+            // Anahtar bos mu? IsValidFormat bunu zaten eler; yine de savunma amacli.
+            if (normalized.Length == 0)
+            {
+                throw new InvalidOperationException(AppText.Get("admin.usernameInvalidFormat"));
+            }
+
+            // Normalize anahtar baskasinda mi? Kullanicinin kendisi haric bakiyoruz; boylece
+            // admin yalnizca goruntuleme bicimini duzeltebilir ("ahmet" -> "Ahmet").
+            var taken = await _context.Users
+                .AnyAsync(u => u.Id != userId && u.UsernameNormalized == normalized);
+
+            if (taken)
+            {
+                throw new InvalidOperationException(AppText.Get("admin.usernameAlreadyInUse"));
+            }
+
+            var oldUsername = user.Username;
+
+            user.Username = newUsername;
+            user.UsernameNormalized = normalized;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            await _auditService.LogAsync(adminUserId, "ChangeUsername", "User", userId,
+                new { OldUsername = oldUsername, NewUsername = newUsername });
+
             return true;
         }
 

@@ -440,6 +440,15 @@ FodyWeavers.xsd
 **/appsettings.*.json
 !**/appsettings.json
 
+# Worker'in gercek ayarlari ~/.gghub-bot/appsettings.json icinde durur ve repoya GIRMEZ.
+# Bu satir olmadan yukaridaki "!**/appsettings.json" istisnasi onu commit edilebilir birakiyordu
+# ve oraya konan prod baglanti dizesi + Gemini/RAWG anahtarlari repoya sizardi.
+GGHub.Worker/appsettings.json
+
+# Ornek dosya gizli bilgi icermiyor, ekip devri icin repoda kalmali
+# ("**/appsettings.*.json" kalibina takildigi icin acikca geri aliniyor).
+!GGHub.Worker/appsettings.example.json
+
 # Local database
 *.db
 *.db-shm

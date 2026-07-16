@@ -4,7 +4,7 @@ import type { UserListDetail } from "@/models/list/list.model";
 import { ListCategory } from "@/models/list/list.model";
 import { Avatar, AvatarFallback, AvatarImage } from "@core/components/ui/avatar";
 import { Star, Users, Tag } from "lucide-react";
-import Link from "next/link";
+import { UserLink } from "@core/components/base/user-link";
 import { ListRating } from "./list-rating";
 import React from "react";
 import { getImageUrl } from "@/core/lib/get-image-url";
@@ -33,7 +33,7 @@ export function ListDetailHeader({ list, actions, myRating, onSubmitRating, isRa
 
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-10 p-3 sm:p-6 mb-0 pb-2">
                 <div className="md:col-span-4 space-y-3">
-                    <Link href={`/profiles/${list.owner.username}`}>
+                    <UserLink user={list.owner}>
                         <div className="flex items-start gap-3 group mb-2">
                             <Avatar className="h-8 w-8 flex-shrink-0">
                                 <AvatarImage src={avatarSrc} />
@@ -48,7 +48,7 @@ export function ListDetailHeader({ list, actions, myRating, onSubmitRating, isRa
                                 <span className="text-xs font-medium text-muted-foreground group-hover:text-primary group-hover:underline">{list.owner.username} tarafından</span>
                             </div>
                         </div>
-                    </Link>
+                    </UserLink>
                     <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">{list.name}</h1>
                     <div className="flex flex-wrap items-center gap-4 mt-3 text-muted-foreground text-sm">
                         <div className="flex items-center gap-1 text-yellow-500">

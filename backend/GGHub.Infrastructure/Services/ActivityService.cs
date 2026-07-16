@@ -35,7 +35,7 @@ namespace GGHub.Infrastructure.Services
         {
             var user = await _context.Users
                 .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.Username == username);
+                .FirstOrDefaultAsync(u => u.UsernameNormalized == UsernameNormalizer.Normalize(username));
 
             if (user == null || user.IsDeleted) return Enumerable.Empty<ActivityDto>();
 

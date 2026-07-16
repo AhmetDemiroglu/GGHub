@@ -1,5 +1,6 @@
 ﻿using GGHub.Application.Dtos.Stats;
 using GGHub.Application.Interfaces;
+using GGHub.Core.Specifications;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
@@ -20,7 +21,7 @@ namespace GGHub.Infrastructure.Services
         {
             var user = await _context.Users
                 .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.Username == username);
+                .FirstOrDefaultAsync(u => u.UsernameNormalized == UsernameNormalizer.Normalize(username));
 
             if (user == null) return new UserStatsDto();
 

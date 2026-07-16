@@ -136,7 +136,8 @@ export function ListCommentSection({ listId }: ListCommentSectionProps) {
 
     return (
         <div className="mt-8 pt-4 sm:pt-6 border-t">
-            <h2 className="text-2xl font-bold mb-4">{t("commentsSection.title", { count: totalComments > 0 ? String(totalComments) : "" })}</h2>
+            {/* Sayiyi her zaman bas: bos string gecmek basligi "Yorumlar ()" yapiyordu. */}
+            <h2 className="text-2xl font-bold mb-4">{t("commentsSection.title", { count: String(totalComments) })}</h2>
             <div className="mb-6">
                 {user ? (
                     <ListCommentForm onSubmit={createCommentMutation.mutate} isPending={createCommentMutation.isPending} ref={formRef} />

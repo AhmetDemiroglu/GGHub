@@ -1,0 +1,271 @@
+#!/bin/bash
+# GGHub katalog botu kontrol arayuzu.
+#
+#   gghub-bot install   -> derle, ~/.gghub-bot'a kur, acilista otomatik baslat
+#   gghub-bot start | stop | restart
+#   gghub-bot status    -> calisiyor mu + bu ayki Gemini harcamasi + kalan kuyruk
+#   gghub-bot logs      -> canli log
+#   gghub-bot update    -> repodan yeniden derle + kur + yeniden baslat
+#
+# Bot NEDEN burada calisiyor: Railway'de 7/24 donen bir crawler prod container'inda CPU yakiyor
+# ve faturayi yukseltiyordu. Job'lar artik GGHub.Worker'da ve yalnizca bu makinede calisiyor;
+# Railway sadece Postgres yazmalarini goruyor (olculen maliyet: ayda birkac sent).
+
+set -euo pipefail
+
+BOT_HOME="${GGHUB_BOT_HOME:-$HOME/.gghub-bot}"
+APP_DIR="$BOT_HOME/app"
+LOG_DIR="$BOT_HOME/logs"
+CONFIG="$BOT_HOME/appsettings.json"
+LABEL="social.gghub.bot"
+PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+DOTNET="$HOME/.dotnet/dotnet"
+
+# Repo yolu: bu script repo icinde durdugu icin kendi konumundan turetiliyor.
+SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_PATH/.." && pwd)"
+WORKER_PROJ="$REPO_ROOT/backend/GGHub.Worker/GGHub.Worker.csproj"
+
+c_red()  { printf '\033[31m%s\033[0m\n' "$*"; }
+c_grn()  { printf '\033[32m%s\033[0m\n' "$*"; }
+c_ylw()  { printf '\033[33m%s\033[0m\n' "$*"; }
+c_dim()  { printf '\033[2m%s\033[0m\n' "$*"; }
+
+die() { c_red "HATA: $*"; exit 1; }
+
+is_loaded() { launchctl list 2>/dev/null | grep -q "$LABEL"; }
+
+require_dotnet() {
+  [ -x "$DOTNET" ] || die "dotnet bulunamadi: $DOTNET"
+}
+
+build_and_publish() {
+  require_dotnet
+  [ -f "$WORKER_PROJ" ] || die "Worker projesi bulunamadi: $WORKER_PROJ (KIOXIA takili mi?)"
+
+  c_dim "Derleniyor: $WORKER_PROJ"
+  # Cikti KIOXIA'ya DEGIL ev dizinine gidiyor: proje dis diskte ve disk takili degilken
+  # login olunursa LaunchAgent coker. Boylece bot disk olmadan da calisir; disk yalnizca
+  # yeniden derlemek icin gerekli.
+  DOTNET_ROOT="$HOME/.dotnet" "$DOTNET" publish "$WORKER_PROJ" \
+    -c Release -o "$APP_DIR" --nologo -v quiet
+  c_grn "Kuruldu: $APP_DIR"
+}
+
+write_plist() {
+  mkdir -p "$LOG_DIR"
+  cat > "$PLIST" <<PLIST_EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>$LABEL</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>$APP_DIR/GGHub.Worker</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>$BOT_HOME</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>DOTNET_ROOT</key>
+    <string>$HOME/.dotnet</string>
+    <key>GGHUB_BOT_HOME</key>
+    <string>$BOT_HOME</string>
+    <key>DOTNET_ENVIRONMENT</key>
+    <string>Production</string>
+  </dict>
+
+  <!-- Bilgisayar acilir acilmaz baslasin -->
+  <key>RunAtLoad</key>
+  <true/>
+
+  <!-- Cokerse yeniden baslat; temiz cikista (kuyruk bitti) birak -->
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+  </dict>
+
+  <!-- Surekli cokme durumunda saniyede bir yeniden baslamayi engelle -->
+  <key>ThrottleInterval</key>
+  <integer>60</integer>
+
+  <key>StandardOutPath</key>
+  <string>$LOG_DIR/stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>$LOG_DIR/stderr.log</string>
+
+  <!-- Arka plan isi: kullanici uygulamalarina onculuk etmesin -->
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>LowPriorityIO</key>
+  <true/>
+  <key>Nice</key>
+  <integer>5</integer>
+</dict>
+</plist>
+PLIST_EOF
+  c_grn "LaunchAgent yazildi: $PLIST"
+}
+
+seed_config() {
+  if [ -f "$CONFIG" ]; then
+    c_dim "Ayar dosyasi zaten var, dokunulmadi: $CONFIG"
+    return
+  fi
+
+  local example="$REPO_ROOT/backend/GGHub.Worker/appsettings.example.json"
+  local dev="$REPO_ROOT/backend/GGHub.WebAPI/appsettings.Development.json"
+
+  mkdir -p "$BOT_HOME"
+  cp "$example" "$CONFIG"
+  chmod 600 "$CONFIG"
+
+  c_ylw ""
+  c_ylw "Ayar dosyasi olusturuldu: $CONFIG"
+  if [ -f "$dev" ]; then
+    c_ylw "Baglanti bilgilerini ve anahtarlari su dosyadan kopyalaman gerekiyor:"
+    c_ylw "  $dev"
+    c_ylw "Gerekli alanlar: ConnectionStrings.DefaultConnection, RawgApiSettings.ApiKey, Gemini.ApiKey"
+  fi
+  c_ylw "Anahtarlari elle tasi (chmod 600 ayarlandi), sonra: gghub-bot start"
+  c_ylw ""
+}
+
+cmd_install() {
+  mkdir -p "$BOT_HOME" "$LOG_DIR"
+  seed_config
+  build_and_publish
+  write_plist
+
+  if is_loaded; then
+    launchctl unload "$PLIST" 2>/dev/null || true
+  fi
+  launchctl load "$PLIST"
+
+  c_grn ""
+  c_grn "Kurulum tamam. Bot her acilista otomatik baslayacak."
+  c_grn "Durum:  gghub-bot status"
+  c_grn "Log:    gghub-bot logs"
+}
+
+cmd_start() {
+  [ -f "$PLIST" ] || die "Once 'gghub-bot install' calistir."
+  is_loaded && { c_ylw "Zaten calisiyor."; return; }
+  launchctl load "$PLIST"
+  c_grn "Baslatildi."
+}
+
+cmd_stop() {
+  [ -f "$PLIST" ] || die "LaunchAgent yok."
+  is_loaded || { c_ylw "Zaten durmus."; return; }
+  launchctl unload "$PLIST"
+  c_grn "Durduruldu."
+}
+
+cmd_restart() {
+  cmd_stop 2>/dev/null || true
+  sleep 1
+  cmd_start
+}
+
+cmd_update() {
+  local was_running=0
+  is_loaded && was_running=1
+
+  [ "$was_running" -eq 1 ] && { launchctl unload "$PLIST"; c_dim "Durduruldu."; }
+  build_and_publish
+  write_plist
+  [ "$was_running" -eq 1 ] && { launchctl load "$PLIST"; c_grn "Yeniden baslatildi."; } || c_ylw "Bot durmus durumda; baslatmak icin: gghub-bot start"
+}
+
+cmd_logs() {
+  local f="$LOG_DIR/stdout.log"
+  [ -f "$f" ] || die "Henuz log yok: $f"
+  c_dim "Cikmak icin Ctrl-C  ($f)"
+  tail -f "$f" "$LOG_DIR/stderr.log"
+}
+
+cmd_status() {
+  echo
+  if is_loaded; then
+    local pid
+    pid="$(launchctl list | grep "$LABEL" | awk '{print $1}')"
+    if [ "$pid" = "-" ]; then
+      c_ylw "Durum   : yuklu ama calismıyor (cikmis; son cikis kodu icin: gghub-bot logs)"
+    else
+      c_grn "Durum   : CALISIYOR (pid $pid)"
+    fi
+  else
+    c_red "Durum   : durdurulmus (gghub-bot start)"
+  fi
+
+  echo "Kurulum : $APP_DIR"
+  echo "Ayarlar : $CONFIG"
+  echo "Loglar  : $LOG_DIR"
+  echo
+
+  # Ilerleme ve harcama dogrudan DB'den okunuyor: botun tum durumu orada, yani Mac kapansa da
+  # kaybolmuyor. psql yoksa bu bolum sessizce atlanir.
+  if ! command -v psql >/dev/null 2>&1; then
+    c_dim "(psql kurulu degil; ilerleme ve harcama ozeti atlandi)"
+    return
+  fi
+  [ -f "$CONFIG" ] || return
+
+  local conn
+  conn="$(python3 - "$CONFIG" <<'PY' 2>/dev/null || true
+import json, re, sys
+raw = open(sys.argv[1]).read()
+raw = re.sub(r'^\s*//.*$', '', raw, flags=re.M)
+cs = json.loads(raw).get("ConnectionStrings", {}).get("DefaultConnection", "")
+kv = dict(p.split("=", 1) for p in cs.split(";") if "=" in p)
+h, p, d = kv.get("Host"), kv.get("Port", "5432"), kv.get("Database")
+u, pw = kv.get("Username"), kv.get("Password")
+if all([h, d, u, pw]):
+    print(f"postgresql://{u}:{pw}@{h}:{p}/{d}?sslmode=require")
+PY
+)"
+  [ -n "$conn" ] || return
+
+  psql "$conn" -qtAX -v ON_ERROR_STOP=0 <<'SQL' 2>/dev/null | sed 's/^/  /' || c_dim "(DB'ye ulasilamadi)"
+\pset border 0
+SELECT 'Gemini bu ay : ' || to_char(COALESCE(MAX("SpentUsd"), 0), 'FM990.0000') || ' USD'
+       || '  (~' || to_char(COALESCE(MAX("SpentUsd"), 0) * 47.1, 'FM9990') || ' TL)'
+       || '  |  ' || COALESCE(MAX("CallCount"), 0) || ' cagri'
+FROM "GeminiUsages" WHERE "PeriodKey" = to_char(now() AT TIME ZONE 'utc', 'YYYY-MM');
+
+SELECT 'Detay kuyrugu: ' || count(*) FILTER (WHERE "DetailSyncedAt" IS NULL) || ' bekliyor / '
+       || count(*) || ' toplam' FROM "Games";
+
+SELECT 'Aciklama     : ' || count(*) FILTER (WHERE "Description" <> '' AND "Description" IS NOT NULL) || ' dolu'
+FROM "Games";
+
+SELECT 'Ceviri       : ' || count(*) FILTER (WHERE "DescriptionTr" IS NOT NULL AND "DescriptionTr" <> "Description")
+       || ' cevrilmis' FROM "Games";
+
+SELECT 'Metacritic   : ' || count(*) FILTER (WHERE "Metacritic" IS NOT NULL) || ' puanli / '
+       || count(*) FILTER (WHERE "MetacriticUrl" IS NULL AND "Metacritic" IS NULL) || ' denenmemis'
+FROM "Games";
+SQL
+  echo
+}
+
+case "${1:-}" in
+  install) cmd_install ;;
+  start)   cmd_start ;;
+  stop)    cmd_stop ;;
+  restart) cmd_restart ;;
+  update)  cmd_update ;;
+  status)  cmd_status ;;
+  logs)    cmd_logs ;;
+  *)
+    echo "Kullanim: gghub-bot {install|start|stop|restart|status|logs|update}"
+    exit 1
+    ;;
+esac

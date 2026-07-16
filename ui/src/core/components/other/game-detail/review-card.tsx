@@ -1,15 +1,16 @@
 import { Review } from "@/models/review/review.model";
-import { ThumbsUp, ThumbsDown, User as UserIcon, Trash2, Pencil, Flag, Check, X } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Trash2, Pencil, Flag, Check, X, MessageSquare } from "lucide-react";
 import React, { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/core/hooks/use-auth";
-import { getImageUrl } from "@/core/lib/get-image-url";
-import { Avatar, AvatarFallback, AvatarImage } from "@core/components/ui/avatar";
+import { useI18n } from "@/core/contexts/locale-context";
 import { ReportDialog } from "@core/components/base/report-dialog";
+import { MentionText } from "@core/components/base/mention-text";
+import { UserLink } from "@core/components/base/user-link";
+import { ReviewCommentSection } from "@core/components/other/reviews/review-comment-section";
 import { Button } from "@core/components/ui/button";
 import { Textarea } from "@core/components/ui/textarea";
 import { cn } from "@core/lib/utils";
-import Link from "next/link";
 
 interface ReviewCardProps {
     review: Review;
@@ -20,10 +21,12 @@ interface ReviewCardProps {
 
 export const ReviewCard = ({ review, onVote, onDelete, onUpdate }: ReviewCardProps) => {
     const { user } = useAuth();
+    const t = useI18n();
     const currentUserId = user ? Number(user.id) : undefined;
     const isOwner = currentUserId === review.user.id;
 
     const [isExpanded, setIsExpanded] = useState(false);
+    const [showComments, setShowComments] = useState(false);
     const isLongContent = review.content.length > 200;
 
     const handleSaveUpdate = () => {
@@ -45,7 +48,6 @@ export const ReviewCard = ({ review, onVote, onDelete, onUpdate }: ReviewCardPro
     const [editContent, setEditContent] = useState(review.content);
     const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
 
-    const avatarSrc = getImageUrl(review.user.profileImageUrl);
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString("tr-TR", {
             year: "numeric", month: "long", day: "numeric"
@@ -88,16 +90,9 @@ export const ReviewCard = ({ review, onVote, onDelete, onUpdate }: ReviewCardPro
             {/* Üst Kısım: Avatar ve Info */}
             <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
-                    <Link href={`/profiles/${review.user.username}`}>
-                        <Avatar className="h-10 w-10 border border-border cursor-pointer">
-                            <AvatarImage src={avatarSrc} />
-                            <AvatarFallback>{review.user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                    </Link>
+                    <UserLink user={review.user} variant="avatar" avatarClassName="h-10 w-10 border border-border" />
                     <div>
-                        <Link href={`/profiles/${review.user.username}`} className="text-sm font-bold text-foreground hover:underline">
-                            {review.user.username}
-                        </Link>
+                        <UserLink user={review.user} variant="name" className="block text-sm font-bold text-foreground hover:underline" />
                         <div className="text-xs text-muted-foreground">{formatDate(review.createdAt)}</div>
                     </div>
                 </div>
@@ -135,7 +130,7 @@ export const ReviewCard = ({ review, onVote, onDelete, onUpdate }: ReviewCardPro
                             "text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap transition-all",
                             !isExpanded && isLongContent && "line-clamp-3"
                         )}>
-                            {review.content}
+                            <MentionText text={review.content} />
                         </p>
                         {isLongContent && (
                             <button
@@ -198,6 +193,16 @@ export const ReviewCard = ({ review, onVote, onDelete, onUpdate }: ReviewCardPro
 
                 {/* Sağ Taraf */}
                 <div className="flex items-center gap-2 ml-auto">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowComments((prev) => !prev)}
+                        className="cursor-pointer h-8 text-xs text-muted-foreground hover:text-primary"
+                        aria-expanded={showComments}
+                    >
+                        <MessageSquare size={14} className="mr-1" />
+                        {showComments ? t("reviewComments.hide") : t("reviewComments.show")}
+                    </Button>
                     {isOwner ? (
                         <>
                             <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)} disabled={isEditing} className="cursor-pointer h-8 text-xs">
@@ -218,7 +223,9 @@ export const ReviewCard = ({ review, onVote, onDelete, onUpdate }: ReviewCardPro
                 </div>
             </div>
 
+            {showComments && <ReviewCommentSection reviewId={review.id} hideTitle className="mt-0 border-t-0 pt-2" />}
+
             <ReportDialog isOpen={isReportDialogOpen} onOpenChange={setIsReportDialogOpen} entityType="Review" entityId={review.id} />
         </div>
     );
-}; 
+};

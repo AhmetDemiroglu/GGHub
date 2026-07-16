@@ -1,22 +1,15 @@
-import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TextInput,
-  Pressable,
-  ActivityIndicator,
-} from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
 import { CommentItem } from './CommentItem';
+import { MentionInput } from '@/src/components/common/MentionInput';
 import { useToast } from '@/src/components/common/Toast';
 import { getListComments, createListComment } from '@/src/api/list-comment';
-import type { UserListComment } from '@/src/models/list';
+import { fillErrorTemplate } from '@/src/utils/format';
 import { APP_CONFIG } from '@/src/constants/config';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 
@@ -27,27 +20,35 @@ interface CommentSectionProps {
 export function CommentSection({ listId }: CommentSectionProps) {
   const { colors } = useTheme();
   const { messages } = useLocale();
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
   const [commentText, setCommentText] = useState('');
-  const [page, setPage] = useState(1);
   const pageSize = APP_CONFIG.paginationDefaults.pageSize;
+  const t = messages.commentsSection;
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['listComments', listId, page],
-    queryFn: () => getListComments(listId, { page, pageSize }),
-  });
+  // useInfiniteQuery: "daha fazla yukle" onceki sayfalari BIRIKTIRIR. Eskiden
+  // sadece page state'i artiyordu ve her sayfa bir oncekini ekrandan siliyordu.
+  const { data, isLoading, isError, fetchNextPage, isFetchingNextPage, hasNextPage } =
+    useInfiniteQuery({
+      queryKey: ['listComments', listId],
+      queryFn: ({ pageParam }) => getListComments(listId, { page: pageParam, pageSize }),
+      initialPageParam: 1,
+      getNextPageParam: (lastPage, allPages) => {
+        const loaded = allPages.reduce((sum, page) => sum + page.items.length, 0);
+        return loaded < lastPage.totalCount ? allPages.length + 1 : undefined;
+      },
+    });
 
   const createMutation = useMutation({
     mutationFn: (content: string) => createListComment(listId, { content }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['listComments', listId] });
       setCommentText('');
-      showToast('success', messages.commentsSection.added);
+      showToast('success', t.added);
     },
     onError: () => {
-      showToast('error', messages.commentsSection.addError);
+      showToast('error', fillErrorTemplate(t.addError));
     },
   });
 
@@ -56,52 +57,41 @@ export function CommentSection({ listId }: CommentSectionProps) {
     createMutation.mutate(commentText.trim());
   };
 
-  const comments = data?.items ?? [];
-  const totalCount = data?.totalCount ?? 0;
-  const hasMore = comments.length < totalCount;
-
-  const handleLoadMore = () => {
-    if (hasMore && !isLoading) {
-      setPage((p) => p + 1);
-    }
-  };
-
-  const renderComment = useCallback(
-    ({ item }: { item: UserListComment }) => (
-      <CommentItem comment={item} listId={listId} />
-    ),
-    [listId],
-  );
+  const comments = useMemo(() => (data?.pages ?? []).flatMap((page) => page.items), [data]);
+  const totalCount = data?.pages[0]?.totalCount ?? 0;
 
   return (
     <View style={styles.container}>
       <Text style={[styles.title, { color: colors.text }]}>
-        {messages.commentsSection.title.replace('{count}', String(totalCount))}
+        {t.title.replace('{count}', String(totalCount))}
       </Text>
 
-      {isLoading && page === 1 ? (
+      {isLoading ? (
         <ActivityIndicator size="small" color={colors.primary} style={styles.loader} />
       ) : isError ? (
-        <Text style={[styles.errorText, { color: colors.error }]}>
-          {messages.commentsSection.loadError}
-        </Text>
+        <Text style={[styles.errorText, { color: colors.error }]}>{t.loadError}</Text>
       ) : comments.length === 0 ? (
-        <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-          {messages.commentsSection.empty}
-        </Text>
+        <Text style={[styles.emptyText, { color: colors.textMuted }]}>{t.empty}</Text>
       ) : (
         <>
-          <FlatList
-            data={comments}
-            keyExtractor={(item) => String(item.id)}
-            renderItem={renderComment}
-            scrollEnabled={false}
-          />
-          {hasMore ? (
-            <Pressable onPress={handleLoadMore} style={styles.loadMoreButton}>
-              <Text style={[styles.loadMoreText, { color: colors.primary }]}>
-                {messages.commentsSection.loadMore}
-              </Text>
+          {comments.map((comment) => (
+            <CommentItem key={comment.id} comment={comment} listId={listId} />
+          ))}
+          {hasNextPage ? (
+            <Pressable
+              onPress={() => fetchNextPage()}
+              disabled={isFetchingNextPage}
+              style={styles.loadMoreButton}
+            >
+              {isFetchingNextPage ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Text style={[styles.loadMoreText, { color: colors.primary }]}>
+                  {t.loadMore
+                    .replace('{shown}', String(comments.length))
+                    .replace('{total}', String(totalCount))}
+                </Text>
+              )}
             </Pressable>
           ) : null}
         </>
@@ -111,19 +101,16 @@ export function CommentSection({ listId }: CommentSectionProps) {
         <View
           style={[
             styles.inputContainer,
-            {
-              backgroundColor: colors.inputBackground,
-              borderColor: colors.inputBorder,
-            },
+            { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder },
           ]}
         >
-          <TextInput
-            style={[styles.input, { color: colors.text }]}
-            placeholder={messages.commentsSection.placeholder}
-            placeholderTextColor={colors.placeholder}
+          <MentionInput
             value={commentText}
             onChangeText={setCommentText}
-            multiline
+            placeholder={t.placeholder}
+            style={[styles.input, { color: colors.text }]}
+            containerStyle={styles.inputInner}
+            maxLength={1000}
           />
           <Pressable
             onPress={handleSend}
@@ -142,9 +129,7 @@ export function CommentSection({ listId }: CommentSectionProps) {
           </Pressable>
         </View>
       ) : (
-        <Text style={[styles.loginPrompt, { color: colors.textSecondary }]}>
-          {messages.commentsSection.loginPrompt}
-        </Text>
+        <Text style={[styles.loginPrompt, { color: colors.textSecondary }]}>{t.loginPrompt}</Text>
       )}
     </View>
   );
@@ -190,8 +175,10 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     marginTop: Spacing.md,
   },
-  input: {
+  inputInner: {
     flex: 1,
+  },
+  input: {
     fontSize: FontSize.md,
     maxHeight: 80,
     paddingVertical: 4,

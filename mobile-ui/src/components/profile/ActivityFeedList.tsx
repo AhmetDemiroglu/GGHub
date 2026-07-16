@@ -3,6 +3,7 @@ import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@/src/components/common/Avatar';
+import { useUserLink } from '@/src/components/common/UserLink';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { ActivityType, type Activity } from '@/src/models/activity';
@@ -38,6 +39,7 @@ export function ActivityFeedList({ activities }: ActivityFeedListProps) {
   const { colors } = useTheme();
   const { messages } = useLocale();
   const router = useRouter();
+  const { openProfileByUsername } = useUserLink();
 
   if (!activities || activities.length === 0) {
     return (
@@ -101,9 +103,8 @@ export function ActivityFeedList({ activities }: ActivityFeedListProps) {
         }
         break;
       case ActivityType.FollowUser:
-        if (item.followData?.username) {
-          router.push(`/profiles/${item.followData.username}`);
-        }
+        // FollowActivityData yalnizca username tasir (gizlilik alani yok).
+        openProfileByUsername(item.followData?.username);
         break;
       default:
         break;

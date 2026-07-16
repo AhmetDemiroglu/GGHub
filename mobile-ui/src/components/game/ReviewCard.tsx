@@ -1,13 +1,13 @@
 import React from 'react';
-import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/src/hooks/use-theme';
 import { FontSize, Spacing, BorderRadius, Shadows } from '@/src/constants/theme';
-import { getImageUrl } from '@/src/utils/image';
 import { formatTimeAgo } from '@/src/utils/format';
 import { StarRating } from '@/src/components/common/StarRating';
+import { MentionText } from '@/src/components/common/MentionText';
+import { UserLinkAvatar, UserLinkName } from '@/src/components/common/UserLink';
 import * as haptics from '@/src/utils/haptics';
 import { voteReview } from '@/src/api/review';
 import type { Review } from '@/src/models/review';
@@ -19,9 +19,7 @@ interface ReviewCardProps {
 
 export function ReviewCard({ review, gameId }: ReviewCardProps) {
   const { colors } = useTheme();
-  const router = useRouter();
   const queryClient = useQueryClient();
-  const avatarUri = getImageUrl(review.user.profileImageUrl);
 
   const voteMutation = useMutation({
     mutationFn: (value: number) => voteReview(review.id, { value }),
@@ -40,35 +38,29 @@ export function ReviewCard({ review, gameId }: ReviewCardProps) {
     }
   };
 
-  const openUserProfile = () => {
-    router.push(`/profiles/${review.user.username}`);
-  };
-
   return (
     <View style={[styles.container, { backgroundColor: colors.surface }, Shadows.sm]}>
       <View style={styles.header}>
-        <Pressable onPress={openUserProfile} hitSlop={6}>
-          {avatarUri ? (
-            <Image source={{ uri: avatarUri }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, { backgroundColor: colors.surfaceHighlight, alignItems: 'center', justifyContent: 'center' }]}>
-              <Ionicons name="person" size={14} color={colors.textMuted} />
-            </View>
-          )}
-        </Pressable>
-        <Pressable style={styles.userInfo} onPress={openUserProfile}>
-          <Text style={[styles.username, { color: colors.text }]}>{review.user.username}</Text>
+        <UserLinkAvatar user={review.user} size={32} />
+        <UserLinkName
+          user={review.user}
+          variant="username"
+          containerStyle={styles.userInfo}
+          style={[styles.username, { color: colors.text }]}
+        >
           <Text style={[styles.timestamp, { color: colors.textMuted }]}>
             {formatTimeAgo(review.createdAt)}
           </Text>
-        </Pressable>
+        </UserLinkName>
         <StarRating rating={Math.round(review.rating / 2)} maxStars={5} size={14} />
       </View>
 
       {review.content ? (
-        <Text style={[styles.reviewText, { color: colors.textSecondary }]} numberOfLines={6}>
-          {review.content}
-        </Text>
+        <MentionText
+          body={review.content}
+          style={[styles.reviewText, { color: colors.textSecondary }]}
+          numberOfLines={6}
+        />
       ) : null}
 
       <View style={styles.footer}>
@@ -111,11 +103,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.md,
     gap: Spacing.md,
-  },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
   },
   userInfo: {
     flex: 1,

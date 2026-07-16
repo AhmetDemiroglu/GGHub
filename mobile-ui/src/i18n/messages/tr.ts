@@ -106,6 +106,7 @@ export const trMessages = {
             privacy: "Gizlilik Politikası",
             listDetail: "Liste Detayı",
             publicLists: "Listeler",
+            reviewDetail: "İnceleme",
         },
     },
     footer: {
@@ -1050,6 +1051,11 @@ export const trMessages = {
         deleteComment: "Yorumu Sil",
         deleteConfirmTitle: "Yorumu Sil",
         deleteConfirmMessage: "Bu yorumu silmek istediğine emin misin?",
+        reply: "Yanıtla",
+        replyPlaceholder: "{username} kullanıcısına yanıt yaz...",
+        showReplies: "{count} yanıtı göster",
+        hideReplies: "Yanıtları gizle",
+        edited: "(düzenlendi)",
     },
     reviewList: {
         voteSuccess: "Geri bildiriminiz alındı",
@@ -1095,6 +1101,10 @@ export const trMessages = {
         listed: "Listeleme",
         followers: "Takipçi",
         recentActivities: "Son Aktiviteler",
+    },
+    reviewDetail: {
+        notFound: "İnceleme bulunamadı.",
+        ratingValue: "Puan: {rating}/10",
     },
     profileReviews: {
         emptyTitle: "Henüz inceleme yok",

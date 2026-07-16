@@ -93,6 +93,9 @@ function RootLayoutNav() {
         <Stack.Screen name="game/[id]" />
         <Stack.Screen name="profiles/[username]" />
         <Stack.Screen name="reviews/user/[username]" />
+        {/* Statik segment dinamigi yener: "/reviews/user/x" yukaridaki ekrana,
+            "/reviews/123" buraya cozulur. */}
+        <Stack.Screen name="reviews/[reviewId]" />
         <Stack.Screen name="+not-found" />
       </Stack>
     </>

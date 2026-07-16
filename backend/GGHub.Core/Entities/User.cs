@@ -6,6 +6,16 @@ namespace GGHub.Core.Entities
     {
         public int Id { get; set; }
         public string Username { get; set; }
+        /// <summary>
+        /// Kullanici adinin benzersizlik ve arama ANAHTARI. <see cref="Username"/> ise
+        /// GORUNEN formdur ve kullanicinin yazdigi hali (ornegin "Ömer") korur.
+        /// Deger daima <c>UsernameNormalizer.Normalize(Username)</c> ile uretilir.
+        ///
+        /// Nullable olmasinin TEK sebebi, production'da backfill (UsernameNormalizationSeeder)
+        /// henuz kosmamis satirlarin bulunabilmesidir. Backfill dogrulandiktan sonra takip eden
+        /// bir migration bu kolonu NOT NULL + UNIQUE yapacaktir.
+        /// </summary>
+        public string? UsernameNormalized { get; set; }
         public string Email { get; set; }
         // Nullable: social-only accounts (Google/Apple) have no password.
         public byte[]? PasswordHash { get; set; }

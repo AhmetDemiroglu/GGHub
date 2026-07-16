@@ -3,6 +3,7 @@ using GGHub.Application.DTOs.Common;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
 using GGHub.Core.Enums;
+using GGHub.Core.Specifications;
 using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -623,7 +624,7 @@ namespace GGHub.Infrastructure.Services
         }
         public async Task<IEnumerable<UserListDto>> GetListsByUsernameAsync(string username, int? currentUserId)
         {
-            var targetUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            var targetUser = await _context.Users.FirstOrDefaultAsync(u => u.UsernameNormalized == UsernameNormalizer.Normalize(username));
             if (targetUser == null) return Enumerable.Empty<UserListDto>();
 
             var query = _context.UserLists
@@ -747,7 +748,7 @@ namespace GGHub.Infrastructure.Services
 
         public async Task<UserListDto?> GetFavoritesListByUsernameAsync(string username)
         {
-            var targetUser = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Username == username);
+            var targetUser = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UsernameNormalized == UsernameNormalizer.Normalize(username));
             if (targetUser == null) return null;
 
             var favList = await _context.UserLists

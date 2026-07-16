@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
-import { Avatar } from '@/src/components/common/Avatar';
+import { UserLinkAvatar, UserLinkName } from '@/src/components/common/UserLink';
 import { Badge } from '@/src/components/common/Badge';
 import { getImageUrl } from '@/src/utils/image';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
@@ -41,18 +41,10 @@ export function ListCard({ list }: ListCardProps) {
   const { messages } = useLocale();
   const router = useRouter();
   const imageUrls = list.firstGameImageUrls?.slice(0, 4) ?? [];
-
-  const ownerName = isPublicList(list) ? list.owner.username : undefined;
-  const ownerAvatar = isPublicList(list) ? list.owner.profileImageUrl : undefined;
+  const owner = isPublicList(list) ? list.owner : undefined;
 
   const handlePress = () => {
     router.push(`/lists/${list.id}`);
-  };
-
-  const handleOwnerPress = () => {
-    if (ownerName) {
-      router.push(`/profiles/${ownerName}`);
-    }
   };
 
   return (
@@ -86,19 +78,19 @@ export function ListCard({ list }: ListCardProps) {
           <Badge label={getCategoryLabel(list.category, messages.lists.categories)} />
         </View>
 
-        {ownerName ? (
-          <Pressable
-            style={styles.ownerRow}
-            onPress={(event) => {
-              event.stopPropagation();
-              handleOwnerPress();
-            }}
-          >
-            <Avatar uri={ownerAvatar} name={ownerName} size={20} />
-            <Text style={[styles.ownerName, { color: colors.textSecondary }]} numberOfLines={1}>
-              @{ownerName}
-            </Text>
-          </Pressable>
+        {owner ? (
+          // Kart'in kendisi listeye gider; sahip avatari/adi ic ice ama kendi
+          // dokunma hedefleridir ve profile gider (RN'de en derin hedef kazanir).
+          <View style={styles.ownerRow}>
+            <UserLinkAvatar user={owner} size={20} />
+            <UserLinkName
+              user={owner}
+              variant="handle"
+              numberOfLines={1}
+              containerStyle={styles.ownerNameWrap}
+              style={[styles.ownerName, { color: colors.textSecondary }]}
+            />
+          </View>
         ) : null}
 
         <View style={styles.statsRow}>
@@ -171,9 +163,11 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     marginBottom: Spacing.sm,
   },
+  ownerNameWrap: {
+    flex: 1,
+  },
   ownerName: {
     fontSize: FontSize.sm,
-    flex: 1,
   },
   statsRow: {
     flexDirection: 'row',

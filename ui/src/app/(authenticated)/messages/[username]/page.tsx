@@ -4,9 +4,9 @@ import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getMessageThread, sendMessage } from "@/api/messages/messages.api";
 import { MessageDto, MessageForCreationDto } from "@/models/messages/message.model";
-import { Avatar, AvatarFallback, AvatarImage } from "@core/components/ui/avatar";
 import { Button } from "@core/components/ui/button";
 import { Textarea } from "@core/components/ui/textarea";
+import { UserLink } from "@core/components/base/user-link";
 import { useAuth } from "@core/hooks/use-auth";
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
@@ -14,7 +14,6 @@ import dayjs from "dayjs";
 import { Send, AlertTriangle, Loader, MessageSquare } from "lucide-react";
 import { UnauthorizedAccess } from "@core/components/other/unauthorized-access";
 import { AxiosError } from "axios";
-import { getImageUrl } from "@/core/lib/get-image-url";
 import { useI18n } from "@/core/contexts/locale-context";
 import { useSignalR } from "@/core/contexts/signalr-context";
 
@@ -126,23 +125,40 @@ export default function MessageThreadPage() {
         return <UnauthorizedAccess title={t("messages.viewLoginRequired")} description={t("messages.viewLoginRequiredDescription")} />;
     }
 
+    // Thread'in karsi tarafi. MessageDto artik gonderen/aliciyi tam UserDto olarak tasiyor,
+    // yani gercek ad ve isProfileAccessible buradan gelir. Eski yanitlar (ya da bos thread)
+    // icin username + duz resim alanina duseriz.
+    const currentUserId = parseInt(user.id || "0");
+    const partner =
+        messages && messages.length > 0
+            ? messages[0].senderId === currentUserId
+                ? messages[0].recipient
+                : messages[0].sender
+            : undefined;
+    const partnerUser = partner ?? {
+        username,
+        profileImageUrl:
+            messages && messages.length > 0
+                ? messages[0].senderId === currentUserId
+                    ? messages[0].recipientProfileImageUrl
+                    : messages[0].senderProfileImageUrl
+                : undefined,
+    };
+
     return (
         <div className="flex flex-col h-full">
             {/* Chat Header */}
             <div className="flex items-center gap-3 border-b border-border/40 px-5 py-3 shrink-0 bg-card/30">
-                <Avatar className="h-9 w-9 ring-2 ring-primary/20">
-                    <AvatarImage
-                        src={
-                            messages && messages.length > 0
-                                ? getImageUrl(messages[0].senderId === parseInt(user?.id || "0") ? messages[0].recipientProfileImageUrl : messages[0].senderProfileImageUrl)
-                                : undefined
-                        }
-                        alt={username}
-                    />
-                    <AvatarFallback className="text-sm">{username.charAt(0).toUpperCase()}</AvatarFallback>
-                </Avatar>
+                <UserLink
+                    user={partnerUser}
+                    variant="avatar"
+                    avatarClassName="h-9 w-9 ring-2 ring-primary/20"
+                    avatarFallback={username.charAt(0).toUpperCase()}
+                />
                 <div>
-                    <h2 className="text-sm font-semibold leading-tight">{username}</h2>
+                    <h2 className="text-sm font-semibold leading-tight">
+                        <UserLink user={partnerUser} variant="name" className="hover:underline" />
+                    </h2>
                     <p className="text-xs text-muted-foreground">{t("messages.online") ?? "Online"}</p>
                 </div>
             </div>
@@ -157,8 +173,12 @@ export default function MessageThreadPage() {
                             .map((message, index, arr) => {
                                 const isOwnMessage = user?.id ? message.senderId === parseInt(user.id) : false;
                                 const time = dayjs(message.sentAt).format("HH:mm");
-                                const avatarSrc = getImageUrl(message.senderProfileImageUrl);
                                 const displayUsername = message.senderUsername;
+                                // Gonderen tam UserDto olarak geliyor; eski yanitlar icin duz alanlara duseriz.
+                                const senderUser = message.sender ?? {
+                                    username: displayUsername,
+                                    profileImageUrl: message.senderProfileImageUrl,
+                                };
 
                                 // Show avatar only if next message is from different sender or it's the last message
                                 const nextMsg = arr[index + 1];
@@ -169,10 +189,12 @@ export default function MessageThreadPage() {
                                         {!isOwnMessage && (
                                             <div className="w-8 shrink-0">
                                                 {isLastInGroup && (
-                                                    <Avatar className="h-8 w-8">
-                                                        <AvatarImage src={avatarSrc} alt={displayUsername} />
-                                                        <AvatarFallback className="text-[10px]">{displayUsername.charAt(0).toUpperCase()}</AvatarFallback>
-                                                    </Avatar>
+                                                    <UserLink
+                                                        user={senderUser}
+                                                        variant="avatar"
+                                                        avatarClassName="h-8 w-8"
+                                                        avatarFallback={<span className="text-[10px]">{displayUsername.charAt(0).toUpperCase()}</span>}
+                                                    />
                                                 )}
                                             </div>
                                         )}
@@ -197,10 +219,12 @@ export default function MessageThreadPage() {
                                         {isOwnMessage && (
                                             <div className="w-8 shrink-0">
                                                 {isLastInGroup && (
-                                                    <Avatar className="h-8 w-8">
-                                                        <AvatarImage src={avatarSrc} alt={displayUsername} />
-                                                        <AvatarFallback className="text-[10px]">{displayUsername.charAt(0).toUpperCase()}</AvatarFallback>
-                                                    </Avatar>
+                                                    <UserLink
+                                                        user={senderUser}
+                                                        variant="avatar"
+                                                        avatarClassName="h-8 w-8"
+                                                        avatarFallback={<span className="text-[10px]">{displayUsername.charAt(0).toUpperCase()}</span>}
+                                                    />
                                                 )}
                                             </div>
                                         )}

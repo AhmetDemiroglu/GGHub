@@ -17,7 +17,8 @@ namespace GGHub.Infrastructure.Services
         private readonly IHubNotificationService _hubNotificationService;
         private readonly IPushNotificationService _pushNotificationService;
         private readonly IUserSuggestionService _userSuggestionService;
-        public SocialService(GGHubDbContext context, INotificationService notificationService, IGamificationService gamificationService, IHubNotificationService hubNotificationService, IPushNotificationService pushNotificationService, IUserSuggestionService userSuggestionService)
+        private readonly IUserDtoEnricher _userDtoEnricher;
+        public SocialService(GGHubDbContext context, INotificationService notificationService, IGamificationService gamificationService, IHubNotificationService hubNotificationService, IPushNotificationService pushNotificationService, IUserSuggestionService userSuggestionService, IUserDtoEnricher userDtoEnricher)
         {
             _context = context;
             _notificationService = notificationService;
@@ -25,10 +26,11 @@ namespace GGHub.Infrastructure.Services
             _hubNotificationService = hubNotificationService;
             _pushNotificationService = pushNotificationService;
             _userSuggestionService = userSuggestionService;
+            _userDtoEnricher = userDtoEnricher;
         }
         public async Task<bool> FollowUserAsync(int followerId, string followeeUsername)
         {
-            var followee = await _context.Users.FirstOrDefaultAsync(u => u.Username == followeeUsername && !u.IsDeleted);
+            var followee = await _context.Users.FirstOrDefaultAsync(u => u.UsernameNormalized == UsernameNormalizer.Normalize(followeeUsername) && !u.IsDeleted);
             if (followee == null || followee.Id == followerId) return false;
 
             var isBlocked = await _context.UserBlocks
@@ -72,7 +74,7 @@ namespace GGHub.Infrastructure.Services
         }
         public async Task<bool> UnfollowUserAsync(int followerId, string followeeUsername)
         {
-            var followee = await _context.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Username == followeeUsername);
+            var followee = await _context.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.UsernameNormalized == UsernameNormalizer.Normalize(followeeUsername));
             if (followee == null) return false;
 
             var follow = await _context.Follows.FirstOrDefaultAsync(f => f.FollowerId == followerId && f.FolloweeId == followee.Id);
@@ -134,7 +136,7 @@ namespace GGHub.Infrastructure.Services
         }
         public async Task<IEnumerable<UserDto>> GetFollowersAsync(string username, int? currentUserId = null)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UsernameNormalized == UsernameNormalizer.Normalize(username));
             if (user == null) return Enumerable.Empty<UserDto>();
 
             var followers = await _context.Follows
@@ -173,7 +175,7 @@ namespace GGHub.Infrastructure.Services
 
         public async Task<IEnumerable<UserDto>> GetFollowingAsync(string username, int? currentUserId = null)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UsernameNormalized == UsernameNormalizer.Normalize(username));
             if (user == null) return Enumerable.Empty<UserDto>();
 
             var following = await _context.Follows
@@ -211,7 +213,7 @@ namespace GGHub.Infrastructure.Services
         }
         public async Task<MessageDto?> SendMessageAsync(int senderId, MessageForCreationDto messageDto)
         {
-            var recipient = await _context.Users.FirstOrDefaultAsync(u => u.Username == messageDto.RecipientUsername);
+            var recipient = await _context.Users.FirstOrDefaultAsync(u => u.UsernameNormalized == UsernameNormalizer.Normalize(messageDto.RecipientUsername));
             if (recipient == null) return null;
 
             var isBlocked = await _context.UserBlocks.AnyAsync(b => (b.BlockerId == recipient.Id && b.BlockedId == senderId) ||
@@ -281,10 +283,12 @@ namespace GGHub.Infrastructure.Services
                 PartnerId = recipient.Id,
                 PartnerUsername = recipient.Username,
                 PartnerProfileImageUrl = recipient.ProfileImageUrl,
+                Partner = ToPartnerDto(recipient),
                 LastMessage = message.Content,
                 LastMessageSentAt = message.SentAt,
                 UnreadCount = 0
             };
+            await _userDtoEnricher.EnrichAsync(senderConversation.Partner, senderId);
             await _hubNotificationService.UpdateConversationAsync(senderId, senderConversation);
 
             var recipientConversation = new ConversationDto
@@ -292,14 +296,26 @@ namespace GGHub.Infrastructure.Services
                 PartnerId = senderId,
                 PartnerUsername = sender.Username,
                 PartnerProfileImageUrl = sender.ProfileImageUrl,
+                Partner = ToPartnerDto(sender),
                 LastMessage = message.Content,
                 LastMessageSentAt = message.SentAt,
                 UnreadCount = recipientUnreadCount
             };
+            await _userDtoEnricher.EnrichAsync(recipientConversation.Partner, recipient.Id);
             await _hubNotificationService.UpdateConversationAsync(recipient.Id, recipientConversation);
 
             return result;
         }
+        /// <summary>Konusma satirindaki karsi taraf. IsFollowing/IsProfileAccessible enricher ile dolar.</summary>
+        private static UserDto ToPartnerDto(User user) => new UserDto
+        {
+            Id = user.Id,
+            Username = user.Username,
+            ProfileImageUrl = user.ProfileImageUrl,
+            FirstName = user.FirstName,
+            LastName = user.LastName
+        };
+
         public async Task<IEnumerable<ConversationDto>> GetConversationsAsync(int userId)
         {
             // DB tarafında gruplama — tüm mesajları belleğe çekmek yerine
@@ -312,6 +328,14 @@ namespace GGHub.Infrastructure.Services
                     PartnerId = g.Key,
                     PartnerUsername = _context.Users.Where(u => u.Id == g.Key).Select(u => u.Username).FirstOrDefault() ?? "",
                     PartnerProfileImageUrl = _context.Users.Where(u => u.Id == g.Key).Select(u => u.ProfileImageUrl).FirstOrDefault(),
+                    Partner = _context.Users.Where(u => u.Id == g.Key).Select(u => new UserDto
+                    {
+                        Id = u.Id,
+                        Username = u.Username,
+                        ProfileImageUrl = u.ProfileImageUrl,
+                        FirstName = u.FirstName,
+                        LastName = u.LastName
+                    }).FirstOrDefault(),
                     LastMessage = g.OrderByDescending(m => m.SentAt).Select(m => m.Content).FirstOrDefault() ?? "",
                     LastMessageSentAt = g.Max(m => m.SentAt),
                     UnreadCount = g.Count(m => m.RecipientId == userId && m.ReadAt == null)
@@ -319,11 +343,13 @@ namespace GGHub.Infrastructure.Services
                 .OrderByDescending(c => c.LastMessageSentAt)
                 .ToListAsync();
 
+            await _userDtoEnricher.EnrichAsync(conversations.Select(c => c.Partner), userId);
+
             return conversations;
         }
         public async Task<IEnumerable<MessageDto>> GetMessageThreadAsync(int userId, string partnerUsername)
         {
-            var partner = await _context.Users.FirstOrDefaultAsync(u => u.Username == partnerUsername);
+            var partner = await _context.Users.FirstOrDefaultAsync(u => u.UsernameNormalized == UsernameNormalizer.Normalize(partnerUsername));
             if (partner == null)
             {
                 throw new KeyNotFoundException(AppText.Get("messages.threadUserNotFound"));
@@ -342,11 +368,33 @@ namespace GGHub.Infrastructure.Services
                     RecipientId = m.RecipientId,
                     RecipientUsername = m.Recipient.Username,
                     RecipientProfileImageUrl = m.Recipient.ProfileImageUrl,
+                    Sender = new UserDto
+                    {
+                        Id = m.Sender.Id,
+                        Username = m.Sender.Username,
+                        ProfileImageUrl = m.Sender.ProfileImageUrl,
+                        FirstName = m.Sender.FirstName,
+                        LastName = m.Sender.LastName
+                    },
+                    Recipient = new UserDto
+                    {
+                        Id = m.Recipient.Id,
+                        Username = m.Recipient.Username,
+                        ProfileImageUrl = m.Recipient.ProfileImageUrl,
+                        FirstName = m.Recipient.FirstName,
+                        LastName = m.Recipient.LastName
+                    },
                     Content = m.Content,
                     ReadAt = m.ReadAt,
                     SentAt = m.SentAt
                 })
                 .ToListAsync();
+
+            // Thread'de yalnizca iki kisi var; enricher distinct id uzerinden calistigi icin
+            // mesaj sayisindan bagimsiz olarak tek batch atilir.
+            await _userDtoEnricher.EnrichAsync(
+                messages.Select(m => m.Sender).Concat(messages.Select(m => m.Recipient)),
+                userId);
 
             var unreadMessages = await _context.Messages
                 .Where(m => m.RecipientId == userId && m.SenderId == partner.Id && m.ReadAt == null)
@@ -403,7 +451,7 @@ namespace GGHub.Infrastructure.Services
         }
         public async Task<bool> BlockUserAsync(int blockerId, string blockedUsername)
         {
-            var blockedUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == blockedUsername);
+            var blockedUser = await _context.Users.FirstOrDefaultAsync(u => u.UsernameNormalized == UsernameNormalizer.Normalize(blockedUsername));
             if (blockedUser == null || blockedUser.Id == blockerId) return false;
 
             var alreadyBlocked = await _context.UserBlocks.AnyAsync(b => b.BlockerId == blockerId && b.BlockedId == blockedUser.Id);
@@ -424,7 +472,7 @@ namespace GGHub.Infrastructure.Services
 
         public async Task<bool> UnblockUserAsync(int blockerId, string blockedUsername)
         {
-            var blockedUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == blockedUsername);
+            var blockedUser = await _context.Users.FirstOrDefaultAsync(u => u.UsernameNormalized == UsernameNormalizer.Normalize(blockedUsername));
             if (blockedUser == null) return false;
 
             var block = await _context.UserBlocks.FirstOrDefaultAsync(b => b.BlockerId == blockerId && b.BlockedId == blockedUser.Id);

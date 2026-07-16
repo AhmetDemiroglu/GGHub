@@ -2,6 +2,7 @@
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
 using GGHub.Core.Enums;
+using GGHub.Core.Specifications;
 using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -322,7 +323,7 @@ namespace GGHub.Infrastructure.Services
 
         public async Task<IEnumerable<ReviewDto>> GetReviewsByUserAsync(string username, int? currentUserId = null)
         {
-            var targetUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            var targetUser = await _context.Users.FirstOrDefaultAsync(u => u.UsernameNormalized == UsernameNormalizer.Normalize(username));
             if (targetUser == null) return Enumerable.Empty<ReviewDto>();
 
             var reviews = await _context.Reviews

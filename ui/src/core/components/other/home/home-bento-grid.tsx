@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar
 import { Badge } from "@/core/components/ui/badge";
 import { TrendingUp, Trophy, Star, Crown } from "lucide-react";
 import { getImageUrl } from "@/core/lib/get-image-url";
+import { UserLink } from "@/core/components/base/user-link";
 import { ScrollArea } from "@/core/components/ui/scroll-area";
 import { useI18n } from "@/core/contexts/locale-context";
 
@@ -77,7 +78,7 @@ export default function HomeBentoGrid({ trending, leaders }: HomeBentoGridProps)
                         <ScrollArea className="h-[380px] px-4">
                             <div className="space-y-4 pb-2">
                                 {leaders.map((user, index) => (
-                                    <Link href={`/profiles/${user.username}`} key={user.userId}>
+                                    <UserLink user={user} key={user.userId}>
                                         <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors group cursor-pointer">
                                             <div
                                                 className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${
@@ -113,7 +114,7 @@ export default function HomeBentoGrid({ trending, leaders }: HomeBentoGridProps)
                                                 </div>
                                             </div>
                                         </div>
-                                    </Link>
+                                    </UserLink>
                                 ))}
 
                                 {leaders.length === 0 && <div className="text-center py-8 text-muted-foreground text-sm">{t("homeBento.empty")}</div>}

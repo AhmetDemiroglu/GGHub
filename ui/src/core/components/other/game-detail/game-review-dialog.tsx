@@ -4,6 +4,7 @@ import { X, Loader2 } from "lucide-react";
 import React, { useState } from "react";
 import { toast } from "sonner";
 import { Review } from "@/models/review/review.model";
+import { MentionTextarea } from "@core/components/base/mention-textarea";
 
 interface GameReviewDialogProps {
     isOpen: boolean;
@@ -131,7 +132,7 @@ export const GameReviewDialog = ({ isOpen, onClose, gameId, gameSlug, gameName, 
                         <label className="block text-sm font-medium text-zinc-400 mb-2 uppercase tracking-wider">
                             Düşünceleriniz
                         </label>
-                        <textarea
+                        <MentionTextarea
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
                             placeholder="Bu oyun hakkında ne düşünüyorsun? Hikaye, oynanış, grafikler..."

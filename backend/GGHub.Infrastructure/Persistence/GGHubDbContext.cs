@@ -51,6 +51,17 @@ namespace GGHub.Infrastructure.Persistence
                 .HasIndex(u => u.Username)
                 .IsUnique();
 
+            // BILEREK unique DEGIL ve kolon BILEREK required degil.
+            // Production'da halihazirda carpisan kullanici adlari var ("ahmetdemiroglu" ve
+            // "ahmetdemiroğlu"). Unique bir index acilis migration'inda patlardi; Program.cs
+            // Database.Migrate() cagrisini yutulan bir try/catch icinde calistirdigi icin de
+            // uygulama sessizce ESKI sema uzerinden hizmet vermeye devam ederdi.
+            // Once UsernameNormalizationSeeder backfill + carpisma temizligini yapar; unique
+            // kisiti backfill production'da dogrulandiktan SONRA takip eden migration ile gelir.
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.UsernameNormalized)
+                .HasDatabaseName("IX_Users_UsernameNormalized");
+
             // Filtered unique indexes: allow many NULLs but enforce one user per external provider id.
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.GoogleId)

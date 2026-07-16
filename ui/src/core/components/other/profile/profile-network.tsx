@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getFollowers, getFollowing, followUser, unfollowUser } from "@/api/social/social.api";
 import { Loader2, UserPlus, Users, UserCheck } from "lucide-react";
-import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
+import { UserLink } from "@/core/components/base/user-link";
+import { displayName } from "@/core/lib/display-name";
 import { getImageUrl } from "@/core/lib/get-image-url";
 import { Button } from "@/core/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/core/components/ui/tabs";
@@ -100,18 +101,16 @@ export default function ProfileNetwork({ username }: ProfileNetworkProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {users.map((user) => (
                     <div key={user.id} className="flex items-center justify-between p-4 rounded-xl border bg-card hover:border-primary/30 transition-all shadow-sm">
-                        <Link href={`/profiles/${user.username}`} className="flex items-center gap-3 flex-1 min-w-0 group">
+                        <UserLink user={user} className="flex items-center gap-3 flex-1 min-w-0 group">
                             <Avatar className="h-12 w-12 border-2 border-background group-hover:border-primary/50 transition-colors">
                                 <AvatarImage src={getImageUrl(user.profileImageUrl)} />
                                 <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
                             </Avatar>
                             <div className="min-w-0">
-                                <p className="font-semibold truncate group-hover:text-primary transition-colors">
-                                    {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username}
-                                </p>
+                                <p className="font-semibold truncate group-hover:text-primary transition-colors">{displayName(user)}</p>
                                 <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
                             </div>
-                        </Link>
+                        </UserLink>
 
                         {currentUser && user.username !== currentUser.username && (
                             <Button

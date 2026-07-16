@@ -22,6 +22,8 @@ const getEntityTypeLabel = (t: ReturnType<typeof useI18n>, type: string) => {
     switch (type) {
         case "Comment":
             return t("admin.entityTypes.comment");
+        case "ReviewComment":
+            return t("admin.entityTypes.reviewcomment");
         case "Review":
             return t("admin.entityTypes.review");
         case "List":

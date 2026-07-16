@@ -1,3 +1,5 @@
+import type { SocialProfile } from "@/models/social/social.model";
+
 export interface GameSummary {
     id: number;
     rawgId: number;
@@ -8,11 +10,11 @@ export interface GameSummary {
     released: string | null;
 }
 
-export interface ReviewUser {
-    id: number;
-    username: string;
-    profileImageUrl: string | null;
-}
+/**
+ * Backend ReviewDto.User artik tam UserDto donuyor (isProfileAccessible dahil),
+ * bu da SocialProfile ile ayni sekil. Tek kaynak kalsin diye alias.
+ */
+export type ReviewUser = SocialProfile;
 
 export interface Review {
     id: number;

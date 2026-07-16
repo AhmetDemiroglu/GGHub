@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
+import { useUserLink } from '@/src/components/common/UserLink';
 import { FontSize, Spacing, BorderRadius, Shadows } from '@/src/constants/theme';
 import { getImageUrl } from '@/src/utils/image';
 import { formatTimeAgo } from '@/src/utils/format';
@@ -18,6 +19,7 @@ function ActivityItem({ item }: { item: Activity }) {
   const { colors } = useTheme();
   const { messages } = useLocale();
   const router = useRouter();
+  const { openProfileByUsername } = useUserLink();
 
   const getActivityInfo = () => {
     switch (item.type) {
@@ -56,11 +58,8 @@ function ActivityItem({ item }: { item: Activity }) {
           icon: 'person-add' as const,
           iconColor: '#22c55e',
           text: `${messages.home.startedFollowing} @${username}`,
-          onPress: () => {
-            if (username) {
-              router.push(`/profiles/${username}`);
-            }
-          },
+          // FollowActivityData yalnizca username tasir (gizlilik alani yok).
+          onPress: () => openProfileByUsername(username),
           image: getImageUrl(item.followData?.profileImageUrl),
         };
       }

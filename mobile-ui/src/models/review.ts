@@ -8,10 +8,20 @@ export interface GameSummary {
   released: string | null;
 }
 
+/**
+ * Backend ReviewDto.User bir UserDto'dur ve UserDtoEnricher tarafindan
+ * zenginlestirilir; yani ad/soyad ve isFollowing/isProfileAccessible HER ZAMAN
+ * gelir. Model bunlari eskiden hic bildirmiyordu, bu yuzden profil linki
+ * gizlilik kapisini uygulayamiyordu.
+ */
 export interface ReviewUser {
   id: number;
   username: string;
   profileImageUrl: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  isFollowing?: boolean;
+  isProfileAccessible?: boolean;
 }
 
 export interface Review {

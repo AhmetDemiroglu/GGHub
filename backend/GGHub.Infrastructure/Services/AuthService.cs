@@ -1,6 +1,7 @@
 ﻿using GGHub.Application.Dtos;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
+using GGHub.Core.Specifications;
 using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using GGHub.Infrastructure.Utilities;
@@ -43,9 +44,23 @@ namespace GGHub.Infrastructure.Services
 
         public async Task<LoginResponseDto?> Login(UserForLoginDto userForLoginDto)
         {
+            // Giris alani hem e-posta hem kullanici adi kabul ediyor. Kullanici adi dali artik
+            // normalize edilmis anahtar uzerinden eslesiyor: hem indeksli hem de "ğ/g" sinifindaki
+            // farklari katliyor.
+            //
+            // usernameKey bos ise (ornegin girdi tamamen katlanip yok oluyorsa) kullanici adi
+            // dali TAMAMEN devre disi kalmali. Aksi halde adi bos anahtara katlanan bir hesap
+            // ("@@@" gibi bir girdiyle) yanlislikla eslesebilirdi.
+            var usernameKey = UsernameNormalizer.Normalize(userForLoginDto.Email);
+
+            // E-posta dali BILEREK oldugu gibi birakildi: Register da e-postayi ToLower() ile
+            // (kultur duyarli) yaziyor, dolayisiyla burada ToLowerInvariant'a gecmek okuma ile
+            // yazmayi birbirinden ayirirdi. Ikisi birlikte ele alinmali.
+            var loginEmail = userForLoginDto.Email.ToLower();
+
             var user = await _context.Users.FirstOrDefaultAsync(u =>
-                u.Email == userForLoginDto.Email.ToLower() ||
-                u.Username.ToLower() == userForLoginDto.Email.ToLower());
+                u.Email == loginEmail ||
+                (usernameKey != "" && u.UsernameNormalized == usernameKey));
 
             // PasswordHash/Salt are null for social-only (Google/Apple) accounts → treat as invalid credentials.
             if (user == null || user.PasswordHash == null || user.PasswordSalt == null ||
@@ -126,8 +141,18 @@ namespace GGHub.Infrastructure.Services
                 throw new InvalidOperationException(AppText.Get("auth.emailAlreadyInUse"));
             }
 
+            if (!UsernameNormalizer.IsValidFormat(userForRegisterDto.Username))
+            {
+                throw new InvalidOperationException(AppText.Get("auth.usernameInvalidFormat"));
+            }
+
+            // Benzersizlik artik normalize edilmis anahtar uzerinden. Hem indeksli calisir hem de
+            // "ahmetdemiroğlu" / "ahmetdemiroglu" sinifindaki carpismalari yakalar; eski
+            // u.Username.ToLower() karsilastirmasi bunlari kaciriyordu.
+            var normalizedUsername = UsernameNormalizer.Normalize(userForRegisterDto.Username);
+
             var existingUserByUsername = await _context.Users
-                .FirstOrDefaultAsync(u => u.Username.ToLower() == userForRegisterDto.Username.ToLower());
+                .FirstOrDefaultAsync(u => u.UsernameNormalized == normalizedUsername);
 
             if (existingUserByUsername != null)
             {
@@ -142,7 +167,8 @@ namespace GGHub.Infrastructure.Services
             var user = new User
             {
                 Email = userForRegisterDto.Email.ToLower(),
-                Username = userForRegisterDto.Username,
+                Username = userForRegisterDto.Username.Trim(),
+                UsernameNormalized = normalizedUsername,
                 PasswordHash = passwordHash,
                 PasswordSalt = passwordSalt,
                 EmailVerificationToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64))
@@ -543,10 +569,16 @@ namespace GGHub.Infrastructure.Services
                     lastName = parts.Length > 1 ? parts[1] : null;
                 }
 
+                // Tohum sirasi: e-posta local-part ONCE, goruntuleme adi yedek.
+                var generatedUsername = await GenerateUniqueUsernameAsync(
+                    email?.Split('@').FirstOrDefault(),
+                    displayName);
+
                 user = new User
                 {
                     Email = lowerEmail,
-                    Username = await GenerateUniqueUsernameAsync(displayName ?? email?.Split('@').FirstOrDefault()),
+                    Username = generatedUsername,
+                    UsernameNormalized = UsernameNormalizer.Normalize(generatedUsername),
                     PasswordHash = null,
                     PasswordSalt = null,
                     IsEmailVerified = true,
@@ -572,9 +604,20 @@ namespace GGHub.Infrastructure.Services
             return user;
         }
 
-        private async Task<string> GenerateUniqueUsernameAsync(string? seed)
+        /// <summary>
+        /// OAuth ile gelen kullanici icin benzersiz bir kullanici adi uretir.
+        /// Tohum sirasi: e-posta local-part -> goruntuleme adi -> "user".
+        /// </summary>
+        private async Task<string> GenerateUniqueUsernameAsync(string? emailLocalPart, string? displayName)
         {
-            var baseName = new string((seed ?? "user").Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant();
+            // Tohum olarak ONCE e-posta local-part kullanilir. Eski kod goruntuleme adindan
+            // ("Ahmet Demiroğlu") uretiyordu; char.IsLetterOrDigit Unicode-aware oldugu icin "ğ"
+            // hayatta kaliyor ve "ahmetdemiroğlu" gibi, mevcut "ahmetdemiroglu" hesabiyla gorsel
+            // olarak carpisan adlar doguyordu. E-posta local-part'i zaten ASCII'ye cok daha yakin.
+            var seed = !string.IsNullOrWhiteSpace(emailLocalPart) ? emailLocalPart : displayName;
+
+            // Tohum, herkesle ayni kurallara tabi: tek dogruluk kaynagindan gecir.
+            var baseName = UsernameNormalizer.Normalize(seed);
             if (baseName.Length < 3) baseName = "user";
             if (baseName.Length > 15) baseName = baseName.Substring(0, 15);
 
@@ -582,12 +625,29 @@ namespace GGHub.Infrastructure.Services
             var rng = new Random();
             for (int i = 0; i < 25; i++)
             {
-                var exists = await _context.Users.AnyAsync(u => u.Username.ToLower() == candidate);
+                var exists = await _context.Users.AnyAsync(u => u.UsernameNormalized == candidate);
                 if (!exists) return candidate;
                 candidate = $"{baseName}{rng.Next(1000, 99999)}";
             }
-            // Guaranteed-unique fallback.
-            return ($"{baseName}{Guid.NewGuid():N}").Substring(0, 20);
+
+            // Son care. Eski kod burada Substring(0, 20) cagiriyordu: string 20 karakterden
+            // kisaysa ArgumentOutOfRangeException firlatiyor, ustelik uretilen adin varligi hic
+            // kontrol edilmiyordu. Artik hem uzunluk guvenli hem de kontrol ediliyor.
+            for (int i = 0; i < 5; i++)
+            {
+                var suffix = Guid.NewGuid().ToString("N");
+                var fallback = $"{baseName}{suffix}";
+                if (fallback.Length > 20) fallback = fallback.Substring(0, 20);
+
+                if (!await _context.Users.AnyAsync(u => u.UsernameNormalized == fallback))
+                {
+                    return fallback;
+                }
+            }
+
+            // Buraya dusmek pratikte imkansiz (5 ardisik GUID carpismasi). Yine de sessizce
+            // bozuk bir ad dondurmek yerine acik hata verelim.
+            throw new InvalidOperationException(AppText.Get("auth.usernameGenerationFailed"));
         }
 
         private async Task<LoginResponseDto> IssueTokensAsync(User user)

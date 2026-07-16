@@ -2,9 +2,9 @@ import React from 'react';
 import { View, Text, Image, StyleSheet, FlatList, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
+import { useUserLink } from '@/src/components/common/UserLink';
 import { FontSize, Spacing, BorderRadius, Shadows } from '@/src/constants/theme';
 import { getImageUrl } from '@/src/utils/image';
 import { formatNumber } from '@/src/utils/format';
@@ -30,7 +30,7 @@ function getRankIcon(index: number): keyof typeof Ionicons.glyphMap {
 function LeaderboardRow({ user, index, isLast }: { user: LeaderboardUser; index: number; isLast: boolean }) {
   const { colors } = useTheme();
   const { messages } = useLocale();
-  const router = useRouter();
+  const { openProfile } = useUserLink();
   const avatarUri = getImageUrl(user.profileImageUrl);
   const rankColor = getRankColor(index);
   const isTop3 = index < 3;
@@ -41,7 +41,9 @@ function LeaderboardRow({ user, index, isLast }: { user: LeaderboardUser; index:
 
   const handlePress = () => {
     haptics.impactLight();
-    router.push(`/profiles/${user.username}`);
+    // LeaderboardUser gizlilik alani tasimaz; liderlik tablosu zaten yalnizca
+    // herkese acik profilleri listeler.
+    openProfile(user);
   };
 
   return (

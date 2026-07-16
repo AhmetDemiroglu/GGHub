@@ -12,5 +12,12 @@
         public DateTime SentAt { get; set; }
         public string? SenderProfileImageUrl { get; set; }
         public string? RecipientProfileImageUrl { get; set; }
+
+        /// <summary>
+        /// Gonderen ve alici. Gercek ad ve profil linki kapisi buradan gelir; yukaridaki
+        /// duz alanlar eski istemciler icin BILEREK korunuyor.
+        /// </summary>
+        public UserDto? Sender { get; set; }
+        public UserDto? Recipient { get; set; }
     }
 }

@@ -2,8 +2,10 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/hooks/use-theme';
+import { UserLinkAvatar } from '@/src/components/common/UserLink';
+import { displayName } from '@/src/utils/display-name';
 import { NotificationType, type NotificationDto } from '@/src/models/notification';
-import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
+import { Spacing, FontSize } from '@/src/constants/theme';
 
 interface NotificationItemProps {
   notification: NotificationDto;
@@ -55,10 +57,29 @@ function formatTimeAgo(dateStr: string): string {
   return date.toLocaleDateString();
 }
 
+/**
+ * Mesaj backend'de okuyucunun dilinde TAM CUMLE olarak render edilir ve bastaki
+ * {username} yer tutucusuna aktorun gorunen adi yazilir. Burada o on eki bulup
+ * kalinlastiriyoruz (X/Twitter tarzi).
+ *
+ * Eslesmezse (aktor null, ad degismis, cumle bastan aktorle baslamiyor) mesaj
+ * oldugu gibi basilir. Bu fonksiyon ASLA patlamamali: bildirim satiri, kozmetik
+ * bir on ek yuzunden kaybolmamali.
+ */
+function splitActorPrefix(message: string, actorName?: string): [string, string] {
+  if (!actorName || !message.startsWith(actorName)) return ['', message];
+  return [actorName, message.slice(actorName.length)];
+}
+
 export function NotificationItem({ notification, onPress }: NotificationItemProps) {
   const { colors } = useTheme();
   const iconName = NOTIFICATION_ICONS[notification.type] || 'notifications-outline';
   const iconColor = NOTIFICATION_COLORS[notification.type] || colors.primary;
+  const actor = notification.actor;
+  const [boldPrefix, rest] = splitActorPrefix(
+    notification.message,
+    actor ? displayName(actor) : undefined,
+  );
 
   return (
     <TouchableOpacity
@@ -72,8 +93,27 @@ export function NotificationItem({ notification, onPress }: NotificationItemProp
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <View style={[styles.iconWrapper, { backgroundColor: iconColor + '20' }]}>
-        <Ionicons name={iconName} size={20} color={iconColor} />
+      {/* Aktorun avatari kendi dokunma hedefidir -> aktorun profili. Satirin geri
+          kalanina dokunmak bildirimin kendi hedefine gider. */}
+      <View style={styles.avatarWrap}>
+        {actor ? (
+          <UserLinkAvatar user={actor} size={40} />
+        ) : (
+          <View style={[styles.iconWrapper, { backgroundColor: iconColor + '20' }]}>
+            <Ionicons name={iconName} size={20} color={iconColor} />
+          </View>
+        )}
+        {actor ? (
+          // pointerEvents=none: rozet, avatarin dokunma hedefinin kosesini calmasin.
+          <View
+            pointerEvents="none"
+            style={[styles.typeBadge, { backgroundColor: colors.background }]}
+          >
+            <View style={[styles.typeBadgeInner, { backgroundColor: iconColor + '20' }]}>
+              <Ionicons name={iconName} size={10} color={iconColor} />
+            </View>
+          </View>
+        ) : null}
       </View>
       <View style={styles.content}>
         <Text
@@ -83,7 +123,8 @@ export function NotificationItem({ notification, onPress }: NotificationItemProp
           ]}
           numberOfLines={2}
         >
-          {notification.message}
+          {boldPrefix ? <Text style={styles.actorName}>{boldPrefix}</Text> : null}
+          {rest}
         </Text>
         <Text style={[styles.time, { color: colors.textMuted }]}>
           {formatTimeAgo(notification.createdAt)}
@@ -105,10 +146,32 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: Spacing.md,
   },
+  avatarWrap: {
+    position: 'relative',
+    width: 40,
+    height: 40,
+  },
   iconWrapper: {
     width: 40,
     height: 40,
     borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  typeBadge: {
+    position: 'absolute',
+    right: -3,
+    bottom: -3,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  typeBadgeInner: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -118,6 +181,9 @@ const styles = StyleSheet.create({
   message: {
     fontSize: FontSize.md,
     lineHeight: 20,
+  },
+  actorName: {
+    fontWeight: '700',
   },
   time: {
     fontSize: FontSize.xs,

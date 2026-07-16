@@ -2,6 +2,7 @@ using GGHub.Application.Interfaces;
 using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -29,13 +30,22 @@ namespace GGHub.Infrastructure.Services
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<MetacriticSyncJob> _logger;
         private readonly string _logFilePath;
+        private readonly bool _enabled;
         private readonly Encoding _utf8NoBom = new UTF8Encoding(false);
 
-        public MetacriticSyncJob(IServiceProvider serviceProvider, ILogger<MetacriticSyncJob> logger)
+        public MetacriticSyncJob(
+            IServiceProvider serviceProvider,
+            IConfiguration configuration,
+            ILogger<MetacriticSyncJob> logger)
         {
             _serviceProvider = serviceProvider;
             _logger = logger;
             _logFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "metacritic_sync.txt");
+
+            // Bayrak kontrolu job'in ICINDE. Eskiden Program.cs'te "if (metacriticJobEnabled)"
+            // olarak duruyordu; kayit yeri Worker'a tasininca kontrol tamamen kaybolmustu ve job
+            // Enabled=false iken calisip prod DB'ye yaziyordu. Varsayilan false.
+            _enabled = configuration.GetValue<bool>("Jobs:MetacriticSync:Enabled");
         }
 
         // Dosya sinirsiz buyuyordu ve rotasyonu yoktu; job aylarca calisinca diski dolduruyordu.
@@ -65,6 +75,12 @@ namespace GGHub.Infrastructure.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            if (!_enabled)
+            {
+                _logger.LogInformation("[MetacriticSync] Job kapali.");
+                return;
+            }
+
             var msg = "!!! [MetacriticSync] SERVICE STARTED !!!";
             _logger.LogInformation(msg);
             LogToFile(msg);

@@ -20,8 +20,6 @@ namespace GGHub.Infrastructure.Services
         private static readonly object _rateLimitLock = new();
         private static DateTime _lastRequestTime = DateTime.MinValue;
         private const int RequestDelayMs = 3000;
-        // Isim tutmadiginda tarih tek dogrulama araci: bu esigi asan aday kabul edilmez.
-        private const int MaxMatchDaysDiff = 365;
 
         public MetacriticService(IHttpClientFactory httpClientFactory, ILogger<MetacriticService> logger)
         {
@@ -222,16 +220,20 @@ namespace GGHub.Infrastructure.Services
                 return ClosestByDate(nameMatches, targetDate, out _) ?? nameMatches[0];
             }
 
-            // 2) Isim tutmuyor; elimizdeki tek dogrulama araci tarih. 365 gun guard'i BURADA
-            //    gercekten uygulaniyor. Onceden guard asilinca yine results.First() donuyordu,
-            //    yani guard oluydu ve alakasiz oyunun puani yaziliyordu.
-            if (hasTargetDate)
-            {
-                var closest = ClosestByDate(results, targetDate, out var bestDaysDiff);
-                return (closest != null && bestDaysDiff <= MaxMatchDaysDiff) ? closest : null;
-            }
-
-            // 3) Ne isim tutuyor ne de dogrulayacak bir tarih var. Korumasiz tahmin yerine reddet.
+            // 2) Isim tutmuyor -> REDDET.
+            //
+            // Burada bir zamanlar "isim tutmasa da cikis tarihi 365 gun icindeyse kabul et"
+            // kademesi vardi. Prod verisinden 25 oyunluk rastgele orneklemle olculdu ve
+            // guvenilir olmadigi gorulur: her yil yuzlerce oyun cikiyor, dolayisiyla tarih
+            // yakinligi tek basina hicbir sey kanitlamiyor. Urettigi gercek hatalar:
+            //   "Nina - Fighter"                -> Street Fighter 6'nin 92'si
+            //   "GTA EL-VANDREAS: Fan-made game" -> gercek bir GTA kaydinin 92'si
+            // Kademe kaldirilinca ayni orneklemde yanlis eslesme 0'a indi.
+            //
+            // Takas bilincli: isimlendirmesi farkli birkac gercek puani kaybediyoruz
+            // (orn. ORION: Prelude). Yanlis puan sessizce yanlis veridir ve kimse fark etmez;
+            // eksik puan gorunurdur ve sonradan her zaman tamamlanabilir. Zaten puanlarin
+            // buyuk cogunlugu (7.974'un 6.240'i) RAWG'den geliyor, bu yoldan degil.
             return null;
         }
 

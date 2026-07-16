@@ -8,6 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar
 import { ScrollArea } from "@/core/components/ui/scroll-area";
 import { Star, List, UserPlus, Activity as ActivityIcon } from "lucide-react";
 import { getImageUrl } from "@/core/lib/get-image-url";
+import { displayName } from "@/core/lib/display-name";
+import { UserLink } from "@/core/components/base/user-link";
 import placeholderGame from "@/core/assets/placeholder.png";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -166,16 +168,16 @@ function renderActivityItem(activity: Activity) {
                             <span className="text-muted-foreground mx-1">•</span>
                             <span className="text-xs text-muted-foreground">{timeAgo}</span>
                         </p>
-                        <Link href={`/profiles/${follow.username}`} className="flex items-center gap-3 bg-background/50 p-2 rounded-md hover:bg-background transition-colors border border-transparent hover:border-border">
+                        <UserLink user={follow} className="flex items-center gap-3 bg-background/50 p-2 rounded-md hover:bg-background transition-colors border border-transparent hover:border-border">
                             <Avatar className="h-8 w-8">
                                 <AvatarImage src={getImageUrl(follow.profileImageUrl) || ""} className="object-cover" />
                                 <AvatarFallback>{follow.username.substring(0, 2).toUpperCase()}</AvatarFallback>
                             </Avatar>
                             <div>
-                                <p className="text-sm font-semibold">{follow.username}</p>
+                                <p className="text-sm font-semibold">{displayName(follow)}</p>
                                 <p className="text-xs text-muted-foreground">Profilini görüntüle</p>
                             </div>
-                        </Link>
+                        </UserLink>
                     </div>
                 </div>
             );

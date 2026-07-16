@@ -177,6 +177,27 @@ namespace GGHub.WebAPI.Controllers
             }
         }
 
+        [HttpPut("users/{userId}/username")]
+        public async Task<IActionResult> ChangeUsername(int userId, [FromBody] ChangeUsernameRequestDto dto)
+        {
+            try
+            {
+                var adminUserId = GetCurrentUserId();
+                var success = await _adminService.ChangeUsernameAsync(userId, dto, adminUserId);
+
+                if (!success)
+                {
+                    return NotFound(new { message = AppText.Get("admin.userNotFound") });
+                }
+
+                return Ok(new { message = AppText.Get("admin.usernameUpdated") });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         [HttpGet("users/{userId}/lists")]
         public async Task<IActionResult> GetListsForUser(int userId)
         {

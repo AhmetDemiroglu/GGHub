@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@core/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@core/components/ui/form";
-import { Textarea } from "@/core/components/ui/textarea";
+import { MentionTextarea } from "@core/components/base/mention-textarea";
 import { Loader, Send } from "lucide-react";
 import type { UserListCommentForCreation } from "@/models/list/list.model";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
@@ -73,7 +73,7 @@ export const ListCommentForm = forwardRef<{ reset: () => void }, ListCommentForm
                         render={({ field }) => (
                             <FormItem>
                                 <FormControl>
-                                    <Textarea placeholder={placeholder} className="resize-none min-h-[60px]" rows={2} {...field} />
+                                    <MentionTextarea placeholder={placeholder} className="resize-none min-h-[60px]" rows={2} {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>

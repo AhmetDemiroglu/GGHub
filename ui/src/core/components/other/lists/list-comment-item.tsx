@@ -2,7 +2,6 @@
 
 import type { UserListComment, UserListCommentForCreation } from "@/models/list/list.model";
 import { ListCommentForm } from "./list-comment-form";
-import { Avatar, AvatarFallback, AvatarImage } from "@core/components/ui/avatar";
 import { Button } from "@core/components/ui/button";
 import { useAuth } from "@core/hooks/use-auth";
 import { cn } from "@core/lib/utils";
@@ -10,12 +9,13 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/tr";
 import { ThumbsUp, ThumbsDown, MessageSquare, Trash2, Pencil, X, Check, Flag } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
 import { Textarea } from "@core/components/ui/textarea";
 import { toast } from "sonner";
-import { getImageUrl } from "@/core/lib/get-image-url";
+import { MentionText } from "@core/components/base/mention-text";
+import { UserLink } from "@core/components/base/user-link";
 import { ReportDialog } from "@core/components/base/report-dialog";
+import { displayName } from "@/core/lib/display-name";
 
 dayjs.extend(relativeTime);
 dayjs.locale("tr");
@@ -58,8 +58,6 @@ export function ListCommentItem({
     const [editContent, setEditContent] = useState(comment.content);
     const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
 
-    const avatarSrc = getImageUrl(comment.owner.profileImageUrl);
-
     const voteScore = comment.upvotes - comment.downvotes;
     const currentUserVote = comment.currentUserVote;
     const timeAgo = dayjs(comment.createdAt).fromNow();
@@ -73,17 +71,10 @@ export function ListCommentItem({
         >
             {/* Avatar */}
             <div className="flex sm:block items-center gap-2 sm:gap-0">
-                <Link href={`/profiles/${comment.owner.username}`} className="flex-shrink-0">
-                    <Avatar className="h-8 w-8 sm:h-9 sm:w-9">
-                        <AvatarImage src={avatarSrc} />
-                        <AvatarFallback>{comment.owner.username.substring(0, 2).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                </Link>
+                <UserLink user={comment.owner} variant="avatar" className="flex-shrink-0" avatarClassName="h-8 w-8 sm:h-9 sm:w-9" />
                 {/* Sadece mobilde kullanıcı adını avatar yanında göster */}
                 <div className="flex sm:hidden items-baseline gap-2 text-sm">
-                    <Link href={`/profiles/${comment.owner.username}`} className="font-semibold hover:underline">
-                        {comment.owner.username}
-                    </Link>
+                    <UserLink user={comment.owner} variant="name" className="font-semibold hover:underline" />
                     <span className="text-xs text-muted-foreground">{timeAgo}</span>
                 </div>
             </div>
@@ -91,15 +82,15 @@ export function ListCommentItem({
             <div className="flex-1 space-y-1">
                 {/* Kullanıcı Adı ve Zaman */}
                 <div className="hidden sm:flex items-baseline gap-2 text-sm">
-                    <Link href={`/profiles/${comment.owner.username}`} className="font-semibold hover:underline">
-                        {comment.owner.username}
-                    </Link>
+                    <UserLink user={comment.owner} variant="name" className="font-semibold hover:underline" />
                     <span className="text-xs text-muted-foreground">{timeAgo}</span>
                 </div>
 
                 {/* Yorum İçeriği */}
                 {!isEditing ? (
-                    <p className="text-sm">{comment.content}</p>
+                    <p className="text-sm whitespace-pre-wrap">
+                        <MentionText text={comment.content} />
+                    </p>
                 ) : (
                     <div className="space-y-4">
                         <Textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} className="text-sm min-h-[80px] resize-none" disabled={isUpdatingComment} autoFocus />
@@ -256,7 +247,7 @@ export function ListCommentItem({
                             isPending={isSubmittingComment}
                             parentCommentId={comment.id}
                             onCancelReply={() => setIsReplying(false)}
-                            placeholder={`${comment.owner.username} kullanıcısına yanıt yazın...`}
+                            placeholder={`${displayName(comment.owner)} kullanıcısına yanıt yazın...`}
                         />
                     </div>
                 )}

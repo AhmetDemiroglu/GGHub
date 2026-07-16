@@ -171,6 +171,15 @@ namespace GGHub.Infrastructure.Migrations
                 principalTable: "Users",
                 principalColumn: "Id",
                 onDelete: ReferentialAction.SetNull);
+
+            // Detayi zaten cekilmis oyunlari backfill kuyruguna sokma. DevelopersJson yalnizca
+            // RAWG detay ucundan geliyor (list ucu bu alani dondurmuyor), yani dolu olmasi
+            // "bu oyunun detayi alinmis" demek. Bu satir olmadan job ~285 oyunu bosuna yeniden cekerdi.
+            migrationBuilder.Sql("""
+                UPDATE "Games"
+                SET "DetailSyncedAt" = "LastSyncedAt"
+                WHERE "DevelopersJson" IS NOT NULL;
+                """);
         }
 
         /// <inheritdoc />

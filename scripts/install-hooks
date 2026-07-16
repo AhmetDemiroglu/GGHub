@@ -1,0 +1,32 @@
+#!/bin/bash
+# Git hook'larini kurar. Bir kez calistir; .git/hooks versiyonlanmadigi icin repoyu
+# klonlayan herkesin kendi makinesinde tekrar calistirmasi gerekir.
+#
+#   scripts/install-hooks
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+HOOK="$REPO_ROOT/.git/hooks/pre-push"
+
+[ -d "$REPO_ROOT/.git" ] || { echo "HATA: .git bulunamadi."; exit 1; }
+
+cat > "$HOOK" <<'HOOK_EOF'
+#!/bin/bash
+# GGHub pre-push. scripts/install-hooks tarafindan olusturuldu.
+#
+# main'e push = Railway + Vercel deploy. Bu yuzden kontrol commit'te degil PUSH'ta:
+# yerelde istedigin kadar ara commit atabilirsin, ama prod'a giden sey tutarli olsun.
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+"$REPO_ROOT/scripts/check-migrations" || exit 1
+HOOK_EOF
+
+chmod +x "$HOOK"
+chmod +x "$SCRIPT_DIR/check-migrations" 2>/dev/null || true
+
+echo "Kuruldu: $HOOK"
+echo
+echo "Artik 'git push' oncesi entity/migration uyumu kontrol edilir."
+echo "Simdi denemek icin: scripts/check-migrations"
