@@ -8,7 +8,8 @@ import { Activity } from "@/models/activity/activity.model";
 import { HomeContent } from "@/models/home/home.model";
 import { SuggestedUser } from "@/models/social/social.model";
 import { useAuth } from "@/core/hooks/use-auth";
-import { useCurrentLocale } from "@/core/contexts/locale-context";
+import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
+import { Button } from "@/core/components/ui/button";
 import { Skeleton } from "@/core/components/ui/skeleton";
 import HeroSlider from "./hero-slider";
 import HomeMobileRails from "./home-mobile-rails";
@@ -19,11 +20,13 @@ import HomeStatsBar from "./home-stats-bar";
 
 export default function HomeView() {
     const locale = useCurrentLocale();
+    const t = useI18n();
     const { isAuthenticated, isLoading: authLoading } = useAuth();
     const [content, setContent] = useState<HomeContent | null>(null);
     const [feed, setFeed] = useState<Activity[]>([]);
     const [suggestions, setSuggestions] = useState<SuggestedUser[]>([]);
     const [loading, setLoading] = useState(true);
+    const [retryCount, setRetryCount] = useState(0);
 
     useEffect(() => {
         // Auth henüz yüklenmediyse fetch yapma: boş feed ve çift istek olmasın
@@ -33,10 +36,13 @@ export default function HomeView() {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                // Paralel fetch: üç isteği aynı anda başlat (öneriler best-effort)
+                // Paralel fetch: üç isteği aynı anda başlat. Feed ve öneriler best-effort:
+                // Promise.all fail-fast olduğu için her biri kendi içinde yakalanır, aksi
+                // halde yalnızca feed düşse bile ana içerik gelmiş sayılmayıp sayfa komple
+                // boş kalıyordu.
                 const [homeData, feedData, suggestionData] = await Promise.all([
                     getHomeContent(),
-                    isAuthenticated ? getPersonalizedFeed() : Promise.resolve([]),
+                    isAuthenticated ? getPersonalizedFeed().catch(() => []) : Promise.resolve([]),
                     isAuthenticated ? getSuggestedUsers(12).catch(() => []) : Promise.resolve([]),
                 ]);
                 if (!cancelled) {
@@ -53,14 +59,23 @@ export default function HomeView() {
 
         fetchData();
         return () => { cancelled = true; };
-    }, [isAuthenticated, authLoading, locale]);
+    }, [isAuthenticated, authLoading, locale, retryCount]);
 
     if (loading || authLoading) {
         return <HomeSkeleton />;
     }
 
+    // Ana içerik alınamadı. Eskiden burada null dönülüyordu: kullanıcı sessizce BOMBOŞ
+    // bir sayfa görüyor ve F5 atmak zorunda kalıyordu. Artık hata + tekrar dene gösterilir.
     if (!content) {
-        return null;
+        return (
+            <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
+                <p className="text-muted-foreground text-sm">{t("common.genericError")}</p>
+                <Button variant="outline" onClick={() => setRetryCount((count) => count + 1)}>
+                    {t("common.tryAgain")}
+                </Button>
+            </div>
+        );
     }
 
     return (

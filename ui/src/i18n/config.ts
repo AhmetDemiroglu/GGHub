@@ -35,6 +35,41 @@ export const normalizeLocale = (value?: string | null): AppLocale | null => {
     return null;
 };
 
+/**
+ * Accept-Language basligini q-degerine gore sirala ve destekledigimiz ilk locale'i dondur.
+ * Her etiket once tam haliyle ("tr-TR"), sonra dil koduyla ("tr") denenir; desteklenmeyen
+ * diller atlanir. Ornekler:
+ *   "tr-TR,tr;q=0.9,en;q=0.8"  -> "tr"
+ *   "en-US,tr;q=0.9"           -> "en-US"
+ *   "de,tr;q=0.7"              -> "tr"   (de desteklenmiyor, siradaki kazanir)
+ *   "de,fr;q=0.7"              -> null   (hicbiri desteklenmiyor)
+ */
+export const parseAcceptLanguage = (header?: string | null): AppLocale | null => {
+    if (!header) {
+        return null;
+    }
+
+    const ranked = header
+        .split(",")
+        .map((part) => {
+            const [tag, ...params] = part.trim().split(";");
+            const qParam = params.find((param) => param.trim().startsWith("q="));
+            const q = qParam ? Number.parseFloat(qParam.trim().slice(2)) : 1;
+            return { tag: tag?.trim() ?? "", q: Number.isNaN(q) ? 0 : q };
+        })
+        .filter((entry) => entry.tag && entry.tag !== "*" && entry.q > 0)
+        .sort((a, b) => b.q - a.q);
+
+    for (const { tag } of ranked) {
+        const match = normalizeLocale(tag) ?? normalizeLocale(tag.split("-")[0]);
+        if (match) {
+            return match;
+        }
+    }
+
+    return null;
+};
+
 export const stripLocaleFromPathname = (pathname: string) => {
     const segments = pathname.split("/");
     const maybeLocale = segments[1];

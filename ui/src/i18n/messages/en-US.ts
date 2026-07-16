@@ -3,6 +3,7 @@ export const enUSMessages = {
         appName: "GGHub",
         loading: "Loading...",
         genericError: "Something went wrong.",
+        tryAgain: "Try again",
         back: "Go back",
         clear: "Clear",
         all: "All",

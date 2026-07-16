@@ -49,12 +49,24 @@ export const queryClient = new QueryClient({
             staleTime: 2 * 60 * 1000, // 2 dk: gereksiz refetch'leri önler
             refetchOnWindowFocus: false,
             retry: (failureCount, error) => {
-                if (error instanceof AxiosError && (error.response?.status === 429 || error.response?.status === 401)) {
-                    return false;
+                if (error instanceof AxiosError) {
+                    if (error.response?.status === 429 || error.response?.status === 401) {
+                        return false;
+                    }
+
+                    // Ağ hatası / timeout (response YOK) = sunucu yavaş veya erişilemiyor.
+                    // Eskiden buradan failureCount < 3'e düşülüyordu: 4 deneme x 15 sn axios
+                    // timeout + exponential backoff, uygulamayı ~60 sn "hiç açılmıyor" gibi
+                    // gösteriyordu. Bu senaryoda tekrar denemek nadiren işe yarar, tek retry yeter.
+                    if (!error.response) {
+                        return failureCount < 1;
+                    }
                 }
 
                 return failureCount < 3;
             },
+            // Backoff'u sınırla: varsayılan üstel gecikme uzun beklemelere yol açıyordu.
+            retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
         },
     },
 });

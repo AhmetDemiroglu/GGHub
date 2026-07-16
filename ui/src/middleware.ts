@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { buildLocalizedPathname, countryToLocale, defaultLocale, isLocale, localeCookieName, localeManualCookieName, normalizeLocale } from "@/i18n/config";
+import { buildLocalizedPathname, countryToLocale, defaultLocale, isLocale, localeCookieName, localeManualCookieName, normalizeLocale, parseAcceptLanguage } from "@/i18n/config";
 
 const publicFilePattern = /\.(.*)$/;
 
@@ -13,7 +13,18 @@ const resolveLocale = (request: NextRequest) => {
         }
     }
 
-    // 1. Geolocation header'ları (Vercel, Cloudflare, vb.)
+    // 1. Tarayıcının dil tercihi (Accept-Language). Kullanıcının SEÇTİĞİ dil, bulunduğu
+    //    ülkeden daha güçlü bir sinyaldir: VPN / seyahat / kurumsal proxy durumunda IP
+    //    yanıltır, tarayıcı dili yanıltmaz.
+    //    NOT: Bu kontrol eskiden coğrafi konumdan SONRA geliyordu; countryToLocale hiçbir
+    //    zaman null dönmediği ve Vercel her istekte ülke header'ı gönderdiği için burası
+    //    production'da hiç çalışmayan ölü koddu (Türkçe tarayıcı + TR olmayan IP -> en-US).
+    const acceptLanguageLocale = parseAcceptLanguage(request.headers.get("accept-language"));
+    if (acceptLanguageLocale) {
+        return acceptLanguageLocale;
+    }
+
+    // 2. Accept-Language yoksa/desteklenmiyorsa coğrafi konuma düş (Vercel, Cloudflare, vb.)
     const country =
         request.headers.get("x-vercel-ip-country") ??
         request.headers.get("cf-ipcountry") ??
@@ -21,15 +32,6 @@ const resolveLocale = (request: NextRequest) => {
 
     if (country) {
         return countryToLocale(country);
-    }
-
-    // 2. Accept-Language header'ından locale çıkar (localhost/geolocation yok ise)
-    const acceptLanguage = request.headers.get("accept-language");
-    if (acceptLanguage) {
-        const preferredLang = acceptLanguage.split(",")[0]?.trim().toLowerCase();
-        if (preferredLang?.startsWith("tr")) {
-            return "tr" as const;
-        }
     }
 
     return defaultLocale;

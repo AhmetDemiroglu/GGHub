@@ -3,6 +3,7 @@ export const trMessages = {
         appName: "GGHub",
         loading: "Yükleniyor...",
         genericError: "Bir hata oluştu.",
+        tryAgain: "Tekrar dene",
         back: "Geri dön",
         clear: "Temizle",
         all: "Tümü",
