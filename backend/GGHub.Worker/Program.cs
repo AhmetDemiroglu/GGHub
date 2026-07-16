@@ -2,6 +2,7 @@ using GGHub.Application.Interfaces;
 using GGHub.Infrastructure.Persistence;
 using GGHub.Infrastructure.Services;
 using GGHub.Infrastructure.Settings;
+using GGHub.Worker;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
@@ -78,6 +79,16 @@ builder.Services.AddHostedService<FutureMetacriticCleanupJob>();
 // Checkpoint'ler RawgImportCheckpoints tablosunda duruyor; gerekirse buraya geri eklenebilir.
 
 var host = builder.Build();
+
+// "--status": ilerleme ve harcama ozetini bas, cik. Build() hosted service'leri BASLATMAZ
+// (onu RunAsync yapiyor), yani bu mod hicbir job tetiklemez, sadece okur.
+// Ozeti worker'in kendisine sorduruyoruz cunku baglanti dizesi zaten burada; alternatifi
+// gghub-bot'un psql'e bagimli olmasiydi ve psql bu makinede kurulu degil.
+if (args.Contains("--status"))
+{
+    await WorkerStatus.PrintAsync(host.Services);
+    return;
+}
 
 var logger = host.Services.GetRequiredService<ILogger<Program>>();
 logger.LogInformation("=== GGHub Worker basladi ===");

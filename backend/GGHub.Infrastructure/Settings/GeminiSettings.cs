@@ -28,5 +28,12 @@ namespace GGHub.Infrastructure.Settings
         /// isaretidir ve tek cagrida aylik butceyi yiyebilir.
         /// </summary>
         public int MaxOutputTokens { get; set; } = 2048;
+
+        /// <summary>
+        /// Yalnizca GOSTERIM icin ("gghub-bot status" harcamayi TL olarak da yazsin diye).
+        /// Google USD uzerinden faturaliyor; tavan da USD, bu deger hesaba girmiyor.
+        /// 16 Tem 2026 kuru. Kur ciddi oynarsa guncelle, yanlis olmasi bir seyi bozmaz.
+        /// </summary>
+        public decimal UsdToTryRate { get; set; } = 47.1m;
     }
 }

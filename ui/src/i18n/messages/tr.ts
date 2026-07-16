@@ -890,6 +890,17 @@ export const trMessages = {
         loadError: "Yorumlar yüklenirken hata oluştu.",
         empty: "Henüz hiç yorum yapılmamış.",
         loadMore: "Daha Fazla Yorum Yükle ({shown} / {total})",
+        // Ham axios metni ("Request failed with status code 404") arayüze sızmasın diye.
+        reason: {
+            network: "sunucuya ulaşılamadı",
+            invalid: "istek geçersiz",
+            unauthorized: "oturumunuz sona ermiş",
+            forbidden: "bu işlem için yetkiniz yok",
+            notFound: "yorum bulunamadı",
+            rateLimited: "çok fazla istek gönderildi, biraz bekleyin",
+            server: "sunucu hatası",
+            unknown: "bilinmeyen bir hata oluştu",
+        },
     },
     reviewList: {
         voteSuccess: "Geri bildiriminiz alındı",
@@ -977,6 +988,17 @@ export const trMessages = {
         loadError: "Yorumlar yüklenirken hata oluştu.",
         empty: "Henüz hiç yorum yapılmamış.",
         loadMore: "Daha Fazla Yorum Yükle ({shown} / {total})",
+        // Ham axios metni ("Request failed with status code 404") arayüze sızmasın diye.
+        reason: {
+            network: "sunucuya ulaşılamadı",
+            invalid: "istek geçersiz",
+            unauthorized: "oturumunuz sona ermiş",
+            forbidden: "bu işlem için yetkiniz yok",
+            notFound: "yorum bulunamadı",
+            rateLimited: "çok fazla istek gönderildi, biraz bekleyin",
+            server: "sunucu hatası",
+            unknown: "bilinmeyen bir hata oluştu",
+        },
     },
     reviewDetail: {
         loadError: "İnceleme yüklenirken bir hata oluştu.",

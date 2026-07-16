@@ -891,6 +891,17 @@ export const enUSMessages = {
         loadError: "There was an error loading comments.",
         empty: "No comments yet.",
         loadMore: "Load More Comments ({shown} / {total})",
+        // Keeps the raw axios text ("Request failed with status code 404") out of the UI.
+        reason: {
+            network: "the server could not be reached",
+            invalid: "the request was invalid",
+            unauthorized: "your session has expired",
+            forbidden: "you are not allowed to do that",
+            notFound: "the comment was not found",
+            rateLimited: "too many requests, please wait a moment",
+            server: "server error",
+            unknown: "an unknown error occurred",
+        },
     },
     reviewList: {
         voteError: "An error occurred while voting",
@@ -978,6 +989,17 @@ export const enUSMessages = {
         loadError: "An error occurred while loading comments.",
         empty: "No comments yet.",
         loadMore: "Load More Comments ({shown} / {total})",
+        // Keeps the raw axios text ("Request failed with status code 404") out of the UI.
+        reason: {
+            network: "the server could not be reached",
+            invalid: "the request was invalid",
+            unauthorized: "your session has expired",
+            forbidden: "you are not allowed to do that",
+            notFound: "the comment was not found",
+            rateLimited: "too many requests, please wait a moment",
+            server: "server error",
+            unknown: "an unknown error occurred",
+        },
     },
     reviewDetail: {
         loadError: "An error occurred while loading the review.",

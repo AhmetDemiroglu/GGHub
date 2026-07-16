@@ -5,7 +5,7 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/en";
 import "dayjs/locale/tr";
 import { Check, Flag, MessageSquare, Pencil, ThumbsDown, ThumbsUp, Trash2, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { MentionText } from "@core/components/base/mention-text";
@@ -25,30 +25,35 @@ dayjs.extend(relativeTime);
 
 /** Bu derinlikten sonra yanit verilemez; girinti okunmaz hale geliyor. */
 const MAX_REPLY_DEPTH = 2;
+/** X modeli: az sayida yanit dogrudan gorunur, kalabaliksa katlanir. */
+const AUTO_EXPAND_REPLY_LIMIT = 3;
 
 interface ReviewCommentItemProps {
     comment: ReviewComment;
     onVote: (commentId: number, value: number) => void;
-    isVoting: boolean;
+    /** Bekleyen islemler id ile tasinir; kokun bayragi yanitlara sizmasin diye. */
+    votingCommentId: number | null;
     onDelete: (commentId: number) => void;
-    isDeleting: boolean;
-    onSubmitComment: (data: ReviewCommentForCreation) => void;
-    isSubmittingComment: boolean;
-    onUpdateComment: (commentId: number, content: string) => void;
-    isUpdatingComment: boolean;
+    deletingCommentId: number | null;
+    onSubmitComment: (data: ReviewCommentForCreation) => Promise<unknown>;
+    /** Ucusta olan TUM yanit gonderimleri. Tek id yetmiyordu: es zamanli iki gonderimde
+     * biri digerinin gostergesini sifirlayip cift gonderim penceresi aciyordu. */
+    submittingParentIds: ReadonlySet<number | null>;
+    onUpdateComment: (commentId: number, content: string) => Promise<unknown>;
+    updatingCommentId: number | null;
     depth?: number;
 }
 
 export function ReviewCommentItem({
     comment,
     onVote,
-    isVoting,
+    votingCommentId,
     onDelete,
-    isDeleting,
+    deletingCommentId,
     onSubmitComment,
-    isSubmittingComment,
+    submittingParentIds,
     onUpdateComment,
-    isUpdatingComment,
+    updatingCommentId,
     depth = 0,
 }: ReviewCommentItemProps) {
     const t = useI18n();
@@ -57,17 +62,39 @@ export function ReviewCommentItem({
     const currentUserId = user ? Number(user.id) : undefined;
     const isOwner = currentUserId === comment.owner.id;
 
-    const [showReplies, setShowReplies] = useState(false);
+    const replyCount = comment.replies?.length ?? 0;
+
+    /**
+     * null = kullanici henuz ac/kapa karari vermedi, otomatik davran.
+     *
+     * Eskiden useState(replyCount > 0 && ...) idi ve useState BASLANGIC degerini
+     * yalnizca ilk mount'ta hesaplar: 0 yanitla acilan bir yorum showReplies=false
+     * kaliyordu, sonra yanit yazinca yanit gelmesine ragmen GIZLI kaliyordu ve
+     * kullanicinin "Yanitlari Goster"e basmasi gerekiyordu.
+     */
+    const [repliesOverride, setRepliesOverride] = useState<boolean | null>(null);
+    const showReplies = repliesOverride ?? (replyCount > 0 && replyCount <= AUTO_EXPAND_REPLY_LIMIT);
     const [isReplying, setIsReplying] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(comment.content);
     const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
 
+    // Duzenleme kapaliyken tampon sunucudaki icerikle senkron kalsin.
+    useEffect(() => {
+        if (!isEditing) {
+            setEditContent(comment.content);
+        }
+    }, [comment.content, isEditing]);
+
+    const isVoting = votingCommentId === comment.id;
+    const isDeleting = deletingCommentId === comment.id;
+    const isUpdatingComment = updatingCommentId === comment.id;
+    const isSubmittingReply = submittingParentIds.has(comment.id);
+
     const voteScore = comment.upvotes - comment.downvotes;
     const currentUserVote = comment.currentUserVote;
     const timeAgo = dayjs(comment.createdAt).locale(locale === "tr" ? "tr" : "en").fromNow();
     const ownerName = displayName(comment.owner);
-    const replyCount = comment.replies?.length ?? 0;
     const canVote = !isVoting && !isOwner;
 
     const handleVoteClick = (value: number) => {
@@ -77,6 +104,15 @@ export function ReviewCommentItem({
         }
         if (canVote) {
             onVote(comment.id, value);
+        }
+    };
+
+    const handleSaveEdit = async () => {
+        try {
+            await onUpdateComment(comment.id, editContent);
+            setIsEditing(false);
+        } catch {
+            // Basarisizsa duzenleyici acik kalir; hata mesajini bolum toast ile gosterir.
         }
     };
 
@@ -111,7 +147,7 @@ export function ReviewCommentItem({
                         <MentionText text={comment.content} />
                     </p>
                 ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-2">
                         <Textarea
                             value={editContent}
                             onChange={(event) => setEditContent(event.target.value)}
@@ -120,16 +156,7 @@ export function ReviewCommentItem({
                             autoFocus
                         />
                         <div className="flex gap-2">
-                            <Button
-                                size="sm"
-                                variant="default"
-                                className="cursor-pointer"
-                                onClick={() => {
-                                    onUpdateComment(comment.id, editContent);
-                                    setIsEditing(false);
-                                }}
-                                disabled={isUpdatingComment || editContent.trim().length === 0}
-                            >
+                            <Button size="sm" variant="default" className="cursor-pointer" onClick={handleSaveEdit} disabled={isUpdatingComment || editContent.trim().length === 0}>
                                 <Check className="mr-1 h-3 w-3" /> {t("reviewComments.save")}
                             </Button>
                             <Button
@@ -245,16 +272,15 @@ export function ReviewCommentItem({
 
                 {/* Satir ici yanit formu */}
                 {isReplying && (
-                    <div className="mt-3">
+                    <div className="pt-2">
                         <ReviewCommentForm
-                            onSubmit={(values) => {
-                                onSubmitComment({
-                                    content: values.content,
-                                    parentCommentId: comment.id,
-                                });
+                            onSubmit={async (values) => {
+                                await onSubmitComment(values);
                                 setIsReplying(false);
+                                // Yanit kokun replies dizisine gomulu doner; katli kalirsa kullanici hicbir sey gormez.
+                                setRepliesOverride(true);
                             }}
-                            isPending={isSubmittingComment}
+                            isPending={isSubmittingReply}
                             parentCommentId={comment.id}
                             onCancelReply={() => setIsReplying(false)}
                             placeholder={t("reviewComments.replyPlaceholder", { name: ownerName })}
@@ -262,13 +288,13 @@ export function ReviewCommentItem({
                     </div>
                 )}
 
-                {/* Yanitlari goster/gizle */}
+                {/* Yanitlari goster/gizle: yalnizca katlanacak kadar cok yanit varsa anlamli */}
                 {replyCount > 0 && (
                     <Button
                         variant="ghost"
                         size="sm"
-                        className="mt-2 h-auto cursor-pointer px-2 py-1 text-xs text-muted-foreground hover:text-primary"
-                        onClick={() => setShowReplies(!showReplies)}
+                        className="mt-1 h-auto cursor-pointer px-2 py-1 text-xs text-muted-foreground hover:text-primary"
+                        onClick={() => setRepliesOverride(!showReplies)}
                         aria-expanded={showReplies}
                     >
                         {showReplies ? t("reviewComments.hideReplies") : t("reviewComments.showReplies", { count: replyCount })}
@@ -277,19 +303,19 @@ export function ReviewCommentItem({
 
                 {/* Ozyinelemeli yanitlar */}
                 {showReplies && replyCount > 0 && (
-                    <div className="mt-4 space-y-4">
+                    <div className="mt-2 space-y-3">
                         {comment.replies.map((reply) => (
                             <div key={reply.id} className="ml-2 border-l-2 border-border/40 pl-1 sm:ml-6 sm:pl-3 md:ml-8 md:pl-4">
                                 <ReviewCommentItem
                                     comment={reply}
                                     onVote={onVote}
-                                    isVoting={isVoting}
+                                    votingCommentId={votingCommentId}
                                     onDelete={onDelete}
-                                    isDeleting={isDeleting}
+                                    deletingCommentId={deletingCommentId}
                                     onSubmitComment={onSubmitComment}
-                                    isSubmittingComment={isSubmittingComment}
+                                    submittingParentIds={submittingParentIds}
                                     onUpdateComment={onUpdateComment}
-                                    isUpdatingComment={isUpdatingComment}
+                                    updatingCommentId={updatingCommentId}
                                     depth={depth + 1}
                                 />
                             </div>

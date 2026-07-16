@@ -250,50 +250,16 @@ cmd_status() {
   echo "Loglar  : $LOG_DIR"
   echo
 
-  # Ilerleme ve harcama dogrudan DB'den okunuyor: botun tum durumu orada, yani Mac kapansa da
-  # kaybolmuyor. psql yoksa bu bolum sessizce atlanir.
-  if ! command -v psql >/dev/null 2>&1; then
-    c_dim "(psql kurulu degil; ilerleme ve harcama ozeti atlandi)"
+  # Ilerleme ve harcama ozetini worker'in kendisine sorduruyoruz (--status: okur, basar, cikar;
+  # hicbir job tetiklemez). Boylece psql gibi bir bagimlilik yok ve ozet, botun kullandigi
+  # baglanti dizesinin ta kendisini kullaniyor: gosterilen sey ile botun gordugu sey hep ayni.
+  if [ ! -x "$APP_DIR/GGHub.Worker" ]; then
+    c_dim "(kurulum yok; ozet icin once: gghub-bot install)"
     return
   fi
-  [ -f "$CONFIG" ] || return
 
-  local conn
-  conn="$(python3 - "$CONFIG" <<'PY' 2>/dev/null || true
-import json, re, sys
-raw = open(sys.argv[1]).read()
-raw = re.sub(r'^\s*//.*$', '', raw, flags=re.M)
-cs = json.loads(raw).get("ConnectionStrings", {}).get("DefaultConnection", "")
-kv = dict(p.split("=", 1) for p in cs.split(";") if "=" in p)
-h, p, d = kv.get("Host"), kv.get("Port", "5432"), kv.get("Database")
-u, pw = kv.get("Username"), kv.get("Password")
-if all([h, d, u, pw]):
-    print(f"postgresql://{u}:{pw}@{h}:{p}/{d}?sslmode=require")
-PY
-)"
-  [ -n "$conn" ] || return
-
-  psql "$conn" -qtAX -v ON_ERROR_STOP=0 <<'SQL' 2>/dev/null | sed 's/^/  /' || c_dim "(DB'ye ulasilamadi)"
-\pset border 0
-SELECT 'Gemini bu ay : ' || to_char(COALESCE(MAX("SpentUsd"), 0), 'FM990.0000') || ' USD'
-       || '  (~' || to_char(COALESCE(MAX("SpentUsd"), 0) * 47.1, 'FM9990') || ' TL)'
-       || '  |  ' || COALESCE(MAX("CallCount"), 0) || ' cagri'
-FROM "GeminiUsages" WHERE "PeriodKey" = to_char(now() AT TIME ZONE 'utc', 'YYYY-MM');
-
-SELECT 'Detay kuyrugu: ' || count(*) FILTER (WHERE "DetailSyncedAt" IS NULL) || ' bekliyor / '
-       || count(*) || ' toplam' FROM "Games";
-
-SELECT 'Aciklama     : ' || count(*) FILTER (WHERE "Description" <> '' AND "Description" IS NOT NULL) || ' dolu'
-FROM "Games";
-
-SELECT 'Ceviri       : ' || count(*) FILTER (WHERE "DescriptionTr" IS NOT NULL AND "DescriptionTr" <> "Description")
-       || ' cevrilmis' FROM "Games";
-
-SELECT 'Metacritic   : ' || count(*) FILTER (WHERE "Metacritic" IS NOT NULL) || ' puanli / '
-       || count(*) FILTER (WHERE "MetacriticUrl" IS NULL AND "Metacritic" IS NULL) || ' denenmemis'
-FROM "Games";
-SQL
-  echo
+  DOTNET_ROOT="$HOME/.dotnet" GGHUB_BOT_HOME="$BOT_HOME" DOTNET_ENVIRONMENT=Production \
+    "$APP_DIR/GGHub.Worker" --status 2>/dev/null || c_dim "(DB'ye ulasilamadi; 'gghub-bot logs' ile bak)"
 }
 
 case "${1:-}" in

@@ -1051,6 +1051,8 @@ export const trMessages = {
         deleteComment: "Yorumu Sil",
         deleteConfirmTitle: "Yorumu Sil",
         deleteConfirmMessage: "Bu yorumu silmek istediğine emin misin?",
+        upvote: "Olumlu oy ver",
+        downvote: "Olumsuz oy ver",
         reply: "Yanıtla",
         replyPlaceholder: "{username} kullanıcısına yanıt yaz...",
         showReplies: "{count} yanıtı göster",

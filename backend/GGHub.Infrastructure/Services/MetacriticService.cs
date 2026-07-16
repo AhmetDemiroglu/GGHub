@@ -1,4 +1,5 @@
 using GGHub.Application.Interfaces;
+using GGHub.Core.Specifications;
 using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Text.Json;
@@ -258,8 +259,12 @@ namespace GGHub.Infrastructure.Services
             return best;
         }
 
-        // "DOOM (2016)" -> "doom", "S.T.A.L.K.E.R.: Clear Sky" -> "stalkerclearsky".
-        // RAWG parantez icinde yil/platform yazarken Metacritic yazmiyor; noktalama da iki tarafta tutarsiz.
+        /// <summary>
+        /// "DOOM (2016)" -> "doom", "God of War: Ragnarök" -> "godofwarragnarok".
+        /// RAWG ile Metacritic ayni oyunu farkli yaziyor: RAWG parantez icinde yil/platform
+        /// ekliyor, noktalama iki tarafta tutarsiz ve en sinsisi, aksanlar farkli
+        /// ("Ragnarök" vs "Ragnarok" — tek karakter yuzunden 94 puanli oyun kaciriliyordu).
+        /// </summary>
         private static string NormalizeTitle(string? title)
         {
             if (string.IsNullOrWhiteSpace(title))
@@ -267,6 +272,8 @@ namespace GGHub.Infrastructure.Services
                 return string.Empty;
             }
 
+            // Parantez icini at. Bu adim katlamadan ONCE olmali: katlama parantezleri de siliyor,
+            // yani sonra yapsaydik "DOOM (2016)" -> "doom2016" olur ve "doom" ile hic eslesmezdi.
             var builder = new StringBuilder(title.Length);
             var depth = 0;
 
@@ -283,13 +290,18 @@ namespace GGHub.Infrastructure.Services
                         depth--;
                     }
                 }
-                else if (depth == 0 && char.IsLetterOrDigit(ch))
+                else if (depth == 0)
                 {
-                    builder.Append(char.ToLowerInvariant(ch));
+                    builder.Append(ch);
                 }
             }
 
-            return builder.ToString();
+            // Diakritik katlamasi BILEREK burada yeniden yazilmiyor. UsernameNormalizer,
+            // "ahmetdemiroglu vs ahmetdemiroğlu" olayindan sonra tam bu is icin yazilmis ve
+            // sinanmis tek dogru yer: NFKC + ToLowerInvariant + NFD'nin cozemedigi harfler icin
+            // acik esleme + NFD ile ayirip NonSpacingMark atma. Sonucta ö->o, ğ->g, é->e.
+            // Ayrica [a-z0-9_.] disini attigi icin bosluk ve noktalama da temizleniyor.
+            return UsernameNormalizer.Normalize(builder.ToString());
         }
 
         private bool TryParseMetacriticDate(string? dateStr, out DateTime result)

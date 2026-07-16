@@ -121,7 +121,15 @@ namespace GGHub.Infrastructure.Services
                         (g.MetacriticUrl == BuildStatusMarker(MetacriticService.StatusHttpError) && g.LastSyncedAt <= now - TransientRetryInterval) ||
                         (g.MetacriticUrl == BuildStatusMarker(MetacriticService.StatusParseError) && g.LastSyncedAt <= now - TransientRetryInterval) ||
                         (g.MetacriticUrl == BuildStatusMarker(MetacriticService.StatusException) && g.LastSyncedAt <= now - TransientRetryInterval))
-                    .OrderBy(g => g.LastSyncedAt)
+                    // Populerlige gore, en cok eklenen once. Eskiden OrderBy(LastSyncedAt) idi, yani
+                    // kuyruk ice aktarim sirasindaydi ve bot saatlerini "Ahmet's Zombie Chess",
+                    // "ROBLOX ADM BETA" gibi Metacritic'in hicbir zaman incelemedigi itch.io
+                    // oyunlarina harciyordu; Half-Life 2: Lost Coast, BioShock Remastered ve Fallout
+                    // ise siranin arkasinda bekliyordu. Tarama ~21 saat surdugu icin siranin onemi var:
+                    // yarida kesilirse degerli oyunlar bitmis olmali.
+                    // "?? 0" sart: Postgres'te ORDER BY x DESC NULL'lari BASA koyar (NULLS FIRST),
+                    // bu olmadan RawgAdded'i bilinmeyen 175 cop oyun en basa gecerdi.
+                    .OrderByDescending(g => g.RawgAdded ?? 0)
                     .Take(30)
                     .Select(g => g.Id)
                     .ToListAsync(stoppingToken);

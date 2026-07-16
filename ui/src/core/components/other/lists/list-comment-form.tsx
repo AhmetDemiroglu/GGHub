@@ -8,8 +8,7 @@ import { MentionTextarea } from "@core/components/base/mention-textarea";
 import { Loader, Send } from "lucide-react";
 import type { UserListCommentForCreation } from "@/models/list/list.model";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
-import { useForm, UseFormReturn } from "react-hook-form";
-import { forwardRef, useImperativeHandle } from "react";
+import { useForm } from "react-hook-form";
 import { useAuth } from "@core/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { getMyProfile } from "@/api/profile/profile.api";
@@ -22,14 +21,16 @@ const commentFormSchema = z.object({
 type CommentFormSchemaType = z.infer<typeof commentFormSchema>;
 
 interface ListCommentFormProps {
-    onSubmit: (values: UserListCommentForCreation) => void;
+    /** Başarılı olursa form KENDİNİ temizler. Eskiden bölüm, ref ile sadece ana formu
+     *  sıfırlıyordu; yanıt gönderince ana kutudaki taslak siliniyordu. */
+    onSubmit: (values: UserListCommentForCreation) => Promise<unknown>;
     isPending: boolean;
     parentCommentId?: number;
     onCancelReply?: () => void;
     placeholder?: string;
 }
 
-export const ListCommentForm = forwardRef<{ reset: () => void }, ListCommentFormProps>(({ onSubmit, isPending, parentCommentId, onCancelReply, placeholder = "Yorumunuzu yazın..." }, ref) => {
+export function ListCommentForm({ onSubmit, isPending, parentCommentId, onCancelReply, placeholder = "Yorumunuzu yazın..." }: ListCommentFormProps) {
     const { user } = useAuth();
     const { data: myProfile } = useQuery({
         queryKey: ["my-profile"],
@@ -44,15 +45,16 @@ export const ListCommentForm = forwardRef<{ reset: () => void }, ListCommentForm
         },
     });
 
-    useImperativeHandle(ref, () => ({
-        reset: () => form.reset({ content: "" }),
-    }));
-
-    const handleFormSubmit = (values: CommentFormSchemaType) => {
-        onSubmit({
-            content: values.content,
-            parentCommentId: parentCommentId,
-        });
+    const handleFormSubmit = async (values: CommentFormSchemaType) => {
+        try {
+            await onSubmit({
+                content: values.content,
+                parentCommentId: parentCommentId,
+            });
+            form.reset({ content: "" });
+        } catch {
+            // Hata mesajını bölüm toast ile gösterir; taslak kaybolmasın diye form korunur.
+        }
     };
 
     const avatarSrc = getImageUrl(myProfile?.profileImageUrl);
@@ -95,5 +97,4 @@ export const ListCommentForm = forwardRef<{ reset: () => void }, ListCommentForm
             </form>
         </Form>
     );
-});
-ListCommentForm.displayName = "ListCommentForm";
+}

@@ -9,7 +9,7 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/tr";
 import { ThumbsUp, ThumbsDown, MessageSquare, Trash2, Pencil, X, Check, Flag } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Textarea } from "@core/components/ui/textarea";
 import { toast } from "sonner";
 import { MentionText } from "@core/components/base/mention-text";
@@ -20,17 +20,25 @@ import { displayName } from "@/core/lib/display-name";
 dayjs.extend(relativeTime);
 dayjs.locale("tr");
 
+/** Bu derinlikten sonra yanit verilemez; girinti okunmaz hale geliyor. */
+const MAX_REPLY_DEPTH = 2;
+/** X modeli: az sayida yanit dogrudan gorunur, kalabaliksa katlanir. */
+const AUTO_EXPAND_REPLY_LIMIT = 3;
+
 interface ListCommentItemProps {
     comment: UserListComment;
     listId: number;
     onVote: (commentId: number, value: number) => void;
-    isVoting: boolean;
+    /** Bekleyen islemler id ile tasinir; kokun bayragi yanitlara sizmasin diye. */
+    votingCommentId: number | null;
     onDelete: (commentId: number) => void;
-    isDeleting: boolean;
-    onSubmitComment: (data: UserListCommentForCreation) => void;
-    isSubmittingComment: boolean;
-    onUpdateComment: (commentId: number, content: string) => void;
-    isUpdatingComment: boolean;
+    deletingCommentId: number | null;
+    onSubmitComment: (data: UserListCommentForCreation) => Promise<unknown>;
+    /** Ucusta olan TUM yanit gonderimleri. Tek id yetmiyordu: es zamanli iki gonderimde
+     * biri digerinin gostergesini sifirlayip cift gonderim penceresi aciyordu. */
+    submittingParentIds: ReadonlySet<number | null>;
+    onUpdateComment: (commentId: number, content: string) => Promise<unknown>;
+    updatingCommentId: number | null;
     depth?: number;
 }
 
@@ -38,29 +46,60 @@ export function ListCommentItem({
     comment,
     listId,
     onVote,
-    isVoting,
+    votingCommentId,
     onDelete,
-    isDeleting,
+    deletingCommentId,
     onSubmitComment,
-    isSubmittingComment,
+    submittingParentIds,
     onUpdateComment,
-    isUpdatingComment,
+    updatingCommentId,
     depth = 0,
 }: ListCommentItemProps) {
     const { user } = useAuth();
     const currentUserId = user ? Number(user.id) : undefined;
     const isOwner = currentUserId === comment.owner.id;
 
-    const [showReplies, setShowReplies] = useState(false);
-    const [isReplying, setIsReplying] = useState(false);
+    const replyCount = comment.replies?.length ?? 0;
 
+    /**
+     * null = kullanici henuz ac/kapa karari vermedi, otomatik davran.
+     *
+     * Eskiden useState(replyCount > 0 && ...) idi ve useState BASLANGIC degerini
+     * yalnizca ilk mount'ta hesaplar: 0 yanitla acilan bir yorum showReplies=false
+     * kaliyordu, sonra yanit yazinca yanit gelmesine ragmen GIZLI kaliyordu ve
+     * kullanicinin "Yanitlari Goster"e basmasi gerekiyordu.
+     */
+    const [repliesOverride, setRepliesOverride] = useState<boolean | null>(null);
+    const showReplies = repliesOverride ?? (replyCount > 0 && replyCount <= AUTO_EXPAND_REPLY_LIMIT);
+    const [isReplying, setIsReplying] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(comment.content);
     const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
 
+    // Düzenleme kapalıyken tampon sunucudaki içerikle senkron kalsın.
+    useEffect(() => {
+        if (!isEditing) {
+            setEditContent(comment.content);
+        }
+    }, [comment.content, isEditing]);
+
+    const isVoting = votingCommentId === comment.id;
+    const isDeleting = deletingCommentId === comment.id;
+    const isUpdatingComment = updatingCommentId === comment.id;
+    const isSubmittingReply = submittingParentIds.has(comment.id);
+
     const voteScore = comment.upvotes - comment.downvotes;
     const currentUserVote = comment.currentUserVote;
     const timeAgo = dayjs(comment.createdAt).fromNow();
+
+    const handleSaveEdit = async () => {
+        try {
+            await onUpdateComment(comment.id, editContent);
+            setIsEditing(false);
+        } catch {
+            // Başarısızsa düzenleyici açık kalır; hata mesajını bölüm toast ile gösterir.
+        }
+    };
 
     return (
         <div
@@ -92,19 +131,10 @@ export function ListCommentItem({
                         <MentionText text={comment.content} />
                     </p>
                 ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-2">
                         <Textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} className="text-sm min-h-[80px] resize-none" disabled={isUpdatingComment} autoFocus />
                         <div className="flex gap-2">
-                            <Button
-                                size="sm"
-                                variant="default"
-                                className="cursor-pointer"
-                                onClick={() => {
-                                    onUpdateComment(comment.id, editContent);
-                                    setIsEditing(false);
-                                }}
-                                disabled={isUpdatingComment || editContent.trim().length === 0}
-                            >
+                            <Button size="sm" variant="default" className="cursor-pointer" onClick={handleSaveEdit} disabled={isUpdatingComment || editContent.trim().length === 0}>
                                 <Check className="mr-1 h-3 w-3" /> Kaydet
                             </Button>
                             <Button
@@ -184,7 +214,7 @@ export function ListCommentItem({
                     </div>
 
                     {/* Yanıtla Butonu */}
-                    {user && depth < 2 && (
+                    {user && depth < MAX_REPLY_DEPTH && (
                         <Button variant="ghost" size="sm" className="h-auto px-2 py-1 text-xs hover:bg-primary/10 hover:text-primary cursor-pointer" onClick={() => setIsReplying(!isReplying)}>
                             <MessageSquare className="mr-1 h-3 w-3" /> {isReplying ? "İptal" : "Yanıtla"}
                         </Button>
@@ -235,16 +265,15 @@ export function ListCommentItem({
 
                 {/* Inline Reply Form */}
                 {isReplying && (
-                    <div className="mt-3">
+                    <div className="pt-2">
                         <ListCommentForm
-                            onSubmit={(values) => {
-                                onSubmitComment({
-                                    content: values.content,
-                                    parentCommentId: comment.id,
-                                });
+                            onSubmit={async (values) => {
+                                await onSubmitComment(values);
                                 setIsReplying(false);
+                                // Yanıt kökün replies dizisine gömülü döner; katlı kalırsa kullanıcı hiçbir şey görmez.
+                                setRepliesOverride(true);
                             }}
-                            isPending={isSubmittingComment}
+                            isPending={isSubmittingReply}
                             parentCommentId={comment.id}
                             onCancelReply={() => setIsReplying(false)}
                             placeholder={`${displayName(comment.owner)} kullanıcısına yanıt yazın...`}
@@ -253,28 +282,34 @@ export function ListCommentItem({
                 )}
 
                 {/* Yanıtları Göster/Gizle Butonu */}
-                {comment.replies && comment.replies.length > 0 && (
-                    <Button variant="ghost" size="sm" className="h-auto px-2 py-1 text-xs text-muted-foreground hover:text-primary mt-2 cursor-pointer" onClick={() => setShowReplies(!showReplies)}>
-                        {showReplies ? "Yanıtları Gizle" : `${comment.replies.length} Yanıtı Göster`}
+                {replyCount > 0 && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto px-2 py-1 text-xs text-muted-foreground hover:text-primary mt-1 cursor-pointer"
+                        onClick={() => setRepliesOverride(!showReplies)}
+                        aria-expanded={showReplies}
+                    >
+                        {showReplies ? "Yanıtları Gizle" : `${replyCount} Yanıtı Göster`}
                     </Button>
                 )}
 
                 {/* Recursive Replies Render */}
-                {showReplies && comment.replies && comment.replies.length > 0 && (
-                    <div className="mt-4 space-y-4">
+                {showReplies && comment.replies && replyCount > 0 && (
+                    <div className="mt-2 space-y-3">
                         {comment.replies.map((reply) => (
                             <div key={reply.id} className="ml-2 sm:ml-6 md:ml-8 pl-1 sm:pl-3 md:pl-4 border-l-2 border-border/40">
                                 <ListCommentItem
                                     comment={reply}
                                     listId={listId}
                                     onVote={onVote}
-                                    isVoting={isVoting}
+                                    votingCommentId={votingCommentId}
                                     onDelete={onDelete}
-                                    isDeleting={isDeleting}
+                                    deletingCommentId={deletingCommentId}
                                     onSubmitComment={onSubmitComment}
-                                    isSubmittingComment={isSubmittingComment}
+                                    submittingParentIds={submittingParentIds}
                                     onUpdateComment={onUpdateComment}
-                                    isUpdatingComment={isUpdatingComment}
+                                    updatingCommentId={updatingCommentId}
                                     depth={depth + 1}
                                 />
                             </div>

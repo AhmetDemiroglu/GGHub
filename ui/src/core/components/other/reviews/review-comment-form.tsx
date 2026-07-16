@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { forwardRef, useImperativeHandle, useMemo } from "react";
+import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { Loader, Send } from "lucide-react";
@@ -30,17 +30,16 @@ const buildSchema = (t: TranslateFn) =>
 type ReviewCommentFormValues = z.infer<ReturnType<typeof buildSchema>>;
 
 interface ReviewCommentFormProps {
-    onSubmit: (values: ReviewCommentForCreation) => void;
+    /** Basarili olursa form KENDINI temizler. Eskiden bolum, ref ile sadece ana formu
+     *  sifirliyordu; yanit gonderince ana kutudaki taslak siliniyordu. */
+    onSubmit: (values: ReviewCommentForCreation) => Promise<unknown>;
     isPending: boolean;
     parentCommentId?: number;
     onCancelReply?: () => void;
     placeholder?: string;
 }
 
-export const ReviewCommentForm = forwardRef<{ reset: () => void }, ReviewCommentFormProps>(function ReviewCommentForm(
-    { onSubmit, isPending, parentCommentId, onCancelReply, placeholder },
-    ref
-) {
+export function ReviewCommentForm({ onSubmit, isPending, parentCommentId, onCancelReply, placeholder }: ReviewCommentFormProps) {
     const t = useI18n();
     const { user } = useAuth();
     const { data: myProfile } = useQuery({
@@ -58,15 +57,16 @@ export const ReviewCommentForm = forwardRef<{ reset: () => void }, ReviewComment
         },
     });
 
-    useImperativeHandle(ref, () => ({
-        reset: () => form.reset({ content: "" }),
-    }));
-
-    const handleFormSubmit = (values: ReviewCommentFormValues) => {
-        onSubmit({
-            content: values.content,
-            parentCommentId,
-        });
+    const handleFormSubmit = async (values: ReviewCommentFormValues) => {
+        try {
+            await onSubmit({
+                content: values.content,
+                parentCommentId,
+            });
+            form.reset({ content: "" });
+        } catch {
+            // Hata mesajini bolum toast ile gosterir; taslak kaybolmasin diye form korunur.
+        }
     };
 
     const avatarSrc = getImageUrl(myProfile?.profileImageUrl);
@@ -112,4 +112,4 @@ export const ReviewCommentForm = forwardRef<{ reset: () => void }, ReviewComment
             </form>
         </Form>
     );
-});
+}

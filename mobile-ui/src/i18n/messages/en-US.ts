@@ -1099,6 +1099,8 @@ export const enUSMessages = {
         deleteComment: "Delete Comment",
         deleteConfirmTitle: "Delete Comment",
         deleteConfirmMessage: "Are you sure you want to delete this comment?",
+        upvote: "Upvote",
+        downvote: "Downvote",
         reply: "Reply",
         replyPlaceholder: "Reply to {username}...",
         showReplies: "Show {count} replies",

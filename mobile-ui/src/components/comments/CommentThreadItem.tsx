@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Pressable, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
 import { Button } from '@/src/components/common/Button';
 import { MentionText } from '@/src/components/common/MentionText';
-import { MentionInput } from '@/src/components/common/MentionInput';
+import { CommentComposer } from '@/src/components/comments/CommentComposer';
 import { UserLinkAvatar, UserLinkName, type LinkableUser } from '@/src/components/common/UserLink';
 import { useConfirm } from '@/src/components/common/ConfirmDialog';
+import { formatTimeAgo } from '@/src/utils/format';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 
 /**
@@ -36,14 +37,22 @@ export interface ThreadComment {
 /** Sunucu tam olarak 3 seviye ic ice yanit doner: 0, 1, 2. */
 const MAX_REPLY_DEPTH = 2;
 
+/**
+ * Bu sayiya kadar yanit ACIK acilir (X/Twitter davranisi: yanitlar gonderinin
+ * hemen altinda durur). Uzeri, basligi ezmesin diye katlanmis baslar.
+ */
+const AUTO_EXPAND_REPLIES = 3;
+
 export interface CommentThreadItemProps {
   comment: ThreadComment;
   /** 0 = kok yorum. Yanit butonu depth < 2 iken gosterilir. */
   depth?: number;
   onVote: (commentId: number, value: number) => void;
-  onUpdate: (commentId: number, content: string) => void;
+  /** Sunucu cevabini bekleyebilmek icin promise dondurur (bkz. handleSaveEdit). */
+  onUpdate: (commentId: number, content: string) => Promise<unknown> | void;
   onDelete: (commentId: number) => void;
-  onReply: (parentCommentId: number, content: string) => void;
+  /** Sunucu cevabini bekleyebilmek icin promise dondurur (bkz. handleSendReply). */
+  onReply: (parentCommentId: number, content: string) => Promise<unknown> | void;
   /** Suan yanit gonderilen kok yorumun id'si (yalnizca o formda spinner doner). */
   pendingReplyFor?: number | null;
   /** Suan guncellenen yorumun id'si. */
@@ -66,23 +75,29 @@ export function CommentThreadItem({
   const confirm = useConfirm();
   const t = messages.commentsSection;
 
+  const replies = comment.replies ?? [];
+
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
   const [isReplying, setIsReplying] = useState(false);
   const [replyContent, setReplyContent] = useState('');
-  const [showReplies, setShowReplies] = useState(false);
+  // Az sayida yanit dogrudan gorunur; sadece kalabalik basliklar katlanir.
+  const [showReplies, setShowReplies] = useState(replies.length <= AUTO_EXPAND_REPLIES);
 
   const isOwner = !!user && Number(user.id) === comment.owner.id;
   const score = comment.upvotes - comment.downvotes;
-  const replies = comment.replies ?? [];
   const canReply = !!user && depth < MAX_REPLY_DEPTH;
   const isUpdating = pendingUpdateFor === comment.id;
   const isSubmittingReply = pendingReplyFor === comment.id;
-  const timeAgo = new Date(comment.createdAt).toLocaleDateString();
+  const timeAgo = formatTimeAgo(comment.createdAt);
 
   const handleVote = (value: number) => {
     if (!user) return;
-    onVote(comment.id, comment.currentUserVote === value ? 0 : value);
+    // Oyu geri cekmek icin AYNI degeri tekrar gonder; backend toggle ediyor
+    // (UserListCommentService/ReviewCommentService.VoteOnCommentAsync).
+    // Eskiden 0 gonderiliyordu, backend ise Value == 0'i acikca reddedip 400 firlatiyor:
+    // yani mobilde oy geri cekme her seferinde hata veriyordu.
+    onVote(comment.id, value);
   };
 
   const handleDelete = async () => {
@@ -95,17 +110,32 @@ export function CommentThreadItem({
     if (ok) onDelete(comment.id);
   };
 
-  const handleSaveEdit = () => {
-    if (!editContent.trim()) return;
-    onUpdate(comment.id, editContent.trim());
-    setIsEditing(false);
+  // Duzenleyici sunucu cevabina KADAR acik ve dolu kalir: hata olursa kullanici
+  // yazdigini kaybetmez ve Kaydet butonunun spinner'i gercekten donebilir.
+  const handleSaveEdit = async () => {
+    const next = editContent.trim();
+    if (!next || isUpdating) return;
+    try {
+      await onUpdate(comment.id, next);
+      setIsEditing(false);
+    } catch {
+      // Hata bildirimi mutasyon katmaninda gosterildi; form acik birakiliyor.
+    }
   };
 
-  const handleSendReply = () => {
-    if (!replyContent.trim()) return;
-    onReply(comment.id, replyContent.trim());
-    setReplyContent('');
-    setIsReplying(false);
+  // Ayni gerekce: yanit kutusu ancak gonderim BASARILI olunca temizlenip kapanir
+  // ve yeni yanit hemen gorunur olsun diye alt agac aciliyor.
+  const handleSendReply = async () => {
+    const next = replyContent.trim();
+    if (!next || isSubmittingReply) return;
+    try {
+      await onReply(comment.id, next);
+      setReplyContent('');
+      setIsReplying(false);
+      setShowReplies(true);
+    } catch {
+      // Hata bildirimi mutasyon katmaninda gosterildi; yazilan metin duruyor.
+    }
   };
 
   return (
@@ -114,6 +144,7 @@ export function CommentThreadItem({
         styles.container,
         // Kok yorumlar ayrilir; yanitlar zaten sol cizgiyle gruplanmis durumda.
         depth === 0 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+        depth > 0 && styles.containerNested,
       ]}
     >
       <View style={styles.header}>
@@ -131,10 +162,23 @@ export function CommentThreadItem({
         </UserLinkName>
         {isOwner && !isEditing ? (
           <View style={styles.actions}>
-            <Pressable onPress={() => setIsEditing(true)} hitSlop={8}>
+            <Pressable
+              onPress={() => setIsEditing(true)}
+              style={styles.actionButton}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel={t.editComment}
+            >
               <Ionicons name="pencil-outline" size={16} color={colors.textMuted} />
             </Pressable>
-            <Pressable onPress={handleDelete} hitSlop={8}>
+            <Pressable
+              onPress={handleDelete}
+              // Yikici eylem, iyi huylu komsusundan bilerek uzak tutulur.
+              style={[styles.actionButton, styles.destructiveAction]}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel={t.deleteComment}
+            >
               <Ionicons name="trash-outline" size={16} color={colors.error} />
             </Pressable>
           </View>
@@ -162,6 +206,7 @@ export function CommentThreadItem({
               title={messages.common.cancel}
               variant="ghost"
               size="sm"
+              disabled={isUpdating}
               onPress={() => {
                 setIsEditing(false);
                 setEditContent(comment.content);
@@ -180,7 +225,14 @@ export function CommentThreadItem({
       )}
 
       <View style={styles.voteRow}>
-        <Pressable onPress={() => handleVote(1)} style={styles.voteButton} hitSlop={4}>
+        <Pressable
+          onPress={() => handleVote(1)}
+          style={styles.voteButton}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={t.upvote}
+          accessibilityState={{ selected: comment.currentUserVote === 1 }}
+        >
           <Ionicons
             name={comment.currentUserVote === 1 ? 'chevron-up-circle' : 'chevron-up-circle-outline'}
             size={20}
@@ -195,7 +247,14 @@ export function CommentThreadItem({
         >
           {score}
         </Text>
-        <Pressable onPress={() => handleVote(-1)} style={styles.voteButton} hitSlop={4}>
+        <Pressable
+          onPress={() => handleVote(-1)}
+          style={styles.voteButton}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={t.downvote}
+          accessibilityState={{ selected: comment.currentUserVote === -1 }}
+        >
           <Ionicons
             name={
               comment.currentUserVote === -1 ? 'chevron-down-circle' : 'chevron-down-circle-outline'
@@ -209,7 +268,9 @@ export function CommentThreadItem({
           <Pressable
             onPress={() => setIsReplying((prev) => !prev)}
             style={styles.replyButton}
-            hitSlop={6}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={isReplying ? messages.common.cancel : t.reply}
           >
             <Ionicons name="arrow-undo-outline" size={14} color={colors.textMuted} />
             <Text style={[styles.replyText, { color: colors.textMuted }]}>
@@ -220,44 +281,28 @@ export function CommentThreadItem({
       </View>
 
       {isReplying ? (
-        <View
-          style={[
-            styles.replyBox,
-            { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder },
-          ]}
-        >
-          <MentionInput
-            value={replyContent}
-            onChangeText={setReplyContent}
-            placeholder={t.replyPlaceholder.replace('{username}', comment.owner.username)}
-            style={[styles.replyInput, { color: colors.text }]}
-            containerStyle={styles.replyInputContainer}
-            maxLength={1000}
-          />
-          <Pressable
-            onPress={handleSendReply}
-            disabled={!replyContent.trim() || isSubmittingReply}
-            style={styles.sendButton}
-            hitSlop={6}
-          >
-            {isSubmittingReply ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Ionicons
-                name="send"
-                size={18}
-                color={replyContent.trim() ? colors.primary : colors.textMuted}
-              />
-            )}
-          </Pressable>
-        </View>
+        <CommentComposer
+          value={replyContent}
+          onChangeText={setReplyContent}
+          placeholder={t.replyPlaceholder.replace('{username}', comment.owner.username)}
+          onSend={handleSendReply}
+          isSending={isSubmittingReply}
+          autoFocus
+          compact
+          style={styles.replyComposer}
+        />
       ) : null}
 
       {replies.length > 0 ? (
         <Pressable
           onPress={() => setShowReplies((prev) => !prev)}
           style={styles.repliesToggle}
-          hitSlop={6}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: showReplies }}
+          accessibilityLabel={
+            showReplies ? t.hideReplies : t.showReplies.replace('{count}', String(replies.length))
+          }
         >
           <Ionicons
             name={showReplies ? 'chevron-up' : 'chevron-down'}
@@ -265,9 +310,7 @@ export function CommentThreadItem({
             color={colors.primary}
           />
           <Text style={[styles.repliesToggleText, { color: colors.primary }]}>
-            {showReplies
-              ? t.hideReplies
-              : t.showReplies.replace('{count}', String(replies.length))}
+            {showReplies ? t.hideReplies : t.showReplies.replace('{count}', String(replies.length))}
           </Text>
         </Pressable>
       ) : null}
@@ -297,10 +340,15 @@ const styles = StyleSheet.create({
   container: {
     paddingVertical: Spacing.md,
   },
+  containerNested: {
+    // Ic ice yanitlar kok yorumdan daha sik nefes alir; aksi halde 3. seviyede
+    // dikey bosluk yorumun kendisinden fazla yer kapliyor.
+    paddingVertical: Spacing.sm,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
   },
   headerInfo: {
     flex: 1,
@@ -315,15 +363,23 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
-    gap: Spacing.md,
+    alignItems: 'center',
+  },
+  actionButton: {
+    // 16px ikon + 8+8 padding + 6 hitSlop = 44x44 dokunma hedefi (HIG/Material).
+    padding: Spacing.sm,
+  },
+  destructiveAction: {
+    // hitSlop'lar cakismasin (6+6) ve yanlis dokunus silmeye dusmesin diye.
+    marginLeft: Spacing.md,
   },
   content: {
     fontSize: FontSize.md,
     lineHeight: 20,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
   },
   editContainer: {
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
   },
   editInput: {
     borderWidth: 1,
@@ -357,39 +413,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginLeft: Spacing.sm,
-    paddingVertical: 2,
+    marginLeft: Spacing.md,
+    paddingVertical: Spacing.sm,
   },
   replyText: {
     fontSize: FontSize.sm,
     fontWeight: '600',
   },
-  replyBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    borderWidth: 1,
-    borderRadius: BorderRadius.lg,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+  replyComposer: {
     marginTop: Spacing.sm,
-  },
-  replyInputContainer: {
-    flex: 1,
-  },
-  replyInput: {
-    fontSize: FontSize.md,
-    maxHeight: 80,
-    paddingVertical: 4,
-  },
-  sendButton: {
-    paddingLeft: Spacing.sm,
-    paddingBottom: 2,
   },
   repliesToggle: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: Spacing.sm,
+    marginTop: Spacing.xs,
+    paddingVertical: Spacing.xs,
     alignSelf: 'flex-start',
   },
   repliesToggleText: {
@@ -398,7 +437,7 @@ const styles = StyleSheet.create({
   },
   repliesWrap: {
     marginTop: Spacing.xs,
-    marginLeft: Spacing.sm,
+    marginLeft: Spacing.xs,
     paddingLeft: Spacing.md,
     borderLeftWidth: 2,
   },

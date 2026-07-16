@@ -6,8 +6,9 @@ import {
   ScrollView,
   Image,
   Pressable,
-  ActivityIndicator,
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -166,7 +167,23 @@ export default function ListDetailScreen() {
   return (
     <ScreenWrapper noPadding safeArea={false} swipeBackEnabled={false}>
       <ScreenHeader title={list.name || messages.nav.screenTitles.listDetail} />
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarHeight + Spacing.md }]}>
+      {/*
+        Klavye acikken yorum kutusu ekranda kalmali (Android'de manifest zaten
+        adjustResize; iOS'ta bunu KAV yapar) ve keyboardShouldPersistTaps olmadan
+        dis ScrollView ilk dokunusu "klavyeyi kapat" diye yutuyordu: bahis cipi,
+        gonder, yanitla, oy ve sil ilk dokunusta calismiyordu.
+      */}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: tabBarHeight + Spacing.md },
+          ]}
+        >
         <View style={styles.headerSection}>
           <View style={styles.titleRow}>
             <Text style={[styles.listName, { color: colors.text }]}>{list.name}</Text>
@@ -280,7 +297,8 @@ export default function ListDetailScreen() {
         </View>
 
         <CommentSection listId={numericId} />
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {isOwner && list ? (
         <>
@@ -302,6 +320,9 @@ export default function ListDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   scrollContent: {},
   headerSection: {
     padding: Spacing.lg,

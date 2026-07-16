@@ -86,7 +86,9 @@ export const ReviewCard = ({ review, onVote, onDelete, onUpdate }: ReviewCardPro
     };
 
     return (
-        <div id={`review-${review.id}`} className="bg-card/50 border border-border rounded-xl pt-4 px-4 hover:border-border/80 transition-colors">
+        // pb-4 sart: kartin alt dolgusu hic yoktu, yorumlar acilinca son eleman
+        // kart kenarina sifir mesafede yapisiyordu.
+        <div id={`review-${review.id}`} className="bg-card/50 border border-border rounded-xl pt-4 px-4 pb-4 hover:border-border/80 transition-colors">
             {/* Üst Kısım: Avatar ve Info */}
             <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -223,7 +225,7 @@ export const ReviewCard = ({ review, onVote, onDelete, onUpdate }: ReviewCardPro
                 </div>
             </div>
 
-            {showComments && <ReviewCommentSection reviewId={review.id} hideTitle className="mt-0 border-t-0 pt-2" />}
+            {showComments && <ReviewCommentSection reviewId={review.id} hideTitle className="mt-0 border-t-0 pt-3 pb-0" />}
 
             <ReportDialog isOpen={isReportDialogOpen} onOpenChange={setIsReportDialogOpen} entityType="Review" entityId={review.id} />
         </div>

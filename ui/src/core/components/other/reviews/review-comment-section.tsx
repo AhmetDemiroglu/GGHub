@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useInfiniteQuery, useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { Loader } from "lucide-react";
 import { toast } from "sonner";
@@ -74,8 +74,23 @@ export function ReviewCommentSection({ reviewId, className, hideTitle = false }:
 
     const reasonText = useCallback((error: unknown) => t(`reviewComments.reason.${commentErrorReason(error)}`), [t]);
 
+    /**
+     * Ucusta olan gonderimler, ust yorum id'sine gore (kok icin null).
+     *
+     * Neden set: tek bir createCommentMutation ornegini hem kok formu hem her yanit
+     * formu paylasiyor, ve mutation.variables REACT QUERY'DE yalnizca EN SON mutate
+     * cagrisini yansitiyor. A'ya yanit gonderirken koke de gonderince variables
+     * uzerine yaziliyor, A'nin formu ucus ortasinda yeniden aktiflesiyor ve tekrar
+     * basinca CIFT yanit gidiyordu.
+     */
+    const [submittingParentIds, setSubmittingParentIds] = useState<ReadonlySet<number | null>>(new Set());
+
     const createCommentMutation = useMutation({
         mutationFn: (newComment: ReviewCommentForCreation) => reviewCommentApi.createReviewComment(reviewId, newComment),
+        onMutate: (newComment: ReviewCommentForCreation) => {
+            const parentKey = newComment.parentCommentId ?? null;
+            setSubmittingParentIds((prev) => new Set(prev).add(parentKey));
+        },
         onSuccess: () => {
             toast.success(t("reviewComments.added"));
             // Yanitlar kokun replies dizisine gomulu geldigi icin kok listesi yeniden cekilmeli.
@@ -83,6 +98,14 @@ export function ReviewCommentSection({ reviewId, className, hideTitle = false }:
         },
         onError: (error) => {
             toast.error(t("reviewComments.addError", { message: reasonText(error) }));
+        },
+        onSettled: (_data, _error, newComment) => {
+            const parentKey = newComment.parentCommentId ?? null;
+            setSubmittingParentIds((prev) => {
+                const next = new Set(prev);
+                next.delete(parentKey);
+                return next;
+            });
         },
     });
 
@@ -191,8 +214,7 @@ export function ReviewCommentSection({ reviewId, className, hideTitle = false }:
     const votingCommentId = voteCommentMutation.isPending ? voteCommentMutation.variables?.commentId ?? null : null;
     const deletingCommentId = deleteCommentMutation.isPending ? deleteCommentMutation.variables ?? null : null;
     const updatingCommentId = updateCommentMutation.isPending ? updateCommentMutation.variables?.commentId ?? null : null;
-    const submittingParentId = createCommentMutation.isPending ? createCommentMutation.variables?.parentCommentId ?? null : null;
-    const isSubmittingRootComment = createCommentMutation.isPending && createCommentMutation.variables?.parentCommentId == null;
+    const isSubmittingRootComment = submittingParentIds.has(null);
 
     return (
         <div className={cn("mt-6 border-t border-border pt-5 pb-1", className)}>
@@ -229,7 +251,7 @@ export function ReviewCommentSection({ reviewId, className, hideTitle = false }:
                         onDelete={handleDelete}
                         deletingCommentId={deletingCommentId}
                         onSubmitComment={handleSubmitComment}
-                        submittingParentId={submittingParentId}
+                        submittingParentIds={submittingParentIds}
                         onUpdateComment={handleUpdateComment}
                         updatingCommentId={updatingCommentId}
                     />

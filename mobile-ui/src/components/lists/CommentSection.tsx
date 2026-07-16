@@ -1,17 +1,17 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
 import { CommentItem } from './CommentItem';
-import { MentionInput } from '@/src/components/common/MentionInput';
+import { CommentComposer } from '@/src/components/comments/CommentComposer';
 import { useToast } from '@/src/components/common/Toast';
 import { getListComments, createListComment } from '@/src/api/list-comment';
 import { fillErrorTemplate } from '@/src/utils/format';
 import { APP_CONFIG } from '@/src/constants/config';
-import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
+import { Spacing, FontSize } from '@/src/constants/theme';
 
 interface CommentSectionProps {
   listId: number;
@@ -23,6 +23,7 @@ export function CommentSection({ listId }: CommentSectionProps) {
   const { isAuthenticated } = useAuth();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
+  const router = useRouter();
   const [commentText, setCommentText] = useState('');
   const pageSize = APP_CONFIG.paginationDefaults.pageSize;
   const t = messages.commentsSection;
@@ -53,18 +54,47 @@ export function CommentSection({ listId }: CommentSectionProps) {
   });
 
   const handleSend = () => {
-    if (!commentText.trim()) return;
+    if (!commentText.trim() || createMutation.isPending) return;
     createMutation.mutate(commentText.trim());
   };
 
   const comments = useMemo(() => (data?.pages ?? []).flatMap((page) => page.items), [data]);
   const totalCount = data?.pages[0]?.totalCount ?? 0;
 
+  // Composer LISTENIN USTUNDE durur. Sunucu kokleri yeniden eskiye siralar
+  // (UserListCommentService: OrderByDescending(CreatedAt)), yani yeni yorum listenin
+  // BASINA eklenir. Composer altta olsaydi kullanici yorumunu yazip gonderdikten
+  // sonra ekranin gorunmeyen tepesine eklenirdi ve "gitmedi" sanirdi. Web ve X de boyle.
+  const composer = isAuthenticated ? (
+    <CommentComposer
+      value={commentText}
+      onChangeText={setCommentText}
+      placeholder={t.placeholder}
+      onSend={handleSend}
+      isSending={createMutation.isPending}
+      style={styles.composer}
+    />
+  ) : (
+    <View style={styles.loginRow}>
+      <Text style={[styles.loginPrompt, { color: colors.textSecondary }]}>{t.loginPrompt}</Text>
+      <Pressable
+        onPress={() => router.push('/(auth)/login')}
+        hitSlop={10}
+        accessibilityRole="link"
+        accessibilityLabel={t.loginLink}
+      >
+        <Text style={[styles.loginLink, { color: colors.primary }]}>{t.loginLink}</Text>
+      </Pressable>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <Text style={[styles.title, { color: colors.text }]}>
         {t.title.replace('{count}', String(totalCount))}
       </Text>
+
+      {composer}
 
       {isLoading ? (
         <ActivityIndicator size="small" color={colors.primary} style={styles.loader} />
@@ -82,6 +112,10 @@ export function CommentSection({ listId }: CommentSectionProps) {
               onPress={() => fetchNextPage()}
               disabled={isFetchingNextPage}
               style={styles.loadMoreButton}
+              accessibilityRole="button"
+              accessibilityLabel={t.loadMore
+                .replace('{shown}', String(comments.length))
+                .replace('{total}', String(totalCount))}
             >
               {isFetchingNextPage ? (
                 <ActivityIndicator size="small" color={colors.primary} />
@@ -97,40 +131,6 @@ export function CommentSection({ listId }: CommentSectionProps) {
         </>
       )}
 
-      {isAuthenticated ? (
-        <View
-          style={[
-            styles.inputContainer,
-            { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder },
-          ]}
-        >
-          <MentionInput
-            value={commentText}
-            onChangeText={setCommentText}
-            placeholder={t.placeholder}
-            style={[styles.input, { color: colors.text }]}
-            containerStyle={styles.inputInner}
-            maxLength={1000}
-          />
-          <Pressable
-            onPress={handleSend}
-            disabled={!commentText.trim() || createMutation.isPending}
-            style={styles.sendButton}
-          >
-            {createMutation.isPending ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Ionicons
-                name="send"
-                size={20}
-                color={commentText.trim() ? colors.primary : colors.textMuted}
-              />
-            )}
-          </Pressable>
-        </View>
-      ) : (
-        <Text style={[styles.loginPrompt, { color: colors.textSecondary }]}>{t.loginPrompt}</Text>
-      )}
     </View>
   );
 }
@@ -138,12 +138,13 @@ export function CommentSection({ listId }: CommentSectionProps) {
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.lg,
   },
   title: {
     fontSize: FontSize.xl,
     fontWeight: '700',
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
   },
   loader: {
     marginVertical: Spacing.lg,
@@ -154,9 +155,12 @@ const styles = StyleSheet.create({
     marginVertical: Spacing.lg,
   },
   emptyText: {
-    fontSize: FontSize.md,
+    fontSize: FontSize.sm,
     textAlign: 'center',
-    marginVertical: Spacing.lg,
+    // Bos durum bilerek KUCUK: eskiden bos bir baslikta ekranin ortasinda
+    // kocaman bir bosluk kaliyordu.
+    marginTop: Spacing.xs,
+    marginBottom: Spacing.sm,
   },
   loadMoreButton: {
     paddingVertical: Spacing.md,
@@ -166,30 +170,22 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     fontWeight: '600',
   },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    borderWidth: 1,
-    borderRadius: BorderRadius.lg,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+  composer: {
     marginTop: Spacing.md,
   },
-  inputInner: {
-    flex: 1,
-  },
-  input: {
-    fontSize: FontSize.md,
-    maxHeight: 80,
-    paddingVertical: 4,
-  },
-  sendButton: {
-    paddingLeft: Spacing.sm,
-    paddingBottom: 2,
+  loginRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: Spacing.xs,
+    marginTop: Spacing.md,
   },
   loginPrompt: {
     fontSize: FontSize.sm,
-    textAlign: 'center',
-    marginTop: Spacing.md,
+  },
+  loginLink: {
+    fontSize: FontSize.sm,
+    fontWeight: '700',
   },
 });

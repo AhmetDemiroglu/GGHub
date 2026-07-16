@@ -1,5 +1,14 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, Pressable } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Image,
+  Pressable,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -64,7 +73,20 @@ export default function ReviewDetailScreen() {
   return (
     <ScreenWrapper noPadding safeArea={false} swipeBackEnabled={false}>
       <ScreenHeader title={messages.nav.screenTitles.reviewDetail} />
-      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + Spacing.xl }}>
+      {/*
+        Klavye acikken yorum kutusu ekranda kalmali (Android'de manifest zaten
+        adjustResize; iOS'ta bunu KAV yapar) ve keyboardShouldPersistTaps olmadan
+        dis ScrollView ilk dokunusu "klavyeyi kapat" diye yutuyordu: bahis cipi,
+        gonder, yanitla, oy ve sil ilk dokunusta calismiyordu.
+      */}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: insets.bottom + Spacing.xl }}
+        >
         <View style={[styles.reviewCard, { backgroundColor: colors.surface }]}>
           <View style={styles.header}>
             <UserLinkAvatar user={review.user} size={40} />
@@ -132,12 +154,16 @@ export default function ReviewDetailScreen() {
         </View>
 
         <ReviewCommentSection reviewId={numericId} />
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   reviewCard: {
     margin: Spacing.lg,
     borderRadius: BorderRadius.lg,
