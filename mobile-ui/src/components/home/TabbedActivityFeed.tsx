@@ -47,13 +47,9 @@ const TAB_TYPE: Record<TabKey, ActivityType | undefined> = {
 
 const PAGE_SIZE = 10;
 const FAB_VISIBLE_OFFSET = 1200;
-// İçeriğin parmağı izlerken kayabileceği azami mesafe (dampened drag).
-const DRAG_MAX = 72;
-// Çıkış/giriş kayması: commit anında içeriğin süzüldüğü mesafe.
-const EXIT_SHIFT = DRAG_MAX + 26;
-// Sekme değiştirme eşiği: ham parmak yolu (px) veya hızlı flick.
-const COMMIT_DX = 60;
+// Hızlı flick eşiği; mesafe eşiği ekran genişliğine oranla hesaplanır.
 const COMMIT_VELOCITY = 650;
+const COMMIT_RATIO = 0.3;
 // Jest niyet eşikleri (manuel aktivasyon).
 const INTENT_DX = 22;
 const INTENT_DY = 14;
@@ -118,7 +114,6 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
 
   // İnteraktif sekme sürüklemesi: içerik dampened kayar, pill parmağı izler.
   const dragX = useSharedValue(0);
-  const contentOpacity = useSharedValue(1);
   const tabIndexSV = useSharedValue(0);
   // Jest durumu: mod (yok/sekme/sidebar), niyet başlangıcı, commit bekliyor mu.
   const gestureMode = useSharedValue(MODE_NONE);
@@ -140,10 +135,11 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
   // Pill göstergesinin sürekli konumu: aktif indeks + sürükleme kesri.
   // Kesir yalnızca parmak ekrandayken uygulanır; commit sonrası giriş
   // animasyonunda pill tabIndexSV spring'ini takip eder (geri seğirme olmaz).
+  // Eşleme X gibi sayfa-oranlıdır: kartlar yarım ekran kaydıysa pill yarım pill kaymıştır.
   const pillProgress = useDerivedValue(() => {
     const dragFraction =
       gestureMode.value === MODE_TABS
-        ? interpolate(-dragX.value, [-DRAG_MAX, 0, DRAG_MAX], [-0.6, 0, 0.6], Extrapolation.CLAMP)
+        ? interpolate(-dragX.value, [-width, 0, width], [-1, 0, 1], Extrapolation.CLAMP)
         : 0;
     return tabIndexSV.value + dragFraction;
   });
@@ -248,9 +244,9 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
-  // Commit'in JS fazı: veri değişir, yeni içerik ters taraftan süzülüp oturur.
-  // Ekran bu anda soluk olduğu için dragX'in taraf değiştirmesi GÖRÜNMEZ
-  // (önceki sürümdeki "göz kırpma/seyirme" tam bu zıplamaydı).
+  // Commit'in JS fazı: eski kartlar ekran dışına akmışken veri değişir ve
+  // yeni kartlar karşı kenardan girip oturur (X'in push geçişi). Header ve
+  // pill bar bu sırada HİÇ kımıldamaz; kayan yalnızca kart hücreleridir.
   const commitSwitch = useCallback(
     (dir: 1 | -1) => {
       haptics.selection();
@@ -259,12 +255,11 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
         const next = Math.min(Math.max(idx + dir, 0), TAB_ORDER.length - 1);
         return TAB_ORDER[next];
       });
-      dragX.value = dir === 1 ? EXIT_SHIFT : -EXIT_SHIFT;
-      dragX.value = withSpring(0, Springs.smooth);
-      contentOpacity.value = withTiming(1, { duration: 110 });
+      dragX.value = dir === 1 ? width : -width;
+      dragX.value = withSpring(0, Springs.snappy);
       pendingCommit.value = false;
     },
-    [dragX, contentOpacity, pendingCommit],
+    [dragX, pendingCommit, width],
   );
 
   /**
@@ -332,10 +327,14 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
           if (gestureMode.value !== MODE_TABS) return;
           const idx = tabIndexSV.value;
           const raw = event.translationX;
-          // Kenarda (son sekmeden ileri) direnç artar.
+          // Kenarda (son sekmeden ileri) kısa, dirençli esneme; içeride X gibi
+          // parmağı 1:1'e yakın izleyen gerçek sayfa sürüklemesi.
           const atEdge = (raw > 0 && idx <= 0) || (raw < 0 && idx >= TAB_ORDER.length - 1);
-          const damp = atEdge ? 0.12 : 0.42;
-          dragX.value = Math.max(-DRAG_MAX, Math.min(DRAG_MAX, raw * damp));
+          if (atEdge) {
+            dragX.value = Math.max(-56, Math.min(56, raw * 0.14));
+          } else {
+            dragX.value = Math.max(-width, Math.min(width, raw * 0.92));
+          }
         })
         .onEnd((event) => {
           if (gestureMode.value === MODE_SIDEBAR) {
@@ -356,16 +355,15 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
           const dir: 1 | -1 = raw < 0 ? 1 : -1;
           const target = idx + dir;
           const commit =
-            (Math.abs(raw) > COMMIT_DX || Math.abs(event.velocityX) > COMMIT_VELOCITY) &&
+            (Math.abs(raw) > width * COMMIT_RATIO || Math.abs(event.velocityX) > COMMIT_VELOCITY) &&
             target >= 0 &&
             target < TAB_ORDER.length;
 
           if (commit) {
-            // Faz 1 (UI thread): içerik çekiş yönünde süzülür + soluklaşır,
-            // bitince JS fazı veri değişimini soluk perde arkasında yapar.
+            // Faz 1 (UI thread): eski kartlar kaldıkları yerden ekran dışına
+            // akar; bitince JS fazı veriyi değiştirir ve yenisi karşıdan girer.
             pendingCommit.value = true;
-            contentOpacity.value = withTiming(0.25, { duration: 70 });
-            dragX.value = withTiming(dir === 1 ? -EXIT_SHIFT : EXIT_SHIFT, { duration: 70 }, (finished) => {
+            dragX.value = withTiming(dir === 1 ? -width : width, { duration: 130 }, (finished) => {
               if (finished) runOnJS(commitSwitch)(dir);
             });
           } else {
@@ -385,7 +383,6 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
         }),
     [
       dragX,
-      contentOpacity,
       tabIndexSV,
       gestureMode,
       touchStartX,
@@ -399,6 +396,7 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
       sidebarProgress,
       openSidebar,
       commitSwitch,
+      width,
     ],
   );
 
@@ -443,10 +441,22 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
     listRef.current?.scrollToOffset({ offset: 0, animated: true });
   }, []);
 
-  const contentDragStyle = useAnimatedStyle(() => ({
+  // Kayma dönüşümü YALNIZCA veri hücrelerine uygulanır (feed kartları).
+  // ListHeader (hero, PYMK, liderlik, pill bar) render ağacında hücre
+  // olmadığı için yerinden kımıldamaz: X'teki gibi sadece akış sayfalanır.
+  const cardsSlideStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: dragX.value }],
-    opacity: contentOpacity.value,
   }));
+
+  const CardCellRenderer = useMemo(() => {
+    return function CardCell({ children, style, ...props }: React.ComponentProps<typeof Animated.View>) {
+      return (
+        <Animated.View {...props} style={[style, cardsSlideStyle]}>
+          {children}
+        </Animated.View>
+      );
+    };
+  }, [cardsSlideStyle]);
 
   // Pinned bar frame-perfect görünürlük (worklet); dokunuşlar state ile açılır.
   const pinnedBarStyle = useAnimatedStyle(() => ({
@@ -498,11 +508,12 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
       }}
     >
       <GestureDetector gesture={panGesture}>
-        <Animated.View style={[styles.root, contentDragStyle]}>
+        <Animated.View style={styles.root}>
           <AnimatedFlatList
             ref={listRef}
             data={active.items}
             keyExtractor={activityKey}
+            CellRendererComponent={CardCellRenderer}
             renderItem={({ item }) => (
               <View style={styles.cardWrap}>
                 <FeedCard activity={item} />
