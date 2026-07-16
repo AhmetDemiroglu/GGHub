@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppState, AppStateStatus, Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -20,7 +20,12 @@ import { usePushNotifications } from '@/src/hooks/use-push-notifications';
 
 export { ErrorBoundary } from 'expo-router';
 
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// Acilis yolundaki bir await beklenmedik sekilde asilsa bile uygulama acilis logosunda
+// sonsuza kadar takili kalmasin diye emniyet subabi. Normal akista oturum SecureStore'dan
+// ms'ler icinde okunur ve bu timer hic ates etmez.
+const BOOT_FAILSAFE_MS = 2500;
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -35,14 +40,25 @@ const queryClient = new QueryClient({
 function RootLayoutNav() {
   const { isDark } = useTheme();
   const { isLoading } = useAuth();
+  const [bootTimedOut, setBootTimedOut] = useState(false);
 
   usePushNotifications();
 
   useEffect(() => {
-    if (!isLoading) {
-      SplashScreen.hideAsync();
-    }
+    if (!isLoading) return;
+    const timer = setTimeout(() => setBootTimedOut(true), BOOT_FAILSAFE_MS);
+    return () => clearTimeout(timer);
   }, [isLoading]);
+
+  // Tek kapi: hem splash'i kaldirir hem <Stack>'i mount eder. Boylece navigator mount
+  // olmadan deep-link push'lanmaya calisilmaz (bkz. use-push-notifications flush effect).
+  const bootReady = !isLoading || bootTimedOut;
+
+  useEffect(() => {
+    if (bootReady) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [bootReady]);
 
   // react-query "focus" kavramini RN AppState'e bagla: uygulama one gelince stale
   // query'ler (okunmamis sayaclari, konusma listesi) otomatik tazelensin. Arka planda
@@ -56,7 +72,7 @@ function RootLayoutNav() {
     return () => sub.remove();
   }, []);
 
-  if (isLoading) {
+  if (!bootReady) {
     return null;
   }
 

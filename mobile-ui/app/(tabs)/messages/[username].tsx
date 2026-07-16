@@ -48,8 +48,13 @@ export default function MessageThreadScreen() {
     paddingBottom: Math.max(tabBarHeight, keyboard.height.value),
   }));
 
-  const { joinConversation, leaveConversation, onReceiveMessage, onMessagesRead } =
-    useContext(SignalRContext);
+  const {
+    connectionStatus,
+    joinConversation,
+    leaveConversation,
+    onReceiveMessage,
+    onMessagesRead,
+  } = useContext(SignalRContext);
 
   const [localMessages, setLocalMessages] = useState<MessageDto[]>([]);
 
@@ -79,13 +84,17 @@ export default function MessageThreadScreen() {
     }
   }, [threadQuery.data, queryClient]);
 
+  // Socket BAGLANDIKTAN sonra join et. Cold-start'ta ekran, baglanti kurulmadan mount
+  // oluyordu; joinConversation sessizce atlaniyor ve bir daha denenmedigi icin ekran
+  // acikken gelen canli mesajlar kaciriliyordu. connectionStatus bagimliligi, baglanti
+  // kurulunca (ve reconnect sonrasi) join'i otomatik tekrarlar.
   useEffect(() => {
-    if (!username) return;
+    if (!username || connectionStatus !== 'connected') return;
     joinConversation(username);
     return () => {
       leaveConversation(username);
     };
-  }, [username, joinConversation, leaveConversation]);
+  }, [username, connectionStatus, joinConversation, leaveConversation]);
 
   useEffect(() => {
     const unsub1 = onReceiveMessage((...args: unknown[]) => {
@@ -151,7 +160,13 @@ export default function MessageThreadScreen() {
 
   if (!isAuthenticated) return <AuthRequiredView />;
 
-  if (threadQuery.isLoading) return <LoadingScreen />;
+  // Gosterecek mesaj yokken fetch suruyorsa BOS liste degil loading goster: bildirimle
+  // gelindiginde sorgu (enabled: isAuthenticated) bir tik gec basliyor ve disabled sorgu
+  // "isLoading" sayilmadigi icin, bildirime konu mesaj hic yokmus gibi bos ekran
+  // goruluyordu (kullanici cikip tekrar giriyordu).
+  if ((threadQuery.isLoading || threadQuery.isFetching) && localMessages.length === 0) {
+    return <LoadingScreen />;
+  }
 
   // Partner avatarını thread mesajlarından türet; MessageDto gönderen/alıcı
   // profil resmini taşıyor, böylece header'da web'deki gibi resim görünür.

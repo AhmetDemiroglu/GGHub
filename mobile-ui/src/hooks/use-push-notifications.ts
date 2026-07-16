@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRootNavigationState, useRouter } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import { useAuth } from './use-auth';
 import { registerForPushNotificationsAsync } from '@/src/utils/push';
@@ -33,8 +33,13 @@ async function postWithRetry(fn: () => Promise<unknown>, attempts: number): Prom
 export function usePushNotifications() {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
+  const rootNavigationState = useRootNavigationState();
+  const [pendingLink, setPendingLink] = useState<string | null>(null);
   const registeredTokenRef = useRef<string | null>(null);
   const inFlightRef = useRef(false);
+
+  // Kok <Stack> mount olunca navigation state'in key'i tanimli olur; oncesinde undefined.
+  const isNavigationReady = !!rootNavigationState?.key;
 
   const ensureRegistered = useCallback(async () => {
     if (inFlightRef.current) return;
@@ -76,24 +81,40 @@ export function usePushNotifications() {
     return () => subscription.remove();
   }, [isAuthenticated, ensureRegistered]);
 
-  // Navigate when the user taps a notification (background or cold start).
+  // Bildirime dokunulunca linki HEMEN push etme, kuyruga al (background + cold start).
+  // Cold-start'ta bu callback, kok <Stack> daha mount olmadan cok once cagriliyordu;
+  // navigator yokken router.push "navigate before mounting the Root Layout" hatasi atip
+  // link sessizce kayboluyordu (uygulama varsayilan sekmeye aciliyordu). Artik link
+  // bekletilir, asagidaki flush effect router hazir olunca uygular.
   useEffect(() => {
-    const navigateFromResponse = (response: Notifications.NotificationResponse) => {
+    const queueFromResponse = (response: Notifications.NotificationResponse) => {
       const data = response.notification.request.content.data as { link?: string } | undefined;
       const link = data?.link;
       if (link) {
-        router.push(toMobileRoute(link) as never);
+        setPendingLink(link);
       }
     };
 
-    const subscription = Notifications.addNotificationResponseReceivedListener(navigateFromResponse);
+    const subscription = Notifications.addNotificationResponseReceivedListener(queueFromResponse);
 
-    Notifications.getLastNotificationResponseAsync().then((response) => {
-      if (response) {
-        navigateFromResponse(response);
-      }
-    });
+    // Cold start: uygulamayi acan bildirim.
+    Notifications.getLastNotificationResponseAsync()
+      .then((response) => {
+        if (response) {
+          queueFromResponse(response);
+        }
+      })
+      .catch(() => {});
 
     return () => subscription.remove();
-  }, [router]);
+  }, []);
+
+  // Router hazir olur olmaz bekleyen linki bir kez uygula. Auth'a BAGLAMA: public
+  // deep-link'ler (game/profile) oturumsuz da acilmali, korumali ekranlar zaten kendi
+  // icinde AuthRequiredView gosteriyor.
+  useEffect(() => {
+    if (!isNavigationReady || !pendingLink) return;
+    setPendingLink(null);
+    router.push(toMobileRoute(pendingLink) as never);
+  }, [isNavigationReady, pendingLink, router]);
 }

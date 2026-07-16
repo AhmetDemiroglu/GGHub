@@ -285,34 +285,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return;
           }
 
-          // Access token suresi dolmus: yenilemeyi dene.
-          try {
-            const result = await refreshAccessToken();
-            const refreshedUser = decodeUser(result.accessToken);
-            await persistSession({
-              accessToken: result.accessToken,
-              refreshToken: result.refreshToken,
-              user: refreshedUser,
-            });
-            setAccessToken(result.accessToken);
-            setRefreshToken(result.refreshToken);
-            setUser(refreshedUser);
-            scheduleTokenRefresh(result.accessToken);
-          } catch (refreshError) {
+          // Access token suresi dolmus: oturumu OPTIMISTIK geri yukle, yenilemeyi ARKA
+          // PLANDA tetikle. Refresh'i AWAIT etmek acilisi (isLoading -> splash) ag hizina
+          // kilitliyordu: bildirimle uyanan telefonda radyo yeni acilirken 15 sn'lik
+          // timeout'a kadar acilis logosunda takiliyorduk. Artik acilis ag'dan bagimsiz.
+          // Basarili refresh'i onTokensRefreshed (state + persist + reschedule) isler;
+          // ilk gercek istekteki 401'i de interceptor zaten seffaf yeniler.
+          setAccessToken(session.accessToken);
+          setRefreshToken(session.refreshToken);
+          setUser(session.user ?? decodeUser(session.accessToken));
+
+          refreshAccessToken().catch((refreshError) => {
             if (isAuthRejection(refreshError) || refreshError instanceof NoRefreshTokenError) {
               // Gercek red: refresh token gecersiz/revoked -> temiz logout.
-              await clearSession();
-              setAuthTokens(null, null);
-            } else {
-              // GECICI hata (ag hazir degil / timeout): oturumu SILME. Suresi dolmus
-              // access token ile de olsa optimistik geri yukle; interceptor ilk gercek
-              // istekte yeniden refresh dener. Android cold-start'taki "gecici hatada
-              // logout" bug'i boylece biter (iOS'ta zaten yasanmiyordu).
-              setAccessToken(session.accessToken);
-              setRefreshToken(session.refreshToken);
-              setUser(session.user ?? decodeUser(session.accessToken));
+              logout();
             }
-          }
+            // GECICI hata (ag hazir degil / timeout): oturumu SILME; optimistik restore
+            // ayakta kalir, interceptor ilk gercek istekte yeniden dener.
+          });
         }
       } catch {
         // SecureStore erisimi tamamen basarisiz: oturumu SILME; bir sonraki acilista
@@ -323,7 +313,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     loadTokens();
-  }, [scheduleTokenRefresh]);
+  }, [scheduleTokenRefresh, logout]);
 
   // Register logout callback with API client
   useEffect(() => {

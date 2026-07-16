@@ -46,6 +46,11 @@ export default function MessagesListScreen() {
     queryKey: ['conversations'],
     queryFn: getConversations,
     enabled: isAuthenticated,
+    // Liste her acilista taze cekilsin. Global 5 dk staleTime yuzunden, arka planda
+    // gelen mesaj sonrasi bildirimle donuldugunde son-mesaj onizlemesi/rozet bayat
+    // kaliyordu (thread ekrani zaten boyle sertlestirilmisti, liste asimetrikti).
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   useEffect(() => {
