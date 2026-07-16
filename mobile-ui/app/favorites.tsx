@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  RefreshControl,
   Image,
   Pressable,
 } from 'react-native';
@@ -38,6 +39,8 @@ export default function FavoritesScreen() {
     data: favorites,
     isLoading,
     isError,
+    refetch,
+    isRefetching,
   } = useQuery({
     queryKey: ['myFavorites', username],
     queryFn: () => getFavoritesList(username),
@@ -118,6 +121,9 @@ export default function FavoritesScreen() {
     <ScreenWrapper noPadding safeArea={false}>
       <ScreenHeader title={messages.nav.screenTitles.favorites} />
       <FlatList
+        refreshControl={
+          <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} colors={[colors.primary]} />
+        }
         data={games}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderGame}

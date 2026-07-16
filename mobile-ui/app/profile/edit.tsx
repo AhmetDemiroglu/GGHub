@@ -96,7 +96,7 @@ export default function ProfileEditScreen() {
   if (profileQuery.isLoading) return <LoadingScreen />;
 
   return (
-    <ScreenWrapper noPadding safeArea={false} swipeBackEnabled={false}>
+    <ScreenWrapper noPadding safeArea={false}>
       <ScreenHeader title={messages.nav.screenTitles.editProfile} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: tabBarHeight + Spacing.md }}>

@@ -6,6 +6,7 @@ import {
   FlatList,
   Image,
   Pressable,
+  RefreshControl,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,6 +39,8 @@ export default function UserReviewsScreen() {
     data: reviews,
     isLoading,
     isError,
+    refetch,
+    isRefetching,
   } = useQuery({
     queryKey: ['userReviews', resolvedUsername],
     queryFn: () => getReviewsByUser(resolvedUsername!),
@@ -72,22 +75,23 @@ export default function UserReviewsScreen() {
       const dateStr = new Date(item.createdAt).toLocaleDateString();
 
       return (
+        // Kartın tamamı inceleme detayına götürür (X deseni); kapağa dokunmak
+        // oyun sayfasına gider (iç Pressable derin hedef olarak kazanır).
         <Pressable
           style={[
             styles.reviewCard,
             { backgroundColor: colors.card, borderColor: colors.border },
           ]}
-          onPress={() => {
-            if (game) {
-              router.push(`/game/${game.slug}`);
-            }
-          }}
+          onPress={() => router.push(`/reviews/${item.id}`)}
         >
-          <View
+          <Pressable
             style={[
               styles.gameCover,
               { backgroundColor: colors.surfaceHighlight },
             ]}
+            onPress={() => {
+              if (game) router.push(`/game/${game.slug}`);
+            }}
           >
             {imageUrl ? (
               <Image
@@ -102,7 +106,7 @@ export default function UserReviewsScreen() {
                 color={colors.textMuted}
               />
             )}
-          </View>
+          </Pressable>
           <View style={styles.reviewContent}>
             <Text
               style={[styles.gameName, { color: colors.text }]}
@@ -117,9 +121,22 @@ export default function UserReviewsScreen() {
             >
               {item.content}
             </Text>
-            <Text style={[styles.dateText, { color: colors.textMuted }]}>
-              {dateStr}
-            </Text>
+            {/* X tarzı göstergeler: beğeni + yorum + tarih */}
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Ionicons
+                  name={(item.likeCount ?? 0) > 0 ? 'heart' : 'heart-outline'}
+                  size={14}
+                  color={(item.likeCount ?? 0) > 0 ? colors.error : colors.textMuted}
+                />
+                <Text style={[styles.statText, { color: colors.textMuted }]}>{item.likeCount ?? 0}</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Ionicons name="chatbubble-outline" size={13} color={colors.textMuted} />
+                <Text style={[styles.statText, { color: colors.textMuted }]}>{item.commentCount ?? 0}</Text>
+              </View>
+              <Text style={[styles.dateText, { color: colors.textMuted }]}>{dateStr}</Text>
+            </View>
           </View>
         </Pressable>
       );
@@ -131,7 +148,7 @@ export default function UserReviewsScreen() {
 
   if (isError) {
     return (
-      <ScreenWrapper noPadding safeArea={false} swipeBackEnabled={false}>
+      <ScreenWrapper noPadding safeArea={false}>
         <ScreenHeader title={headerTitle} />
         <EmptyState
           icon="alert-circle-outline"
@@ -142,13 +159,16 @@ export default function UserReviewsScreen() {
   }
 
   return (
-    <ScreenWrapper noPadding safeArea={false} swipeBackEnabled={false}>
+    <ScreenWrapper noPadding safeArea={false}>
       <ScreenHeader title={headerTitle} />
       <FlatList
         data={reviews ?? []}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderReview}
         contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + Spacing.md }]}
+        refreshControl={
+          <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} colors={[colors.primary]} />
+        }
         ListEmptyComponent={
           <EmptyState
             icon="chatbox-outline"
@@ -207,6 +227,20 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     lineHeight: 18,
     marginBottom: Spacing.xs,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.lg,
+    marginTop: Spacing.sm,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  statText: {
+    fontSize: FontSize.xs,
   },
   dateText: {
     fontSize: FontSize.xs,

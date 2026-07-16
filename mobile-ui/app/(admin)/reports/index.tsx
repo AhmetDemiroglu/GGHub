@@ -14,6 +14,7 @@ import { ReportStatus } from '@/src/models/report';
 import { translateReportStatus, getReportStatusVariant, translateEntityType } from '@/src/utils/report';
 import { APP_CONFIG } from '@/src/constants/config';
 import type { AdminReport, ReportFilterParams } from '@/src/models/admin';
+import { SwipeBackEdge } from '@/src/components/common/SwipeBackEdge';
 
 const variantToColor: Record<string, { bg: string; text: string }> = {
   info: { bg: '#3b82f620', text: '#3b82f6' },
@@ -104,6 +105,7 @@ export default function AdminReportsScreen() {
   );
 
   return (
+    <SwipeBackEdge>
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <Input
@@ -188,6 +190,7 @@ export default function AdminReportsScreen() {
         />
       )}
     </View>
+    </SwipeBackEdge>
   );
 }
 

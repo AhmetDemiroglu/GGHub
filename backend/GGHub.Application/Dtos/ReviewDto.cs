@@ -9,6 +9,9 @@
         public UserDto User { get; set; }
         public int? CurrentUserVote { get; set; }
         public int VoteScore { get; set; }
+        /// <summary>Yalnızca pozitif oy sayısı (feed kalbiyle aynı semantik).</summary>
+        public int LikeCount { get; set; }
+        public int CommentCount { get; set; }
         public GameSummaryDto? Game { get; set; }
     }
 }

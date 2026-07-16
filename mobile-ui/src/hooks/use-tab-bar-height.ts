@@ -1,6 +1,11 @@
 import { Platform } from 'react-native';
+import { usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Spacing } from '@/src/constants/theme';
+
+// AppTabBar yalnızca 5 sekme kökünde render edilir; diğer tüm ekranlar
+// root Stack'tedir ve altlarında bar yoktur.
+const TAB_ROOTS = ['/', '/discover', '/search', '/lists', '/profile'];
 
 /**
  * AppTabBar yüksekliği için tek kaynak.
@@ -25,7 +30,16 @@ export function useTabBarBottomInset() {
     : insets.bottom;
 }
 
-/** Barın ekranda kapladığı toplam yükseklik (core + safe-area). */
+/**
+ * Ekranın altında içerik için ayrılması gereken boşluk.
+ * Sekme köklerinde barın tam yüksekliği; root Stack ekranlarında (bar yok)
+ * yalnızca safe-area alt boşluğu döner. Böylece (tabs) dışına taşınan
+ * ekranlar ölü 54px padding taşımaz, klavye dock'ları da doğru oturur.
+ */
 export function useTabBarHeight() {
-  return TAB_BAR_CORE_HEIGHT + useTabBarBottomInset();
+  const insets = useSafeAreaInsets();
+  const pathname = usePathname();
+  const barInset = useTabBarBottomInset();
+  const isTabRoot = TAB_ROOTS.includes(pathname);
+  return isTabRoot ? TAB_BAR_CORE_HEIGHT + barInset : insets.bottom;
 }

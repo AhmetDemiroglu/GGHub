@@ -5,6 +5,7 @@ import { useLocale } from '@/src/hooks/use-locale';
 import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 import { ScreenHeader } from '@/src/components/shell';
+import { SwipeBackEdge } from '@/src/components/common/SwipeBackEdge';
 
 const sections = [
   {
@@ -61,6 +62,7 @@ export default function TermsScreen() {
   const lastUpdatedLabel = isTr ? 'Son G\u00FCncelleme' : 'Last Updated';
 
   return (
+    <SwipeBackEdge>
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScreenHeader title={pageTitle} />
       <ScrollView
@@ -88,6 +90,7 @@ export default function TermsScreen() {
         ))}
       </ScrollView>
     </View>
+  </SwipeBackEdge>
   );
 }
 

@@ -184,7 +184,7 @@ export default function MessageThreadScreen() {
     { username, profileImageUrl: partnerAvatarUrl };
 
   return (
-    <ScreenWrapper noPadding edges={['top']} swipeBackEnabled={false}>
+    <ScreenWrapper noPadding edges={['top']}>
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
         <TouchableOpacity
           onPress={() => {

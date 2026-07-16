@@ -17,6 +17,7 @@ import { Button } from '@/src/components/common/Button';
 import { useToast } from '@/src/components/common/Toast';
 import { FontSize, Spacing } from '@/src/constants/theme';
 import * as haptics from '@/src/utils/haptics';
+import { SwipeBackEdge } from '@/src/components/common/SwipeBackEdge';
 
 export default function ForgotPasswordScreen() {
   const { colors } = useTheme();
@@ -88,6 +89,7 @@ export default function ForgotPasswordScreen() {
   }
 
   return (
+    <SwipeBackEdge>
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -135,6 +137,7 @@ export default function ForgotPasswordScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+    </SwipeBackEdge>
   );
 }
 

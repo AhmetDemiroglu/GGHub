@@ -186,7 +186,7 @@ export default function OwnProfileScreen() {
   };
 
   return (
-    <ScreenWrapper noPadding safeArea={false} swipeBackEnabled={false}>
+    <ScreenWrapper noPadding safeArea={false}>
       <AppTopBar title={messages.nav.profile} />
 
       <ScrollView

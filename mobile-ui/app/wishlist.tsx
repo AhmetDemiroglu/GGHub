@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  RefreshControl,
   Image,
   Pressable,
 } from 'react-native';
@@ -35,6 +36,8 @@ export default function WishlistScreen() {
     data: wishlist,
     isLoading,
     isError,
+    refetch,
+    isRefetching,
   } = useQuery({
     queryKey: ['myWishlist'],
     queryFn: () => getMyWishlist(),
@@ -123,6 +126,9 @@ export default function WishlistScreen() {
     <ScreenWrapper noPadding safeArea={false}>
       <ScreenHeader title={messages.nav.screenTitles.wishlist} />
       <FlatList
+        refreshControl={
+          <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} colors={[colors.primary]} />
+        }
         data={games}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderGame}

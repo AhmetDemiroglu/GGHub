@@ -17,6 +17,7 @@ import { QuickSearch } from '@/src/components/admin/QuickSearch';
 import { TopCards } from '@/src/components/admin/TopCards';
 import { getDashboardStats, getRecentUsers, getRecentReviews, getReports } from '@/src/api/admin';
 import { ReportStatus } from '@/src/models/report';
+import { SwipeBackEdge } from '@/src/components/common/SwipeBackEdge';
 
 export default function AdminDashboard() {
   const { colors } = useTheme();
@@ -91,6 +92,7 @@ export default function AdminDashboard() {
   const stats = statsQuery.data;
 
   return (
+    <SwipeBackEdge>
     <>
       <Stack.Screen
         options={{
@@ -178,6 +180,7 @@ export default function AdminDashboard() {
       <TopCards />
     </ScrollView>
     </>
+    </SwipeBackEdge>
   );
 }
 

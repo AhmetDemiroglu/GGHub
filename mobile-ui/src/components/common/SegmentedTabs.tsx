@@ -4,8 +4,7 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  useAnimatedReaction,
-  runOnJS,
+  type SharedValue,
 } from 'react-native-reanimated';
 import { useTheme } from '@/src/hooks/use-theme';
 import { BorderRadius, FontSize, Spacing, Springs, Shadows } from '@/src/constants/theme';
@@ -20,7 +19,12 @@ interface SegmentedTabsProps<T extends string> {
   tabs: SegmentedTab<T>[];
   activeKey: T;
   onChange: (key: T) => void;
-  /** container genişliği içinde eşit dağıtılır */
+  /**
+   * Opsiyonel sürekli indeks (0..count-1). Verilirse indicator bu değeri
+   * birebir izler; yatay swipe sırasında pill parmakla birlikte kayar
+   * (X hissi). Verilmezse activeKey değişiminde spring ile atlar.
+   */
+  progress?: SharedValue<number>;
 }
 
 /**
@@ -32,6 +36,7 @@ export function SegmentedTabs<T extends string>({
   tabs,
   activeKey,
   onChange,
+  progress,
 }: SegmentedTabsProps<T>) {
   const { colors } = useTheme();
   const [containerWidth, setContainerWidth] = React.useState(0);
@@ -51,10 +56,14 @@ export function SegmentedTabs<T extends string>({
     indicatorLeft.value = withSpring(activeIndex, Springs.smooth);
   }, [activeIndex, indicatorLeft]);
 
-  const indicatorStyle = useAnimatedStyle(() => ({
-    left: innerPadding + indicatorLeft.value * indicatorWidth,
-    width: indicatorWidth,
-  }));
+  const indicatorStyle = useAnimatedStyle(() => {
+    const index = progress ? progress.value : indicatorLeft.value;
+    const clamped = Math.min(Math.max(index, 0), count - 1);
+    return {
+      left: innerPadding + clamped * indicatorWidth,
+      width: indicatorWidth,
+    };
+  });
 
   const handlePress = (tab: SegmentedTab<T>) => {
     if (tab.key !== activeKey) {

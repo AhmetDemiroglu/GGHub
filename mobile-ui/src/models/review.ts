@@ -32,6 +32,9 @@ export interface Review {
   user: ReviewUser;
   voteScore: number;
   currentUserVote: number | null;
+  /** Yalnızca pozitif oy sayısı (feed kalbiyle aynı semantik). */
+  likeCount: number;
+  commentCount: number;
   game?: GameSummary;
 }
 

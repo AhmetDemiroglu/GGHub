@@ -15,6 +15,7 @@ import { LoadingScreen } from '@/src/components/common/LoadingScreen';
 import { getReportDetail, respondToReport } from '@/src/api/admin';
 import { ReportStatus } from '@/src/models/report';
 import { translateReportStatus, getReportStatusVariant, translateEntityType } from '@/src/utils/report';
+import { SwipeBackEdge } from '@/src/components/common/SwipeBackEdge';
 
 const variantToColor: Record<string, { bg: string; text: string }> = {
   info: { bg: '#3b82f620', text: '#3b82f6' },
@@ -56,6 +57,7 @@ export default function AdminReportDetailScreen() {
   const isResolved = report.status !== ReportStatus.Open;
 
   return (
+    <SwipeBackEdge>
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.content}
@@ -163,6 +165,7 @@ export default function AdminReportDetailScreen() {
         icon={<Ionicons name="person" size={18} color={colors.primary} />}
       />
     </ScrollView>
+    </SwipeBackEdge>
   );
 }
 

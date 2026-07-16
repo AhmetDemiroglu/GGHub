@@ -13,6 +13,7 @@ import { UserLinkAvatar, UserLinkName } from '@/src/components/common/UserLink';
 import * as haptics from '@/src/utils/haptics';
 import { voteReview } from '@/src/api/review';
 import { applyReviewVote } from '@/src/utils/review-vote';
+import { emitReviewVote, voteTransition } from '@/src/utils/review-vote-bus';
 import type { Review } from '@/src/models/review';
 
 interface ReviewCardProps {
@@ -37,11 +38,20 @@ export function ReviewCard({ review, gameId }: ReviewCardProps) {
       queryClient.setQueryData<Review[]>(['gameReviews', gameId], (old) =>
         old?.map((r) => (r.id === review.id ? applyReviewVote(r, value) : r)),
       );
+      // Ana sayfa akışı gibi query dışı yüzeyler de anında senkronlansın.
+      emitReviewVote({ reviewId: review.id, ...voteTransition(review.currentUserVote, value) });
       return { previous };
     },
-    onError: (_error, _value, context) => {
+    onError: (_error, value, context) => {
       if (context?.previous) {
         queryClient.setQueryData(['gameReviews', gameId], context.previous);
+        const t = voteTransition(review.currentUserVote, value);
+        emitReviewVote({
+          reviewId: review.id,
+          likeDelta: -t.likeDelta,
+          scoreDelta: -t.scoreDelta,
+          myVote: review.currentUserVote,
+        });
       }
     },
     onSettled: () => {

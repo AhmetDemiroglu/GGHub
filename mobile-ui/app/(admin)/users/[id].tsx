@@ -15,6 +15,7 @@ import { BottomSheet } from '@/src/components/common/BottomSheet';
 import { useConfirm } from '@/src/components/common/ConfirmDialog';
 import { UserTabs } from '@/src/components/admin/UserTabs';
 import { getUserDetails, banUser, unbanUser, changeUserRole } from '@/src/api/admin';
+import { SwipeBackEdge } from '@/src/components/common/SwipeBackEdge';
 
 export default function AdminUserDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -78,6 +79,7 @@ export default function AdminUserDetailScreen() {
   }
 
   return (
+    <SwipeBackEdge>
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.content}
@@ -167,6 +169,7 @@ export default function AdminUserDetailScreen() {
         />
       </BottomSheet>
     </ScrollView>
+    </SwipeBackEdge>
   );
 }
 

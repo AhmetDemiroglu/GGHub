@@ -1,15 +1,18 @@
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useRef } from 'react';
 import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
+import { useAuth } from '@/src/hooks/use-auth';
 import { Avatar } from '@/src/components/common/Avatar';
 import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
 import { getImageUrl } from '@/src/utils/image';
 import { formatRelativeTime } from '@/src/utils/date';
 import { displayName } from '@/src/utils/display-name';
 import * as haptics from '@/src/utils/haptics';
+import { voteReview } from '@/src/api/review';
+import { emitReviewVote, voteTransition } from '@/src/utils/review-vote-bus';
 import { Activity, ActivityType, ActivityActor } from '@/src/models/activity';
 
 interface FeedCardProps {
@@ -53,12 +56,42 @@ function CardHeader({ actor, occurredAt }: { actor?: ActivityActor | null; occur
 function ReviewCard({ activity }: { activity: Activity }) {
   const { colors } = useTheme();
   const router = useRouter();
+  const { user } = useAuth();
   const review = activity.reviewData!;
+  const pendingRef = useRef(false);
 
   const openReview = useCallback(() => {
     haptics.impactLight();
     router.push(`/reviews/${review.reviewId}`);
   }, [router, review.reviewId]);
+
+  // Kalp = +1 oy toggle'ı (X beğenisi). Kendi incelemene backend oy vermez.
+  const isOwnReview = !!user && activity.actor?.id === Number(user.id);
+  const isLiked = review.myVote === 1;
+
+  const toggleLike = useCallback(async () => {
+    if (!user || isOwnReview || pendingRef.current) return;
+    pendingRef.current = true;
+    haptics.impactLight();
+
+    const transition = voteTransition(review.myVote ?? null, 1);
+    // İyimser: tüm sekmelerdeki kopyalar bus üzerinden anında güncellenir.
+    emitReviewVote({ reviewId: review.reviewId, ...transition });
+
+    try {
+      await voteReview(review.reviewId, { value: 1 });
+    } catch {
+      // Geri al.
+      emitReviewVote({
+        reviewId: review.reviewId,
+        likeDelta: -transition.likeDelta,
+        scoreDelta: -transition.scoreDelta,
+        myVote: review.myVote ?? null,
+      });
+    } finally {
+      pendingRef.current = false;
+    }
+  }, [user, isOwnReview, review.reviewId, review.myVote]);
 
   return (
     <Pressable style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={openReview}>
@@ -93,14 +126,26 @@ function ReviewCard({ activity }: { activity: Activity }) {
       </View>
 
       <View style={styles.statsRow}>
-        <View style={styles.statItem}>
-          <Ionicons name="heart-outline" size={15} color={colors.textSecondary} />
-          <Text style={[styles.statText, { color: colors.textSecondary }]}>{review.likeCount ?? 0}</Text>
-        </View>
-        <View style={styles.statItem}>
+        <Pressable
+          style={styles.statItem}
+          onPress={toggleLike}
+          disabled={isOwnReview || !user}
+          hitSlop={8}
+          accessibilityRole="button"
+        >
+          <Ionicons
+            name={isLiked ? 'heart' : 'heart-outline'}
+            size={15}
+            color={isLiked ? colors.error : colors.textSecondary}
+          />
+          <Text style={[styles.statText, { color: isLiked ? colors.error : colors.textSecondary }]}>
+            {review.likeCount ?? 0}
+          </Text>
+        </Pressable>
+        <Pressable style={styles.statItem} onPress={openReview} hitSlop={8} accessibilityRole="button">
           <Ionicons name="chatbubble-outline" size={14} color={colors.textSecondary} />
           <Text style={[styles.statText, { color: colors.textSecondary }]}>{review.commentCount ?? 0}</Text>
-        </View>
+        </Pressable>
       </View>
     </Pressable>
   );

@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  RefreshControl,
   Image,
   Pressable,
   FlatList,
@@ -89,6 +90,8 @@ export default function ListDetailScreen() {
     data: list,
     isLoading,
     isError,
+    refetch,
+    isRefetching,
   } = useQuery({
     queryKey: ['listDetail', numericId],
     queryFn: () => getListDetail(numericId),
@@ -202,6 +205,9 @@ export default function ListDetailScreen() {
           ref={scrollRef}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} colors={[colors.primary]} />
+          }
         >
         <View style={styles.headerSection}>
           <View style={styles.titleRow}>

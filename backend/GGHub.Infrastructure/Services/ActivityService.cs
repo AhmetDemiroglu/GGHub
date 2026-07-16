@@ -200,6 +200,10 @@ namespace GGHub.Infrastructure.Services
                     {
                         LikeCount = r.ReviewVotes.Count(v => v.Value == 1),
                         CommentCount = r.Comments.Count,
+                        MyVote = r.ReviewVotes
+                            .Where(v => v.UserId == currentUserId)
+                            .Select(v => (int?)v.Value)
+                            .FirstOrDefault(),
                         Dto = new ActivityDto
                         {
                             Id = r.Id,
@@ -237,6 +241,7 @@ namespace GGHub.Infrastructure.Services
                 {
                     r.Dto.ReviewData!.LikeCount = r.LikeCount;
                     r.Dto.ReviewData!.CommentCount = r.CommentCount;
+                    r.Dto.ReviewData!.MyVote = r.MyVote;
                 }
                 candidates.AddRange(reviews.Select(r => (r.Dto, r.LikeCount + r.CommentCount)));
             }

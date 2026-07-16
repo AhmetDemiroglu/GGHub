@@ -85,6 +85,8 @@ function RootLayoutNav() {
           gestureEnabled: true,
           // iOS: kenardan değil ekranın herhangi bir yerinden sağa çekince geri git.
           fullScreenGestureEnabled: true,
+          // Android'de de push/pop kayarak aksın (yoksa "çat diye" geçiyor).
+          animation: 'slide_from_right',
         }}
       >
         <Stack.Screen name="(auth)" />
@@ -96,6 +98,21 @@ function RootLayoutNav() {
         {/* Statik segment dinamigi yener: "/reviews/user/x" yukaridaki ekrana,
             "/reviews/123" buraya cozulur. */}
         <Stack.Screen name="reviews/[reviewId]" />
+        {/* (tabs) disindaki ikincil ekranlar: hepsi stack'te kayarak acilir,
+            iOS'ta native interaktif geri jesti alir (X mimarisi). */}
+        <Stack.Screen name="messages/index" />
+        <Stack.Screen name="messages/[username]" />
+        <Stack.Screen name="notifications" />
+        <Stack.Screen name="lists/[listId]" />
+        <Stack.Screen name="my-lists" />
+        <Stack.Screen name="wishlist" />
+        <Stack.Screen name="favorites" />
+        <Stack.Screen name="my-reports" />
+        <Stack.Screen name="profile/settings" />
+        <Stack.Screen name="profile/edit" />
+        <Stack.Screen name="about" />
+        <Stack.Screen name="terms" />
+        <Stack.Screen name="privacy" />
         <Stack.Screen name="+not-found" />
       </Stack>
     </>

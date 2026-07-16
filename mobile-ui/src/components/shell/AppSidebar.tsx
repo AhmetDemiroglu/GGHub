@@ -21,9 +21,12 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, usePathname } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
+import { getMyProfile } from '@/src/api/profile';
+import { displayName as resolveDisplayName } from '@/src/utils/display-name';
 import { useConfirm } from '@/src/components/common/ConfirmDialog';
 import { Avatar } from '@/src/components/common/Avatar';
 import { useShell } from '@/src/contexts/shell-context';
@@ -320,7 +323,19 @@ export function AppSidebar({ children }: AppSidebarProps) {
   );
 
   const nav = messages.nav;
-  const displayName = user?.username ?? '';
+
+  // Ad Soyad varsa o öne çıkar, @kullanıcıadı alt satıra iner (X deseni).
+  // Home ekranıyla aynı cache anahtarı: ekstra istek atılmaz.
+  const { data: myProfile } = useQuery({
+    queryKey: ['myProfile'],
+    queryFn: getMyProfile,
+    enabled: isAuthenticated,
+    staleTime: 1000 * 60 * 10,
+  });
+  const hasRealName = !!(myProfile?.firstName || myProfile?.lastName);
+  const displayName = hasRealName && myProfile
+    ? resolveDisplayName(myProfile)
+    : (user?.username ?? '');
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -361,9 +376,11 @@ export function AppSidebar({ children }: AppSidebarProps) {
                     <Ionicons name="shield-checkmark" size={15} color={colors.primary} />
                   ) : null}
                 </View>
-                <Text style={[styles.headerHandle, { color: colors.textMuted }]} numberOfLines={1}>
-                  @{displayName}
-                </Text>
+                {hasRealName ? (
+                  <Text style={[styles.headerHandle, { color: colors.textMuted }]} numberOfLines={1}>
+                    @{user?.username}
+                  </Text>
+                ) : null}
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </Pressable>

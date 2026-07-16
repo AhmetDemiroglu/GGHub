@@ -143,7 +143,7 @@ export default function PublicProfileScreen() {
 
   if (!profile) {
     return (
-      <ScreenWrapper swipeBackEnabled={false}>
+      <ScreenWrapper>
         <Text style={[styles.errorText, { color: colors.textMuted }]}>
           {messages.common.genericError}
         </Text>
@@ -159,7 +159,7 @@ export default function PublicProfileScreen() {
 
   if (isBlockedByThem) {
     return (
-      <ScreenWrapper noPadding safeArea={false} swipeBackEnabled={false}>
+      <ScreenWrapper noPadding safeArea={false}>
         <ScreenHeader title={`@${username}`} />
         <View style={styles.blockedContainer}>
           <Ionicons name="ban-outline" size={48} color={colors.textMuted} />
@@ -251,7 +251,7 @@ export default function PublicProfileScreen() {
   };
 
   return (
-    <ScreenWrapper noPadding safeArea={false} swipeBackEnabled={false}>
+    <ScreenWrapper noPadding safeArea={false}>
       <ScreenHeader
         title={`@${username}`}
         rightExtra={
@@ -331,7 +331,7 @@ export default function PublicProfileScreen() {
                 <Button
                   title={h.messageOpen}
                   variant="secondary"
-                  onPress={() => requireAuth(() => router.push(`/(tabs)/messages/${username}`))}
+                  onPress={() => requireAuth(() => router.push(`/messages/${username}`))}
                   style={styles.actionBtn}
                   icon={<Ionicons name="chatbubble-outline" size={16} color={colors.text} />}
                 />

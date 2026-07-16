@@ -13,6 +13,7 @@ import { ReportResultModal } from '@/src/components/reports/ReportResultModal';
 import { getMyReports } from '@/src/api/report';
 import { ScreenHeader } from '@/src/components/shell';
 import type { MyReportSummary } from '@/src/models/report';
+import { SwipeBackEdge } from '@/src/components/common/SwipeBackEdge';
 
 export default function MyReportsScreen() {
   const { colors } = useTheme();
@@ -41,6 +42,7 @@ export default function MyReportsScreen() {
   );
 
   return (
+    <SwipeBackEdge>
     <AuthGuard>
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <ScreenHeader title={messages.nav.screenTitles.myReports} />
@@ -66,6 +68,7 @@ export default function MyReportsScreen() {
         />
       </View>
     </AuthGuard>
+  </SwipeBackEdge>
   );
 }
 

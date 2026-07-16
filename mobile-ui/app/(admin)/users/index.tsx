@@ -13,6 +13,7 @@ import { EmptyState } from '@/src/components/common/EmptyState';
 import { getUsers } from '@/src/api/admin';
 import { APP_CONFIG } from '@/src/constants/config';
 import type { AdminUserSummary, UserFilterParams } from '@/src/models/admin';
+import { SwipeBackEdge } from '@/src/components/common/SwipeBackEdge';
 
 type StatusFilter = 'All' | 'Active' | 'Banned';
 
@@ -87,6 +88,7 @@ export default function AdminUsersScreen() {
   );
 
   return (
+    <SwipeBackEdge>
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <Input
@@ -143,6 +145,7 @@ export default function AdminUsersScreen() {
         />
       )}
     </View>
+    </SwipeBackEdge>
   );
 }
 

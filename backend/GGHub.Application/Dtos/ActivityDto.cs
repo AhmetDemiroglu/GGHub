@@ -32,6 +32,8 @@ namespace GGHub.Application.Dtos
         // X tarzı kart göstergeleri
         public int LikeCount { get; set; }
         public int CommentCount { get; set; }
+        /// <summary>İsteği yapan kullanıcının bu incelemeye oyu (1/-1/null). Kalp toggle'ı için.</summary>
+        public int? MyVote { get; set; }
     }
 
     public class ListActivityDto

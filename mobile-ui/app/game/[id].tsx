@@ -34,6 +34,7 @@ import { WishlistButton } from '@/src/components/game/WishlistButton';
 import { FavoriteButton } from '@/src/components/game/FavoriteButton';
 import { useRequireAuth } from '@/src/contexts/auth-prompt-context';
 import type { Game } from '@/src/models/game';
+import { SwipeBackEdge } from '@/src/components/common/SwipeBackEdge';
 
 export default function GameDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -121,6 +122,7 @@ export default function GameDetailScreen() {
   }
 
   return (
+    <SwipeBackEdge>
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Pressable
         style={[styles.backButton, { top: insets.top + Spacing.sm }]}
@@ -143,7 +145,15 @@ export default function GameDetailScreen() {
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
-            onRefresh={refetch}
+            onRefresh={() => {
+              // Oyunla birlikte inceleme/benzer oyun sorguları da tazelensin.
+              void refetch();
+              if (game) {
+                void queryClient.invalidateQueries({ queryKey: ['gameReviews', game.rawgId] });
+                void queryClient.invalidateQueries({ queryKey: ['myReview', game.rawgId] });
+                void queryClient.invalidateQueries({ queryKey: ['similarGames', game.id] });
+              }
+            }}
             tintColor={colors.primary}
             colors={[colors.primary]}
           />
@@ -260,6 +270,7 @@ export default function GameDetailScreen() {
         gameId={game.rawgId}
       />
     </View>
+    </SwipeBackEdge>
   );
 }
 

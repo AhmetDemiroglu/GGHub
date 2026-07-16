@@ -27,6 +27,8 @@ interface AppTopBarProps {
   rightExtra?: React.ReactNode;
   /** translucent blur (oyun detayı / immersive için) */
   blur?: boolean;
+  /** Root Stack sayfalarında (tab bar yok) solda menü yerine geri oku göster. */
+  showBack?: boolean;
 }
 
 function UnreadBadge({ count, color }: { count: number; color: string }) {
@@ -38,7 +40,7 @@ function UnreadBadge({ count, color }: { count: number; color: string }) {
   );
 }
 
-export function AppTopBar({ title, showLogo = false, rightExtra, blur = false }: AppTopBarProps) {
+export function AppTopBar({ title, showLogo = false, rightExtra, blur = false, showBack = false }: AppTopBarProps) {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const { user } = useAuth();
@@ -55,12 +57,12 @@ export function AppTopBar({ title, showLogo = false, rightExtra, blur = false }:
 
   const handleMessages = () => {
     haptics.impactLight();
-    router.push('/(tabs)/messages');
+    router.push('/messages');
   };
 
   const handleNotifications = () => {
     haptics.impactLight();
-    router.push('/(tabs)/notifications');
+    router.push('/notifications');
   };
 
   return (
@@ -83,10 +85,23 @@ export function AppTopBar({ title, showLogo = false, rightExtra, blur = false }:
         />
       ) : null}
       <View style={[styles.inner, { height: TOP_BAR_CONTENT_HEIGHT }]}>
-        {/* Sol: Avatar / Menü */}
-        <TouchableOpacity onPress={handleMenu} style={styles.sideBtn} activeOpacity={0.7}>
-          <Avatar uri={user?.profileImageUrl} name={user?.username} size={32} />
-        </TouchableOpacity>
+        {/* Sol: Geri (stack sayfaları) veya Avatar / Menü */}
+        {showBack ? (
+          <TouchableOpacity
+            onPress={() => {
+              haptics.impactLight();
+              if (router.canGoBack()) router.back();
+            }}
+            style={styles.sideBtn}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="chevron-back" size={26} color={blur ? '#ffffff' : colors.text} />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity onPress={handleMenu} style={styles.sideBtn} activeOpacity={0.7}>
+            <Avatar uri={user?.profileImageUrl} name={user?.username} size={32} />
+          </TouchableOpacity>
+        )}
 
         {/* Orta: Logo veya Başlık */}
         <View style={styles.center} pointerEvents="none">

@@ -7,6 +7,7 @@ import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 import { Card } from '@/src/components/common/Card';
 import { ScreenHeader } from '@/src/components/shell';
+import { SwipeBackEdge } from '@/src/components/common/SwipeBackEdge';
 
 export default function AboutScreen() {
   const { colors } = useTheme();
@@ -60,6 +61,7 @@ export default function AboutScreen() {
   ];
 
   return (
+    <SwipeBackEdge>
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScreenHeader title={messages.nav.screenTitles.about} />
       <ScrollView
@@ -122,6 +124,7 @@ export default function AboutScreen() {
         ))}
       </ScrollView>
     </View>
+  </SwipeBackEdge>
   );
 }
 

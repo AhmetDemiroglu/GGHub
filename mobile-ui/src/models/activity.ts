@@ -13,6 +13,8 @@ export interface ReviewActivityData {
   game: GameSummary;
   likeCount: number;
   commentCount: number;
+  /** İsteği yapanın oyu (1/-1/null) - kalp toggle'ı için. */
+  myVote?: number | null;
 }
 
 export interface ActivityActor {

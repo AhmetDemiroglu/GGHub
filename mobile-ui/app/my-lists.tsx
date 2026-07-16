@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  RefreshControl,
   Pressable,
   ActivityIndicator,
 } from 'react-native';
@@ -49,6 +50,8 @@ export default function MyListsScreen() {
     data: myLists,
     isLoading: myLoading,
     isError: myError,
+    refetch: refetchMy,
+    isRefetching: myRefetching,
   } = useQuery({
     queryKey: ['myLists'],
     queryFn: () => getMyLists(),
@@ -59,6 +62,8 @@ export default function MyListsScreen() {
     data: followedData,
     isLoading: followedLoading,
     isError: followedError,
+    refetch: refetchFollowed,
+    isRefetching: followedRefetching,
   } = useQuery({
     queryKey: ['followedLists', followingPage],
     queryFn: () =>
@@ -166,6 +171,9 @@ export default function MyListsScreen() {
           data={customLists}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderMyListItem}
+          refreshControl={
+            <RefreshControl refreshing={myRefetching} onRefresh={refetchMy} tintColor={colors.primary} colors={[colors.primary]} />
+          }
           contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + Spacing.md }]}
           ListEmptyComponent={
             <EmptyState
@@ -179,6 +187,9 @@ export default function MyListsScreen() {
           data={followedLists}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderFollowedItem}
+          refreshControl={
+            <RefreshControl refreshing={followedRefetching} onRefresh={refetchFollowed} tintColor={colors.primary} colors={[colors.primary]} />
+          }
           contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + Spacing.md }]}
           ListEmptyComponent={
             <EmptyState

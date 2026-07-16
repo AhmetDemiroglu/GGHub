@@ -102,7 +102,7 @@ export default function NotificationsScreen() {
 
   return (
     <ScreenWrapper noPadding safeArea={false}>
-      <AppTopBar title={nav.notificationsTitle} rightExtra={MarkAllButton} />
+      <AppTopBar title={nav.notificationsTitle} rightExtra={MarkAllButton} showBack />
 
       <FlatList
         data={notificationsQuery.data ?? []}

@@ -78,7 +78,7 @@ export default function MessagesListScreen() {
     ({ item }: { item: ConversationDto }) => (
       <ConversationItem
         conversation={item}
-        onPress={() => router.push(`/(tabs)/messages/${item.partnerUsername}`)}
+        onPress={() => router.push(`/messages/${item.partnerUsername}`)}
       />
     ),
     [router],
@@ -90,7 +90,7 @@ export default function MessagesListScreen() {
 
   return (
     <ScreenWrapper noPadding safeArea={false}>
-      <AppTopBar title={t.title} />
+      <AppTopBar title={t.title} showBack />
 
       <View
         style={[

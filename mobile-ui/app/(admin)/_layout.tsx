@@ -13,6 +13,8 @@ export default function AdminLayout() {
     <AuthGuard requiredRole="Admin">
       <Stack
         screenOptions={{
+        gestureEnabled: true,
+        fullScreenGestureEnabled: true,
           headerShown: true,
           headerStyle: { backgroundColor: colors.surface },
           headerTintColor: colors.text,

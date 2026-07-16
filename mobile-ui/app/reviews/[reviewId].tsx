@@ -30,6 +30,7 @@ import { getReviewById, voteReview } from '@/src/api/review';
 import { getImageUrl } from '@/src/utils/image';
 import { formatTimeAgo } from '@/src/utils/format';
 import { applyReviewVote } from '@/src/utils/review-vote';
+import { emitReviewVote, voteTransition } from '@/src/utils/review-vote-bus';
 import * as haptics from '@/src/utils/haptics';
 import type { Review } from '@/src/models/review';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
@@ -93,11 +94,22 @@ export default function ReviewDetailScreen() {
       queryClient.setQueryData<Review>(['review', numericId], (old) =>
         old ? applyReviewVote(old, value) : old,
       );
+      // Ana sayfa akışı gibi query dışı yüzeyler de anında senkronlansın.
+      if (previous) {
+        emitReviewVote({ reviewId: numericId, ...voteTransition(previous.currentUserVote, value) });
+      }
       return { previous };
     },
-    onError: (_error, _value, context) => {
+    onError: (_error, value, context) => {
       if (context?.previous) {
         queryClient.setQueryData(['review', numericId], context.previous);
+        const t = voteTransition(context.previous.currentUserVote, value);
+        emitReviewVote({
+          reviewId: numericId,
+          likeDelta: -t.likeDelta,
+          scoreDelta: -t.scoreDelta,
+          myVote: context.previous.currentUserVote,
+        });
       }
     },
     onSettled: () => {
@@ -116,7 +128,7 @@ export default function ReviewDetailScreen() {
 
   if (isError || !review) {
     return (
-      <ScreenWrapper noPadding safeArea={false} swipeBackEnabled={false}>
+      <ScreenWrapper noPadding safeArea={false}>
         <ScreenHeader title={messages.nav.screenTitles.reviewDetail} />
         <EmptyState icon="alert-circle-outline" title={t.notFound} />
       </ScreenWrapper>
@@ -128,7 +140,7 @@ export default function ReviewDetailScreen() {
   const isOwner = user ? Number(user.id) === review.user.id : false;
 
   return (
-    <ScreenWrapper noPadding safeArea={false} swipeBackEnabled={false}>
+    <ScreenWrapper noPadding safeArea={false}>
       <ScreenHeader title={messages.nav.screenTitles.reviewDetail} />
       {/*
         Kayan icerik ve alta sabit yorum kutusu, paddingBottom'u klavyeyle
