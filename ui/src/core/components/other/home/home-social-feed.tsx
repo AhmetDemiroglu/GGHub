@@ -59,12 +59,16 @@ export default function HomeSocialFeed({ initialActivities, isAuthenticated }: H
 
             const nextPage = await getPersonalizedFeed(FEED_PAGE_SIZE, oldest);
 
+            let freshCount = 0;
             setActivities((current) => {
                 const seen = new Set(current.map(getActivityKey));
                 const fresh = nextPage.filter((activity) => !seen.has(getActivityKey(activity)));
+                freshCount = fresh.length;
                 return [...current, ...fresh];
             });
-            setHasMore(nextPage.length >= FEED_PAGE_SIZE);
+            // Yeni kayıt gelmediyse dur; aksi halde aynı sayfa tekrar tekrar
+            // çekilip observer döngüye girebilir.
+            setHasMore(freshCount > 0 && nextPage.length >= FEED_PAGE_SIZE);
         } catch {
             setHasMore(false);
         } finally {
