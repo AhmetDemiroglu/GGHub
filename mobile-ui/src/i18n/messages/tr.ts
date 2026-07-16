@@ -355,6 +355,8 @@ export const trMessages = {
         },
         activityEmptyTitle: "Henüz bir aktivite yok.",
         activityEmptyDescription: "Takip ettiğin kişilerin hareketleri burada görünür.",
+        feedEnd: "Akışın sonuna geldin",
+        backToTop: "Başa dön",
         reviewShared: "Bir inceleme paylaştı",
         listCreated: "Yeni liste oluşturdu",
         startedFollowing: "Takip etti",

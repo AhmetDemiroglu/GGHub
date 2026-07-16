@@ -355,6 +355,8 @@ export const enUSMessages = {
         },
         activityEmptyTitle: "No activity yet.",
         activityEmptyDescription: "Actions from people you follow will appear here.",
+        feedEnd: "You're all caught up",
+        backToTop: "Back to top",
         reviewShared: "Shared a review",
         listCreated: "Created a new list",
         startedFollowing: "Started following",

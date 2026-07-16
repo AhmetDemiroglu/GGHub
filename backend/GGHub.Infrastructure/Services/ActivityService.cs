@@ -165,7 +165,9 @@ namespace GGHub.Infrastructure.Services
                 .Select(f => f.FolloweeId)
                 .ToListAsync();
 
-            if (!followingIds.Any()) return Enumerable.Empty<ActivityDto>();
+            // X'in Following akışı gibi: kullanıcı kendi aktivitelerini de akışta görür.
+            if (!followingIds.Contains(currentUserId))
+                followingIds.Add(currentUserId);
 
             // Engel listesi (iki yönlü): takip kartlarının hedefi engelli kullanıcı olabilir.
             var blockedIds = await _context.UserBlocks

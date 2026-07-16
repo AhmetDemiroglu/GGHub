@@ -1,15 +1,27 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, FlatList, RefreshControl, ActivityIndicator, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  RefreshControl,
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+} from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
+import { useScrollToTop } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { SegmentedTabs } from '@/src/components/common/SegmentedTabs';
 import { FeedCard } from '@/src/components/home/FeedCard';
-import { FontSize, Spacing } from '@/src/constants/theme';
+import { FontSize, Spacing, Shadows } from '@/src/constants/theme';
 import { getPersonalizedFeed } from '@/src/api/activity';
 import { Activity, ActivityType } from '@/src/models/activity';
+import * as haptics from '@/src/utils/haptics';
 
 type TabKey = 'reviews' | 'lists' | 'follows' | 'all';
 
@@ -23,16 +35,16 @@ const TAB_TYPE: Record<TabKey, ActivityType | undefined> = {
 
 const PAGE_SIZE = 10;
 const SWIPE_THRESHOLD = 55;
+const FAB_VISIBLE_OFFSET = 1200;
 
 interface TabState {
   items: Activity[];
-  cursor: string | null;
   hasMore: boolean;
   loading: boolean;
   loaded: boolean;
 }
 
-const emptyTab = (): TabState => ({ items: [], cursor: null, hasMore: true, loading: false, loaded: false });
+const emptyTab = (): TabState => ({ items: [], hasMore: true, loading: false, loaded: false });
 
 function activityKey(a: Activity): string {
   if (a.type === ActivityType.Review) return `r-${a.reviewData?.reviewId}-${a.occurredAt}`;
@@ -62,20 +74,29 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
   const feedsRef = useRef(feeds);
   feedsRef.current = feeds;
 
+  const listRef = useRef<FlatList<Activity>>(null);
+  // Home tab'a tekrar basınca en üste kaydır (X davranışı).
+  useScrollToTop(listRef);
+
+  // header yüksekliği: tab değişiminde "feed başlangıcına" snap için.
+  const headerHeightRef = useRef(0);
+  const scrollOffsetRef = useRef(0);
+  const [fabVisible, setFabVisible] = useState(false);
+
   const loadTab = useCallback(async (tab: TabKey, reset: boolean) => {
     const current = feedsRef.current[tab];
     if (current.loading) return;
-    if (!reset && (!current.hasMore || !current.loaded)) {
-      if (current.loaded && !current.hasMore) return;
-    }
+    if (!reset && current.loaded && !current.hasMore) return;
 
     setFeeds((prev) => ({ ...prev, [tab]: { ...prev[tab], loading: true } }));
 
     try {
-      const cursor = reset ? undefined : current.items.reduce<string | undefined>(
-        (min, a) => (min === undefined || a.occurredAt < min ? a.occurredAt : min),
-        undefined,
-      );
+      const cursor = reset
+        ? undefined
+        : feedsRef.current[tab].items.reduce<string | undefined>(
+            (min, a) => (min === undefined || a.occurredAt < min ? a.occurredAt : min),
+            undefined,
+          );
       const page = await getPersonalizedFeed(PAGE_SIZE, cursor, TAB_TYPE[tab]);
 
       setFeeds((prev) => {
@@ -86,8 +107,8 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
           ...prev,
           [tab]: {
             items: [...base, ...fresh],
-            cursor: cursor ?? null,
-            hasMore: page.length >= PAGE_SIZE,
+            // Tüm sayfa yinelenen geldiyse dur (aksi halde onEndReached döngüye girer).
+            hasMore: fresh.length > 0 && page.length >= PAGE_SIZE,
             loading: false,
             loaded: true,
           },
@@ -98,19 +119,44 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
     }
   }, []);
 
-  // İlk açılışta ve sekme değişince (henüz yüklenmediyse) yükle.
+  // Açılışta önce varsayılan sekme (İncelemeler), ardından diğer sekmeler arka
+  // planda sırayla doldurulur; sekme değişince içerik ANINDA hazırdır.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      await loadTab('reviews', true);
+      for (const tab of ['lists', 'follows', 'all'] as TabKey[]) {
+        if (cancelled) return;
+        if (!feedsRef.current[tab].loaded) await loadTab(tab, true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loadTab]);
+
+  // Emniyet: prefetch başarısız olduysa sekmeye girildiğinde yükle.
   useEffect(() => {
     const state = feedsRef.current[activeTab];
-    if (!state.loaded && !state.loading) {
-      void loadTab(activeTab, true);
-    }
+    if (!state.loaded && !state.loading) void loadTab(activeTab, true);
   }, [activeTab, loadTab]);
+
+  // Sekme değişince: kullanıcı feed'in içindeyse yeni sekmenin başına snap et.
+  // (Eski davranışta offset korunuyordu; kısa içerikli sekmede koca bir boşluk
+  // görünüyor, içerik "gelmemiş" hissi yaratıyordu.)
+  useEffect(() => {
+    const headerH = headerHeightRef.current;
+    if (headerH > 0 && scrollOffsetRef.current > headerH) {
+      listRef.current?.scrollToOffset({ offset: headerH, animated: false });
+    }
+  }, [activeTab]);
 
   const switchTab = useCallback((dir: 1 | -1) => {
     setActiveTab((prev) => {
       const idx = TAB_ORDER.indexOf(prev);
       const next = idx + dir;
       if (next < 0 || next >= TAB_ORDER.length) return prev;
+      haptics.selection();
       return TAB_ORDER[next];
     });
   }, []);
@@ -132,7 +178,11 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
 
   const onRefresh = useCallback(async () => {
     await Promise.resolve(onRefreshHome());
+    // Tüm sekmeleri tazele: önce aktif olan, diğerleri arkadan.
     await loadTab(activeTab, true);
+    for (const tab of TAB_ORDER) {
+      if (tab !== activeTab) void loadTab(tab, true);
+    }
   }, [onRefreshHome, loadTab, activeTab]);
 
   const onEndReached = useCallback(() => {
@@ -142,9 +192,23 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
     }
   }, [activeTab, loadTab]);
 
+  const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = e.nativeEvent.contentOffset.y;
+    scrollOffsetRef.current = y;
+    setFabVisible((visible) => {
+      const next = y > FAB_VISIBLE_OFFSET;
+      return next === visible ? visible : next;
+    });
+  }, []);
+
+  const scrollToTop = useCallback(() => {
+    haptics.impactLight();
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+  }, []);
+
   const listHeader = (
     <View>
-      {header}
+      <View onLayout={(e) => (headerHeightRef.current = e.nativeEvent.layout.height)}>{header}</View>
       <View style={styles.tabBarWrap}>
         <SegmentedTabs<TabKey>
           tabs={[
@@ -161,55 +225,79 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
   );
 
   const emptyComponent =
-    active.loaded && !active.loading ? (
+    active.loaded && !active.loading && active.items.length === 0 ? (
       <View style={styles.empty}>
         <Ionicons name="sparkles-outline" size={28} color={colors.textSecondary} />
         <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{messages.home.activityEmptyTitle}</Text>
         <Text style={[styles.emptySub, { color: colors.textSecondary }]}>{messages.home.activityEmptyDescription}</Text>
       </View>
-    ) : active.loading && active.items.length === 0 ? (
+    ) : (
       <View style={styles.empty}>
         <ActivityIndicator color={colors.primary} />
       </View>
-    ) : null;
+    );
 
   return (
-    <GestureDetector gesture={panGesture}>
-      <FlatList
-        data={active.items}
-        keyExtractor={activityKey}
-        renderItem={({ item }) => (
-          <View style={styles.cardWrap}>
-            <FeedCard activity={item} />
-          </View>
-        )}
-        ListHeaderComponent={listHeader}
-        ListEmptyComponent={emptyComponent}
-        onEndReached={onEndReached}
-        onEndReachedThreshold={0.6}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: contentPaddingBottom }}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshingHome}
-            onRefresh={onRefresh}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
-          />
-        }
-        ListFooterComponent={
-          active.loading && active.items.length > 0 ? (
-            <View style={styles.footer}>
-              <ActivityIndicator color={colors.primary} size="small" />
+    <View style={styles.root}>
+      <GestureDetector gesture={panGesture}>
+        <FlatList
+          ref={listRef}
+          data={active.items}
+          keyExtractor={activityKey}
+          renderItem={({ item }) => (
+            <View style={styles.cardWrap}>
+              <FeedCard activity={item} />
             </View>
-          ) : null
-        }
-      />
-    </GestureDetector>
+          )}
+          ListHeaderComponent={listHeader}
+          ListEmptyComponent={emptyComponent}
+          onEndReached={onEndReached}
+          onEndReachedThreshold={0.8}
+          onScroll={onScroll}
+          scrollEventThrottle={64}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: contentPaddingBottom + Spacing.xl }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshingHome}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          }
+          ListFooterComponent={
+            active.loading && active.items.length > 0 ? (
+              <View style={styles.footer}>
+                <ActivityIndicator color={colors.primary} size="small" />
+              </View>
+            ) : !active.hasMore && active.items.length > 0 ? (
+              <Text style={[styles.feedEnd, { color: colors.textSecondary }]}>{messages.home.feedEnd}</Text>
+            ) : null
+          }
+        />
+      </GestureDetector>
+
+      {fabVisible ? (
+        <Pressable
+          onPress={scrollToTop}
+          style={[
+            styles.fab,
+            { backgroundColor: colors.primary, bottom: contentPaddingBottom + Spacing.md },
+            Shadows.md,
+          ]}
+          accessibilityLabel={messages.home.backToTop}
+        >
+          <Ionicons name="arrow-up" size={20} color="#ffffff" />
+        </Pressable>
+      ) : null}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   tabBarWrap: {
     paddingHorizontal: Spacing.lg,
     marginTop: Spacing.lg,
@@ -236,5 +324,20 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingVertical: Spacing.lg,
+  },
+  feedEnd: {
+    textAlign: 'center',
+    fontSize: FontSize.xs,
+    paddingVertical: Spacing.lg,
+    opacity: 0.7,
+  },
+  fab: {
+    position: 'absolute',
+    right: Spacing.lg,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

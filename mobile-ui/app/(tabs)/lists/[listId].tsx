@@ -144,7 +144,7 @@ export default function ListDetailScreen() {
 
   if (isError || !list) {
     return (
-      <ScreenWrapper swipeBackEnabled={false}>
+      <ScreenWrapper>
         <EmptyState icon="alert-circle-outline" title={messages.listDetail.notFound} />
       </ScreenWrapper>
     );
@@ -186,7 +186,7 @@ export default function ListDetailScreen() {
   };
 
   return (
-    <ScreenWrapper noPadding safeArea={false} swipeBackEnabled={false}>
+    <ScreenWrapper noPadding safeArea={false}>
       <ScreenHeader title={list.name || messages.nav.screenTitles.listDetail} />
       {/*
         Kayan icerik ve alta sabit yorum kutusu, paddingBottom'u klavyeyle
