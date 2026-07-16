@@ -12,6 +12,7 @@ import { MentionText } from '@/src/components/common/MentionText';
 import { UserLinkAvatar, UserLinkName } from '@/src/components/common/UserLink';
 import * as haptics from '@/src/utils/haptics';
 import { voteReview } from '@/src/api/review';
+import { applyReviewVote } from '@/src/utils/review-vote';
 import type { Review } from '@/src/models/review';
 
 interface ReviewCardProps {
@@ -27,12 +28,31 @@ export function ReviewCard({ review, gameId }: ReviewCardProps) {
 
   const voteMutation = useMutation({
     mutationFn: (value: number) => voteReview(review.id, { value }),
-    onSuccess: () => {
+    // Iyimser guncelleme: skor ve dolu/bos ikon ANINDA degissin. Eskiden yalnizca
+    // invalidate vardi; sunucu + yeniden cekme bitene kadar ekran tepkisizdi,
+    // kullanici "tik yok" sanip tekrar basiyor ve toggle yuzunden oyu geri aliyordu.
+    onMutate: async (value: number) => {
+      await queryClient.cancelQueries({ queryKey: ['gameReviews', gameId] });
+      const previous = queryClient.getQueryData<Review[]>(['gameReviews', gameId]);
+      queryClient.setQueryData<Review[]>(['gameReviews', gameId], (old) =>
+        old?.map((r) => (r.id === review.id ? applyReviewVote(r, value) : r)),
+      );
+      return { previous };
+    },
+    onError: (_error, _value, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['gameReviews', gameId], context.previous);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['gameReviews', gameId] });
     },
   });
 
   const handleVote = (value: number) => {
+    // Istek ucustayken ikinci dokunusu yut: art arda iki dokunus backend'in
+    // toggle'i yuzunden "oy ver + geri al" olup kullaniciyi sasirtiyordu.
+    if (voteMutation.isPending) return;
     // Oyu geri cekmek icin AYNI degeri tekrar gonder; backend toggle ediyor
     // (ReviewService.VoteOnReviewAsync: existingVote.Value == value -> Remove).
     // Eskiden 0 gonderiliyordu, ReviewsController ise "Value != 1 && Value != -1"
@@ -47,7 +67,13 @@ export function ReviewCard({ review, gameId }: ReviewCardProps) {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface }, Shadows.sm]}>
+    // Kartin TAMAMI inceleme detayina goturur (X deseni: gonderiye dokun, acilsin).
+    // Icerideki Pressable'lar (oy, profil, Yorumlar) RN'de en derin hedef kazandigi
+    // icin kendi dokunuslarini almaya devam eder.
+    <Pressable
+      onPress={openComments}
+      style={[styles.container, { backgroundColor: colors.surface }, Shadows.sm]}
+    >
       <View style={styles.header}>
         <UserLinkAvatar user={review.user} size={32} />
         <UserLinkName
@@ -63,16 +89,12 @@ export function ReviewCard({ review, gameId }: ReviewCardProps) {
         <StarRating rating={Math.round(review.rating / 2)} maxStars={5} size={14} />
       </View>
 
-      {/* Govdeye dokunmak yorumlari acar (X deseni: gonderiye dokun, yanitlar acilsin).
-          MentionText kendi @etiketlerini yakalar, onlar profile gider. */}
       {review.content ? (
-        <Pressable onPress={openComments}>
-          <MentionText
-            body={review.content}
-            style={[styles.reviewText, { color: colors.textSecondary }]}
-            numberOfLines={6}
-          />
-        </Pressable>
+        <MentionText
+          body={review.content}
+          style={[styles.reviewText, { color: colors.textSecondary }]}
+          numberOfLines={6}
+        />
       ) : null}
 
       <View style={styles.footer}>
@@ -115,7 +137,7 @@ export function ReviewCard({ review, gameId }: ReviewCardProps) {
           </Text>
         </Pressable>
       </View>
-    </View>
+    </Pressable>
   );
 }
 

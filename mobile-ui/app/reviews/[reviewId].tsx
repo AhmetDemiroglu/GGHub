@@ -12,7 +12,7 @@ import Animated from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ScreenWrapper } from '@/src/components/common/ScreenWrapper';
 import { ScreenHeader } from '@/src/components/shell';
 import { EmptyState } from '@/src/components/common/EmptyState';
@@ -24,10 +24,14 @@ import { ReviewCommentSection } from '@/src/components/reviews/ReviewCommentSect
 import { ReviewCommentComposer } from '@/src/components/reviews/ReviewCommentComposer';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
+import { useAuth } from '@/src/hooks/use-auth';
 import { useKeyboardDock } from '@/src/hooks/use-keyboard-dock';
-import { getReviewById } from '@/src/api/review';
+import { getReviewById, voteReview } from '@/src/api/review';
 import { getImageUrl } from '@/src/utils/image';
 import { formatTimeAgo } from '@/src/utils/format';
+import { applyReviewVote } from '@/src/utils/review-vote';
+import * as haptics from '@/src/utils/haptics';
+import type { Review } from '@/src/models/review';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 
 /**
@@ -76,6 +80,38 @@ export default function ReviewDetailScreen() {
     enabled: Number.isFinite(numericId),
   });
 
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  // Iyimser oy: skor ve ikon aninda degisir, sunucu yaniti onSettled'da uzlasir.
+  // ReviewCard'daki desenin tekil-kayit hali (cache'te Review[] degil tek Review var).
+  const voteMutation = useMutation({
+    mutationFn: (value: number) => voteReview(numericId, { value }),
+    onMutate: async (value: number) => {
+      await queryClient.cancelQueries({ queryKey: ['review', numericId] });
+      const previous = queryClient.getQueryData<Review>(['review', numericId]);
+      queryClient.setQueryData<Review>(['review', numericId], (old) =>
+        old ? applyReviewVote(old, value) : old,
+      );
+      return { previous };
+    },
+    onError: (_error, _value, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['review', numericId], context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['review', numericId] });
+    },
+  });
+
+  const handleVote = (value: number) => {
+    // Ucustayken ikinci dokunusu yut (toggle yuzunden "oy ver + geri al" olmasin).
+    if (!user || voteMutation.isPending) return;
+    haptics.impactLight();
+    voteMutation.mutate(value);
+  };
+
   if (isLoading) return <LoadingScreen />;
 
   if (isError || !review) {
@@ -89,6 +125,7 @@ export default function ReviewDetailScreen() {
 
   const game = review.game;
   const gameImage = game ? getImageUrl(game.coverImage ?? game.backgroundImage) : undefined;
+  const isOwner = user ? Number(user.id) === review.user.id : false;
 
   return (
     <ScreenWrapper noPadding safeArea={false} swipeBackEnabled={false}>
@@ -154,8 +191,26 @@ export default function ReviewDetailScreen() {
             />
           ) : null}
 
+          {/* Kendi incelemene oy verilemez (backend 400 doner); sahibine skor
+              salt-okunur gosterilir, digerlerine iki yonlu oy butonlari. */}
           <View style={styles.voteRow}>
-            <Ionicons name="thumbs-up-outline" size={14} color={colors.textMuted} />
+            {isOwner ? (
+              <Ionicons name="thumbs-up-outline" size={14} color={colors.textMuted} />
+            ) : (
+              <Pressable
+                style={[styles.voteButton, review.currentUserVote === 1 && { backgroundColor: `${colors.success}20` }]}
+                onPress={() => handleVote(1)}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel={messages.commentsSection.upvote}
+              >
+                <Ionicons
+                  name={review.currentUserVote === 1 ? 'thumbs-up' : 'thumbs-up-outline'}
+                  size={16}
+                  color={review.currentUserVote === 1 ? colors.success : colors.textMuted}
+                />
+              </Pressable>
+            )}
             <Text
               style={[
                 styles.voteScore,
@@ -171,6 +226,21 @@ export default function ReviewDetailScreen() {
             >
               {review.voteScore}
             </Text>
+            {!isOwner ? (
+              <Pressable
+                style={[styles.voteButton, review.currentUserVote === -1 && { backgroundColor: `${colors.error}20` }]}
+                onPress={() => handleVote(-1)}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel={messages.commentsSection.downvote}
+              >
+                <Ionicons
+                  name={review.currentUserVote === -1 ? 'thumbs-down' : 'thumbs-down-outline'}
+                  size={16}
+                  color={review.currentUserVote === -1 ? colors.error : colors.textMuted}
+                />
+              </Pressable>
+            ) : null}
           </View>
         </View>
 
@@ -258,8 +328,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.xs,
   },
+  voteButton: {
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+  },
   voteScore: {
     fontSize: FontSize.sm,
     fontWeight: '600',
+    minWidth: 20,
+    textAlign: 'center',
   },
 });

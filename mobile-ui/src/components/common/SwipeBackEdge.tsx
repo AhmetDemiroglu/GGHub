@@ -4,9 +4,10 @@ import { router, usePathname } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS } from 'react-native-reanimated';
 
-// Sol kenardan jesti yakalayan şeridin ekran genişliğine oranı (~%30).
-// Daha önce sabit 44px idi; kullanıcı "biraz daha içeriden" çekebilmek istedi.
-const EDGE_WIDTH_RATIO = 0.3;
+// Sol kenardan jesti yakalayan şeridin ekran genişliğine oranı.
+// Tarihçe: 24px -> 44px -> %30 -> %15. Kullanıcı %30'u fazla buldu (2026-07-16):
+// jest hitSlop'a alındığı için dokunmalar artık yutulmuyor ama yine de dar olsun istedi.
+const EDGE_WIDTH_RATIO = 0.15;
 // Geri gitmek için minimum yatay drag veya hızlı flick
 const BACK_DX = 56;
 const BACK_VELOCITY_X = 450;
