@@ -26,6 +26,7 @@ import { useScrollToTop } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
+import { useShell, SIDEBAR_WIDTH } from '@/src/contexts/shell-context';
 import { SegmentedTabs } from '@/src/components/common/SegmentedTabs';
 import { FeedCard } from '@/src/components/home/FeedCard';
 import { FontSize, Spacing, Shadows, Springs } from '@/src/constants/theme';
@@ -48,9 +49,18 @@ const PAGE_SIZE = 10;
 const FAB_VISIBLE_OFFSET = 1200;
 // İçeriğin parmağı izlerken kayabileceği azami mesafe (dampened drag).
 const DRAG_MAX = 72;
+// Çıkış/giriş kayması: commit anında içeriğin süzüldüğü mesafe.
+const EXIT_SHIFT = DRAG_MAX + 26;
 // Sekme değiştirme eşiği: ham parmak yolu (px) veya hızlı flick.
 const COMMIT_DX = 60;
 const COMMIT_VELOCITY = 650;
+// Jest niyet eşikleri (manuel aktivasyon).
+const INTENT_DX = 22;
+const INTENT_DY = 14;
+// Jest modları.
+const MODE_NONE = 0;
+const MODE_TABS = 1;
+const MODE_SIDEBAR = 2;
 
 interface TabState {
   items: Activity[];
@@ -82,6 +92,7 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
   const { colors } = useTheme();
   const { messages } = useLocale();
   const { width } = useWindowDimensions();
+  const { openSidebar, sidebarProgress } = useShell();
   const tt = messages.home.activityTabs;
 
   const [activeTab, setActiveTab] = useState<TabKey>('reviews');
@@ -107,7 +118,19 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
 
   // İnteraktif sekme sürüklemesi: içerik dampened kayar, pill parmağı izler.
   const dragX = useSharedValue(0);
+  const contentOpacity = useSharedValue(1);
   const tabIndexSV = useSharedValue(0);
+  // Jest durumu: mod (yok/sekme/sidebar), niyet başlangıcı, commit bekliyor mu.
+  const gestureMode = useSharedValue(MODE_NONE);
+  const touchStartX = useSharedValue(0);
+  const touchStartY = useSharedValue(0);
+  const gestureRejected = useSharedValue(false);
+  const pendingCommit = useSharedValue(false);
+  const sidebarSettled = useSharedValue(true);
+  // Kök konteynerin ekran üzerindeki y'si: pill bar'ın ekran konumunu
+  // worklet'te hesaplayabilmek için (dokunuş bar'ın altında mı?).
+  const rootPageY = useSharedValue(0);
+  const rootRef = useRef<View>(null);
   const activeIndex = TAB_ORDER.indexOf(activeTab);
 
   useEffect(() => {
@@ -115,13 +138,14 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
   }, [activeIndex, tabIndexSV]);
 
   // Pill göstergesinin sürekli konumu: aktif indeks + sürükleme kesri.
+  // Kesir yalnızca parmak ekrandayken uygulanır; commit sonrası giriş
+  // animasyonunda pill tabIndexSV spring'ini takip eder (geri seğirme olmaz).
   const pillProgress = useDerivedValue(() => {
-    return tabIndexSV.value + interpolate(
-      -dragX.value,
-      [-DRAG_MAX, 0, DRAG_MAX],
-      [-0.6, 0, 0.6],
-      Extrapolation.CLAMP,
-    );
+    const dragFraction =
+      gestureMode.value === MODE_TABS
+        ? interpolate(-dragX.value, [-DRAG_MAX, 0, DRAG_MAX], [-0.6, 0, 0.6], Extrapolation.CLAMP)
+        : 0;
+    return tabIndexSV.value + dragFraction;
   });
 
   const loadTab = useCallback(async (tab: TabKey, reset: boolean) => {
@@ -224,51 +248,158 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
-  const switchTab = useCallback(
+  // Commit'in JS fazı: veri değişir, yeni içerik ters taraftan süzülüp oturur.
+  // Ekran bu anda soluk olduğu için dragX'in taraf değiştirmesi GÖRÜNMEZ
+  // (önceki sürümdeki "göz kırpma/seyirme" tam bu zıplamaydı).
+  const commitSwitch = useCallback(
     (dir: 1 | -1) => {
+      haptics.selection();
       setActiveTab((prev) => {
         const idx = TAB_ORDER.indexOf(prev);
-        const next = idx + dir;
-        if (next < 0 || next >= TAB_ORDER.length) return prev;
-        haptics.selection();
-        // Yeni içerik ters yönden dampened girip yerine otursun.
-        dragX.value = dir === 1 ? DRAG_MAX : -DRAG_MAX;
-        dragX.value = withSpring(0, Springs.smooth);
+        const next = Math.min(Math.max(idx + dir, 0), TAB_ORDER.length - 1);
         return TAB_ORDER[next];
       });
+      dragX.value = dir === 1 ? EXIT_SHIFT : -EXIT_SHIFT;
+      dragX.value = withSpring(0, Springs.smooth);
+      contentOpacity.value = withTiming(1, { duration: 110 });
+      pendingCommit.value = false;
     },
-    [dragX],
+    [dragX, contentOpacity, pendingCommit],
   );
 
-  // Yatay pan: içerik parmağı dampened izler; eşik aşımında sekme değişir,
-  // altında yaylanarak geri oturur. Dikey scroll FlatList'te kalır.
+  /**
+   * Ana sayfanın TEK yatay jesti (X davranışı):
+   * - İlk sekmede sağa çekiş: ekranın HER yerinden sidebar'ı parmakla sürer
+   *   (yarım çek-bırak kapanır, eşik üstü yerleşir).
+   * - Diğer durumlarda pill bar'ın ALTINDAN başlayan çekişler sekme değiştirir.
+   * - Bar'ın üstündeki bölgede (hero/karuseller) sola çekişler jeste hiç
+   *   takılmaz; yatay listeler doğal kayar.
+   * Manuel aktivasyon: niyet netleşmeden hiçbir native scroll iptal edilmez.
+   */
   const panGesture = useMemo(
     () =>
       Gesture.Pan()
-        .activeOffsetX([-24, 24])
-        .failOffsetY([-16, 16])
+        .manualActivation(true)
+        .onTouchesDown((e) => {
+          const touch = e.allTouches[0];
+          touchStartX.value = touch.absoluteX;
+          touchStartY.value = touch.absoluteY;
+          gestureRejected.value = false;
+          gestureMode.value = MODE_NONE;
+        })
+        .onTouchesMove((e, stateManager) => {
+          if (gestureRejected.value || gestureMode.value !== MODE_NONE) return;
+          const touch = e.allTouches[0];
+          const dx = touch.absoluteX - touchStartX.value;
+          const dy = touch.absoluteY - touchStartY.value;
+
+          // Dikey niyet: FlatList kaydırsın.
+          if (Math.abs(dy) > INTENT_DY && Math.abs(dy) > Math.abs(dx)) {
+            gestureRejected.value = true;
+            stateManager.fail();
+            return;
+          }
+          if (Math.abs(dx) < INTENT_DX) return;
+
+          const idx = Math.round(tabIndexSV.value);
+
+          // İlk sekmede sağa çekiş = sidebar (her yerden).
+          if (dx > 0 && idx === 0) {
+            gestureMode.value = MODE_SIDEBAR;
+            sidebarSettled.value = false;
+            stateManager.activate();
+            return;
+          }
+
+          // Sekme modu yalnızca pill bar'ın altından başlayan dokunuşlarda:
+          // üstte hero/karuseller kendi yatay scroll'unu korur.
+          const barScreenY = rootPageY.value + Math.max(barY.value - scrollY.value, 0);
+          if (touchStartY.value >= barScreenY) {
+            gestureMode.value = MODE_TABS;
+            stateManager.activate();
+            return;
+          }
+
+          gestureRejected.value = true;
+          stateManager.fail();
+        })
         .onUpdate((event) => {
+          if (gestureMode.value === MODE_SIDEBAR) {
+            const p = event.translationX / SIDEBAR_WIDTH;
+            sidebarProgress.value = Math.min(Math.max(p, 0), 1);
+            return;
+          }
+          if (gestureMode.value !== MODE_TABS) return;
           const idx = tabIndexSV.value;
           const raw = event.translationX;
-          // Kenarda (ilk/son sekme) direnç artar.
+          // Kenarda (son sekmeden ileri) direnç artar.
           const atEdge = (raw > 0 && idx <= 0) || (raw < 0 && idx >= TAB_ORDER.length - 1);
           const damp = atEdge ? 0.12 : 0.42;
-          const next = Math.max(-DRAG_MAX, Math.min(DRAG_MAX, raw * damp));
-          dragX.value = next;
+          dragX.value = Math.max(-DRAG_MAX, Math.min(DRAG_MAX, raw * damp));
         })
         .onEnd((event) => {
+          if (gestureMode.value === MODE_SIDEBAR) {
+            sidebarSettled.value = true;
+            const shouldOpen = sidebarProgress.value > 0.4 || event.velocityX > 600;
+            if (shouldOpen) {
+              sidebarProgress.value = withSpring(1, Springs.smooth);
+              runOnJS(openSidebar)();
+            } else {
+              sidebarProgress.value = withSpring(0, Springs.smooth);
+            }
+            return;
+          }
+          if (gestureMode.value !== MODE_TABS) return;
+
           const raw = event.translationX;
+          const idx = Math.round(tabIndexSV.value);
+          const dir: 1 | -1 = raw < 0 ? 1 : -1;
+          const target = idx + dir;
           const commit =
-            Math.abs(raw) > COMMIT_DX || Math.abs(event.velocityX) > COMMIT_VELOCITY;
-          if (commit && raw < 0) {
-            runOnJS(switchTab)(1);
-          } else if (commit && raw > 0) {
-            runOnJS(switchTab)(-1);
+            (Math.abs(raw) > COMMIT_DX || Math.abs(event.velocityX) > COMMIT_VELOCITY) &&
+            target >= 0 &&
+            target < TAB_ORDER.length;
+
+          if (commit) {
+            // Faz 1 (UI thread): içerik çekiş yönünde süzülür + soluklaşır,
+            // bitince JS fazı veri değişimini soluk perde arkasında yapar.
+            pendingCommit.value = true;
+            contentOpacity.value = withTiming(0.25, { duration: 70 });
+            dragX.value = withTiming(dir === 1 ? -EXIT_SHIFT : EXIT_SHIFT, { duration: 70 }, (finished) => {
+              if (finished) runOnJS(commitSwitch)(dir);
+            });
           } else {
             dragX.value = withSpring(0, Springs.smooth);
           }
+        })
+        .onFinalize(() => {
+          // Emniyet: iptal edilen/yarım kalan jest asla kaymış ekran bırakmaz.
+          if (gestureMode.value === MODE_TABS && !pendingCommit.value) {
+            dragX.value = withSpring(0, Springs.smooth);
+          }
+          if (gestureMode.value === MODE_SIDEBAR && !sidebarSettled.value) {
+            sidebarSettled.value = true;
+            sidebarProgress.value = withSpring(0, Springs.smooth);
+          }
+          gestureMode.value = MODE_NONE;
         }),
-    [dragX, tabIndexSV, switchTab],
+    [
+      dragX,
+      contentOpacity,
+      tabIndexSV,
+      gestureMode,
+      touchStartX,
+      touchStartY,
+      gestureRejected,
+      pendingCommit,
+      sidebarSettled,
+      rootPageY,
+      barY,
+      scrollY,
+      sidebarProgress,
+      openSidebar,
+      commitSwitch,
+    ],
   );
 
   const active = feeds[activeTab];
@@ -314,6 +445,7 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
 
   const contentDragStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: dragX.value }],
+    opacity: contentOpacity.value,
   }));
 
   // Pinned bar frame-perfect görünürlük (worklet); dokunuşlar state ile açılır.
@@ -354,7 +486,17 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
     );
 
   return (
-    <View style={styles.root}>
+    <View
+      ref={rootRef}
+      style={styles.root}
+      onLayout={() => {
+        // Pill bar'ın ekran-üstü konumunu worklet'te hesaplamak için kökün
+        // pencere içindeki y'si gerekir (AppTopBar yüksekliği dahil).
+        rootRef.current?.measureInWindow((_x, y) => {
+          rootPageY.value = y;
+        });
+      }}
+    >
       <GestureDetector gesture={panGesture}>
         <Animated.View style={[styles.root, contentDragStyle]}>
           <AnimatedFlatList

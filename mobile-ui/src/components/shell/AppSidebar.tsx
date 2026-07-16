@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect } from 'react';
 import {
-  Dimensions,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,7 +9,6 @@ import {
 } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
   withSpring,
   runOnJS,
@@ -29,7 +27,7 @@ import { getMyProfile } from '@/src/api/profile';
 import { displayName as resolveDisplayName } from '@/src/utils/display-name';
 import { useConfirm } from '@/src/components/common/ConfirmDialog';
 import { Avatar } from '@/src/components/common/Avatar';
-import { useShell } from '@/src/contexts/shell-context';
+import { useShell, SIDEBAR_WIDTH } from '@/src/contexts/shell-context';
 import {
   BorderRadius,
   FontSize,
@@ -42,8 +40,8 @@ import type { AppLocale } from '@/src/i18n';
 import * as haptics from '@/src/utils/haptics';
 import type { ThemeMode } from '@/src/contexts/theme-context';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const SIDEBAR_WIDTH = Math.min(SCREEN_WIDTH * 0.8, 330);
+// SIDEBAR_WIDTH artık shell-context'ten gelir: feed'in her-yerden-aç jesti
+// ile buradaki render aynı genişliği görmek zorunda.
 const EDGE_STRIP_WIDTH = 24;
 
 // Navbar (tab) kokleri: bu ekranlarda sol kenardan kaydirinca sidebar acilir.
@@ -178,11 +176,13 @@ export function AppSidebar({ children }: AppSidebarProps) {
   const { locale, switchLocale, messages } = useLocale();
   const { user, logout, isAuthenticated } = useAuth();
   const confirm = useConfirm();
-  const { isSidebarOpen, openSidebar, closeSidebar } = useShell();
+  const { isSidebarOpen, openSidebar, closeSidebar, sidebarProgress } = useShell();
   const router = useRouter();
   const pathname = usePathname();
 
-  const progress = useSharedValue(0);
+  // Tek animasyon kaynağı context'te yaşar: ana sayfa feed'i de aynı SV'yi
+  // parmakla sürer (X'in her-yerden çek-aç davranışı). Animasyon birebir aynı.
+  const progress = sidebarProgress;
   // Sidebar acma gesture'i artik tum navbar (tab) koklerinde aktif (sadece ana sayfada degil).
   // Nested/detay ekranlarda kapali kalir; orada soldan-saga geri jesti devrede.
   const isTabRoot = TAB_ROOTS.includes(pathname);
