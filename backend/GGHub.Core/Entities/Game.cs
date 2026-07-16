@@ -30,5 +30,17 @@
         public DateTime? ImportedAt { get; set; }
         public int? RawgRatingsCount { get; set; }
         public int? RawgAdded { get; set; }
+
+        /// <summary>
+        /// RAWG detay ucundan (games/{id}) bu oyun icin YETKILI bir yanit aldigimiz an.
+        /// GameDetailBackfillJob'in kuyrugu bu kolonun null olmasi; islenen oyun bir daha denenmiyor.
+        /// Aciklamasi olmayan oyun da isaretlenir, yoksa sonsuza dek yeniden denenirdi.
+        /// 200 ve 404 doldurur; 429/5xx/timeout DOLDURMAZ (o oyun tekrar denenmeli).
+        ///
+        /// LastSyncedAt'ten AYRI tutuluyor: LastSyncedAt'i MetacriticSyncJob cooldown ve siralama
+        /// icin kullaniyor (MetacriticSyncJob.cs:110-116). Backfill 31 bin satira LastSyncedAt=now
+        /// yazsaydi butun metacritic kuyrugu bozulurdu.
+        /// </summary>
+        public DateTime? DetailSyncedAt { get; set; }
     }
 }

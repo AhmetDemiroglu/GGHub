@@ -152,6 +152,56 @@ namespace GGHub.Infrastructure.Services
             return results;
         }
 
+        public async Task<IEnumerable<UserDto>> SearchMentionableUsersAsync(string query, int currentUserId, int limit = 8)
+        {
+            // Min uzunluk 1: search.minQueryLength (3) kurali burada BILEREK uygulanmiyor.
+            // "@a" yazan kullanici ilk karakterden itibaren oneri gormeli.
+            if (string.IsNullOrWhiteSpace(query)) return Array.Empty<UserDto>();
+
+            // ToLowerInvariant: tr-TR kulturunde "I".ToLower() => "ı" olur ve arama sessizce bozulur.
+            // Sorgu icindeki u.Username.ToLower() ise EF tarafindan SQL LOWER'a cevrilir; o kultur bagimsizdir.
+            var lower = query.Trim().ToLowerInvariant();
+
+            var candidates = _context.Users
+                .AsNoTracking()
+                .Where(u => !u.IsDeleted && !u.IsBanned && u.Username.ToLower().Contains(lower))
+                .WhereVisibleTo(_context, currentUserId)
+                .WhereNotBlockedWith(_context, currentUserId);
+
+            // Siralama: once basi eslesenler, sonra takip ettiklerim, sonra takipci sayisi.
+            // Username son kirici: ayni skorda sayfalama deterministik kalsin.
+            var rows = await candidates
+                .Select(u => new
+                {
+                    u.Id,
+                    u.Username,
+                    u.ProfileImageUrl,
+                    u.FirstName,
+                    u.LastName,
+                    IsFollowing = _context.Follows.Any(f => f.FollowerId == currentUserId && f.FolloweeId == u.Id),
+                    IsPrefixMatch = u.Username.ToLower().StartsWith(lower),
+                    FollowerCount = u.Followers.Count
+                })
+                .OrderByDescending(x => x.IsPrefixMatch)
+                .ThenByDescending(x => x.IsFollowing)
+                .ThenByDescending(x => x.FollowerCount)
+                .ThenBy(x => x.Username)
+                .Take(limit)
+                .ToListAsync();
+
+            return rows.Select(x => new UserDto
+            {
+                Id = x.Id,
+                Username = x.Username,
+                ProfileImageUrl = x.ProfileImageUrl,
+                FirstName = x.FirstName,
+                LastName = x.LastName,
+                IsFollowing = x.IsFollowing,
+                // Yapisi geregi true: her satir zaten WhereVisibleTo + WhereNotBlockedWith kapisindan gecti.
+                IsProfileAccessible = true
+            }).ToList();
+        }
+
         private static (string nameQuery, int? year) ParseQuery(string raw)
         {
             var match = YearTokenRegex.Match(raw);

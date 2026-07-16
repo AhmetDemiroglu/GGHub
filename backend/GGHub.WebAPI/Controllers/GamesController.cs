@@ -3,6 +3,7 @@ using GGHub.Application.Interfaces;
 using GGHub.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 
 namespace GGHub.WebAPI.Controllers
@@ -106,11 +107,31 @@ namespace GGHub.WebAPI.Controllers
             return Ok(gameDto);
         }
 
+        /// <summary>
+        /// Oyun aciklamasini Turkce'ye cevirir (Gemini). Cevrilmis aciklama zaten
+        /// GET /api/games/{slug} yanitinda herkese donuyor; bu uc yalnizca HENUZ cevrilmemis bir
+        /// oyun icin YENI ceviri tetiklemek istendiginde gerekli ve her cagrisi para harciyor.
+        /// Bu yuzden kimlik + kullanici basina saatlik limit istiyor. Toplu ceviriyi zaten
+        /// GGHub.Worker'daki DescriptionTranslationJob yapiyor.
+        /// </summary>
         [HttpPost("{id}/translate")]
+        [Authorize]
+        [EnableRateLimiting("TranslatePolicy")]
         public async Task<IActionResult> TranslateGameDescription(int id)
         {
-            var translatedText = await _gameService.TranslateGameDescriptionAsync(id);
-            return Ok(new { descriptionTr = translatedText });
+            try
+            {
+                var translatedText = await _gameService.TranslateGameDescriptionAsync(id);
+                return Ok(new { descriptionTr = translatedText });
+            }
+            catch (GeminiBudgetExceededException)
+            {
+                // Butce bilgisi disari sizmasin; kullaniciya sadece "simdi olmaz" de.
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+                {
+                    message = "Çeviri servisi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin."
+                });
+            }
         }
 
         [HttpGet("{id}/suggested")]

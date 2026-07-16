@@ -15,13 +15,15 @@ namespace GGHub.Infrastructure.Services
         private readonly INotificationService _notificationService;
         private readonly IGamificationService _gamificationService;
         private readonly IUserDtoEnricher _userDtoEnricher;
-        public ReviewService(GGHubDbContext context, IGameService gameService, INotificationService notificationService, IGamificationService gamificationService, IUserDtoEnricher userDtoEnricher)
+        private readonly IMentionService _mentionService;
+        public ReviewService(GGHubDbContext context, IGameService gameService, INotificationService notificationService, IGamificationService gamificationService, IUserDtoEnricher userDtoEnricher, IMentionService mentionService)
         {
             _context = context;
             _gameService = gameService;
             _notificationService = notificationService;
             _gamificationService = gamificationService;
             _userDtoEnricher = userDtoEnricher;
+            _mentionService = mentionService;
         }
 
         public async Task<Review> CreateReviewAsync(ReviewForCreationDto reviewDto, int userId)
@@ -52,6 +54,13 @@ namespace GGHub.Infrastructure.Services
 
             await _gamificationService.AddXpAsync(userId, 25, "ReviewCreated");
             await _gamificationService.CheckAchievementsAsync(userId, "ReviewCreated");
+
+            // Inceleme kaydedildikten SONRA bahis bildirimi; best-effort, hata olsa da inceleme durur.
+            await _mentionService.NotifyMentionsAsync(
+                userId,
+                review.Content,
+                "social.mentionInReviewNotification",
+                $"/reviews/{review.Id}");
 
             return review;
         }
@@ -95,12 +104,23 @@ namespace GGHub.Infrastructure.Services
                 return null; 
             }
 
+            // Bahis farki icin ESKI metin, uzerine yazilmadan once yakalanir.
+            var oldContent = review.Content;
+
             review.Rating = reviewDto.Rating;
             review.Content = reviewDto.Content;
             review.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
             await UpdateGameRatingStatisticsAsync(review.GameId);
+
+            // Yalnizca YENI eklenen bahisler bildirilir; duzenleme eskileri tekrar bildirmez.
+            await _mentionService.NotifyNewMentionsAsync(
+                userId,
+                oldContent,
+                review.Content,
+                "social.mentionInReviewNotification",
+                $"/reviews/{review.Id}");
 
             var dto = new ReviewDto
             {

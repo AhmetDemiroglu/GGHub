@@ -15,13 +15,15 @@ namespace GGHub.Infrastructure.Services
         private readonly IGamificationService _gamificationService;
         private readonly INotificationService _notificationService;
         private readonly IUserDtoEnricher _userDtoEnricher;
+        private readonly IMentionService _mentionService;
 
-        public ReviewCommentService(GGHubDbContext context, IGamificationService gamificationService, INotificationService notificationService, IUserDtoEnricher userDtoEnricher)
+        public ReviewCommentService(GGHubDbContext context, IGamificationService gamificationService, INotificationService notificationService, IUserDtoEnricher userDtoEnricher, IMentionService mentionService)
         {
             _context = context;
             _gamificationService = gamificationService;
             _notificationService = notificationService;
             _userDtoEnricher = userDtoEnricher;
+            _mentionService = mentionService;
         }
 
         /// <summary>
@@ -80,6 +82,9 @@ namespace GGHub.Infrastructure.Services
             await _gamificationService.AddXpAsync(userId, 5, "ReviewCommentCreated");
 
             // Bildirim (self haric): yanit -> ust yorum sahibine; kok yorum -> inceleme sahibine.
+            // notifiedUserId: bu olay icin ZATEN bildirim alan kisi. Asagida bahis yayilimindan
+            // elenir ki ust yorum sahibini etiketleyen bir yanit iki degil TEK bildirim uretsin.
+            int? notifiedUserId = null;
             if (user != null)
             {
                 if (dto.ParentCommentId.HasValue)
@@ -96,6 +101,7 @@ namespace GGHub.Infrastructure.Services
                             "social.commentReplyNotification",
                             link: $"/reviews/{reviewId}",
                             actorUserId: userId);
+                        notifiedUserId = parentAuthorId;
                     }
                 }
                 else
@@ -112,8 +118,16 @@ namespace GGHub.Infrastructure.Services
                             "social.reviewCommentNotification",
                             link: $"/reviews/{reviewId}",
                             actorUserId: userId);
+                        notifiedUserId = reviewAuthorId;
                     }
                 }
+
+                await _mentionService.NotifyMentionsAsync(
+                    userId,
+                    dto.Content,
+                    "social.mentionInCommentNotification",
+                    $"/reviews/{reviewId}",
+                    excludeUserIds: notifiedUserId.HasValue ? new[] { notifiedUserId.Value } : null);
             }
 
             var created = MapToCommentDto(comment, user, 0, 0, 0, userId);

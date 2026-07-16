@@ -13,9 +13,18 @@ namespace GGHub.Infrastructure.Services
     {
         private const string StatusPrefix = "metacritic-status:";
         private static readonly TimeSpan BatchInterval = TimeSpan.FromMinutes(1);
-        private static readonly TimeSpan NoScoreRetryInterval = TimeSpan.FromDays(14);
-        private static readonly TimeSpan NoResultsRetryInterval = TimeSpan.FromDays(14);
+
+        // 14 gun degil 180 gun: kuyruk tarandiktan sonra ~25 bin puansiz oyun kaliyor ve bunlarin
+        // buyuk cogunlugu Metacritic'te hic incelenmemis indie oyunlar. 14 gunde bir hepsini
+        // yeniden taramak sonsuza kadar suren kalici bir yuk demekti. Metacritic bir oyuna
+        // cikistan aylar sonra puan vermez; 180 gun gecikmeli incelemeleri yakalamaya yeter.
+        private static readonly TimeSpan NoScoreRetryInterval = TimeSpan.FromDays(180);
+        private static readonly TimeSpan NoResultsRetryInterval = TimeSpan.FromDays(180);
         private static readonly TimeSpan TransientRetryInterval = TimeSpan.FromMinutes(30);
+
+        // Ozet log'un siklik siniri. Ozet tum tabloyu taramak zorunda; dakikada bir degil saatte bir.
+        private static readonly TimeSpan SnapshotInterval = TimeSpan.FromHours(1);
+        private DateTime _lastSnapshotAt = DateTime.MinValue;
 
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<MetacriticSyncJob> _logger;
@@ -29,15 +38,28 @@ namespace GGHub.Infrastructure.Services
             _logFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "metacritic_sync.txt");
         }
 
+        // Dosya sinirsiz buyuyordu ve rotasyonu yoktu; job aylarca calisinca diski dolduruyordu.
+        private const long MaxLogFileBytes = 5 * 1024 * 1024;
+
         private void LogToFile(string message)
         {
             try
             {
+                var info = new FileInfo(_logFilePath);
+                if (info.Exists && info.Length > MaxLogFileBytes)
+                {
+                    // Tek kusaklik rotasyon: mevcut .txt -> .1.txt, yenisi bastan baslar.
+                    var rolled = Path.ChangeExtension(_logFilePath, ".1.txt");
+                    File.Delete(rolled);
+                    File.Move(_logFilePath, rolled);
+                }
+
                 var logLine = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] {message}{Environment.NewLine}";
                 File.AppendAllText(_logFilePath, logLine, _utf8NoBom);
             }
             catch
             {
+                // Salt-okunur dosya sisteminde (container) yazamayiz; Serilog zaten ayni mesaji aliyor.
             }
         }
 
@@ -68,40 +90,10 @@ namespace GGHub.Infrastructure.Services
         {
             List<int> gameIdsToSync;
             var now = DateTime.UtcNow;
-            int totalGames;
-            int gamesWithMetacritic;
-            int pendingMetacritic;
-            int neverTried;
-            int noScoreCooldown;
-            int noResultsCooldown;
-            int transientCooldown;
 
             using (var scope = _serviceProvider.CreateScope())
             {
                 var context = scope.ServiceProvider.GetRequiredService<GGHubDbContext>();
-
-                totalGames = await context.Games.CountAsync(stoppingToken);
-                gamesWithMetacritic = await context.Games.CountAsync(g => g.Metacritic != null, stoppingToken);
-                pendingMetacritic = await context.Games.CountAsync(g => g.Metacritic == null && !string.IsNullOrEmpty(g.Name), stoppingToken);
-                neverTried = await context.Games.CountAsync(g => g.Metacritic == null && !string.IsNullOrEmpty(g.Name) && g.MetacriticUrl == null, stoppingToken);
-                noScoreCooldown = await context.Games.CountAsync(
-                    g => g.Metacritic == null &&
-                         !string.IsNullOrEmpty(g.Name) &&
-                         g.MetacriticUrl == BuildStatusMarker(MetacriticService.StatusNoScore),
-                    stoppingToken);
-                noResultsCooldown = await context.Games.CountAsync(
-                    g => g.Metacritic == null &&
-                         !string.IsNullOrEmpty(g.Name) &&
-                         g.MetacriticUrl == BuildStatusMarker(MetacriticService.StatusNoResults),
-                    stoppingToken);
-                transientCooldown = await context.Games.CountAsync(
-                    g => g.Metacritic == null &&
-                         !string.IsNullOrEmpty(g.Name) &&
-                         (g.MetacriticUrl == BuildStatusMarker(MetacriticService.StatusTimeout) ||
-                          g.MetacriticUrl == BuildStatusMarker(MetacriticService.StatusHttpError) ||
-                          g.MetacriticUrl == BuildStatusMarker(MetacriticService.StatusParseError) ||
-                          g.MetacriticUrl == BuildStatusMarker(MetacriticService.StatusException)),
-                    stoppingToken);
 
                 gameIdsToSync = await context.Games
                     .Where(g => g.Metacritic == null && !string.IsNullOrEmpty(g.Name))
@@ -117,15 +109,13 @@ namespace GGHub.Infrastructure.Services
                     .Take(30)
                     .Select(g => g.Id)
                     .ToListAsync(stoppingToken);
+
+                if (now - _lastSnapshotAt >= SnapshotInterval)
+                {
+                    _lastSnapshotAt = now;
+                    await LogSnapshotAsync(context, gameIdsToSync.Count, stoppingToken);
+                }
             }
-
-            var summary =
-                $"[MetacriticSync] Snapshot | Total: {totalGames}, WithScore: {gamesWithMetacritic}, Pending: {pendingMetacritic}, " +
-                $"NeverTried: {neverTried}, NoScoreCooldown: {noScoreCooldown}, NoResultsCooldown: {noResultsCooldown}, " +
-                $"TransientCooldown: {transientCooldown}, EligibleNow: {gameIdsToSync.Count}";
-
-            _logger.LogInformation(summary);
-            LogToFile(summary);
 
             if (gameIdsToSync.Count == 0)
             {
@@ -251,6 +241,42 @@ namespace GGHub.Infrastructure.Services
 
             LogToFile(message);
             await context.SaveChangesAsync(stoppingToken);
+        }
+
+        /// <summary>
+        /// Ilerleme ozeti. Eskiden bu ozet icin HER DAKIKA yedi ayri CountAsync calisiyordu ve
+        /// hicbirinin index'i yoktu: prod'da olculdu, her biri Seq Scan + ~1794 buffer + ~12 ms.
+        /// Yani dakikada ~112 MB, gunde ~161 GB Postgres I/O, tek bir log satiri ugruna; islevsel
+        /// katkisi sifirdi. Simdi tek GROUP BY ve saatte bir: 10.080 tarama/gun yerine 24.
+        /// </summary>
+        private async Task LogSnapshotAsync(GGHubDbContext context, int eligibleNow, CancellationToken stoppingToken)
+        {
+            // Puani olan oyunlarin gercek URL'leri tek kovada toplansin, yoksa 1700+ satir donerdi.
+            var buckets = await context.Games
+                .GroupBy(g => g.Metacritic != null ? "with_score" : (g.MetacriticUrl ?? "never_tried"))
+                .Select(grp => new { Status = grp.Key, Count = grp.Count() })
+                .ToListAsync(stoppingToken);
+
+            var total = buckets.Sum(b => b.Count);
+            int Bucket(string key) => buckets.FirstOrDefault(b => b.Status == key)?.Count ?? 0;
+
+            var withScore = Bucket("with_score");
+            var neverTried = Bucket("never_tried");
+            var noScore = Bucket(BuildStatusMarker(MetacriticService.StatusNoScore));
+            var noResults = Bucket(BuildStatusMarker(MetacriticService.StatusNoResults));
+            var transient = buckets
+                .Where(b => b.Status.StartsWith(StatusPrefix, StringComparison.Ordinal)
+                            && b.Status != BuildStatusMarker(MetacriticService.StatusNoScore)
+                            && b.Status != BuildStatusMarker(MetacriticService.StatusNoResults))
+                .Sum(b => b.Count);
+
+            var summary =
+                $"[MetacriticSync] Snapshot | Total: {total}, WithScore: {withScore}, NeverTried: {neverTried}, " +
+                $"NoScoreCooldown: {noScore}, NoResultsCooldown: {noResults}, TransientCooldown: {transient}, " +
+                $"EligibleNow: {eligibleNow}";
+
+            _logger.LogInformation(summary);
+            LogToFile(summary);
         }
 
         private static string BuildStatusMarker(string status)

@@ -38,6 +38,7 @@ namespace GGHub.Infrastructure.Persistence
         public DbSet<UserStats> UserStats { get; set; }
         public DbSet<RawgImportCheckpoint> RawgImportCheckpoints { get; set; }
         public DbSet<PushToken> PushTokens { get; set; }
+        public DbSet<GeminiUsage> GeminiUsages { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -210,6 +211,34 @@ namespace GGHub.Infrastructure.Persistence
             modelBuilder.Entity<Game>()
                 .HasIndex(g => g.ImportSource)
                 .HasDatabaseName("IX_Games_ImportSource");
+
+            // MetacriticSyncJob kuyrugu. Bu index yokken sorgu Seq Scan + sort yapiyordu
+            // (olculdu: Buffers shared hit=1797, ~12 ms) ve job dakikada bir bunu tekrarliyordu.
+            // Partial: puani zaten olan ~8 bin satir index'e hic girmiyor.
+            modelBuilder.Entity<Game>()
+                .HasIndex(g => new { g.MetacriticUrl, g.LastSyncedAt })
+                .HasFilter("\"Metacritic\" IS NULL")
+                .HasDatabaseName("IX_Games_MetacriticQueue");
+
+            // GameDetailBackfillJob kuyrugu. Partial index is bittikce kuculur: her islenen oyun
+            // DetailSyncedAt aldigi icin index'ten dusuyor, sonunda bosalıyor.
+            modelBuilder.Entity<Game>()
+                .HasIndex(g => new { g.DetailSyncedAt, g.RawgAdded })
+                .HasFilter("\"DetailSyncedAt\" IS NULL")
+                .HasDatabaseName("IX_Games_DetailBackfillQueue");
+
+            // GeminiUsage: donem anahtari satir kimligi. Unique index ON CONFLICT upsert'inin dayanagi.
+            modelBuilder.Entity<GeminiUsage>(entity =>
+            {
+                entity.HasIndex(u => u.PeriodKey)
+                    .IsUnique()
+                    .HasDatabaseName("IX_GeminiUsages_PeriodKey");
+
+                entity.Property(u => u.PeriodKey).HasMaxLength(7);
+
+                // Cagri basina maliyet ~0.0009 USD; iki ondalik basamak bunu sifira yuvarlardi.
+                entity.Property(u => u.SpentUsd).HasPrecision(18, 8);
+            });
 
             // PushToken: one row per device token, cascade-delete with the user
             modelBuilder.Entity<PushToken>(entity =>

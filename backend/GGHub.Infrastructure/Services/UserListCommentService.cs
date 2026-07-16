@@ -15,12 +15,14 @@ namespace GGHub.Infrastructure.Services
         private readonly IGamificationService _gamificationService;
         private readonly INotificationService _notificationService;
         private readonly IUserDtoEnricher _userDtoEnricher;
-        public UserListCommentService(GGHubDbContext context, IGamificationService gamificationService, INotificationService notificationService, IUserDtoEnricher userDtoEnricher)
+        private readonly IMentionService _mentionService;
+        public UserListCommentService(GGHubDbContext context, IGamificationService gamificationService, INotificationService notificationService, IUserDtoEnricher userDtoEnricher, IMentionService mentionService)
         {
             _context = context;
             _gamificationService = gamificationService;
             _notificationService = notificationService;
             _userDtoEnricher = userDtoEnricher;
+            _mentionService = mentionService;
         }
         private async Task CheckListVisibility(int listId, int? userId)
         {
@@ -75,6 +77,9 @@ namespace GGHub.Infrastructure.Services
             await _gamificationService.AddXpAsync(userId, 5, "CommentCreated");
 
             // Bildirim (self haric): yanit -> ust yorum sahibine; ust yorum -> liste sahibine.
+            // notifiedUserId: bu olay icin ZATEN bildirim alan kisi. Asagida bahis yayilimindan
+            // elenir ki ust yorum sahibini etiketleyen bir yanit iki degil TEK bildirim uretsin.
+            int? notifiedUserId = null;
             if (user != null)
             {
                 if (dto.ParentCommentId.HasValue)
@@ -91,6 +96,7 @@ namespace GGHub.Infrastructure.Services
                             "social.commentReplyNotification",
                             link: $"/lists/{listId}",
                             actorUserId: userId);
+                        notifiedUserId = parentAuthorId;
                     }
                 }
                 else
@@ -108,8 +114,16 @@ namespace GGHub.Infrastructure.Services
                             new Dictionary<string, string> { ["listName"] = owner.Name },
                             $"/lists/{listId}",
                             userId);
+                        notifiedUserId = owner.UserId;
                     }
                 }
+
+                await _mentionService.NotifyMentionsAsync(
+                    userId,
+                    dto.Content,
+                    "social.mentionInCommentNotification",
+                    $"/lists/{listId}",
+                    excludeUserIds: notifiedUserId.HasValue ? new[] { notifiedUserId.Value } : null);
             }
 
             var created = MapToCommentDto(comment, user, 0, 0, 0, userId);

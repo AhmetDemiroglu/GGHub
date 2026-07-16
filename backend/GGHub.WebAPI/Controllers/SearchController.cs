@@ -1,5 +1,7 @@
+using GGHub.Application.Dtos;
 using GGHub.Application.Interfaces;
 using GGHub.Infrastructure.Localization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -45,6 +47,29 @@ namespace GGHub.WebAPI.Controllers
             // Dolu query: kullanıcı adına göre mesaj atılabilir kullanıcı araması.
             var userId = int.Parse(userIdClaim.Value);
             var results = await _searchService.SearchMessageableUsersAsync(query, userId);
+            return Ok(results);
+        }
+
+        // @bahis otomatik tamamlama. [Authorize]: gizlilik/engel kapisi bir "current user"
+        // olmadan uygulanamaz, anonim cagri profilleri sizdirirdi.
+        // Min uzunluk 1; buradaki 3 karakter kurali BILEREK uygulanmiyor.
+        [Authorize]
+        [HttpGet("mentions")]
+        public async Task<IActionResult> SearchMentionableUsers([FromQuery] string q)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+            {
+                return Unauthorized();
+            }
+
+            if (string.IsNullOrWhiteSpace(q))
+            {
+                return Ok(Array.Empty<UserDto>());
+            }
+
+            var userId = int.Parse(userIdClaim.Value);
+            var results = await _searchService.SearchMentionableUsersAsync(q, userId);
             return Ok(results);
         }
     }

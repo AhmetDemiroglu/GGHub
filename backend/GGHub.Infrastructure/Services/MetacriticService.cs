@@ -1,5 +1,6 @@
 using GGHub.Application.Interfaces;
 using Microsoft.Extensions.Logging;
+using System.Text;
 using System.Text.Json;
 
 namespace GGHub.Infrastructure.Services
@@ -19,6 +20,8 @@ namespace GGHub.Infrastructure.Services
         private static readonly object _rateLimitLock = new();
         private static DateTime _lastRequestTime = DateTime.MinValue;
         private const int RequestDelayMs = 3000;
+        // Isim tutmadiginda tarih tek dogrulama araci: bu esigi asan aday kabul edilmez.
+        private const int MaxMatchDaysDiff = 365;
 
         public MetacriticService(IHttpClientFactory httpClientFactory, ILogger<MetacriticService> logger)
         {
@@ -59,12 +62,15 @@ namespace GGHub.Infrastructure.Services
                         return new MetacriticResult { DebugInfo = StatusNoResults };
                     }
 
-                    var bestMatch = FindBestMatch(parsedResults, releaseDate);
+                    var bestMatch = FindBestMatch(parsedResults, gameName, releaseDate);
 
                     if (bestMatch == null)
                     {
-                        _logger.LogWarning("[Metacritic] Could not choose a match for '{GameName}'.", gameName);
-                        return new MetacriticResult { DebugInfo = StatusParseError };
+                        // Sonuc geldi ama hicbiri bu oyun oldugundan emin olamadigimiz kadar zayif.
+                        // Bilerek no_results donuyoruz: parse_error gecici sayilip 30 dakikada bir
+                        // yeniden denenirdi ve guvenle esleyemedigimiz her oyun sonsuz dongude kalirdi.
+                        _logger.LogInformation("[Metacritic] No confident match for '{GameName}' among {Count} result(s).", gameName, parsedResults.Count);
+                        return new MetacriticResult { DebugInfo = StatusNoResults };
                     }
 
                     if (bestMatch.Score.HasValue)
@@ -181,35 +187,107 @@ namespace GGHub.Infrastructure.Services
             return results;
         }
 
-        private MetacriticResult? FindBestMatch(List<MetacriticResult> results, string? releaseDate)
+        // Metacritic aramasi bulanik: "limbo" sorgusu LIMBO, LIMBO+ ve Depths of Limbo donduruyor.
+        // Emin olamadigimizda puan yazmamak, yanlis oyunun puanini yazmaktan iyidir; DB'deki hatali
+        // puani sonradan fark etmek neredeyse imkansiz, eksik puani ise her zaman sonra tamamlayabiliriz.
+        private MetacriticResult? FindBestMatch(List<MetacriticResult> results, string gameName, string? releaseDate)
         {
-            if (!results.Any())
+            if (results.Count == 0)
             {
                 return null;
             }
 
-            if (string.IsNullOrEmpty(releaseDate) || !DateTime.TryParse(releaseDate, out var targetDate))
+            var normalizedQuery = NormalizeTitle(gameName);
+            var nameMatches = normalizedQuery.Length == 0
+                ? new List<MetacriticResult>()
+                : results.Where(r => NormalizeTitle(r.Title) == normalizedQuery).ToList();
+
+            DateTime targetDate = default;
+            var hasTargetDate = !string.IsNullOrEmpty(releaseDate)
+                && DateTime.TryParse(
+                    releaseDate,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None,
+                    out targetDate);
+
+            // 1) Isim birebir tutuyor: en guvenilir sinyal. Ayni isimde birden fazla kayit varsa
+            //    (LIMBO / LIMBO+ gibi) tarihe en yakini sec.
+            if (nameMatches.Count > 0)
             {
-                return results.First();
+                if (!hasTargetDate)
+                {
+                    return nameMatches[0];
+                }
+
+                return ClosestByDate(nameMatches, targetDate, out _) ?? nameMatches[0];
             }
 
-            MetacriticResult? bestMatch = null;
-            var bestDaysDiff = int.MaxValue;
-
-            foreach (var result in results)
+            // 2) Isim tutmuyor; elimizdeki tek dogrulama araci tarih. 365 gun guard'i BURADA
+            //    gercekten uygulaniyor. Onceden guard asilinca yine results.First() donuyordu,
+            //    yani guard oluydu ve alakasiz oyunun puani yaziliyordu.
+            if (hasTargetDate)
             {
-                if (TryParseMetacriticDate(result.ReleaseDate, out var resultDate))
+                var closest = ClosestByDate(results, targetDate, out var bestDaysDiff);
+                return (closest != null && bestDaysDiff <= MaxMatchDaysDiff) ? closest : null;
+            }
+
+            // 3) Ne isim tutuyor ne de dogrulayacak bir tarih var. Korumasiz tahmin yerine reddet.
+            return null;
+        }
+
+        private MetacriticResult? ClosestByDate(List<MetacriticResult> candidates, DateTime targetDate, out int bestDaysDiff)
+        {
+            MetacriticResult? best = null;
+            bestDaysDiff = int.MaxValue;
+
+            foreach (var candidate in candidates)
+            {
+                if (TryParseMetacriticDate(candidate.ReleaseDate, out var candidateDate))
                 {
-                    var daysDiff = Math.Abs((resultDate - targetDate).Days);
+                    var daysDiff = Math.Abs((candidateDate - targetDate).Days);
                     if (daysDiff < bestDaysDiff)
                     {
                         bestDaysDiff = daysDiff;
-                        bestMatch = result;
+                        best = candidate;
                     }
                 }
             }
 
-            return (bestMatch != null && bestDaysDiff <= 365) ? bestMatch : results.First();
+            return best;
+        }
+
+        // "DOOM (2016)" -> "doom", "S.T.A.L.K.E.R.: Clear Sky" -> "stalkerclearsky".
+        // RAWG parantez icinde yil/platform yazarken Metacritic yazmiyor; noktalama da iki tarafta tutarsiz.
+        private static string NormalizeTitle(string? title)
+        {
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                return string.Empty;
+            }
+
+            var builder = new StringBuilder(title.Length);
+            var depth = 0;
+
+            foreach (var ch in title)
+            {
+                if (ch == '(' || ch == '[')
+                {
+                    depth++;
+                }
+                else if (ch == ')' || ch == ']')
+                {
+                    if (depth > 0)
+                    {
+                        depth--;
+                    }
+                }
+                else if (depth == 0 && char.IsLetterOrDigit(ch))
+                {
+                    builder.Append(char.ToLowerInvariant(ch));
+                }
+            }
+
+            return builder.ToString();
         }
 
         private bool TryParseMetacriticDate(string? dateStr, out DateTime result)

@@ -1,13 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace GGHub.Application.Interfaces
 {
     public interface IGeminiService
     {
-        Task<string> TranslateHtmlDescriptionAsync(string englishText);
+        /// <summary>
+        /// Ingilizce HTML aciklamayi Turkce'ye cevirir.
+        /// </summary>
+        /// <returns>
+        /// Ceviri metni, ya da ceviri uretilemediyse <c>null</c>. Cagiran null gelirse HICBIR SEY
+        /// yazmamalidir. Eskiden hata durumunda ingilizce metnin kendisi donuyordu ve bu, DB'ye
+        /// "Turkce ceviri" diye Ingilizce metin yazilmasina yol aciyordu.
+        /// </returns>
+        /// <exception cref="GeminiBudgetExceededException">Aylik butce dolduysa.</exception>
+        Task<string?> TranslateHtmlDescriptionAsync(string englishText, CancellationToken cancellationToken = default);
     }
 }

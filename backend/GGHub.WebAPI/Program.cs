@@ -19,6 +19,7 @@ using System.IO.Compression;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using System.Globalization;
+using System.Security.Claims;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -102,6 +103,7 @@ builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IMentionService, MentionService>();
 builder.Services.AddHttpClient<IPushNotificationService, ExpoPushNotificationService>();
 builder.Services.AddScoped<ISocialService, SocialService>();
 builder.Services.AddScoped<IUserSuggestionService, UserSuggestionService>();
@@ -113,6 +115,8 @@ builder.Services.AddScoped<IUserListCommentService, UserListCommentService>();
 builder.Services.AddScoped<IReviewCommentService, ReviewCommentService>();
 builder.Services.AddSingleton<IEmailQueue, EmailQueue>();
 builder.Services.AddHostedService<BackgroundEmailService>();
+builder.Services.Configure<GeminiSettings>(builder.Configuration.GetSection("Gemini"));
+builder.Services.AddScoped<IGeminiBudgetService, GeminiBudgetService>();
 builder.Services.AddHttpClient<IGeminiService, GeminiService>(client =>
 {
     client.Timeout = TimeSpan.FromMinutes(3);
@@ -198,10 +202,26 @@ builder.Services.AddRateLimiter(options =>
 {
     options.AddFixedWindowLimiter(policyName: "LoginPolicy", opt =>
     {
-        opt.PermitLimit = 30;             
+        opt.PermitLimit = 30;
         opt.Window = TimeSpan.FromMinutes(1);
         opt.QueueLimit = 0;
     });
+
+    // Ceviri ucu Gemini'ye para harcatan tek public yol. Aylik butce tavani zarari sinirliyor,
+    // ama tavani yakan biri mesru cevirileri de durdurur; o yuzden kullanici basina sert limit.
+    // Partition anahtari kullanici kimligi: Railway proxy'si arkasinda RemoteIpAddress herkes icin
+    // ayni cikardi (ForwardedHeaders yapilandirilmis degil) ve IP basina limit tek kovaya coker.
+    // Uc zaten [Authorize] oldugu icin kimlik her zaman var.
+    options.AddPolicy("TranslatePolicy", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "anonymous",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromHours(1),
+                QueueLimit = 0
+            }));
+
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 

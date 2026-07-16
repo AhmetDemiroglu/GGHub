@@ -404,7 +404,18 @@ namespace GGHub.Infrastructure.Services
             {
                 return "Çevrilecek açıklama bulunamadı.";
             }
+
             var translatedText = await _geminiService.TranslateHtmlDescriptionAsync(game.Description);
+
+            // null = ceviri uretilemedi. Hicbir sey yazma: eskiden hata halinde Ingilizce metnin
+            // kendisi donuyordu ve DescriptionTr'ye "Turkce ceviri" diye Ingilizce yaziliyordu.
+            // Ingilizce ile ayni cikan bir ceviri de kabul edilmez (kural 1'in ihlali).
+            if (string.IsNullOrWhiteSpace(translatedText) ||
+                string.Equals(translatedText, game.Description, StringComparison.OrdinalIgnoreCase))
+            {
+                return game.Description;
+            }
+
             game.DescriptionTr = translatedText;
             _context.Entry(game).Property(x => x.DescriptionTr).IsModified = true;
 
