@@ -407,13 +407,17 @@ namespace GGHub.Infrastructure.Services
 
             var translatedText = await _geminiService.TranslateHtmlDescriptionAsync(game.Description);
 
-            // null = ceviri uretilemedi. Hicbir sey yazma: eskiden hata halinde Ingilizce metnin
-            // kendisi donuyordu ve DescriptionTr'ye "Turkce ceviri" diye Ingilizce yaziliyordu.
-            // Ingilizce ile ayni cikan bir ceviri de kabul edilmez (kural 1'in ihlali).
+            // null = ceviri uretilemedi. Iki kural birden:
+            //  1) Hicbir sey YAZMA. Eskiden hata halinde Ingilizce metnin kendisi donuyordu ve
+            //     DescriptionTr'ye "Turkce ceviri" diye Ingilizce yaziliyordu.
+            //  2) Cagirana basarili gibi gorunme. Ingilizce metni 200 ile dondurmek, UI'in
+            //     "Ceviri tamamlandi" demesine ama ekranda hicbir seyin degismemesine yol aciyordu.
+            //     Firlatiyoruz ki uc durust bir hata donebilsin.
             if (string.IsNullOrWhiteSpace(translatedText) ||
                 string.Equals(translatedText, game.Description, StringComparison.OrdinalIgnoreCase))
             {
-                return game.Description;
+                throw new GeminiTranslationFailedException(
+                    $"Ceviri uretilemedi (gameId={gameId}).");
             }
 
             game.DescriptionTr = translatedText;

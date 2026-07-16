@@ -140,10 +140,16 @@ namespace GGHub.Infrastructure.Services
 
             return feed;
         }
-        public async Task<IEnumerable<ActivityDto>> GetPersonalizedFeedAsync(int currentUserId, int limit = 20, DateTime? cursor = null)
+        public async Task<IEnumerable<ActivityDto>> GetPersonalizedFeedAsync(int currentUserId, int limit = 20, DateTime? cursor = null, ActivityType? type = null)
         {
             if (limit <= 0) limit = 20;
             if (limit > 50) limit = 50;
+
+            // Mobil sekmeler tek tipe filtreler (İncelemeler/Listeler/Takipler);
+            // null ise "Hepsi" (tümü birleşir).
+            var wantReviews = type is null or ActivityType.Review;
+            var wantLists = type is null or ActivityType.ListCreated;
+            var wantFollows = type is null or ActivityType.FollowUser;
 
             // Npgsql timestamptz için UTC Kind zorunlu; query-string binding Local/Unspecified verebilir.
             if (cursor.HasValue && cursor.Value.Kind != DateTimeKind.Utc)
@@ -178,51 +184,63 @@ namespace GGHub.Infrastructure.Services
 
             var candidates = new List<(ActivityDto Dto, int Engagement)>();
 
-            var reviewsQuery = _context.Reviews
-                .AsNoTracking()
-                .Where(r => followingIds.Contains(r.UserId) && !r.User.IsDeleted && !r.User.IsBanned);
-            if (cursor.HasValue) reviewsQuery = reviewsQuery.Where(r => r.CreatedAt < cursor.Value);
+            if (wantReviews)
+            {
+                var reviewsQuery = _context.Reviews
+                    .AsNoTracking()
+                    .Where(r => followingIds.Contains(r.UserId) && !r.User.IsDeleted && !r.User.IsBanned);
+                if (cursor.HasValue) reviewsQuery = reviewsQuery.Where(r => r.CreatedAt < cursor.Value);
 
-            var reviews = await reviewsQuery
-                .OrderByDescending(r => r.CreatedAt)
-                .Take(limit)
-                .Select(r => new
-                {
-                    Dto = new ActivityDto
+                var reviews = await reviewsQuery
+                    .OrderByDescending(r => r.CreatedAt)
+                    .Take(limit)
+                    .Select(r => new
                     {
-                        Id = r.Id,
-                        Type = ActivityType.Review,
-                        OccurredAt = r.CreatedAt,
-                        Actor = new UserDto
+                        LikeCount = r.ReviewVotes.Count(v => v.Value == 1),
+                        CommentCount = r.Comments.Count,
+                        Dto = new ActivityDto
                         {
-                            Id = r.User.Id,
-                            Username = r.User.Username,
-                            ProfileImageUrl = r.User.ProfileImageUrl,
-                            FirstName = r.User.FirstName,
-                            LastName = r.User.LastName
-                        },
-                        ReviewData = new ReviewActivityDto
-                        {
-                            ReviewId = r.Id,
-                            Rating = r.Rating,
-                            ContentSnippet = r.Content.Length > 100 ? r.Content.Substring(0, 100) + "..." : r.Content,
-                            Game = new GameSummaryDto
+                            Id = r.Id,
+                            Type = ActivityType.Review,
+                            OccurredAt = r.CreatedAt,
+                            Actor = new UserDto
                             {
-                                Id = r.Game.Id,
-                                RawgId = r.Game.RawgId,
-                                Name = r.Game.Name,
-                                Slug = r.Game.Slug,
-                                CoverImage = r.Game.CoverImage,
-                                BackgroundImage = r.Game.BackgroundImage,
-                                Released = r.Game.Released
+                                Id = r.User.Id,
+                                Username = r.User.Username,
+                                ProfileImageUrl = r.User.ProfileImageUrl,
+                                FirstName = r.User.FirstName,
+                                LastName = r.User.LastName
+                            },
+                            ReviewData = new ReviewActivityDto
+                            {
+                                ReviewId = r.Id,
+                                Rating = r.Rating,
+                                ContentSnippet = r.Content.Length > 100 ? r.Content.Substring(0, 100) + "..." : r.Content,
+                                Game = new GameSummaryDto
+                                {
+                                    Id = r.Game.Id,
+                                    RawgId = r.Game.RawgId,
+                                    Name = r.Game.Name,
+                                    Slug = r.Game.Slug,
+                                    CoverImage = r.Game.CoverImage,
+                                    BackgroundImage = r.Game.BackgroundImage,
+                                    Released = r.Game.Released
+                                }
                             }
                         }
-                    },
-                    Engagement = r.ReviewVotes.Count
-                })
-                .ToListAsync();
-            candidates.AddRange(reviews.Select(r => (r.Dto, r.Engagement)));
+                    })
+                    .ToListAsync();
 
+                foreach (var r in reviews)
+                {
+                    r.Dto.ReviewData!.LikeCount = r.LikeCount;
+                    r.Dto.ReviewData!.CommentCount = r.CommentCount;
+                }
+                candidates.AddRange(reviews.Select(r => (r.Dto, r.LikeCount + r.CommentCount)));
+            }
+
+            if (wantLists)
+            {
             var listsQuery = _context.UserLists
                 .AsNoTracking()
                 .Where(l => followingIds.Contains(l.UserId) && !l.User.IsDeleted && !l.User.IsBanned &&
@@ -263,7 +281,10 @@ namespace GGHub.Infrastructure.Services
                 })
                 .ToListAsync();
             candidates.AddRange(lists.Select(l => (l.Dto, l.Engagement)));
+            }
 
+            if (wantFollows)
+            {
             var followsQuery = _context.Follows
                 .AsNoTracking()
                 .Where(f => followingIds.Contains(f.FollowerId) &&
@@ -300,6 +321,7 @@ namespace GGHub.Infrastructure.Services
             candidates.AddRange(followDtos
                 .Where(f => f.FollowData == null || !blockedSet.Contains(f.FollowData.Id))
                 .Select(f => (f, 0)));
+            }
 
             // Sayfa = cursor sonrası kronolojik ilk `limit` kayıt (cursor tutarlılığı için).
             // Sıralama = sayfa içinde skorlamalı (recency decay x tip ağırlığı + engagement + affinity).

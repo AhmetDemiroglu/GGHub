@@ -15,13 +15,14 @@ import { useAuth } from '@/src/hooks/use-auth';
 import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
 import { getHomeContent } from '@/src/api/home';
-import { getPersonalizedFeed } from '@/src/api/activity';
 import { getSuggestedUsers } from '@/src/api/social';
+import { getMyProfile } from '@/src/api/profile';
+import { displayName } from '@/src/utils/display-name';
 import { HeroSlider } from '@/src/components/home/HeroSlider';
 import { StatsBar } from '@/src/components/home/StatsBar';
-import { ActivityFeed } from '@/src/components/home/ActivityFeed';
 import { BentoGrid } from '@/src/components/home/BentoGrid';
 import { PeopleYouMayKnow } from '@/src/components/home/PeopleYouMayKnow';
+import { TabbedActivityFeed } from '@/src/components/home/TabbedActivityFeed';
 
 function HomeSkeleton() {
   const { colors } = useTheme();
@@ -62,15 +63,15 @@ export default function HomeScreen() {
     queryFn: getHomeContent,
   });
 
-  const { data: activities } = useQuery({
-    queryKey: ['activityFeed'],
-    queryFn: () => getPersonalizedFeed(10),
-    enabled: isAuthenticated,
-  });
-
   const { data: suggestions } = useQuery({
     queryKey: ['suggestedUsers'],
     queryFn: () => getSuggestedUsers(12),
+    enabled: isAuthenticated,
+  });
+
+  const { data: myProfile } = useQuery({
+    queryKey: ['myProfile'],
+    queryFn: getMyProfile,
     enabled: isAuthenticated,
   });
 
@@ -100,49 +101,71 @@ export default function HomeScreen() {
     );
   }
 
+  // Selamlama: varsa AD SOYAD ön planda, altında @username (yoksa sadece username).
+  const hasRealName = !!(myProfile?.firstName || myProfile?.lastName);
+  const greetingName = myProfile
+    ? displayName(myProfile)
+    : user?.username ?? '';
+
+  const topSections = (
+    <>
+      {user ? (
+        <View style={styles.header}>
+          <Text style={[styles.greeting, { color: colors.textSecondary }]}>{t.welcome}</Text>
+          <Text style={[styles.displayName, { color: colors.text }]} numberOfLines={1}>
+            {greetingName}
+          </Text>
+          {hasRealName && user ? (
+            <Text style={[styles.handle, { color: colors.textSecondary }]} numberOfLines={1}>
+              @{user.username}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+
+      <HeroSlider games={homeContent.heroGames} />
+
+      <StatsBar stats={homeContent.siteStats} />
+
+      <BentoGrid
+        trendingGames={homeContent.trendingLocal}
+        leaderboard={homeContent.topGamers}
+        showJoinCta={!isAuthenticated}
+      />
+
+      {isAuthenticated && suggestions && suggestions.length > 0 ? (
+        <PeopleYouMayKnow suggestions={suggestions} />
+      ) : null}
+    </>
+  );
+
   return (
     <View style={[styles.safe, { backgroundColor: colors.background }]}>
       <AppTopBar showLogo />
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[styles.content, { paddingBottom: tabBarHeight + Spacing.md }]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefetching}
-            onRefresh={refetch}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
-          />
-        }
-      >
-        <View style={styles.header}>
-          <Text style={[styles.greeting, { color: colors.textSecondary }]}>
-            {t.welcome}
-          </Text>
-          {user ? (
-            <Text style={[styles.username, { color: colors.text }]}>@{user.username}</Text>
-          ) : null}
-        </View>
-
-        <HeroSlider games={homeContent.heroGames} />
-
-        <StatsBar stats={homeContent.siteStats} />
-
-        <BentoGrid
-          trendingGames={homeContent.trendingLocal}
-          leaderboard={homeContent.topGamers}
-          showJoinCta={!isAuthenticated}
+      {isAuthenticated ? (
+        <TabbedActivityFeed
+          header={topSections}
+          onRefreshHome={refetch}
+          refreshingHome={isRefetching}
+          contentPaddingBottom={tabBarHeight + Spacing.md}
         />
-
-        {isAuthenticated && suggestions && suggestions.length > 0 && (
-          <PeopleYouMayKnow suggestions={suggestions} />
-        )}
-
-        {isAuthenticated && activities && activities.length > 0 && (
-          <ActivityFeed activities={activities} />
-        )}
-      </ScrollView>
+      ) : (
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={[styles.content, { paddingBottom: tabBarHeight + Spacing.md }]}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={refetch}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          }
+        >
+          {topSections}
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -166,10 +189,14 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: FontSize.md,
   },
-  username: {
+  displayName: {
     fontSize: FontSize.xxl,
     fontWeight: '700',
     marginTop: Spacing.xs,
+  },
+  handle: {
+    fontSize: FontSize.sm,
+    marginTop: 2,
   },
   errorText: {
     fontSize: FontSize.md,

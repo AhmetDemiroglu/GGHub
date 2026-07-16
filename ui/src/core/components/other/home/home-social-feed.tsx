@@ -16,7 +16,7 @@ import placeholderGame from "@/core/assets/placeholder.png";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/core/components/ui/tabs";
 import { Skeleton } from "@/core/components/ui/skeleton";
-import { Activity as ActivityIcon, Flame, List, Loader2, Star, UserPlus } from "lucide-react";
+import { Activity as ActivityIcon, Flame, Heart, List, Loader2, MessageCircle, Star, UserPlus } from "lucide-react";
 
 const FEED_PAGE_SIZE = 10;
 
@@ -73,8 +73,13 @@ export default function HomeSocialFeed({ initialActivities, isAuthenticated }: H
         }
     }, []);
 
+    // IntersectionObserver yalnızca kesişme DURUMU değişince tetiklenir. Yükleme
+    // sonrası sentinel hâlâ görünürse yeni olay üretmez ve akış durur (desktop'ta
+    // hiç, mobilde elle scroll gerektirir). Bu yüzden her append/yükleme bitişinde
+    // observer'ı yeniden kurup kesişmeyi tekrar değerlendiriyoruz — sentinel görünür
+    // kaldıkça yükleme kendiliğinden devam eder (X benzeri akışkan sonsuz scroll).
     useEffect(() => {
-        if (!isAuthenticated || !hasMore) return;
+        if (!isAuthenticated || !hasMore || loadingMore) return;
         const sentinel = sentinelRef.current;
         if (!sentinel) return;
 
@@ -84,12 +89,12 @@ export default function HomeSocialFeed({ initialActivities, isAuthenticated }: H
                     void loadMore();
                 }
             },
-            { rootMargin: "400px 0px" },
+            { rootMargin: "600px 0px" },
         );
 
         observer.observe(sentinel);
         return () => observer.disconnect();
-    }, [isAuthenticated, hasMore, loadMore]);
+    }, [isAuthenticated, hasMore, loadMore, loadingMore, activities.length]);
 
     if (!isAuthenticated) {
         return (
@@ -278,6 +283,16 @@ function ReviewCard({ activity, timeAgo, locale }: { activity: Activity; timeAgo
                     {review.contentSnippet ? <p className="mt-1.5 line-clamp-2 text-xs italic text-muted-foreground">"{review.contentSnippet}"</p> : null}
                 </div>
             </Link>
+            <div className="mt-2.5 flex items-center gap-5 pl-1 text-muted-foreground">
+                <span className="flex items-center gap-1.5 text-xs">
+                    <Heart className="h-3.5 w-3.5" />
+                    {review.likeCount ?? 0}
+                </span>
+                <span className="flex items-center gap-1.5 text-xs">
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    {review.commentCount ?? 0}
+                </span>
+            </div>
         </div>
     );
 }

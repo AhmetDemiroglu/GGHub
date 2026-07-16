@@ -245,7 +245,10 @@ namespace GGHub.Infrastructure.Persistence
                     .IsUnique()
                     .HasDatabaseName("IX_GeminiUsages_PeriodKey");
 
-                entity.Property(u => u.PeriodKey).HasMaxLength(7);
+                // "2026-07-16" = 10 karakter. Defter GUNLUK satir tutuyor; aylik harcama o ayin
+                // gunlerinin toplami. Gunluk kirilim sart cunku Gemini ucretsiz katmani GUNLUK
+                // istek sayisiyla sinirli ve botun siteye pay birakmasi gerekiyor.
+                entity.Property(u => u.PeriodKey).HasMaxLength(10);
 
                 // Cagri basina maliyet ~0.0009 USD; iki ondalik basamak bunu sifira yuvarlardi.
                 entity.Property(u => u.SpentUsd).HasPrecision(18, 8);

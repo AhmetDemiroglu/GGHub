@@ -87,10 +87,34 @@ var host = builder.Build();
 if (args.Contains("--status"))
 {
     await WorkerStatus.PrintAsync(host.Services);
-    return;
+    return 0;
 }
 
 var logger = host.Services.GetRequiredService<ILogger<Program>>();
+
+// Worker BILEREK migration UYGULAMAZ: semanin sahibi WebAPI (Railway'de Production'da
+// Database.Migrate() calisiyor). Ama kod semadan ileri olabilir — ornegin yeni bir kolon
+// eklendi, henuz push edilmedi. O halde bot calisirsa hatayi ancak YAZMA aninda gorur:
+// Gemini cagrisini yapar, token'i yakar, sonra kaydederken patlar ve ceviri kaybolur.
+// Bu yuzden acilista kontrol edip net bir mesajla duruyoruz.
+using (var startupScope = host.Services.CreateScope())
+{
+    var db = startupScope.ServiceProvider.GetRequiredService<GGHubDbContext>();
+    var pending = (await db.Database.GetPendingMigrationsAsync()).ToList();
+
+    if (pending.Count > 0)
+    {
+        logger.LogError(
+            "Veritabani semasi kodun GERISINDE. Uygulanmamis {Count} migration var: {List}\n" +
+            "Bot baslatilmadi; bu haliyle calissa yazma aninda hata alir ve is kaybolurdu.\n" +
+            "Cozum: degisiklikleri main'e push et (Railway deploy sirasinda migration'i uygular),\n" +
+            "sonra: gghub-bot start",
+            pending.Count, string.Join(", ", pending));
+        return 1;
+    }
+}
+
 logger.LogInformation("=== GGHub Worker basladi ===");
 
 await host.RunAsync();
+return 0;

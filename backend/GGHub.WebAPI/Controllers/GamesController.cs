@@ -15,12 +15,18 @@ namespace GGHub.WebAPI.Controllers
         private readonly IGameService _gameService;
         private readonly IDiscoverService _discoverService;
         private readonly IReviewService _reviewService;
+        private readonly ILogger<GamesController> _logger;
 
-        public GamesController(IGameService gameService, IDiscoverService discoverService, IReviewService reviewService)
+        public GamesController(
+            IGameService gameService,
+            IDiscoverService discoverService,
+            IReviewService reviewService,
+            ILogger<GamesController> logger)
         {
             _gameService = gameService;
             _discoverService = discoverService;
             _reviewService = reviewService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -124,12 +130,21 @@ namespace GGHub.WebAPI.Controllers
                 var translatedText = await _gameService.TranslateGameDescriptionAsync(id);
                 return Ok(new { descriptionTr = translatedText });
             }
-            catch (GeminiBudgetExceededException)
+            catch (Exception ex) when (
+                ex is GeminiBudgetExceededException ||
+                ex is GeminiQuotaExceededException ||
+                ex is GeminiTranslationFailedException)
             {
-                // Butce bilgisi disari sizmasin; kullaniciya sadece "simdi olmaz" de.
+                // Uc kok sebep de kullanici acisindan ayni: ceviri simdi yapilamiyor.
+                // Ham 429'u, butce rakamini veya saglayici adini disari sizdirmiyoruz; kullaniciyi
+                // ilgilendirmez ve altyapi hakkinda bilgi verir. 503 doguru kod: gecici durum.
+                // ONEMLI: burasi eskiden Ingilizce metni 200 ile donduruyordu ve UI "Ceviri
+                // tamamlandi" deyip hicbir seyi degistirmiyordu; sessiz yalan yerine durust hata.
+                _logger.LogWarning(ex, "[Games] Ceviri basarisiz (gameId={GameId})", id);
+
                 return StatusCode(StatusCodes.Status503ServiceUnavailable, new
                 {
-                    message = "Çeviri servisi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin."
+                    message = "Çeviri servisi şu anda yoğun. Lütfen daha sonra tekrar deneyin."
                 });
             }
         }

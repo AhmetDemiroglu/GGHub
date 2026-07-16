@@ -68,6 +68,22 @@ namespace GGHub.Infrastructure.Services
 
             using var response = await _httpClient.SendAsync(request, cancellationToken);
 
+            // 429'u digerlerinden AYIR. Google reddedilen istegi de gunluk kotaya yaziyor, yani
+            // sessizce null donup devam etmek kotayi yakmaya devam etmek demek. Ayrica cagiranin
+            // buna farkli tepki vermesi gerekiyor: bot gunu kapatmali, uc ise kullaniciya durust
+            // bir "simdi olmaz" donmeli.
+            if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            {
+                await _budget.RecordRejectedCallAsync(cancellationToken);
+
+                var quotaBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogWarning(
+                    "[Gemini] 429 kota doldu. Anahtar ucretsiz katmandaysa limit model basina gunde 500 istek. {Body}",
+                    quotaBody.Length > 200 ? quotaBody[..200] : quotaBody);
+
+                throw new GeminiQuotaExceededException("Gemini kotasi doldu (HTTP 429).");
+            }
+
             if (!response.IsSuccessStatusCode)
             {
                 var body = await response.Content.ReadAsStringAsync(cancellationToken);

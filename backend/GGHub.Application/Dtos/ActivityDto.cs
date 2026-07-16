@@ -26,8 +26,12 @@ namespace GGHub.Application.Dtos
     {
         public int ReviewId { get; set; }
         public int Rating { get; set; }
-        public string? ContentSnippet { get; set; } 
+        public string? ContentSnippet { get; set; }
         public GameSummaryDto Game { get; set; } = null!;
+
+        // X tarzı kart göstergeleri
+        public int LikeCount { get; set; }
+        public int CommentCount { get; set; }
     }
 
     public class ListActivityDto

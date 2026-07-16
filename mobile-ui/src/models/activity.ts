@@ -11,6 +11,16 @@ export interface ReviewActivityData {
   rating: number;
   contentSnippet?: string;
   game: GameSummary;
+  likeCount: number;
+  commentCount: number;
+}
+
+export interface ActivityActor {
+  id: number;
+  username: string;
+  profileImageUrl: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
 }
 
 export interface ListActivityData {
@@ -32,6 +42,7 @@ export interface Activity {
   id: number;
   type: ActivityType;
   occurredAt: string;
+  actor?: ActivityActor | null;
   reviewData?: ReviewActivityData;
   listData?: ListActivityData;
   followData?: FollowActivityData;

@@ -86,11 +86,17 @@ function LeaderboardRow({ user, index, isLast }: { user: LeaderboardUser; index:
   );
 }
 
+const COLLAPSED_COUNT = 3;
+
 export function LeaderboardCard({ users }: LeaderboardCardProps) {
   const { colors } = useTheme();
   const { messages } = useLocale();
+  const [expanded, setExpanded] = React.useState(false);
 
   if (!users.length) return null;
+
+  const canExpand = users.length > COLLAPSED_COUNT;
+  const visible = expanded ? users : users.slice(0, COLLAPSED_COUNT);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.surface }, Shadows.md]}>
@@ -108,18 +114,33 @@ export function LeaderboardCard({ users }: LeaderboardCardProps) {
       </LinearGradient>
 
       <FlatList
-        data={users}
+        data={visible}
         keyExtractor={(item) => String(item.userId)}
         renderItem={({ item, index }) => (
           <LeaderboardRow
             user={item}
             index={index}
-            isLast={index === users.length - 1}
+            isLast={index === visible.length - 1}
           />
         )}
         scrollEnabled={false}
         contentContainerStyle={styles.listContent}
       />
+
+      {canExpand ? (
+        <Pressable
+          style={styles.showMore}
+          onPress={() => {
+            haptics.selection();
+            setExpanded((v) => !v);
+          }}
+        >
+          <Text style={[styles.showMoreText, { color: colors.primary }]}>
+            {expanded ? messages.common.showLess : messages.common.showMore}
+          </Text>
+          <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={14} color={colors.primary} />
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -141,6 +162,19 @@ const styles = StyleSheet.create({
   title: {
     fontSize: FontSize.xl,
     fontWeight: '700',
+  },
+  showMore: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: Spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(127,127,127,0.15)',
+  },
+  showMoreText: {
+    fontSize: FontSize.sm,
+    fontWeight: '600',
   },
   listContent: {
     backgroundColor: 'transparent',

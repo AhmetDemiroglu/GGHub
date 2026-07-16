@@ -35,5 +35,19 @@ namespace GGHub.Infrastructure.Settings
         /// 16 Tem 2026 kuru. Kur ciddi oynarsa guncelle, yanlis olmasi bir seyi bozmaz.
         /// </summary>
         public decimal UsdToTryRate { get; set; } = 47.1m;
+
+        /// <summary>
+        /// Botun GUNLUK cagri tavani. 0 = sinirsiz.
+        ///
+        /// Neden var: anahtar faturalandirma acik DEGILSE Gemini ucretsiz katmanda calisir ve
+        /// gemini-3.1-flash-lite icin limit model basina GUNDE 500 istek. Bot 4 sn araliklarla
+        /// ~1 saatte bunu bitiriyor; sonrasinda Google her cagriya 429 donuyor ve CANLI SITEDEKI
+        /// "Turkceye cevir" butonu da gunun geri kalaninda calismiyor. 400, siteye 100 istek
+        /// pay birakir.
+        ///
+        /// Faturalandirma acilirsa bu degeri 0 yap: odemeli katmanda limit dakikada binlerce
+        /// istektir ve gercek fren MonthlyBudgetUsd olur.
+        /// </summary>
+        public int DailyCallCap { get; set; } = 400;
     }
 }

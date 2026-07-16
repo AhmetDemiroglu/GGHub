@@ -1,5 +1,15 @@
 namespace GGHub.Application.Interfaces
 {
+    /// <summary>
+    /// Ceviri istendi ama uretilemedi (Gemini hata dondu, bos yanit verdi veya cikti sinirina
+    /// takildi). Bilerek exception: sessizce Ingilizce metni dondurmek, cagiranin basarili
+    /// sanmasina ve kullaniciya "Ceviri tamamlandi" denmesine yol aciyordu.
+    /// </summary>
+    public class GeminiTranslationFailedException : Exception
+    {
+        public GeminiTranslationFailedException(string message) : base(message) { }
+    }
+
     public interface IGeminiService
     {
         /// <summary>

@@ -58,7 +58,7 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
         <View style={styles.topRow}>
           <UserLinkName
             user={partner}
-            variant="username"
+            variant="name"
             numberOfLines={1}
             containerStyle={styles.usernameWrap}
             style={[

@@ -12,6 +12,8 @@ export interface ReviewActivityData {
     rating: number;
     contentSnippet?: string;
     game: GameSummary;
+    likeCount: number;
+    commentCount: number;
 }
 
 export interface ListActivityData {

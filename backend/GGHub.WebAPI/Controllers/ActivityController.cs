@@ -1,4 +1,5 @@
-﻿using GGHub.Application.Interfaces;
+﻿using GGHub.Application.Dtos;
+using GGHub.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -32,10 +33,10 @@ namespace GGHub.WebAPI.Controllers
 
         [HttpGet("feed")]
         [Authorize]
-        public async Task<IActionResult> GetPersonalizedFeed([FromQuery] int limit = 10, [FromQuery] DateTime? cursor = null)
+        public async Task<IActionResult> GetPersonalizedFeed([FromQuery] int limit = 10, [FromQuery] DateTime? cursor = null, [FromQuery] ActivityType? type = null)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-            var feed = await _activityService.GetPersonalizedFeedAsync(userId, limit, cursor);
+            var feed = await _activityService.GetPersonalizedFeedAsync(userId, limit, cursor, type);
             return Ok(feed);
         }
     }

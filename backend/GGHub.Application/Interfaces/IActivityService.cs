@@ -5,6 +5,6 @@ namespace GGHub.Application.Interfaces
     public interface IActivityService
     {
         Task<IEnumerable<ActivityDto>> GetUserActivityFeedAsync(string username, int? currentUserId = null, int limit = 20);
-        Task<IEnumerable<ActivityDto>> GetPersonalizedFeedAsync(int currentUserId, int limit = 20, DateTime? cursor = null);
+        Task<IEnumerable<ActivityDto>> GetPersonalizedFeedAsync(int currentUserId, int limit = 20, DateTime? cursor = null, ActivityType? type = null);
     }
 }

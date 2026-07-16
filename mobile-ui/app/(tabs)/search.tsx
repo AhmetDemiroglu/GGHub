@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
+  Keyboard,
   StyleSheet,
   Text,
   TextInput,
@@ -45,6 +46,7 @@ export default function SearchScreen() {
 
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+  const searchInputRef = useRef<TextInput>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleQueryChange = (text: string) => {
@@ -56,6 +58,12 @@ export default function SearchScreen() {
   const clearQuery = () => {
     setQuery('');
     setDebouncedQuery('');
+  };
+
+  const handleCloseSearch = () => {
+    clearQuery();
+    searchInputRef.current?.blur();
+    Keyboard.dismiss();
   };
 
   const { data, isLoading } = useQuery({
@@ -152,6 +160,7 @@ export default function SearchScreen() {
       <View style={[styles.searchBar, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
         <Ionicons name="search-outline" size={18} color={colors.placeholder} />
         <TextInput
+          ref={searchInputRef}
           style={[styles.searchInput, { color: colors.text }]}
           placeholder={t.placeholder}
           placeholderTextColor={colors.placeholder}
@@ -161,11 +170,14 @@ export default function SearchScreen() {
           autoCorrect={false}
           returnKeyType="search"
         />
-        {query.length > 0 ? (
-          <TouchableOpacity onPress={clearQuery} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="close-circle" size={18} color={colors.placeholder} />
-          </TouchableOpacity>
-        ) : null}
+        <TouchableOpacity
+          onPress={handleCloseSearch}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="Aramayı kapat"
+        >
+          <Ionicons name="close" size={20} color={colors.placeholder} />
+        </TouchableOpacity>
       </View>
 
       {/* İçerik */}
