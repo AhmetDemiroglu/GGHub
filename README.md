@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="ui/public/og/gghub-social-v2.png" alt="GGHub, oyuncu sosyal platformu" width="100%">
+<img src="ui/public/og/home.png" alt="GGHub, oyuncu sosyal platformu" width="100%">
 
 <br>
 
