@@ -134,8 +134,9 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
   }, [activeIndex, tabIndexSV]);
 
   // Pill göstergesinin sürekli konumu: aktif indeks + sürükleme kesri.
-  // Kesir yalnızca parmak ekrandayken uygulanır; commit sonrası giriş
-  // animasyonunda pill tabIndexSV spring'ini takip eder (geri seğirme olmaz).
+  // Kesir YALNIZCA parmak ekrandayken (MODE_TABS) uygulanır; parmak kalkar
+  // kalkmaz jest sonu kesri tabIndexSV'ye DEVREDER (bkz. absorbDragIntoPill),
+  // böylece mod MODE_NONE'a düşerken pill'in konumu hiç zıplamaz.
   // Eşleme X gibi sayfa-oranlıdır: kartlar yarım ekran kaydıysa pill yarım pill kaymıştır.
   const pillProgress = useDerivedValue(() => {
     const dragFraction =
@@ -144,6 +145,28 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
         : 0;
     return tabIndexSV.value + dragFraction;
   });
+
+  /**
+   * Parmak kalkarken pill'in KESIRLI konumunu tabIndexSV'ye tasir ve kesri
+   * kapatir. Ikisi ayni karede oldugu icin pill gorsel olarak yerinde kalir.
+   *
+   * Olmazsa "goz kirpma": pillProgress = tabIndexSV + dragFraction ve kesir
+   * yalniz MODE_TABS iken uygulaniyor. onEnd'den hemen sonra onFinalize modu
+   * MODE_NONE yapinca kesir ANINDA sifirlaniyor, tabIndexSV ise hala ESKI
+   * indekste; pill once eski sekmeye geri firliyor. Yeni indeks de ancak
+   * commitSwitch -> setActiveTab -> effect zincirinden birkac kare sonra
+   * geldigi icin pill oraya tik diye atliyordu.
+   *
+   * @returns Devir oncesi yuvarlanmis (islenmis) sekme indeksi.
+   */
+  const absorbDragIntoPill = useCallback(() => {
+    'worklet';
+    const idx = Math.round(tabIndexSV.value);
+    const fraction = interpolate(-dragX.value, [-width, 0, width], [-1, 0, 1], Extrapolation.CLAMP);
+    tabIndexSV.value = tabIndexSV.value + fraction;
+    gestureMode.value = MODE_NONE;
+    return idx;
+  }, [tabIndexSV, dragX, gestureMode, width]);
 
   const loadTab = useCallback(async (tab: TabKey, reset: boolean) => {
     const current = feedsRef.current[tab];
@@ -355,8 +378,10 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
           if (gestureMode.value !== MODE_TABS) return;
 
           const raw = event.translationX;
-          const idx = Math.round(tabIndexSV.value);
           const dir: 1 | -1 = raw < 0 ? 1 : -1;
+          // Kesri pill'e devret (mod da burada MODE_NONE olur); idx devir
+          // ONCESI işlenmiş sekmedir.
+          const idx = absorbDragIntoPill();
           const target = idx + dir;
           const commit =
             (Math.abs(raw) > width * COMMIT_RATIO || Math.abs(event.velocityX) > COMMIT_VELOCITY) &&
@@ -367,16 +392,27 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
             // Faz 1 (UI thread): eski kartlar kaldıkları yerden ekran dışına
             // akar; bitince JS fazı veriyi değiştirir ve yenisi karşıdan girer.
             pendingCommit.value = true;
+            // Pill kesirli konumundan hedefe KESİNTİSİZ akar ve React state
+            // turunu BEKLEMEZ. commitSwitch sonrası effect'teki
+            // withSpring(activeIndex) pill zaten hedefte olduğu için no-op.
+            tabIndexSV.value = withTiming(target, { duration: 130 });
             dragX.value = withTiming(dir === 1 ? -width : width, { duration: 130 }, (finished) => {
               if (finished) runOnJS(commitSwitch)(dir);
             });
           } else {
+            // Eşik altı: pill de kartlarla birlikte yaylanarak yerine döner.
+            tabIndexSV.value = withSpring(idx, Springs.smooth);
             dragX.value = withSpring(0, Springs.smooth);
           }
         })
         .onFinalize(() => {
           // Emniyet: iptal edilen/yarım kalan jest asla kaymış ekran bırakmaz.
+          // Buraya yalnızca onEnd HİÇ çalışmadığında (jest iptal) MODE_TABS ile
+          // gelinir; onEnd kendi içinde devri yapıp modu düşürüyor. İptalde de
+          // kesri devretmezsek pill yine geri fırlardı.
           if (gestureMode.value === MODE_TABS && !pendingCommit.value) {
+            const idx = absorbDragIntoPill();
+            tabIndexSV.value = withSpring(idx, Springs.smooth);
             dragX.value = withSpring(0, Springs.smooth);
           }
           if (gestureMode.value === MODE_SIDEBAR && !sidebarSettled.value) {
@@ -400,6 +436,7 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
       sidebarProgress,
       openSidebar,
       commitSwitch,
+      absorbDragIntoPill,
       width,
     ],
   );

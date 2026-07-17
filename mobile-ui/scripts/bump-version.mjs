@@ -9,8 +9,14 @@
  * native dosyalar da elle guncellenmek zorunda.
  *
  * Kullanim:
- *   npm run bump 1.0.3          -> version 1.0.3; iOS build & Android versionCode otomatik +1
- *   npm run bump 1.0.3 5 7      -> version 1.0.3; iOS build 5; Android versionCode 7
+ *   npm run bump 1.0.3            -> version 1.0.3; iOS build & Android versionCode otomatik +1
+ *   npm run bump 1.0.3 5 7        -> version 1.0.3; iOS build 5; Android versionCode 7
+ *   npm run bump 1.0.4 8 11 1.0.6 -> iOS 1.0.4 (build 8); Android versionName 1.0.6 (vc 11)
+ *
+ * Dorduncu arguman (androidVersionName) Android surum adini iOS'tan AYIRIR.
+ * Verilmezse Android da `version` alir. Platformlar bilerek ayrildiginda
+ * (bkz. android/app/build.gradle) bu argumani vermek SART: aksi halde script
+ * gradle'daki versionName'i iOS surumuyle sessizce ezer.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -36,6 +42,13 @@ const androidVersionCode = process.argv[4]
 
 if (Number.isNaN(iosBuild) || Number.isNaN(androidVersionCode)) {
   console.error('Hata: iOS build / Android versionCode sayisal olmali.');
+  process.exit(1);
+}
+
+// Android surum adi iOS'tan ayrik olabilir; verilmezse ortak `version` kullanilir.
+const androidVersionName = process.argv[5] ?? version;
+if (!/^\d+\.\d+\.\d+$/.test(androidVersionName)) {
+  console.error('Hata: androidVersionName gecerli bir surum olmali. Ornek: 1.0.6');
   process.exit(1);
 }
 
@@ -82,13 +95,12 @@ edit('ios/GGHub.xcodeproj/project.pbxproj', (s) =>
 edit('android/app/build.gradle', (s) =>
   s
     .replace(/versionCode\s+\d+/, `versionCode ${androidVersionCode}`)
-    .replace(/versionName\s+"[^"]*"/, `versionName "${version}"`),
+    .replace(/versionName\s+"[^"]*"/, `versionName "${androidVersionName}"`),
 );
 
 console.log(`Surum guncellendi:
-  marketing version  : ${version}
-  iOS build          : ${iosBuild}
-  Android versionCode: ${androidVersionCode}
+  iOS surumu         : ${version} (build ${iosBuild})
+  Android surumu     : ${androidVersionName} (versionCode ${androidVersionCode})
 
 Sonraki adim:
   iOS     -> Xcode'da ios/GGHub.xcworkspace ac -> Archive
