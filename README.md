@@ -1,382 +1,353 @@
 <div align="center">
 
-# 🎮 GGHub
+<img src="ui/public/og/gghub-social-v2.png" alt="GGHub, oyuncu sosyal platformu" width="100%">
 
-**Oyuncular için Yeni Nesil Sosyal Platform**
+<br>
 
-[![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge&logo=dotnet)](https://dotnet.microsoft.com/)
-[![Next.js](https://img.shields.io/badge/Next.js-15.4-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-19.1-20232A?style=for-the-badge&logo=react)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](https://opensource.org/licenses/MIT)
+# GGHub
 
----
+**Oyunları keşfet, kendi arşivini oluştur ve oyuncu topluluğuna katıl.**
 
-GGHub, oyuncuların yeni oyunlar keşfetmesi, kişisel listeler oluşturması, inceleme paylaşması ve canlı bir küresel toplulukla bağlantı kurması için tasarlanmış modern, tam yığın bir oyuncu sosyal platformdur. Proje **.NET 8 Clean Architecture** ve **Next.js 15 App Router** ile geliştirilmiştir.
+GGHub; oyun keşfini, kişisel listeleri, incelemeleri ve sosyal etkileşimi tek yerde buluşturan açık kaynaklı bir oyuncu platformudur. Web, iOS ve Android deneyimleri aynı API ve ortak ürün yaklaşımı üzerinde çalışır.
 
-[🌐 Canlı Demo](https://gghub.social/) · [🐛 Hata Bildir](https://github.com/ahmetdemiroglu/GGHub/issues) · [✨ Özellik Talep Et](https://github.com/ahmetdemiroglu/GGHub/issues)
+[![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4?style=flat-square&logo=dotnet)](https://dotnet.microsoft.com/)
+[![Next.js 15](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![React 19](https://img.shields.io/badge/React-19-20232A?style=flat-square&logo=react)](https://react.dev/)
+[![Expo 55](https://img.shields.io/badge/Expo-55-000020?style=flat-square&logo=expo)](https://expo.dev/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-F5C518?style=flat-square)](LICENSE)
 
-</div>
-
----
-
-## 📑 İçindekiler
-
-- [🚀 Temel Özellikler](#-temel-özellikler)
-- [🛠️ Teknoloji Yığını](#️-teknoloji-yığını)
-- [🏗️ Mimari Yapı](#-mimari-yapı)
-- [🔌 Harici Entegrasyonlar](#-harici-entegrasyonlar)
-- [💻 Kurulum](#-kurulum)
-- [📱 API Dokümantasyonu](#-api-dokümantasyonu)
-- [🗺️ Yol Haritası](#-yol-haritası)
-- [🤝 Katkıda Bulunma](#-katkıda-bulunma)
-- [� Lisans](#-lisans)
-
----
-
-## 🚀 Temel Özellikler
-
-### 🔐 Güvenlik & Kimlik Doğrulama
-- **JWT Tabalı Kimlik Doğrulama** - Refresh token mekanizması ile güvenli oturum yönetimi
-- **E-posta Doğrulama** - Yeni hesaplar için e-posta onayı
-- **Şifre Kurtarma** - Güvenli parola sıfırlama akışı
-- **Rol Tabanlı Erişim Kontrolü (RBAC)** - Admin, Moderatör ve Kullanıcı rolleri
-
-### 🎮 Oyun Keşfi & Veritabanı
-- **RAWG API Entegrasyonu** - 14+ genre ve 11+ platform desteği
-- **Akıllı Arama & Filtreleme** - Gelişmiş arama motoru ile detaylı filtreleme seçenekleri
-- **Oyun Detay Sayfası** - Metacritic puanları, platform bilgileri, fragmanlar ve ekran görüntüleri
-- **Oyun Önerileri** - Benzer oyunlar ve kişiselleştirilmiş öneri sistemi
-
-### 📋 Liste Yönetimi
-- **Özel Listeler** - "İstek Listesi", "Oynuyorum", "Bitirdim" ve özel listeler
-- **Görünürlük Ayarları** - Her liste için Public/Private/Friends-only seçenekleri
-- **Liste Takibi** - Diğer kullanıcıların listelerini takip etme
-- **Liste Değerlendirmeleri** - 1-5 yıldız sistemi ile liste puanlama
-
-### 💬 Sosyal Özellikler
-- **Takip Sistemi** - Diğer oyuncuları takip ederek içerik akışını özelleştirme
-- **İncelemeler & Yorumlar** - Detaylı inceleme yazma ve yorum yapma
-- **Oylama Sistemi** - Yorumlar için upvote/downvote desteği
-- **Bildirimler** - Takip, yorum, liste etkileşimleri için anlık bildirimler
-- **Direkt Mesajlaşma** - Kullanıcılar arası özel konuşmalar
-
-### 📊 Yönetici Paneli
-- **Kullanıcı Yönetimi** - Kullanıcıları banlama, rol atama ve profil düzenleme
-- **İçerik Moderasyonu** - Raporlanan içerikleri inceleme ve işleme alma
-- **Platform İstatistikleri** - Gerçek zamanlı analitikler ve liderlik tabloları
-- **İçerik Senkronizasyonu** - Otomatik RAWG ve Metacritic veri senkronizasyonu
-
-### 🏆 Gamification (Oyunlaştırma)
-- **Seviye Sistemi** - Kullanıcı deneyim seviyeleri (Novice'dan Critic'e)
-- **Rozetler & Başarılar** - Özel başarımlar kazanma
-- **Liderlik Tablosu** - En aktif kullanıcıların sıralaması
-- **Puan Sistemi** - Etkinlikler için XP kazanma
-
-### 🌍 Çok Dilli Destek
-- **Türkçe & İngilizce** - Tam i18n desteği
-- **Kolay Genişletilebilir Dil Yapısı** - Yeni dil ekleme desteği
-
----
-
-## 🛠️ Teknoloji Yığını
-
-### Backend
-<div align="center">
-
-| Teknoloji | Açıklama |
-|-----------|----------|
-| .NET 8.0 | Modern C# framework |
-| Entity Framework Core 9 | ORM ve veritabanı yönetimi |
-| PostgreSQL | Güçlü ilişkisel veritabanı |
-| JWT | Güvenli kimlik doğrulama |
-| SignalR | Real-time iletişim |
-| Hangfire | Arka plan işleri |
-| FluentValidation | Giriş doğrulama |
-| Swagger/OpenAPI | API dokümantasyonu |
+[Canlı platform](https://gghub.social/) · [Mobil uygulama](https://gghub.social/download-app) · [Hata bildir](https://github.com/AhmetDemiroglu/GGHub/issues) · [Özellik öner](https://github.com/AhmetDemiroglu/GGHub/issues)
 
 </div>
 
-### Frontend
-<div align="center">
+## GGHub ne sunuyor?
 
-| Teknoloji | Açıklama |
-|-----------|----------|
-| Next.js 15 | React framework (App Router) |
-| React 19 | UI kütüphanesi |
-| TypeScript | Tip güvenliği |
-| Tailwind CSS v4 | Modern stil çözümü |
-| Radix UI | Erişilebilir UI primitivleri |
-| TanStack Query | Veri yönetimi ve caching |
-| Axios | HTTP istemcisi |
-| Zod | Schema doğrulama |
-| Shadcn/ui | UI componentleri |
-| Embla Carousel | Slider bileşenleri |
-| Recharts | Grafikler ve istatistikler |
+GGHub, yalnızca oyunların listelendiği bir katalog değil. Bir oyunu keşfetme anından o oyun hakkında konuşmaya, kişisel koleksiyon oluşturmaktan benzer zevklere sahip oyuncularla tanışmaya kadar bütün akışı tek üründe bir araya getirir.
 
-</div>
+### Oyun keşfi
 
----
+- RAWG tabanlı geniş oyun kataloğu
+- Oyun, platform ve tür odaklı arama ve filtreleme
+- Çıkış tarihi, geliştirici, yayıncı, platform, tür, ekran görüntüsü ve video bilgileri
+- RAWG ve Metacritic puanlarının birlikte gösterimi
+- Benzer oyun önerileri
+- Türkçe ve İngilizce oyun açıklamaları
+- Web ve mobilde keşif, trend oyunlar ve öne çıkan içerikler
 
-## 🏗️ Mimari Yapı
+### Listeler ve kişisel arşiv
 
-GGHub, Clean Architecture prensiplerine sıkı sıkıya bağlı kalarak geliştirilmiştir. Bu yapı, maksimum ölçeklenebilirlik ve bakım kolaylığı sağlar.
+- İstek listesi ve favoriler
+- Kullanıcıya özel oyun listeleri
+- Her liste için herkese açık, takipçilere açık veya özel görünürlük
+- Listelere oyun ekleme, çıkarma ve sıralı biçimde görüntüleme
+- Başka oyuncuların listelerini takip etme
+- Listelere yıldız verme, yorum yazma ve yorumları oylama
+- Kullanıcı profili üzerinden listelere ve favorilere erişim
 
-```
+### İncelemeler ve topluluk
+
+- Oyunlara puan ve inceleme ekleme
+- İncelemeleri düzenleme ve silme
+- İncelemelere olumlu veya olumsuz oy verme
+- İnceleme yorumları, yanıtlar ve yorum oylama
+- Kullanıcı etiketleme ve etkileşime bağlı bildirimler
+- İnceleme, kullanıcı, liste ve yorumlar için içerik raporlama
+
+### Sosyal deneyim
+
+- Kullanıcı takip etme ve takipten çıkma
+- Kişiselleştirilmiş aktivite akışı
+- Tanıyor olabileceğin oyuncular ve kullanıcı önerileri
+- Takipçi ve takip edilen listeleri
+- Profil fotoğrafı, kapak görseli, biyografi ve sosyal bağlantılar
+- Oyuncu DNA grafiği, kullanıcı istatistikleri, seviyeler ve başarımlar
+- Kullanıcı engelleme ve profil görünürlüğü ayarları
+- Gerçek zamanlı özel mesajlaşma ve okunmamış mesaj sayacı
+- Uygulama içi bildirimler, mobil push bildirimleri ve deep link desteği
+
+### Hesap ve gizlilik
+
+- E-posta ve parola ile kayıt ve giriş
+- Google ve Apple ile oturum açma
+- E-posta doğrulama ve parola sıfırlama
+- JWT access token ve refresh token tabanlı oturum yönetimi
+- Şifre değiştirme, mesaj izinleri ve profil görünürlüğü ayarları
+- Hesap verilerini dışa aktarma
+- Hesabı ve ilişkili kullanıcı verilerini silme
+
+### Yönetim ve moderasyon
+
+- Platform istatistikleri ve yönetici paneli
+- Kullanıcı arama, rol yönetimi, yasaklama ve yasak kaldırma
+- Kullanıcı listeleri, incelemeleri, yorumları ve rapor geçmişi üzerinde inceleme
+- Rapor durumunu güncelleme ve kullanıcıya yönetici yanıtı gönderme
+- Son kullanıcılar ve son incelemeler için hızlı takip ekranları
+- Oyun verisi ve Metacritic senkronizasyon araçları
+
+### Her ekranda aynı ürün
+
+- Next.js tabanlı responsive web uygulaması
+- Expo ve React Native tabanlı iOS ve Android uygulaması
+- Türkçe ve İngilizce arayüz
+- Açık, koyu ve sistem teması
+- Web ve mobil arasında ortak hesap, veri ve gerçek zamanlı etkileşim
+
+## Platform yapısı
+
+| Yüzey | Dizin | Sorumluluk |
+| --- | --- | --- |
+| Web | `ui/` | Next.js App Router ile masaüstü ve mobil web deneyimi |
+| Mobil | `mobile-ui/` | Expo Router ile iOS ve Android uygulaması |
+| API | `backend/GGHub.WebAPI/` | Kimlik doğrulama, iş kuralları, REST uçları ve SignalR |
+| Worker | `backend/GGHub.Worker/` | Katalog senkronizasyonu, veri zenginleştirme ve çeviri işleri |
+| Domain | `backend/GGHub.Core/` | Entity, enum ve temel domain sözleşmeleri |
+| Uygulama | `backend/GGHub.Application/` | DTO ve servis arayüzleri |
+| Altyapı | `backend/GGHub.Infrastructure/` | PostgreSQL, harici servisler ve servis implementasyonları |
+
+## Mimari
+
+Backend, Clean Architecture yaklaşımına göre ayrılmıştır. Domain katmanı dış sistemleri tanımaz; veritabanı ve üçüncü taraf servis detayları Infrastructure katmanında tutulur. Web ve mobil istemciler aynı REST API ile SignalR hub'ını kullanır.
+
+```text
 GGHub/
-├── backend/                         # .NET Backend
-│   ├── GGHub.Core/                   # Domain katmanı
-│   │   ├── Entities/                 # Veritabanı entity'leri (20+)
-│   │   ├── Enums/                    # Enum tanımlamaları
-│   │   └── Interfaces/               # Core arayüzleri
-│   │
-│   ├── GGHub.Application/            # Uygulama katmanı
-│   │   ├── Dtos/                     # Data Transfer Objects (60+)
-│   │   ├── Interfaces/               # Servis arayüzleri
-│   │   ├── Services/                 # Business logic
-│   │   └── Localization/             # Localization kaynakları
-│   │
-│   ├── GGHub.Infrastructure/         # Altyapı katmanı
-│   │   ├── Persistence/              # EF Core DbContext
-│   │   ├── Migrations/              # Database migrations
-│   │   ├── Services/                # External service implementations
-│   │   ├── Settings/                 # Configuration classes
-│   │   └── Utilities/                # Helpers ve utilities
-│   │
-│   └── GGHub.WebAPI/                 # Web API katmanı
-│       ├── Controllers/              # API Controllers (20+)
-│       ├── Middleware/               # Custom middleware
-│       └── appsettings.json         # Configuration
-│
-└── ui/                               # Next.js Frontend
-    ├── src/
-    │   ├── app/                      # Next.js App Router pages
-    │   │   ├── (admin)/              # Admin panel sayfaları
-    │   │   ├── (authenticated)/     # Authenticated sayfalar
-    │   │   └── (unauthenticated)/   # Public sayfalar
-    │   │
-    │   ├── core/                     # Core bileşenler
-    │   │   ├── components/           # 80+ UI componentleri
-    │   │   ├── contexts/             # React contexts
-    │   │   ├── hooks/                # Custom hooks
-    │   │   └── lib/                  # Utilities
-    │   │
-    │   ├── api/                      # API client modülleri
-    │   ├── models/                   # TypeScript tip tanımları
-    │   ├── i18n/                     # Internationalization
-    │   └── types/                    # Global tipler
-    │
-    ├── public/                       # Static dosyalar
-    └── package.json                  # Frontend dependencies
+├── backend/
+│   ├── GGHub.Core/                # Entity'ler, enum'lar ve domain kuralları
+│   ├── GGHub.Application/         # DTO'lar ve servis sözleşmeleri
+│   ├── GGHub.Infrastructure/      # EF Core, PostgreSQL ve entegrasyonlar
+│   ├── GGHub.WebAPI/              # REST API, SignalR, middleware ve Swagger
+│   └── GGHub.Worker/              # Katalog ve veri zenginleştirme işleri
+├── ui/                            # Next.js web uygulaması
+├── mobile-ui/                     # Expo ve React Native mobil uygulaması
+└── scripts/                       # Geliştirici araçları ve migration kontrolleri
 ```
 
-### Backend Katman Detayları
-
-| Katman | Sorumluluk | İçerik |
-|--------|------------|--------|
-| **GGHub.Core** | Domain mantığı | Entity'ler, Enum'lar, Core Interfaces |
-| **GGHub.Application** | Business logic | DTO'lar, Servis Arayüzleri, Validation |
-| **GGHub.Infrastructure** | External implementations | EF Core, API servisleri, Email, Storage |
-| **GGHub.WebAPI** | HTTP endpoints | Controllers, Middleware, Swagger |
-
-### Frontend Yapı Detayları
-
-| Klasör | Açıklama |
-|--------|----------|
-| `app/` | Next.js 15 App Router yapısı, route grupları ile segmentasyon |
-| `core/components/` | Admin, Game Detail, Home, Search, UI bileşenleri |
-| `core/contexts/` | Auth, Locale, SignalR context'leri |
-| `api/` | Axios tabanlı API istemcileri |
-| `models/` | TypeScript tip tanımları |
-
----
-
-## 🔌 Harici Entegrasyonlar
-
-<div align="center">
-
-| Servis | Amaç | Durum |
-|--------|------|-------|
-| **RAWG API** | Oyun veritabanı ve meta veriler | ✅ Aktif |
-| **Metacritic** | Eleştirmen puanları ve incelemeleri | ✅ Aktif |
-| **Cloudflare R2** | Dosya depolama (resimler, videolar) | ✅ Aktif |
-| **SendGrid/SMTP** | E-posta bildirimleri | ✅ Aktif |
-| **Google Gemini AI** | İçerik moderation ve öneriler | ✅ Aktif |
-
-</div>
-
----
-
-## 💻 Kurulum
-
-### Ön Gereksinimler
-
-```
-• .NET 8.0 SDK
-• Node.js 20+ (LTS)
-• PostgreSQL 15+
-• RAWG API Key (https://rawg.io/apidocs)
+```text
+Web uygulaması ─┐
+                ├── REST API + SignalR ── Application ── Core
+Mobil uygulama ─┘                            │
+                                            └── Infrastructure
+                                                  ├── PostgreSQL
+                                                  ├── Cloudflare R2
+                                                  ├── RAWG / Metacritic
+                                                  ├── Resend
+                                                  └── Gemini
 ```
 
-### Adım 1: Veritabanı Kurulumu
+## Teknoloji yığını
+
+| Alan | Teknolojiler |
+| --- | --- |
+| Backend | .NET 8, ASP.NET Core, Entity Framework Core 9, Npgsql |
+| API | REST, Swagger / OpenAPI, JWT, SignalR, rate limiting, response compression |
+| Veritabanı | PostgreSQL, code-first migration yapısı |
+| Web | Next.js 15, React 19, TypeScript 5, Tailwind CSS 4 |
+| Web veri katmanı | TanStack Query, Axios, Zod, React Hook Form |
+| Web arayüzü | Radix UI, Recharts, Embla Carousel, Lucide |
+| Mobil | Expo SDK 55, React Native 0.83, Expo Router, TypeScript |
+| Mobil cihaz özellikleri | Secure Store, push notifications, image picker, haptics, deep linking |
+| Gözlemlenebilirlik | Serilog, health endpoint ve yapılandırılmış loglar |
+| Dağıtım | Docker tabanlı API imajı, Vercel uyumlu web uygulaması |
+
+## Harici servisler
+
+| Servis | Kullanım alanı |
+| --- | --- |
+| [RAWG](https://rawg.io/apidocs) | Oyun kataloğu, görseller, platform ve tür verileri |
+| Metacritic | Eleştirmen puanları ve katalog zenginleştirme |
+| Google Gemini | Oyun açıklaması çevirisi ve kontrollü veri zenginleştirme |
+| Cloudflare R2 | Profil fotoğrafı ve kapak görseli depolama |
+| Resend | Hesap doğrulama ve parola sıfırlama e-postaları |
+| Google Identity | Web ve mobil Google oturumu |
+| Sign in with Apple | Web ve iOS Apple oturumu |
+| Expo Push Service | iOS ve Android push bildirimleri |
+
+Gemini kullanan işler çağrı ve bütçe limitleriyle çalışır. Katalog işleri API sürecinden ayrıdır; böylece web trafiği ile uzun süren arka plan görevleri birbirini etkilemez.
+
+## Yerel kurulum
+
+### Gereksinimler
+
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [Node.js 20 LTS](https://nodejs.org/)
+- [PostgreSQL 15 veya üzeri](https://www.postgresql.org/download/)
+- EF Core CLI: `dotnet-ef`
+- Mobil geliştirme için Xcode veya Android Studio
+- Oyun verisi için bir [RAWG API anahtarı](https://rawg.io/apidocs)
+
+### 1. Repoyu alın
 
 ```bash
-# PostgreSQL veritabanı oluştur
-createdb gghub_db
+git clone https://github.com/AhmetDemiroglu/GGHub.git
+cd GGHub
+```
 
-# Backend klasörüne git
+### 2. PostgreSQL veritabanını hazırlayın
+
+```bash
+createdb gghub
+```
+
+Backend ayarları ASP.NET Core yapılandırma sistemi üzerinden okunur. Gizli değerleri repoya yazmak yerine environment variable kullanabilirsiniz:
+
+```bash
+export ConnectionStrings__DefaultConnection='Host=localhost;Port=5432;Database=gghub;Username=postgres;Password=your_password'
+export JwtSettings__Key='use-a-long-random-secret'
+export JwtSettings__Issuer='GGHub'
+export JwtSettings__Audience='GGHub'
+export RawgApiSettings__BaseUrl='https://api.rawg.io/api'
+export RawgApiSettings__ApiKey='your_rawg_api_key'
+```
+
+Fotoğraf yükleme, e-posta, sosyal giriş ve çeviri özellikleri için ayrıca ilgili `R2__*`, `ResendSettings__*`, `GoogleAuth__ClientIds__*`, `AppleAuth__ClientIds__*` ve `Gemini__*` değerlerini tanımlayın. ASP.NET Core iç içe ayar adlarında çift alt çizgi kullanır.
+
+### 3. Backend'i çalıştırın
+
+```bash
 cd backend
-
-# Migration'ları uygula
-cd GGHub.WebAPI
-dotnet ef database update
+dotnet restore GGHub.sln
+dotnet ef database update \
+  --project GGHub.Infrastructure \
+  --startup-project GGHub.WebAPI
+dotnet run --project GGHub.WebAPI --launch-profile https
 ```
 
-> **Not:** `appsettings.Development.json` dosyasında PostgreSQL connection string, JWT secret, RAWG API key ve Cloudflare R2 kimlik bilgilerinizi yapılandırmanız gerekir.
+| Adres | Açıklama |
+| --- | --- |
+| `https://localhost:7263` | API |
+| `https://localhost:7263/swagger` | Development ortamında Swagger |
+| `https://localhost:7263/health` | Sağlık kontrolü |
 
-### Adım 2: Backend'i Çalıştırma
+Yerel HTTPS sertifikasına güven vermek gerekirse `dotnet dev-certs https --trust` komutunu çalıştırın.
 
-```bash
-cd backend/GGHub.WebAPI
-dotnet run
+### 4. Web uygulamasını çalıştırın
+
+`ui/.env.local` dosyasını oluşturun:
+
+```env
+NEXT_PUBLIC_API_BASE_URL=https://localhost:7263
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=
+NEXT_PUBLIC_APPLE_SERVICES_ID=
 ```
 
-API şu adreste çalışır: `https://localhost:7000`
-
-Swagger dokümantasyonu: `https://localhost:7000/swagger`
-
-### Adım 3: Frontend Kurulumu
+Ardından:
 
 ```bash
-# Frontend klasörüne git
 cd ui
-
-# Bağımlılıkları yükle
-npm install
-
-# Geliştirme sunucusunu çalıştır
+npm ci
 npm run dev
 ```
 
-Frontend şu adrette çalışır: `http://localhost:3000`
+Web uygulaması `http://localhost:3000` adresinde açılır.
 
-### Environment Değişkenleri
+### 5. Mobil uygulamayı çalıştırın
 
-**.env.local (Frontend)**
+`mobile-ui/.env` dosyasını oluşturun:
+
 ```env
-NEXT_PUBLIC_API_URL=https://localhost:7000
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+EXPO_PUBLIC_API_URL=https://api.gghub.social
+EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=
+EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=
 ```
 
----
+```bash
+cd mobile-ui
+npm ci
+npm start
+```
 
-## 📱 API Dokümantasyonu
+Platforma göre `npm run ios` veya `npm run android` komutunu kullanabilirsiniz. Fiziksel cihazla yerel API'ye bağlanırken `localhost` yerine bilgisayarınızın yerel ağ adresini kullanın.
 
-Swagger üzerinden otomatik dokümantasyon mevcuttur: [`https://localhost:7000/swagger`](https://localhost:7000/swagger)
+### Docker ile API
 
-### Öne Çıkan Endpoint'ler
+Docker imajı repository kökünden oluşturulur:
 
-| Kategori | Endpoint | Açıklama |
-|----------|----------|----------|
-| **Auth** | `POST /api/auth/register` | Yeni kullanıcı kaydı |
-| | `POST /api/auth/login` | Giriş yapma |
-| | `POST /api/auth/refresh` | Token yenileme |
-| | `POST /api/auth/forgot-password` | Şifremi unuttum |
-| **Games** | `GET /api/games` | Oyun listesi |
-| | `GET /api/games/{id}` | Oyun detayları |
-| | `GET /api/games/search` | Oyun arama |
-| **Lists** | `GET /api/user-lists` | Kullanıcı listeleri |
-| | `POST /api/user-lists` | Liste oluşturma |
-| | `PUT /api/user-lists/{id}` | Liste güncelleme |
-| | `POST /api/user-lists/{id}/games` | Listeye oyun ekleme |
-| **Social** | `POST /api/profiles/{username}/follow` | Kullanıcı takip etme |
-| | `GET /api/social/feed` | Sosyal akış |
-| | `POST /api/messages` | Mesaj gönderme |
-| **Reviews** | `POST /api/reviews` | İnceleme yazma |
-| | `POST /api/reviews/{id}/vote` | İncelemeye oy ver |
-| **Admin** | `GET /api/admin/dashboard-stats` | Dashboard istatistikleri |
-| | `GET /api/admin/users` | Kullanıcı yönetimi |
-| | `GET /api/admin/reports` | Rapor yönetimi |
+```bash
+docker build -f backend/Dockerfile -t gghub-api .
+docker run --rm -p 8080:8080 \
+  -e ConnectionStrings__DefaultConnection='your_connection_string' \
+  -e JwtSettings__Key='your_jwt_secret' \
+  gghub-api
+```
 
----
+Container içindeki API `http://localhost:8080` adresinden erişilebilir.
 
-## 🗺️ Yol Haritası
+## API yüzeyi
 
-### ✅ Tamamlanan Özellikler (v1.0)
+Swagger, Development ortamında bütün istek ve yanıt modellerini gösterir. Temel gruplar aşağıdaki gibidir:
 
-- [x] Kullanıcı kimlik doğrulama ve yetkilendirme
-- [x] Oyun veritabanı ve arama
-- [x] Kişisel oyun listeleri (İstek listesi, Oynuyorum, Bitirdim)
-- [x] İnceleme ve puanlama sistemi
-- [x] Sosyal takip sistemi
-- [x] Direkt mesajlaşma
-- [x] Bildirim sistemi
-- [x] Yönetici paneli
-- [x] Çok dilli destek (TR/EN)
-- [x] Gamification sistemi (Seviyeler, Rozetler)
-- [x] RAWG ve Metacritic entegrasyonu
+| Alan | Rota | İçerik |
+| --- | --- | --- |
+| Kimlik | `/api/auth` | Kayıt, giriş, Google, Apple, token yenileme ve parola işlemleri |
+| Oyunlar | `/api/games` | Keşif, detay, çeviri ve benzer oyunlar |
+| Ana sayfa | `/api/home` | Hero içeriği, trendler ve topluluk verileri |
+| Arama | `/api/search` | Oyun, kullanıcı, mesaj ve mention araması |
+| Listeler | `/api/user-lists` | Liste CRUD, oyunlar, takip, favoriler ve istek listesi |
+| Liste etkileşimi | `/api/UserListComments`, `/api/UserListRatings` | Yorumlar, oylar ve yıldızlar |
+| İncelemeler | `/api/reviews`, `/api/ReviewComments` | İnceleme, puan, yorum ve oy işlemleri |
+| Profiller | `/api/profile`, `/api/profiles` | Profil, takip, engelleme, gizlilik ve veri dışa aktarma |
+| Aktivite | `/api/activity`, `/api/stats`, `/api/gamification` | Akış, kullanıcı istatistikleri ve başarımlar |
+| Mesajlar | `/api/messages` | Konuşmalar, mesaj dizileri ve okunmamış sayısı |
+| Bildirimler | `/api/notification` | Bildirim merkezi ve push token yönetimi |
+| Raporlar | `/api/report` | İçerik raporlama ve kullanıcının rapor geçmişi |
+| Yönetim | `/api/admin`, `/api/analytics` | Moderasyon, kullanıcı yönetimi ve analitik |
+| Gerçek zamanlı | `/hubs/chat` | SignalR mesaj ve bildirim kanalı |
 
-### 🚧 Geliştirme Aşamasında
+## Arka plan worker'ı
 
-- [ ] SignalR real-time mesajlaşma
-- [ ] SignalR anlık bildirimler
-- [ ] Docker konteynerizasyonu
-- [ ] GitHub Actions CI/CD pipeline
+`GGHub.Worker`, uzun süren katalog işlerini Web API sürecinden ayrı çalıştırır. RAWG ve Metacritic senkronizasyonu, eksik oyun detaylarını tamamlama ve açıklama çevirileri bu katmanda yürütülür.
 
-### 🔭 Gelecek Planları (v1.1+)
+macOS için yönetim scripti:
 
-- [ ] OAuth 2.0 (Google, Steam, Discord)
-- [ ] Algoritmik öneri motoru
-- [ ] Uzun biçimli oyun rehberleri
-- [ ] Topluluk forumları
-- [ ] Turnuva ve etkinlik sistemi
-- [ ] Mobil uygulama (React Native/Flutter)
-- [ ] PWA desteği
+```bash
+./scripts/gghub-bot install
+./scripts/gghub-bot status
+./scripts/gghub-bot logs
+```
 
----
+Worker ayar şablonu `backend/GGHub.Worker/appsettings.example.json` dosyasındadır. Gerçek ayarlar varsayılan olarak `~/.gghub-bot/appsettings.json` altında tutulur ve repository içine alınmaz.
 
-## 🤝 Katkıda Bulunma
+## Geliştirici akışı
 
-Topluluk katkılarını memnuniyetle karşılıyoruz! Lütfen aşağıdaki adımları izleyin:
+Entity değişiklikleri ile EF Core migration'larının uyumlu kalması için repository içinde bir kontrol scripti bulunur:
 
-1. Repository'yi **fork** edin
-2. Özellik branch'i oluşturun (`git checkout -b feature/YeniOzellik`)
-3. Değişikliklerinizi **commit** edin (`git commit -m 'Add yeni özellik'`)
-4. Branch'inizi **push** edin (`git push origin feature/YeniOzellik`)
-5. **Pull Request** açın
+```bash
+./scripts/check-migrations
+```
 
-Daha detaylı bilgi için [CONTRIBUTING.md](CONTRIBUTING.md) dosyasını inceleyebilirsiniz.
+Kontrolü her push öncesinde otomatik çalıştırmak için:
 
----
+```bash
+./scripts/install-hooks
+```
 
-## 📊 Katkıcılar
+Temel doğrulama komutları:
 
-<div align="center">
+```bash
+dotnet build backend/GGHub.sln
+npm --prefix ui run build
+cd mobile-ui && npx tsc --noEmit
+```
 
-[![Contributors](https://contrib.rocks/image?repo=ahmetdemiroglu/GGHub)](https://github.com/ahmetdemiroglu/GGHub/graphs/contributors)
+## Katkıda bulunma
 
-</div>
+Katkılar memnuniyetle karşılanır. Başlamadan önce açık [issue'lara](https://github.com/AhmetDemiroglu/GGHub/issues) göz atabilir veya yapmak istediğiniz değişikliği yeni bir issue ile paylaşabilirsiniz.
 
----
+1. Repository'yi fork edin.
+2. Değişikliğiniz için ayrı bir branch açın.
+3. İlgili backend, web veya mobil doğrulamalarını çalıştırın.
+4. Ne değiştiğini ve nasıl test edildiğini anlatan bir pull request gönderin.
 
-## 📄 Lisans
+GGHub üzerinde çalışmalar aktif biçimde sürüyor. Yeni özellikler eklerken yalnızca özellik sayısını artırmaya değil, oyun keşfini ve topluluk deneyimini gerçekten iyileştirmeye odaklanıyoruz.
 
-Bu proje MIT Lisansı altında lisanslanmıştır. Detaylar için [LICENSE](LICENSE) dosyasını inceleyebilirsiniz.
+## Lisans
 
----
+GGHub, [MIT Lisansı](LICENSE) ile yayımlanır.
 
 <div align="center">
 
-### 💙 GGHub
+**Oyunun kalbi burada atıyor.**
 
-*Oyunun Kalbi Burada Atıyor*
-
----
-
-**Proje Sahibi:** [Ahmet Demiroğlu](https://github.com/ahmetdemiroglu)
-
-📧 [ahmetdemiroglu89@gmail.com](mailto:ahmetdemiroglu89@gmail.com)
+[Ahmet Demiroğlu](https://github.com/AhmetDemiroglu) · [gghub.social](https://gghub.social/)
 
 </div>

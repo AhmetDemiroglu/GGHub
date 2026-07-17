@@ -1,6 +1,9 @@
 # macOS
 .DS_Store
 
+# Local AI assistant settings
+.claude/
+
 # Root-level Markdown files (keep the main README tracked)
 /*.md
 !/README.md
