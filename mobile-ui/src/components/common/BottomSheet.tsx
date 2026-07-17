@@ -5,13 +5,20 @@ import {
   Modal,
   Pressable,
   StyleSheet,
-  KeyboardAvoidingView,
   Platform,
   Animated,
   Easing,
   Dimensions,
   PanResponder,
 } from 'react-native';
+// RN'in KeyboardAvoidingView'i DEGIL. RN'inki Android'de Modal ICINDE calisamaz:
+// Android'de klavye event'ini yalnizca ReactRootView uretir, Modal'in kokü ise
+// DialogRootViewGroup (bir ReactViewGroup) oldugu icin Dialog penceresi
+// keyboardDidShow/Hide HIC yaymaz. Ustelik behavior={undefined} veriliyordu ve
+// RN o durumda duz bir <View> render edip tamamen no-op oluyordu: sheet klavyenin
+// altinda kaliyor, yazi alani ve Gonder butonu gorunmuyordu.
+// kc Dialog penceresini ModalAttachedWatcher ile ayrica dinler.
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useTheme } from '@/src/hooks/use-theme';
 import { Spacing, FontSize, BorderRadius, Shadows } from '@/src/constants/theme';
 
@@ -32,9 +39,16 @@ interface BottomSheetProps {
 
 /**
  * Alt sayfa: RN Modal + PanResponder + RN Animated (native driver).
- * Reanimated/worklet KULLANMAZ. Bu kombinasyon iOS'ta kanitlanmis ve crash'siz;
- * Reanimated Gesture tabanli sheet iOS+Fabric'te native crash veriyordu.
  * Tutamaktan asagi surukleyince esige gore kapanir ya da geri snap eder.
+ *
+ * SURUKLEME hala RNGH/Reanimated KULLANMAZ: bu kombinasyon iOS'ta kanitlanmis
+ * ve crash'siz; Reanimated Gesture tabanli sheet iOS+Fabric'te native crash
+ * veriyordu. translateY/overlayOpacity bu yuzden RN Animated'te kalmali.
+ *
+ * Tek istisna klavye kacinmasi: keyboard-controller'in KeyboardAvoidingView'i
+ * iceride Reanimated kullanir ama JEST kullanmaz (yalnizca useAnimatedStyle ile
+ * paddingBottom surer), yani yukaridaki crash desenine girmez. Android'de
+ * Modal icinde calisan tek secenek de odur (bkz. import notu).
  */
 export function BottomSheet({ visible, onClose, title, children }: BottomSheetProps) {
   const { colors } = useTheme();
@@ -148,7 +162,10 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
         </Animated.View>
 
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          // Iki platformda da 'padding'. kc'nin hesabi iOS'ta RN'inkiyle
+          // OZDES (ikisi de frame.y + frame.height - keyboardY), yalnizca
+          // deger JS thread yerine UI thread'de akar.
+          behavior="padding"
           // Negatif offset: sheet klavyenin birkaç px arkasına insin ki klavyenin
           // yuvarlak üst köşelerinde karartı (overlay) yerine sheet yüzeyi görünsün.
           keyboardVerticalOffset={Platform.OS === 'ios' ? -24 : 0}

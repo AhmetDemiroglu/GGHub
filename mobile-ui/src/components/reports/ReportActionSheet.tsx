@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, Alert, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { useToast } from '@/src/components/common/Toast';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useMutation } from '@tanstack/react-query';
@@ -21,6 +22,7 @@ interface ReportActionSheetProps {
 export function ReportActionSheet({ visible, onClose, entityType, entityId }: ReportActionSheetProps) {
   const { colors } = useTheme();
   const { messages } = useLocale();
+  const { showToast } = useToast();
   const m = messages.report;
 
   const [reason, setReason] = useState('');
@@ -46,13 +48,13 @@ export function ReportActionSheet({ visible, onClose, entityType, entityId }: Re
       }
     },
     onSuccess: () => {
-      Alert.alert('', m.reportSuccess);
+      showToast('success', m.reportSuccess);
       setReason('');
       setError('');
       onClose();
     },
     onError: () => {
-      Alert.alert('', m.reportError);
+      showToast('error', m.reportError);
     },
   });
 

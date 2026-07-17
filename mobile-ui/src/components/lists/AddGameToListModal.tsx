@@ -10,6 +10,9 @@ import {
   ActivityIndicator,
   TextInput,
 } from 'react-native';
+// Arama alani ustte oldugu icin klavye onu ortmuyordu, ama sonuc listesi
+// Android'de klavyenin ARKASINA uzaniyordu. Bu, listeyi klavyenin ustune sigdirir.
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/src/hooks/use-theme';
@@ -296,7 +299,10 @@ export function AddGameToListModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <KeyboardAvoidingView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        behavior="padding"
+      >
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>
             {messages.listDetail.addGame}
@@ -367,7 +373,7 @@ export function AddGameToListModal({
             />
           </>
         )}
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

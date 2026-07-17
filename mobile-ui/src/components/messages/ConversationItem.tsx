@@ -111,7 +111,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   usernameWrap: {
-    flex: 1,
+    // flex:1 DEGIL. topRow space-between oldugu icin flex:1, isim Pressable'ini
+    // saat metnine kadar tum satira yayiyordu: kisa bir adin sagindaki bos alana
+    // basmak da profile gidiyordu ve sohbete gitmek neredeyse imkansizdi.
+    // Simdi hedef metnin kendisi kadar; satirin geri kalani distaki
+    // TouchableOpacity'ye (sohbet detayi) kalir.
+    flexShrink: 1,
   },
   username: {
     fontSize: FontSize.md,

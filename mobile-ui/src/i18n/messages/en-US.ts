@@ -372,6 +372,8 @@ export const enUSMessages = {
             mutual: "{count} mutual follows",
             taste: "{count} shared games",
             popular: "Popular",
+            privateHint: "This profile is visible to followers. Follow to see it.",
+            followError: "Could not complete the follow.",
         },
         leaderboardTitle: "Leaderboard",
         leaderboardEmpty: "No leaders yet.",

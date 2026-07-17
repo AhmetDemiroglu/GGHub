@@ -6,10 +6,11 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
-import Animated, {
-  useAnimatedKeyboard,
-  useAnimatedStyle,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+// Reanimated'in useAnimatedKeyboard'i DEGIL: bkz. src/hooks/use-keyboard-dock.
+// Bu ekran bugun calisiyor olsa da ayni singleton'i kirletiyordu; iki kutuphane
+// de ayni decorView'a inset listener takiyor ve sonuncusu digerini eziyor.
+import { useAnimatedKeyboard } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';

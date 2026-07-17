@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AppTopBar } from '@/src/components/shell';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
@@ -74,6 +74,15 @@ export default function HomeScreen() {
     queryFn: getMyProfile,
     enabled: isAuthenticated,
   });
+
+  // Asagi cekince oneriler de tazelensin. Eskiden yalnizca homeContent
+  // refetch ediliyordu: takip edilen kisi 5dk staleTime boyunca listede kaliyor
+  // ve yenilemek de ise yaramiyordu.
+  const queryClient = useQueryClient();
+  const handleRefreshHome = React.useCallback(() => {
+    refetch();
+    queryClient.invalidateQueries({ queryKey: ['suggestedUsers'] });
+  }, [refetch, queryClient]);
 
   if (isLoading) {
     return (
@@ -145,7 +154,7 @@ export default function HomeScreen() {
       {isAuthenticated ? (
         <TabbedActivityFeed
           header={topSections}
-          onRefreshHome={refetch}
+          onRefreshHome={handleRefreshHome}
           refreshingHome={isRefetching}
           contentPaddingBottom={tabBarHeight + Spacing.md}
         />
@@ -157,7 +166,7 @@ export default function HomeScreen() {
           refreshControl={
             <RefreshControl
               refreshing={isRefetching}
-              onRefresh={refetch}
+              onRefresh={handleRefreshHome}
               tintColor={colors.primary}
               colors={[colors.primary]}
             />

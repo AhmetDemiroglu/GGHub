@@ -4,6 +4,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
 import { AuthProvider } from '@/src/contexts/auth-context';
 import { LocaleProvider } from '@/src/contexts/locale-context';
@@ -122,27 +123,35 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <LocaleProvider>
-            <ThemeProvider>
-              <SignalRProvider>
-                <ShellProvider>
-                  <ToastProvider>
-                    <ConfirmProvider>
-                      <AuthPromptProvider>
-                        <AppSidebar>
-                          <RootLayoutNav />
-                        </AppSidebar>
-                      </AuthPromptProvider>
-                    </ConfirmProvider>
-                  </ToastProvider>
-                </ShellProvider>
-              </SignalRProvider>
-            </ThemeProvider>
-          </LocaleProvider>
-        </AuthProvider>
-      </QueryClientProvider>
+      {/*
+        Prop VERILMIYOR, bilerek: kc statusBarTranslucent/navigationBarTranslucent/
+        preserveEdgeToEdge degerlerini react-native-is-edge-to-edge ile kendisi
+        cikariyor (gradle.properties'te edgeToEdgeEnabled=true). Elle vermek
+        __DEV__'de "value is ignored" uyarisi bastirir.
+      */}
+      <KeyboardProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <LocaleProvider>
+              <ThemeProvider>
+                <SignalRProvider>
+                  <ShellProvider>
+                    <ToastProvider>
+                      <ConfirmProvider>
+                        <AuthPromptProvider>
+                          <AppSidebar>
+                            <RootLayoutNav />
+                          </AppSidebar>
+                        </AuthPromptProvider>
+                      </ConfirmProvider>
+                    </ToastProvider>
+                  </ShellProvider>
+                </SignalRProvider>
+              </ThemeProvider>
+            </LocaleProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </KeyboardProvider>
     </GestureHandlerRootView>
   );
 }

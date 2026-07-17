@@ -372,6 +372,8 @@ export const trMessages = {
             mutual: "{count} ortak takip",
             taste: "{count} ortak oyun",
             popular: "Popüler",
+            privateHint: "Bu profil takipçilerine açık. Görmek için önce takip et.",
+            followError: "Takip işlemi başarısız oldu.",
         },
         leaderboardTitle: "Liderlik Tablosu",
         leaderboardEmpty: "Henüz lider yok.",

@@ -46,12 +46,26 @@ export function ReviewCommentSection({ reviewId }: ReviewCommentSectionProps) {
         {t.title.replace('{count}', String(totalCount))}
       </Text>
 
+      {/*
+        Sira onemli: `isError` yuklenmis listeyi GIZLEMEZ. React Query bir
+        refetch hata alinca `data`'yi korur ama isError'i true yapar; hata
+        once kontrol edilirse baslik cache'ten "Yorumlar (2)" derken govde
+        hata metni basiyor ve yorumlar sebepsizce kaybolmus gibi gorunuyordu.
+        Artik liste doluysa her zaman cizilir, hata yalnizca ustte ince bir
+        serit olur; tam ekran hata sadece gosterecek hicbir sey yokken cikar.
+      */}
+      {isError && comments.length > 0 ? (
+        <Text style={[styles.errorNotice, { color: colors.error }]}>{t.loadError}</Text>
+      ) : null}
+
       {isLoading ? (
         <ActivityIndicator size="small" color={colors.primary} style={styles.loader} />
-      ) : isError ? (
-        <Text style={[styles.errorText, { color: colors.error }]}>{t.loadError}</Text>
       ) : comments.length === 0 ? (
-        <Text style={[styles.emptyText, { color: colors.textMuted }]}>{t.empty}</Text>
+        isError ? (
+          <Text style={[styles.errorText, { color: colors.error }]}>{t.loadError}</Text>
+        ) : (
+          <Text style={[styles.emptyText, { color: colors.textMuted }]}>{t.empty}</Text>
+        )
       ) : (
         <>
           {comments.map((comment) => (
@@ -102,6 +116,11 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     textAlign: 'center',
     marginVertical: Spacing.lg,
+  },
+  // Liste doluyken tazeleme hata alirsa: yorumlari gizlemeyen ince uyari.
+  errorNotice: {
+    fontSize: FontSize.xs,
+    marginBottom: Spacing.xs,
   },
   emptyText: {
     fontSize: FontSize.sm,

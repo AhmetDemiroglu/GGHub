@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Alert,
   StyleSheet,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -22,6 +21,7 @@ import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
 import { useConfirm } from '@/src/components/common/ConfirmDialog';
+import { useToast } from '@/src/components/common/Toast';
 import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { getMyProfile, updateProfileVisibility, updateMessageSetting } from '@/src/api/profile';
 import {
@@ -37,6 +37,7 @@ export default function ProfileSettingsScreen() {
   const { messages, locale, switchLocale } = useLocale();
   const { logout, user } = useAuth();
   const confirm = useConfirm();
+  const { showToast } = useToast();
   const queryClient = useQueryClient();
   const tabBarHeight = useTabBarHeight();
   const h = messages.profile.header;
@@ -76,7 +77,7 @@ export default function ProfileSettingsScreen() {
   };
 
   const handleExportData = () => {
-    Alert.alert('', dz.exportTitle);
+    showToast('info', dz.exportTitle);
   };
 
   const toggleLocale = () => {

@@ -12,10 +12,11 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/src/hooks/use-theme';
-import { FontSize, Spacing, BorderRadius, Shadows } from '@/src/constants/theme';
+import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
 import { getImageUrl } from '@/src/utils/image';
 import { PlatformIcons } from '@/src/components/common/PlatformIcons';
 import { ScorePillRow } from '@/src/components/common/ScorePill';
+import { HorizontalScrollGuard } from '@/src/components/home/HorizontalScrollGuard';
 import * as haptics from '@/src/utils/haptics';
 import type { HomeGame } from '@/src/models/home';
 
@@ -76,7 +77,7 @@ export function HeroSlider({ games }: HeroSliderProps) {
 
       return (
         <Pressable
-          style={[styles.card, { width: ITEM_WIDTH }, Shadows.lg]}
+          style={[styles.card, { width: ITEM_WIDTH }]}
           onPress={() => {
             haptics.impactLight();
             router.push(`/game/${item.slug}`);
@@ -123,27 +124,29 @@ export function HeroSlider({ games }: HeroSliderProps) {
 
   return (
     <View style={styles.container}>
-      <FlatList
-        ref={flatListRef}
-        data={games}
-        renderItem={renderItem}
-        keyExtractor={(item) => `hero-${item.rawgId}`}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        snapToInterval={ITEM_WIDTH + Spacing.md}
-        decelerationRate="fast"
-        contentContainerStyle={styles.listContent}
-        onScrollBeginDrag={handleScrollBeginDrag}
-        onScrollEndDrag={handleScrollEndDrag}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
-        getItemLayout={(_, index) => ({
-          length: ITEM_WIDTH + Spacing.md,
-          offset: (ITEM_WIDTH + Spacing.md) * index,
-          index,
-        })}
-      />
+      <HorizontalScrollGuard>
+        <FlatList
+          ref={flatListRef}
+          data={games}
+          renderItem={renderItem}
+          keyExtractor={(item) => `hero-${item.rawgId}`}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={ITEM_WIDTH + Spacing.md}
+          decelerationRate="fast"
+          contentContainerStyle={styles.listContent}
+          onScrollBeginDrag={handleScrollBeginDrag}
+          onScrollEndDrag={handleScrollEndDrag}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
+          getItemLayout={(_, index) => ({
+            length: ITEM_WIDTH + Spacing.md,
+            offset: (ITEM_WIDTH + Spacing.md) * index,
+            index,
+          })}
+        />
+      </HorizontalScrollGuard>
       {games.length > 1 && (
         <View style={styles.pagination}>
           {games.map((_, index) => (

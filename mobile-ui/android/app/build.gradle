@@ -92,11 +92,14 @@ android {
         applicationId 'com.gghub.mobile'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 9
+        versionCode 10
         // Native surumler BILEREK app.json'daki version'dan (1.0.3) ayrik.
         // iOS ve Play surumu 1.0.4. `npm run bump` tek version yazdigi icin
         // bu satiri EZER; asimetri surdukce bump sonrasi burayi kontrol et.
-        versionName "1.0.4"
+        // Android surumu iOS'tan BILEREK ayrik ilerliyor (iOS 1.0.4, Android 1.0.5).
+        // app.json'daki tek "version" alani iOS'un kaynagidir ve `npm run bump`
+        // burayi da onunla ezer: bump'tan sonra bu satiri elle kontrol et.
+        versionName "1.0.5"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }

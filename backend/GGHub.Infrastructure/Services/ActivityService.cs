@@ -199,7 +199,7 @@ namespace GGHub.Infrastructure.Services
                     .Select(r => new
                     {
                         LikeCount = r.ReviewVotes.Count(v => v.Value == 1),
-                        CommentCount = r.Comments.Count,
+                        CommentCount = r.Comments.Count(c => c.ParentCommentId == null),
                         MyVote = r.ReviewVotes
                             .Where(v => v.UserId == currentUserId)
                             .Select(v => (int?)v.Value)

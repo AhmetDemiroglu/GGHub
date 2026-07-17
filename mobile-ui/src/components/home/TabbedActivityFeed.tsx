@@ -29,6 +29,7 @@ import { useLocale } from '@/src/hooks/use-locale';
 import { useShell, SIDEBAR_WIDTH } from '@/src/contexts/shell-context';
 import { SegmentedTabs } from '@/src/components/common/SegmentedTabs';
 import { FeedCard } from '@/src/components/home/FeedCard';
+import { HomePanProvider } from '@/src/components/home/HorizontalScrollGuard';
 import { FontSize, Spacing, Shadows, Springs } from '@/src/constants/theme';
 import { getPersonalizedFeed } from '@/src/api/activity';
 import { Activity, ActivityType } from '@/src/models/activity';
@@ -267,8 +268,9 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
    * - İlk sekmede sağa çekiş: ekranın HER yerinden sidebar'ı parmakla sürer
    *   (yarım çek-bırak kapanır, eşik üstü yerleşir).
    * - Diğer durumlarda pill bar'ın ALTINDAN başlayan çekişler sekme değiştirir.
-   * - Bar'ın üstündeki bölgede (hero/karuseller) sola çekişler jeste hiç
-   *   takılmaz; yatay listeler doğal kayar.
+   * - Bar'ın üstündeki bölgede (hero/karuseller) yatay listeler doğal kayar:
+   *   sola çekişler zaten jeste takılmaz, sağa çekişleri ise karusellerin
+   *   HorizontalScrollGuard'ı bu pan'ı bekleterek kendine alır.
    * Manuel aktivasyon: niyet netleşmeden hiçbir native scroll iptal edilmez.
    */
   const panGesture = useMemo(
@@ -298,7 +300,9 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
 
           const idx = Math.round(tabIndexSV.value);
 
-          // İlk sekmede sağa çekiş = sidebar (her yerden).
+          // İlk sekmede sağa çekiş = sidebar (yatay karuseller hariç her
+          // yerden; onların üstünde bu pan native scroll'u bekler ve iptal
+          // olur, aşağıdaki activate() hiç kazanmaz).
           if (dx > 0 && idx === 0) {
             gestureMode.value = MODE_SIDEBAR;
             sidebarSettled.value = false;
@@ -496,85 +500,89 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
     );
 
   return (
-    <View
-      ref={rootRef}
-      style={styles.root}
-      onLayout={() => {
-        // Pill bar'ın ekran-üstü konumunu worklet'te hesaplamak için kökün
-        // pencere içindeki y'si gerekir (AppTopBar yüksekliği dahil).
-        rootRef.current?.measureInWindow((_x, y) => {
-          rootPageY.value = y;
-        });
-      }}
-    >
-      <GestureDetector gesture={panGesture}>
-        <Animated.View style={styles.root}>
-          <AnimatedFlatList
-            ref={listRef}
-            data={active.items}
-            keyExtractor={activityKey}
-            CellRendererComponent={CardCellRenderer}
-            renderItem={({ item }) => (
-              <View style={styles.cardWrap}>
-                <FeedCard activity={item} />
-              </View>
-            )}
-            ListHeaderComponent={listHeader}
-            ListEmptyComponent={emptyComponent}
-            onEndReached={onEndReached}
-            onEndReachedThreshold={0.8}
-            onScroll={scrollHandler}
-            scrollEventThrottle={16}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: contentPaddingBottom + Spacing.xl }}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshingHome}
-                onRefresh={onRefresh}
-                tintColor={colors.primary}
-                colors={[colors.primary]}
-              />
-            }
-            ListFooterComponent={
-              active.loading && active.items.length > 0 ? (
-                <View style={styles.footer}>
-                  <ActivityIndicator color={colors.primary} size="small" />
-                </View>
-              ) : !active.hasMore && active.items.length > 0 ? (
-                <Text style={[styles.feedEnd, { color: colors.textSecondary }]}>{messages.home.feedEnd}</Text>
-              ) : null
-            }
-          />
-        </Animated.View>
-      </GestureDetector>
-
-      {/* Pill bar, listedeki ikiziyle aynı hizaya gelince tepeye sabitlenir;
-          akış artık bunun ALTINDAN kayar (X davranışı). */}
-      <Animated.View
-        style={[
-          styles.pinnedBar,
-          { backgroundColor: colors.background, borderBottomColor: colors.border, width },
-          pinnedBarStyle,
-        ]}
-        pointerEvents={barPinned ? 'auto' : 'none'}
+    // Karuseller `header` içinde ama BU ağaçta render edilir; provider'ı
+    // görürler ve pan'ı kendi native scroll'larına bekletirler.
+    <HomePanProvider value={panGesture}>
+      <View
+        ref={rootRef}
+        style={styles.root}
+        onLayout={() => {
+          // Pill bar'ın ekran-üstü konumunu worklet'te hesaplamak için kökün
+          // pencere içindeki y'si gerekir (AppTopBar yüksekliği dahil).
+          rootRef.current?.measureInWindow((_x, y) => {
+            rootPageY.value = y;
+          });
+        }}
       >
-        <SegmentedTabs<TabKey> tabs={tabItems} activeKey={activeTab} onChange={setActiveTab} progress={pillProgress} />
-      </Animated.View>
+        <GestureDetector gesture={panGesture}>
+          <Animated.View style={styles.root}>
+            <AnimatedFlatList
+              ref={listRef}
+              data={active.items}
+              keyExtractor={activityKey}
+              CellRendererComponent={CardCellRenderer}
+              renderItem={({ item }) => (
+                <View style={styles.cardWrap}>
+                  <FeedCard activity={item} />
+                </View>
+              )}
+              ListHeaderComponent={listHeader}
+              ListEmptyComponent={emptyComponent}
+              onEndReached={onEndReached}
+              onEndReachedThreshold={0.8}
+              onScroll={scrollHandler}
+              scrollEventThrottle={16}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: contentPaddingBottom + Spacing.xl }}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshingHome}
+                  onRefresh={onRefresh}
+                  tintColor={colors.primary}
+                  colors={[colors.primary]}
+                />
+              }
+              ListFooterComponent={
+                active.loading && active.items.length > 0 ? (
+                  <View style={styles.footer}>
+                    <ActivityIndicator color={colors.primary} size="small" />
+                  </View>
+                ) : !active.hasMore && active.items.length > 0 ? (
+                  <Text style={[styles.feedEnd, { color: colors.textSecondary }]}>{messages.home.feedEnd}</Text>
+                ) : null
+              }
+            />
+          </Animated.View>
+        </GestureDetector>
 
-      {fabVisible ? (
-        <Pressable
-          onPress={scrollToTop}
+        {/* Pill bar, listedeki ikiziyle aynı hizaya gelince tepeye sabitlenir;
+            akış artık bunun ALTINDAN kayar (X davranışı). */}
+        <Animated.View
           style={[
-            styles.fab,
-            { backgroundColor: colors.primary, bottom: contentPaddingBottom + Spacing.md },
-            Shadows.md,
+            styles.pinnedBar,
+            { backgroundColor: colors.background, borderBottomColor: colors.border, width },
+            pinnedBarStyle,
           ]}
-          accessibilityLabel={messages.home.backToTop}
+          pointerEvents={barPinned ? 'auto' : 'none'}
         >
-          <Ionicons name="arrow-up" size={20} color="#ffffff" />
-        </Pressable>
-      ) : null}
-    </View>
+          <SegmentedTabs<TabKey> tabs={tabItems} activeKey={activeTab} onChange={setActiveTab} progress={pillProgress} />
+        </Animated.View>
+
+        {fabVisible ? (
+          <Pressable
+            onPress={scrollToTop}
+            style={[
+              styles.fab,
+              { backgroundColor: colors.primary, bottom: contentPaddingBottom + Spacing.md },
+              Shadows.md,
+            ]}
+            accessibilityLabel={messages.home.backToTop}
+          >
+            <Ionicons name="arrow-up" size={20} color="#ffffff" />
+          </Pressable>
+        ) : null}
+      </View>
+    </HomePanProvider>
   );
 }
 

@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useUserLink } from '@/src/components/common/UserLink';
-import { FontSize, Spacing, BorderRadius, Shadows } from '@/src/constants/theme';
+import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
 import { getImageUrl } from '@/src/utils/image';
 import { formatNumber } from '@/src/utils/format';
 import * as haptics from '@/src/utils/haptics';
@@ -99,7 +99,7 @@ export function LeaderboardCard({ users }: LeaderboardCardProps) {
   const visible = expanded ? users : users.slice(0, COLLAPSED_COUNT);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface }, Shadows.md]}>
+    <View style={[styles.container, { backgroundColor: colors.surface }]}>
       {/* Gradient header for podium feel */}
       <LinearGradient
         colors={[`${colors.primary}26`, `${colors.accent}14`]}
@@ -150,6 +150,11 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing.lg,
     borderRadius: BorderRadius.xl,
     marginBottom: Spacing.lg,
+    // Golge YOK, bilerek. overflow:'hidden' burada zorunlu (gradient header'i
+    // koseye kirpiyor) ve iOS'ta clipsToBounds golgeyi zaten tamamen yiyordu;
+    // Android'de ise elevation kirpilmadan cizilip kart asiri golgeli
+    // gorunuyordu. Kart zaten gradient header + satir ayraclariyla okunuyor.
+    // Golge eklemek gerekirse dista ayri bir sarmalayici View'a konmali.
     overflow: 'hidden',
   },
   header: {
@@ -178,7 +183,9 @@ const styles = StyleSheet.create({
   },
   listContent: {
     backgroundColor: 'transparent',
-    paddingHorizontal: Spacing.lg,
+    // Header ile hizali (o da Spacing.lg) ama rutbe rozeti ve XP kart kenarina
+    // yapisik duruyordu; xl satira nefes payi veriyor.
+    paddingHorizontal: Spacing.xl,
     paddingBottom: Spacing.sm,
   },
   row: {
@@ -218,6 +225,8 @@ const styles = StyleSheet.create({
   },
   xpContainer: {
     alignItems: 'flex-end',
+    // "1.1K" uzun kullanici adiyla arasindaki row gap'ine yapismasin.
+    paddingLeft: Spacing.sm,
   },
   xpValue: {
     fontSize: FontSize.md,

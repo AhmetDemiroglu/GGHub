@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   Switch,
   TouchableOpacity,
-  Alert,
   StyleSheet,
 } from 'react-native';
+// Duz ScrollView degil: Android'de alttaki alanlar ve Kaydet butonu klavyenin
+// altinda kaliyordu. Bu, odaklanan alani klavyenin ustune kaydirir.
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -16,6 +17,7 @@ import { ScreenHeader } from '@/src/components/shell';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
 import { Input } from '@/src/components/common/Input';
 import { Button } from '@/src/components/common/Button';
+import { useToast } from '@/src/components/common/Toast';
 import { ProfilePhotoUploader } from '@/src/components/profile/ProfilePhotoUploader';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
@@ -30,6 +32,7 @@ export default function ProfileEditScreen() {
   const { colors } = useTheme();
   const { messages } = useLocale();
   const { updateProfileImage } = useAuth();
+  const { showToast } = useToast();
   const queryClient = useQueryClient();
   const tabBarHeight = useTabBarHeight();
   const ef = messages.profile.editForm;
@@ -67,11 +70,11 @@ export default function ProfileEditScreen() {
     mutationFn: (data: ProfileForUpdate) => updateMyProfile(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['myProfile'] });
-      Alert.alert('', ef.success);
+      showToast('success', ef.success);
       router.back();
     },
     onError: () => {
-      Alert.alert('', messages.common.genericError);
+      showToast('error', messages.common.genericError);
     },
   });
 
@@ -99,7 +102,11 @@ export default function ProfileEditScreen() {
     <ScreenWrapper noPadding safeArea={false}>
       <ScreenHeader title={messages.nav.screenTitles.editProfile} />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: tabBarHeight + Spacing.md }}>
+      <KeyboardAwareScrollView
+        showsVerticalScrollIndicator={false}
+        bottomOffset={Spacing.xxl}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: tabBarHeight + Spacing.md }}
+      >
         <View style={styles.photoSection}>
           <ProfilePhotoUploader
             currentUri={profileImageUrl}
@@ -176,7 +183,7 @@ export default function ProfileEditScreen() {
         />
 
         <View style={styles.bottomSpacer} />
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </ScreenWrapper>
   );
 }

@@ -4,8 +4,9 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
-import { FontSize, Spacing, BorderRadius, Shadows } from '@/src/constants/theme';
+import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
 import { getImageUrl } from '@/src/utils/image';
+import { HorizontalScrollGuard } from '@/src/components/home/HorizontalScrollGuard';
 import * as haptics from '@/src/utils/haptics';
 import type { HomeGame } from '@/src/models/home';
 
@@ -27,7 +28,7 @@ export function TrendingGames({ games }: TrendingGamesProps) {
 
       return (
         <Pressable
-          style={[styles.card, { backgroundColor: colors.surface }, Shadows.sm]}
+          style={[styles.card, { backgroundColor: colors.surface }]}
           onPress={() => {
             haptics.impactLight();
             router.push(`/game/${item.slug}`);
@@ -71,14 +72,16 @@ export function TrendingGames({ games }: TrendingGamesProps) {
           </Text>
         </Pressable>
       </View>
-      <FlatList
-        data={games}
-        renderItem={renderItem}
-        keyExtractor={(item) => `trend-${item.rawgId}`}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-      />
+      <HorizontalScrollGuard>
+        <FlatList
+          data={games}
+          renderItem={renderItem}
+          keyExtractor={(item) => `trend-${item.rawgId}`}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+        />
+      </HorizontalScrollGuard>
     </View>
   );
 }

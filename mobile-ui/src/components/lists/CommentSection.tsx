@@ -46,12 +46,20 @@ export function CommentSection({ listId }: CommentSectionProps) {
         {t.title.replace('{count}', String(totalCount))}
       </Text>
 
+      {/* Sira gerekcesi icin bkz. reviews/ReviewCommentSection: yuklenmis liste
+          basarisiz bir refetch yuzunden gizlenmez. */}
+      {isError && comments.length > 0 ? (
+        <Text style={[styles.errorNotice, { color: colors.error }]}>{t.loadError}</Text>
+      ) : null}
+
       {isLoading ? (
         <ActivityIndicator size="small" color={colors.primary} style={styles.loader} />
-      ) : isError ? (
-        <Text style={[styles.errorText, { color: colors.error }]}>{t.loadError}</Text>
       ) : comments.length === 0 ? (
-        <Text style={[styles.emptyText, { color: colors.textMuted }]}>{t.empty}</Text>
+        isError ? (
+          <Text style={[styles.errorText, { color: colors.error }]}>{t.loadError}</Text>
+        ) : (
+          <Text style={[styles.emptyText, { color: colors.textMuted }]}>{t.empty}</Text>
+        )
       ) : (
         <>
           {comments.map((comment) => (
@@ -102,6 +110,10 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     textAlign: 'center',
     marginVertical: Spacing.lg,
+  },
+  errorNotice: {
+    fontSize: FontSize.xs,
+    marginBottom: Spacing.xs,
   },
   emptyText: {
     fontSize: FontSize.sm,

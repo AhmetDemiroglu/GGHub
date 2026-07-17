@@ -253,7 +253,7 @@ namespace GGHub.Infrastructure.Services
                     CreatedAt = r.CreatedAt,
                     VoteScore = r.ReviewVotes.Sum(v => v.Value),
                     LikeCount = r.ReviewVotes.Count(v => v.Value == 1),
-                    CommentCount = r.Comments.Count,
+                    CommentCount = r.Comments.Count(c => c.ParentCommentId == null),
                     CurrentUserVote = currentUserId.HasValue
                         ? r.ReviewVotes.Where(v => v.UserId == currentUserId).Select(v => (int?)v.Value).FirstOrDefault()
                         : null,
@@ -306,7 +306,7 @@ namespace GGHub.Infrastructure.Services
                     CreatedAt = r.CreatedAt,
                     VoteScore = r.ReviewVotes.Sum(v => v.Value),
                     LikeCount = r.ReviewVotes.Count(v => v.Value == 1),
-                    CommentCount = r.Comments.Count,
+                    CommentCount = r.Comments.Count(c => c.ParentCommentId == null),
                     CurrentUserVote = userId.HasValue
                         ? r.ReviewVotes.Where(v => v.UserId == userId).Select(v => (int?)v.Value).FirstOrDefault()
                         : null,
@@ -345,7 +345,7 @@ namespace GGHub.Infrastructure.Services
                     CreatedAt = r.CreatedAt,
                     VoteScore = r.ReviewVotes.Sum(v => v.Value),
                     LikeCount = r.ReviewVotes.Count(v => v.Value == 1),
-                    CommentCount = r.Comments.Count,
+                    CommentCount = r.Comments.Count(c => c.ParentCommentId == null),
                     CurrentUserVote = currentUserId.HasValue
                         ? r.ReviewVotes.Where(v => v.UserId == currentUserId).Select(v => (int?)v.Value).FirstOrDefault()
                         : null,

@@ -8,7 +8,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { useTheme } from '@/src/hooks/use-theme';
-import { FontSize, Spacing, BorderRadius, Springs, Shadows } from '@/src/constants/theme';
+import { FontSize, Spacing, BorderRadius, Springs } from '@/src/constants/theme';
 import { getImageUrl } from '@/src/utils/image';
 import { PlatformIcons } from '@/src/components/common/PlatformIcons';
 import { ScorePillRow } from '@/src/components/common/ScorePill';
@@ -47,7 +47,7 @@ export function GameCard({ game, variant = 'compact' }: GameCardProps) {
   if (variant === 'list') {
     return (
       <AnimatedPressable
-        style={[styles.listCard, { backgroundColor: colors.surface }, Shadows.sm, animatedStyle]}
+        style={[styles.listCard, { backgroundColor: colors.surface }, animatedStyle]}
         onPress={handlePress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
@@ -84,7 +84,7 @@ export function GameCard({ game, variant = 'compact' }: GameCardProps) {
 
   return (
     <AnimatedPressable
-      style={[styles.compactCard, { backgroundColor: colors.surface }, Shadows.sm, animatedStyle]}
+      style={[styles.compactCard, { backgroundColor: colors.surface }, animatedStyle]}
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
