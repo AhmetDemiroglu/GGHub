@@ -102,6 +102,7 @@ builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
+builder.Services.AddScoped<IDownloadAnalyticsService, DownloadAnalyticsService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IMentionService, MentionService>();
 builder.Services.AddHttpClient<IPushNotificationService, ExpoPushNotificationService>();
@@ -115,6 +116,11 @@ builder.Services.AddScoped<IUserListCommentService, UserListCommentService>();
 builder.Services.AddScoped<IReviewCommentService, ReviewCommentService>();
 builder.Services.AddSingleton<IEmailQueue, EmailQueue>();
 builder.Services.AddHostedService<BackgroundEmailService>();
+// Ikinci mesru istisna (bkz. asagidaki katalog job'lari notu): DownloadPageEvents
+// tablosunun saklama budamasi PROD'da calismak zorunda, Worker ise yalnizca
+// gelistirici makinesinde acilir. Gunde bir kez partili DELETE, CPU acisindan
+// crawler job'lariyla kiyaslanamaz.
+builder.Services.AddHostedService<DownloadEventRetentionJob>();
 builder.Services.Configure<GeminiSettings>(builder.Configuration.GetSection("Gemini"));
 builder.Services.AddScoped<IGeminiBudgetService, GeminiBudgetService>();
 builder.Services.AddHttpClient<IGeminiService, GeminiService>(client =>
@@ -219,6 +225,23 @@ builder.Services.AddRateLimiter(options =>
             {
                 PermitLimit = 20,
                 Window = TimeSpan.FromHours(1),
+                QueueLimit = 0
+            }));
+
+    // /download-app telemetri girisi anonim; kotuye kullanimi sinirlamak gerek.
+    // Partition anahtari proxy'nin ilettigi ziyaretci hash'i, IP DEGIL: yukaridaki
+    // yorumda anlatildigi gibi Railway arkasinda RemoteIpAddress herkes icin ayni
+    // cikar ve IP basina limit tek kovaya coker. Gercek bir ziyaret en fazla 3 olay
+    // gonderir; 60 limiti paylasimli NAT'a bol pay birakir.
+    options.AddPolicy("DownloadTrackPolicy", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Request.Headers["X-Visitor-Hash"].ToString() is { Length: > 0 } visitorHash
+                ? visitorHash
+                : "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 60,
+                Window = TimeSpan.FromMinutes(5),
                 QueueLimit = 0
             }));
 

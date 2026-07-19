@@ -23,12 +23,15 @@ export function StoreButton({
     href,
     soon,
     className,
+    onClick,
 }: {
     icon: React.ReactNode;
     label: string;
     href?: string | null;
     soon?: string | null;
     className?: string;
+    /** Opsiyonel: yalnizca /download-app olcum icin geciyor, diger cagrilari etkilemez. */
+    onClick?: () => void;
 }) {
     // Yan yana dizildiklerinde 320px'lik ekranlarda etiket iki satira kiriliyordu;
     // 360px altinda dolgu ve punto bir kademe kisiliyor, 375px ve ustu aynen korunuyor.
@@ -42,6 +45,7 @@ export function StoreButton({
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={onClick}
                 className={cn(base, "transition-all hover:scale-[1.02] hover:border-cyan-400/60 hover:bg-black", className)}
             >
                 {icon}

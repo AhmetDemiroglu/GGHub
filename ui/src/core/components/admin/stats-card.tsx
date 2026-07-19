@@ -6,9 +6,11 @@ interface StatsCardProps {
     title: string;
     value: string | number;
     icon: React.ElementType;
+    /** Opsiyonel alt satır; mevcut çağrıları etkilemez. */
+    description?: string;
 }
 
-export const StatsCard = ({ title, value, icon: Icon }: StatsCardProps) => {
+export const StatsCard = ({ title, value, icon: Icon, description }: StatsCardProps) => {
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -17,6 +19,7 @@ export const StatsCard = ({ title, value, icon: Icon }: StatsCardProps) => {
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">{value}</div>
+                {description ? <p className="mt-1 text-xs text-muted-foreground">{description}</p> : null}
             </CardContent>
         </Card>
     );

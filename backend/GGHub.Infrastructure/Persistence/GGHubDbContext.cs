@@ -39,6 +39,7 @@ namespace GGHub.Infrastructure.Persistence
         public DbSet<RawgImportCheckpoint> RawgImportCheckpoints { get; set; }
         public DbSet<PushToken> PushTokens { get; set; }
         public DbSet<GeminiUsage> GeminiUsages { get; set; }
+        public DbSet<DownloadPageEvent> DownloadPageEvents { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -268,6 +269,43 @@ namespace GGHub.Infrastructure.Persistence
                     .WithMany()
                     .HasForeignKey(t => t.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // DownloadPageEvent: /download-app kampanya telemetrisi.
+            // Yazma-ağırlıklı bir tablo, o yüzden index sayısı BİLEREK üçle sınırlı;
+            // her ek index insert maliyetidir.
+            modelBuilder.Entity<DownloadPageEvent>(entity =>
+            {
+                entity.Property(e => e.EventType).IsRequired().HasMaxLength(24);
+                entity.Property(e => e.Platform).HasMaxLength(16);
+                entity.Property(e => e.DeviceType).HasMaxLength(16);
+                entity.Property(e => e.Browser).HasMaxLength(32);
+                entity.Property(e => e.UtmSource).HasMaxLength(64);
+                entity.Property(e => e.UtmMedium).HasMaxLength(64);
+                entity.Property(e => e.UtmCampaign).HasMaxLength(96);
+                entity.Property(e => e.UtmContent).HasMaxLength(96);
+                entity.Property(e => e.UtmTerm).HasMaxLength(96);
+                entity.Property(e => e.ClickIdSource).HasMaxLength(16);
+                entity.Property(e => e.ReferrerHost).HasMaxLength(128);
+                entity.Property(e => e.CountryCode).HasMaxLength(2);
+                entity.Property(e => e.Language).HasMaxLength(16);
+                entity.Property(e => e.Target).HasMaxLength(24);
+                entity.Property(e => e.VisitorHash).HasMaxLength(32);
+
+                // İş atı: tüm raporlar tarih aralıklı, EventType ikinci sütun olarak
+                // özet sayımlarını karşılar. Saklama süresi DELETE'i de bunu sürer.
+                // Ayrı bir (OccurredAt) index'i GEREKSİZ, bu composite onu kapsıyor.
+                entity.HasIndex(e => new { e.OccurredAt, e.EventType })
+                    .HasDatabaseName("IX_DownloadPageEvents_OccurredAt_EventType");
+
+                // Huni: bir ziyaretin tüm olaylarını toplamak için.
+                entity.HasIndex(e => e.VisitId)
+                    .HasDatabaseName("IX_DownloadPageEvents_VisitId");
+
+                // Kampanya kırılımı. UtmSource için ayrı index'e değmez; iş atı
+                // index'i + heap onu zaten karşılıyor.
+                entity.HasIndex(e => new { e.UtmCampaign, e.OccurredAt })
+                    .HasDatabaseName("IX_DownloadPageEvents_UtmCampaign_OccurredAt");
             });
         }
     }

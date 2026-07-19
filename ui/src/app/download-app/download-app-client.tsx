@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Play } from "lucide-react";
 import { APP_STORE_URL, GOOGLE_PLAY_URL } from "@/core/lib/store-links";
 import { AppleLogo, StoreButton } from "@/core/components/other/public/store-buttons";
+import { startVisit, trackDownloadEvent } from "@/core/lib/download-analytics";
 import logoSrc from "@core/assets/logo.png";
 
 /**
@@ -26,6 +27,9 @@ export default function DownloadAppClient() {
     const [target, setTarget] = useState<string | null>(null);
     const [seconds, setSeconds] = useState(AUTO_REDIRECT_SECONDS);
     const [cancelled, setCancelled] = useState(false);
+    // React 19 StrictMode dev'de effect'leri iki kez calistirir; guard olmadan
+    // her ziyaret iki page_view yazardi.
+    const viewTrackedRef = useRef(false);
 
     // Detect OS once, on the client, to pick the auto-redirect target.
     useEffect(() => {
@@ -38,13 +42,31 @@ export default function DownloadAppClient() {
         } else if (isAndroid && GOOGLE_PLAY_URL) {
             setTarget(GOOGLE_PLAY_URL);
         }
+
+        if (!viewTrackedRef.current) {
+            viewTrackedRef.current = true;
+            startVisit();
+            trackDownloadEvent("page_view");
+        }
     }, []);
 
     // Countdown + redirect when a matching store exists for this device.
     useEffect(() => {
         if (!target || cancelled) return;
         if (seconds <= 0) {
-            window.location.href = target;
+            // Beacon navigasyondan HEMEN once, senkron gonderilir. true donerse
+            // tarayici istegi kuyruga aldi ve sayfa kapansa da yasar; kullaniciyi
+            // bekletmenin anlami yok. Yalnizca yedek yola dusuldugunde kisa sigorta.
+            const delivered = trackDownloadEvent("auto_redirect", {
+                target: target === GOOGLE_PLAY_URL ? "google_play" : "app_store",
+            });
+            if (delivered) {
+                window.location.href = target;
+            } else {
+                setTimeout(() => {
+                    window.location.href = target;
+                }, 250);
+            }
             return;
         }
         const id = setTimeout(() => setSeconds((s) => s - 1), 1000);
@@ -96,7 +118,10 @@ export default function DownloadAppClient() {
                         </div>
                         <button
                             type="button"
-                            onClick={() => setCancelled(true)}
+                            onClick={() => {
+                                trackDownloadEvent("redirect_cancel", { secondsLeft: n });
+                                setCancelled(true);
+                            }}
                             className="mt-2.5 text-xs font-medium text-white/45 underline-offset-4 transition-colors hover:text-white/70 hover:underline"
                         >
                             Cancel · İptal et
@@ -105,9 +130,19 @@ export default function DownloadAppClient() {
                 ) : null}
 
                 <div className="mt-6 flex flex-col gap-3">
-                    <StoreButton icon={<AppleLogo className="h-5 w-5" />} label="App Store" href={APP_STORE_URL} />
+                    <StoreButton
+                        icon={<AppleLogo className="h-5 w-5" />}
+                        label="App Store"
+                        href={APP_STORE_URL}
+                        onClick={() => trackDownloadEvent("store_click", { target: "app_store", secondsLeft: n })}
+                    />
                     {GOOGLE_PLAY_URL ? (
-                        <StoreButton icon={<Play className="h-5 w-5" />} label="Google Play" href={GOOGLE_PLAY_URL} />
+                        <StoreButton
+                            icon={<Play className="h-5 w-5" />}
+                            label="Google Play"
+                            href={GOOGLE_PLAY_URL}
+                            onClick={() => trackDownloadEvent("store_click", { target: "google_play", secondsLeft: n })}
+                        />
                     ) : (
                         <StoreButton icon={<Play className="h-5 w-5" />} label="Google Play" soon="Soon" />
                     )}
@@ -126,6 +161,7 @@ export default function DownloadAppClient() {
 
                 <a
                     href="https://gghub.social"
+                    onClick={() => trackDownloadEvent("web_click", { target: "web" })}
                     className="mt-4 inline-block text-xs font-medium text-cyan-400 underline-offset-4 transition-colors hover:text-cyan-300 hover:underline"
                 >
                     Open the web version · Web sürümünü aç
