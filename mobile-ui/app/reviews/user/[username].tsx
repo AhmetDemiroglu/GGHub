@@ -23,6 +23,7 @@ import { getReviewsByUser } from '@/src/api/review';
 import { getImageUrl } from '@/src/utils/image';
 import type { Review } from '@/src/models/review';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
+import { MentionText } from '@/src/components/common/MentionText';
 
 export default function UserReviewsScreen() {
   const { username } = useLocalSearchParams<{ username: string }>();
@@ -120,12 +121,13 @@ export default function UserReviewsScreen() {
               {game?.name ?? '-'}
             </Text>
             {renderStars(item.rating)}
-            <Text
+            {/* Kartin tamami dokunulabilir; bahis burada yalnizca boyanir, link DEGIL. */}
+            <MentionText
+              body={item.content}
               style={[styles.reviewText, { color: colors.textSecondary }]}
               numberOfLines={3}
-            >
-              {item.content}
-            </Text>
+              linkify={false}
+            />
             {/* X tarzı göstergeler: beğeni + yorum + tarih */}
             <View style={styles.statsRow}>
               <View style={styles.statItem}>

@@ -43,6 +43,7 @@ import * as haptics from '@/src/utils/haptics';
 import type { Review } from '@/src/models/review';
 import type { UserList } from '@/src/models/list';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
+import { MentionText } from '@/src/components/common/MentionText';
 
 type ProfileTab = 'overview' | 'reviews' | 'lists';
 
@@ -203,9 +204,13 @@ export default function PublicProfileScreen() {
                   <Text style={[styles.ratingText, { color: colors.text }]}>{item.rating}/10</Text>
                 </View>
               </View>
-              <Text style={[styles.reviewText, { color: colors.textSecondary }]} numberOfLines={3}>
-                {item.content}
-              </Text>
+              {/* Kartin tamami dokunulabilir; bahis burada yalnizca boyanir, link DEGIL. */}
+              <MentionText
+                body={item.content}
+                style={[styles.reviewText, { color: colors.textSecondary }]}
+                numberOfLines={3}
+                linkify={false}
+              />
             </View>
           </View>
         </Card>

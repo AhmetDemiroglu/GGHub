@@ -18,11 +18,14 @@ import { UserLinkMention } from '@/src/components/common/UserLink';
  */
 const MENTION_REGEX = /(^|[^\p{L}\p{N}_.])@([\p{L}\p{N}_.]{3,30})/gu;
 
-type Part =
+export type MentionPart =
   | { kind: 'text'; value: string; key: string }
   | { kind: 'mention'; username: string; key: string };
 
-function parseMentions(body: string): Part[] {
+type Part = MentionPart;
+
+/** Composer (MentionInput) da ayni bolmeyi kullanir; tek kaynak. */
+export function parseMentions(body: string): Part[] {
   const parts: Part[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -61,6 +64,12 @@ interface MentionTextProps {
   style?: StyleProp<TextStyle>;
   mentionStyle?: StyleProp<TextStyle>;
   numberOfLines?: number;
+  /**
+   * false ise bahis boyanir ama DOKUNULABILIR OLMAZ. Dokunulabilir bir kartin
+   * icindeki kirpilmis onizlemeler icin: orada ic ice onPress, kartin kendi
+   * dokunusuyla catisir ve kullanici yanlislikla profile duser.
+   */
+  linkify?: boolean;
 }
 
 /**
@@ -72,21 +81,26 @@ interface MentionTextProps {
  * /profiles/{gizli} ayni sekilde 404 verir; yani linkin varligindan bir hesabin
  * var oldugu ya da gizli oldugu ANLASILAMAZ. Hicbir sey sizmaz.
  */
-export function MentionText({ body, style, mentionStyle, numberOfLines }: MentionTextProps) {
-  const { colors } = useTheme();
+export function MentionText({ body, style, mentionStyle, numberOfLines, linkify = true }: MentionTextProps) {
+  const { colors, isDark } = useTheme();
   const parts = useMemo(() => parseMentions(body ?? ''), [body]);
+
+  // Koyu temada primary (#6366f1) koyu zeminde sonuk kaliyor; bir ton acigi
+  // kullaniliyor. Web'deki --mention token'i da ayni iki degeri tasiyor.
+  const accent = isDark ? colors.primaryLight : colors.primary;
+  const mentionStyles = [{ color: accent, fontWeight: '600' as const }, mentionStyle];
 
   return (
     <Text style={style} numberOfLines={numberOfLines}>
       {parts.map((part) =>
         part.kind === 'text' ? (
           <Text key={part.key}>{part.value}</Text>
+        ) : linkify ? (
+          <UserLinkMention key={part.key} username={part.username} style={mentionStyles} />
         ) : (
-          <UserLinkMention
-            key={part.key}
-            username={part.username}
-            style={[{ color: colors.primary, fontWeight: '600' }, mentionStyle]}
-          />
+          <Text key={part.key} style={mentionStyles}>
+            @{part.username}
+          </Text>
         ),
       )}
     </Text>

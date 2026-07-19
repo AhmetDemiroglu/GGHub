@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   View,
+  Text,
   TextInput,
   Pressable,
   ActivityIndicator,
@@ -11,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
+import { parseMentions } from '@/src/components/common/MentionText';
 import {
   MentionSuggestionStrip,
   useMentionSuggestions,
@@ -51,7 +53,9 @@ export function CommentComposer({
   compact = false,
   style,
 }: CommentComposerProps) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
+  // MentionText/MentionInput ile ayni ton.
+  const mentionAccent = isDark ? colors.primaryLight : colors.primary;
   const { messages } = useLocale();
   const t = messages.commentsSection;
 
@@ -73,9 +77,10 @@ export function CommentComposer({
           { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder },
         ]}
       >
+        {/* value yerine cocuk <Text>'ler: bahisler yazarken de renkli gorunsun.
+            Gerekce ve kontrollu kalma detayi icin bkz. MentionInput. */}
         <TextInput
           style={[styles.input, { color: colors.text }]}
-          value={value}
           onChangeText={onChangeText}
           onSelectionChange={handleSelectionChange}
           placeholder={placeholder}
@@ -83,7 +88,17 @@ export function CommentComposer({
           multiline
           maxLength={MAX_LENGTH}
           autoFocus={autoFocus}
-        />
+        >
+          {parseMentions(value ?? '').map((part) =>
+            part.kind === 'mention' ? (
+              <Text key={part.key} style={{ color: mentionAccent, fontWeight: '600' }}>
+                @{part.username}
+              </Text>
+            ) : (
+              <Text key={part.key}>{part.value}</Text>
+            ),
+          )}
+        </TextInput>
         <Pressable
           onPress={onSend}
           disabled={!canSend}

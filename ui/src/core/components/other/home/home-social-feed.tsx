@@ -16,9 +16,29 @@ import placeholderGame from "@/core/assets/placeholder.png";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/core/components/ui/tabs";
 import { Skeleton } from "@/core/components/ui/skeleton";
+import { MentionText } from "@/core/components/base/mention-text";
 import { Activity as ActivityIcon, Flame, Heart, List, Loader2, MessageCircle, Star, UserPlus } from "lucide-react";
 
 const FEED_PAGE_SIZE = 10;
+
+/** Sekme sirasi mobildeki TAB_ORDER ile birebir. */
+type TabKey = "reviews" | "lists" | "follows" | "all";
+
+const TAB_TYPE: Record<TabKey, ActivityType | undefined> = {
+    reviews: ActivityType.Review,
+    lists: ActivityType.ListCreated,
+    follows: ActivityType.FollowUser,
+    all: undefined,
+};
+
+interface TabState {
+    items: Activity[];
+    hasMore: boolean;
+    loading: boolean;
+    loaded: boolean;
+}
+
+const emptyTab = (): TabState => ({ items: [], hasMore: true, loading: false, loaded: false });
 
 interface HomeSocialFeedProps {
     initialActivities: Activity[];
@@ -28,69 +48,124 @@ interface HomeSocialFeedProps {
 export default function HomeSocialFeed({ initialActivities, isAuthenticated }: HomeSocialFeedProps) {
     const locale = useCurrentLocale();
     const t = useI18n();
-    const [activeTab, setActiveTab] = useState("all");
-    const [activities, setActivities] = useState<Activity[]>(initialActivities);
-    const [loadingMore, setLoadingMore] = useState(false);
-    const [hasMore, setHasMore] = useState(initialActivities.length >= FEED_PAGE_SIZE);
+    // Varsayılan sekme mobildeki TabbedActivityFeed ile aynı: İncelemeler.
+    // Buradaki başlangıç değeri ile <Tabs defaultValue> BİRLİKTE değişmeli,
+    // yoksa seçili sekme ile listelenen içerik birbirini tutmaz.
+    const [activeTab, setActiveTab] = useState<TabKey>("reviews");
+    // Her sekme KENDI sayfasini sunucudan ceker. Onceden tek bir karisik akis
+    // cekilip istemcide filtreleniyordu; 10 kayitlik sayfaya kac inceleme
+    // dustuyse "Incelemeler" sekmesi yalnizca onu gosterdigi icin web, mobile
+    // gore neredeyse bos gorunuyordu. Mobildeki TabbedActivityFeed ile ayni model.
+    const [feeds, setFeeds] = useState<Record<TabKey, TabState>>(() => ({
+        reviews: emptyTab(),
+        lists: emptyTab(),
+        follows: emptyTab(),
+        // Sunucudan gelen ilk akis zaten karisik: dogrudan "all" sekmesini besler.
+        all: {
+            items: initialActivities,
+            hasMore: initialActivities.length >= FEED_PAGE_SIZE,
+            loading: false,
+            loaded: true,
+        },
+    }));
     const sentinelRef = useRef<HTMLDivElement | null>(null);
-    const loadingRef = useRef(false);
-    // loadMore closure'ının her render'da güncel listeyi görmesi için ref tutuyoruz.
-    const activitiesRef = useRef(activities);
-    activitiesRef.current = activities;
+    // loadTab closure'ının her render'da güncel listeyi görmesi için ref tutuyoruz.
+    const feedsRef = useRef(feeds);
+    feedsRef.current = feeds;
 
     useEffect(() => {
-        setActivities(initialActivities);
-        setHasMore(initialActivities.length >= FEED_PAGE_SIZE);
+        setFeeds((current) => ({
+            ...current,
+            all: {
+                items: initialActivities,
+                hasMore: initialActivities.length >= FEED_PAGE_SIZE,
+                loading: false,
+                loaded: true,
+            },
+        }));
     }, [initialActivities]);
 
-    const loadMore = useCallback(async () => {
-        if (loadingRef.current) return;
-        loadingRef.current = true;
-        setLoadingMore(true);
+    const loadTab = useCallback(async (tab: TabKey, reset: boolean) => {
+        const current = feedsRef.current[tab];
+        if (current.loading) return;
+        if (!reset && current.loaded && !current.hasMore) return;
+
+        setFeeds((prev) => ({ ...prev, [tab]: { ...prev[tab], loading: true } }));
 
         try {
             // Sayfa içi sıralama skor bazlı olduğundan cursor son eleman değil,
             // eldeki en eski occurredAt olmalı; yoksa kayıt atlanır/yinelenir.
-            const oldest = activitiesRef.current.reduce<string | null>(
-                (min, activity) => (min === null || activity.occurredAt < min ? activity.occurredAt : min),
-                null,
-            );
-            if (!oldest) return;
+            const cursor = reset
+                ? undefined
+                : feedsRef.current[tab].items.reduce<string | undefined>(
+                      (min, activity) => (min === undefined || activity.occurredAt < min ? activity.occurredAt : min),
+                      undefined,
+                  );
 
-            const nextPage = await getPersonalizedFeed(FEED_PAGE_SIZE, oldest);
+            const page = await getPersonalizedFeed(FEED_PAGE_SIZE, cursor, TAB_TYPE[tab]);
 
-            let freshCount = 0;
-            setActivities((current) => {
-                const seen = new Set(current.map(getActivityKey));
-                const fresh = nextPage.filter((activity) => !seen.has(getActivityKey(activity)));
-                freshCount = fresh.length;
-                return [...current, ...fresh];
+            setFeeds((prev) => {
+                const base = reset ? [] : prev[tab].items;
+                const seen = new Set(base.map(getActivityKey));
+                const fresh = page.filter((activity) => !seen.has(getActivityKey(activity)));
+                return {
+                    ...prev,
+                    [tab]: {
+                        items: [...base, ...fresh],
+                        // Tüm sayfa yinelenen geldiyse dur; aksi halde aynı sayfa
+                        // tekrar tekrar çekilip observer döngüye girer.
+                        hasMore: fresh.length > 0 && page.length >= FEED_PAGE_SIZE,
+                        loading: false,
+                        loaded: true,
+                    },
+                };
             });
-            // Yeni kayıt gelmediyse dur; aksi halde aynı sayfa tekrar tekrar
-            // çekilip observer döngüye girebilir.
-            setHasMore(freshCount > 0 && nextPage.length >= FEED_PAGE_SIZE);
         } catch {
-            setHasMore(false);
-        } finally {
-            loadingRef.current = false;
-            setLoadingMore(false);
+            setFeeds((prev) => ({ ...prev, [tab]: { ...prev[tab], loading: false, loaded: true, hasMore: false } }));
         }
     }, []);
+
+    // Açılışta önce varsayılan sekme (İncelemeler), ardından diğerleri arka
+    // planda; sekme değişince içerik anında hazır olur. "all" zaten sunucudan
+    // gelen ilk akışla dolu, tekrar çekilmez.
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        let cancelled = false;
+        void (async () => {
+            await loadTab("reviews", true);
+            for (const tab of ["lists", "follows"] as TabKey[]) {
+                if (cancelled) return;
+                if (!feedsRef.current[tab].loaded) await loadTab(tab, true);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [isAuthenticated, loadTab]);
+
+    // Emniyet: ön yükleme başarısız olduysa sekmeye girildiğinde yükle.
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        const state = feedsRef.current[activeTab];
+        if (!state.loaded && !state.loading) void loadTab(activeTab, true);
+    }, [isAuthenticated, activeTab, loadTab]);
 
     // IntersectionObserver yalnızca kesişme DURUMU değişince tetiklenir. Yükleme
     // sonrası sentinel hâlâ görünürse yeni olay üretmez ve akış durur (desktop'ta
     // hiç, mobilde elle scroll gerektirir). Bu yüzden her append/yükleme bitişinde
     // observer'ı yeniden kurup kesişmeyi tekrar değerlendiriyoruz: sentinel görünür
     // kaldıkça yükleme kendiliğinden devam eder (X benzeri akışkan sonsuz scroll).
+    const activeState = feeds[activeTab];
+
     useEffect(() => {
-        if (!isAuthenticated || !hasMore || loadingMore) return;
+        if (!isAuthenticated || !activeState.hasMore || activeState.loading) return;
         const sentinel = sentinelRef.current;
         if (!sentinel) return;
 
         const observer = new IntersectionObserver(
             (entries) => {
                 if (entries[0]?.isIntersecting) {
-                    void loadMore();
+                    void loadTab(activeTab, false);
                 }
             },
             { rootMargin: "600px 0px" },
@@ -98,7 +173,7 @@ export default function HomeSocialFeed({ initialActivities, isAuthenticated }: H
 
         observer.observe(sentinel);
         return () => observer.disconnect();
-    }, [isAuthenticated, hasMore, loadMore, loadingMore, activities.length]);
+    }, [isAuthenticated, activeTab, activeState.hasMore, activeState.loading, activeState.items.length, loadTab]);
 
     if (!isAuthenticated) {
         return (
@@ -120,14 +195,11 @@ export default function HomeSocialFeed({ initialActivities, isAuthenticated }: H
         );
     }
 
-    const filteredActivities =
-        activeTab === "all"
-            ? activities
-            : activeTab === "reviews"
-              ? activities.filter((activity) => activity.type === ActivityType.Review)
-              : activeTab === "lists"
-                ? activities.filter((activity) => activity.type === ActivityType.ListCreated)
-                : activities.filter((activity) => activity.type === ActivityType.FollowUser);
+    // Filtreleme artik SUNUCUDA; burada aktif sekmenin kendi listesi gosterilir.
+    const visibleActivities = activeState.items;
+    // İlk yükleme (henüz hiç veri yok) ile "sonu geldi" durumunu ayırmak için:
+    // ilkinde iskelet, ikincisinde boş durum metni gösterilmeli.
+    const isInitialLoading = activeState.loading && visibleActivities.length === 0;
 
     return (
         <div className="space-y-4">
@@ -138,11 +210,9 @@ export default function HomeSocialFeed({ initialActivities, isAuthenticated }: H
                 </div>
             </div>
 
-            <Tabs defaultValue="all" onValueChange={setActiveTab}>
+            {/* Sekme sırası mobildeki TAB_ORDER ile birebir: reviews, lists, follows, all. */}
+            <Tabs defaultValue="reviews" onValueChange={(value) => setActiveTab(value as TabKey)}>
                 <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="all" className="gap-1 text-xs">
-                        <Flame className="h-3 w-3" /> {t("home.activityTabs.all")}
-                    </TabsTrigger>
                     <TabsTrigger value="reviews" className="gap-1 text-xs">
                         <Star className="h-3 w-3" /> {t("home.activityTabs.reviews")}
                     </TabsTrigger>
@@ -152,12 +222,21 @@ export default function HomeSocialFeed({ initialActivities, isAuthenticated }: H
                     <TabsTrigger value="follows" className="gap-1 text-xs">
                         <UserPlus className="h-3 w-3" /> {t("home.activityTabs.follows")}
                     </TabsTrigger>
+                    <TabsTrigger value="all" className="gap-1 text-xs">
+                        <Flame className="h-3 w-3" /> {t("home.activityTabs.all")}
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value={activeTab} className="mt-4">
                     <div className="space-y-3">
-                        {filteredActivities.length > 0 ? (
-                            filteredActivities.map((activity) => <FeedCard key={getActivityKey(activity)} activity={activity} locale={locale} />)
+                        {isInitialLoading ? (
+                            <div className="space-y-3">
+                                <Skeleton className="h-28 rounded-xl" />
+                                <Skeleton className="h-28 rounded-xl" />
+                                <Skeleton className="h-28 rounded-xl" />
+                            </div>
+                        ) : visibleActivities.length > 0 ? (
+                            visibleActivities.map((activity) => <FeedCard key={getActivityKey(activity)} activity={activity} locale={locale} />)
                         ) : (
                             <div className="py-12 text-center text-muted-foreground">
                                 <ActivityIcon className="mx-auto mb-2 h-8 w-8 opacity-50" />
@@ -166,20 +245,20 @@ export default function HomeSocialFeed({ initialActivities, isAuthenticated }: H
                             </div>
                         )}
 
-                        {loadingMore ? (
+                        {activeState.loading && visibleActivities.length > 0 ? (
                             <div className="space-y-3">
                                 <Skeleton className="h-28 rounded-xl" />
                                 <Skeleton className="h-28 rounded-xl" />
                             </div>
                         ) : null}
 
-                        {hasMore && activities.length > 0 ? (
+                        {activeState.hasMore && visibleActivities.length > 0 ? (
                             <div ref={sentinelRef} className="flex h-10 items-center justify-center">
-                                {loadingMore ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : null}
+                                {activeState.loading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : null}
                             </div>
                         ) : null}
 
-                        {!hasMore && activities.length > 0 ? (
+                        {!activeState.hasMore && visibleActivities.length > 0 ? (
                             <p className="py-4 text-center text-xs text-muted-foreground/70">{t("home.feedEnd")}</p>
                         ) : null}
                     </div>
@@ -284,7 +363,14 @@ function ReviewCard({ activity, timeAgo, locale }: { activity: Activity; timeAgo
                             <span className="text-xs font-bold text-yellow-600 dark:text-yellow-400">{review.rating}</span>
                         </div>
                     </div>
-                    {review.contentSnippet ? <p className="mt-1.5 line-clamp-2 text-xs italic text-muted-foreground">"{review.contentSnippet}"</p> : null}
+                    {review.contentSnippet ? (
+                        // Kart komple tıklanabilir; mention yalnızca boyanır, link DEĞİL.
+                        <p className="mt-1.5 line-clamp-2 text-xs italic text-muted-foreground">
+                            &quot;
+                            <MentionText text={review.contentSnippet} linkify={false} />
+                            &quot;
+                        </p>
+                    ) : null}
                 </div>
             </Link>
             <div className="mt-2.5 flex items-center gap-5 pl-1 text-muted-foreground">

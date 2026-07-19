@@ -11,7 +11,7 @@ import { cn } from "@/core/lib/utils";
  * Lookbehind tasinabilirlik icin BILEREK kullanilmiyor; onceki karakter yakalanip aynen geri basiliyor.
  * Grup 1 = onceki karakter, Grup 2 = handle.
  */
-const MENTION_PATTERN_SOURCE = "(^|[^\\p{L}\\p{N}_.])@([\\p{L}\\p{N}_.]{3,30})";
+export const MENTION_PATTERN_SOURCE = "(^|[^\\p{L}\\p{N}_.])@([\\p{L}\\p{N}_.]{3,30})";
 
 interface MentionTextProps {
     /** Yorum/inceleme govdesi. */
@@ -21,9 +21,15 @@ interface MentionTextProps {
     mentionClassName?: string;
     /** Mention'a tiklaninca popover/dialog kapatmak isteyenler icin. */
     onNavigate?: () => void;
+    /**
+     * false ise mention boyanir ama TIKLANABILIR OLMAZ. Tikanabilir bir kartin
+     * icindeki kirpilmis onizlemeler icin: orada ic ice link, kartin kendi
+     * tiklamasiyla catisir ve kullanici yanlislikla profile dusar.
+     */
+    linkify?: boolean;
 }
 
-export function MentionText({ text, className, mentionClassName, onNavigate }: MentionTextProps) {
+export function MentionText({ text, className, mentionClassName, onNavigate, linkify = true }: MentionTextProps) {
     // Regex her cagride yeniden uretiliyor: /g bayrakli paylasimli bir instance'in lastIndex'i
     // eszamanli render'larda birbirine karisirdi.
     const pattern = new RegExp(MENTION_PATTERN_SOURCE, "gu");
@@ -42,13 +48,19 @@ export function MentionText({ text, className, mentionClassName, onNavigate }: M
         // Istemci hangi handle'in gercek oldugunu BILMEZ, iyimser linkleriz. Bu guvenli:
         // /profiles/{olmayan} ile /profiles/{gizli} AYNI 404'u doner, yani sizinti olmaz.
         nodes.push(
-            <UserLink
-                key={`mention-${key++}`}
-                user={{ username: handle }}
-                variant="inline"
-                className={cn("font-medium text-primary hover:underline", mentionClassName)}
-                onNavigate={onNavigate}
-            />
+            linkify ? (
+                <UserLink
+                    key={`mention-${key++}`}
+                    user={{ username: handle }}
+                    variant="inline"
+                    className={cn("font-medium text-mention hover:underline", mentionClassName)}
+                    onNavigate={onNavigate}
+                />
+            ) : (
+                <span key={`mention-${key++}`} className={cn("font-medium text-mention", mentionClassName)}>
+                    @{handle}
+                </span>
+            )
         );
 
         lastIndex = match.index + full.length;

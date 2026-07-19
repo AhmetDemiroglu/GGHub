@@ -10,6 +10,7 @@ import { ReviewDetailDialog } from "./review-detail-dialog";
 import { Review } from "@/models/review/review.model";
 import placeholderGame from "@/core/assets/placeholder.png";
 import { useI18n } from "@/core/contexts/locale-context";
+import { MentionText } from "@/core/components/base/mention-text";
 
 dayjs.locale("tr");
 
@@ -83,7 +84,13 @@ export default function ProfileReviews({ username }: ProfileReviewsProps) {
                                     <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:block">{dayjs(review.createdAt).format("D MMM YYYY")}</span>
                                 </div>
 
-                                <p className="text-sm text-muted-foreground line-clamp-3 md:line-clamp-4 flex-1">{review.content}</p>
+                                {/* Kart komple tıklanabilir olduğu için mention burada
+                                    yalnızca boyanır, link DEĞİLDİR (linkify={false}). */}
+                                <MentionText
+                                    text={review.content}
+                                    linkify={false}
+                                    className="text-sm text-muted-foreground line-clamp-3 md:line-clamp-4 flex-1"
+                                />
 
                                 <div className="flex items-center justify-end mt-auto pt-2 gap-2 text-xs font-medium text-primary">
                                     <span>{t("profileReviews.viewDetail")}</span>

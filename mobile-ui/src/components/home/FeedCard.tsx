@@ -6,6 +6,7 @@ import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
 import { Avatar } from '@/src/components/common/Avatar';
+import { MentionText } from '@/src/components/common/MentionText';
 import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
 import { getImageUrl } from '@/src/utils/image';
 import { formatRelativeTime } from '@/src/utils/date';
@@ -118,9 +119,13 @@ function ReviewCard({ activity }: { activity: Activity }) {
             <Text style={[styles.ratingText, { color: colors.star }]}>{review.rating}/10</Text>
           </View>
           {review.contentSnippet ? (
-            <Text style={[styles.snippet, { color: colors.textSecondary }]} numberOfLines={2}>
-              “{review.contentSnippet}”
-            </Text>
+            // Kartin tamami dokunulabilir; bahis yalnizca boyanir, link DEGIL.
+            <MentionText
+              body={`“${review.contentSnippet}”`}
+              style={[styles.snippet, { color: colors.textSecondary }]}
+              numberOfLines={2}
+              linkify={false}
+            />
           ) : null}
         </View>
       </View>

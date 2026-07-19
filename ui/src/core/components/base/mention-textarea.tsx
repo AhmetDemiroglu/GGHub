@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 
 import { searchMentions } from "@/api/search/search.api";
+import { MENTION_PATTERN_SOURCE } from "@/core/components/base/mention-text";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
 import { Textarea } from "@/core/components/ui/textarea";
 import { useDebounce } from "@/core/hooks/use-debounce";
@@ -18,6 +19,40 @@ import { cn } from "@/core/lib/utils";
  * Uzunluk alt siniri 0: kullanici daha yazmayi bitirmedi, ilk karakterden itibaren oneri gosteririz.
  */
 const ACTIVE_MENTION_PATTERN = /(^|[^\p{L}\p{N}_.])@([\p{L}\p{N}_.]{0,30})$/u;
+
+/**
+ * Yazarken canli vurgulama. Textarea metnin bir bolumunu boyayamaz, bu yuzden
+ * ARKASINA birebir ayni tipografi/kutu metrikleriyle bir katman koyuyoruz:
+ * gercek metni o katman cizer, textarea'nin kendi yazisi seffaftir. Ikisi ayni
+ * className'i paylastigi icin sarma ve satir yuksekligi hep ortusur.
+ *
+ * MentionText ile AYNI kaliba dayanir; kullanici gonderdikten sonra gorecegi
+ * renkle yazarken gordugu renk boylece ayrisamaz.
+ */
+function renderHighlighted(text: string): React.ReactNode[] {
+    const pattern = new RegExp(MENTION_PATTERN_SOURCE, "gu");
+    const nodes: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let key = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = pattern.exec(text)) !== null) {
+        const [full, precedingChar, handle] = match;
+        nodes.push(`${text.slice(lastIndex, match.index)}${precedingChar}`);
+        nodes.push(
+            <span key={`hl-${key++}`} className="font-medium text-mention">
+                @{handle}
+            </span>
+        );
+        lastIndex = match.index + full.length;
+    }
+
+    nodes.push(text.slice(lastIndex));
+    // Metin yeni satirla bitiyorsa son satir olcuye girmez; katman bir satir
+    // kisa kalip kaymasin diye sifir genislikli bir karakter ekliyoruz.
+    nodes.push("​");
+    return nodes;
+}
 
 interface MentionTextareaProps extends Omit<React.ComponentProps<"textarea">, "value" | "onChange"> {
     value: string;
@@ -37,6 +72,7 @@ export const MentionTextarea = React.forwardRef<HTMLTextAreaElement, MentionText
     forwardedRef
 ) {
     const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
+    const backdropRef = React.useRef<HTMLDivElement | null>(null);
     /** Yazilmakta olan "@handle" parcasinin metindeki araligi. */
     const anchorRef = React.useRef<{ start: number; end: number } | null>(null);
     /** Programatik ekleme sonrasi caret'in konacagi yer. */
@@ -180,15 +216,43 @@ export const MentionTextarea = React.forwardRef<HTMLTextAreaElement, MentionText
         onKeyDown?.(event);
     };
 
+    /** Textarea kaydiginda vurgu katmani da ayni miktarda kaymali. */
+    const syncScroll = React.useCallback(() => {
+        const element = textareaRef.current;
+        const backdrop = backdropRef.current;
+        if (!element || !backdrop) return;
+        backdrop.scrollTop = element.scrollTop;
+        backdrop.scrollLeft = element.scrollLeft;
+    }, []);
+
+    React.useEffect(syncScroll, [value, syncScroll]);
+
     return (
         <div className={cn("relative", wrapperClassName)}>
+            {/* Vurgu katmani: textarea'nin ARKASINDA, birebir ayni kutu metrikleriyle. */}
+            <div
+                ref={backdropRef}
+                aria-hidden
+                className={cn(
+                    "pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words rounded-md border border-transparent px-3 py-2 text-base md:text-sm",
+                    className,
+                    "bg-transparent"
+                )}
+            >
+                {renderHighlighted(value)}
+            </div>
+
             <Textarea
                 {...props}
                 ref={setRefs}
                 value={value}
-                className={className}
+                // Yazi seffaf: gercek metni arkadaki katman ciziyor. Caret ve
+                // secim gorunur kalsin diye ayrica veriliyor; secim rengi yari
+                // saydam olmali, yoksa arkadaki metni komple ortup gizler.
+                className={cn(className, "relative bg-transparent text-transparent caret-foreground selection:bg-primary/30")}
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}
+                onScroll={syncScroll}
                 onSelect={(event) => {
                     if (pendingCaretRef.current === null) {
                         syncMentionState(event.currentTarget);
