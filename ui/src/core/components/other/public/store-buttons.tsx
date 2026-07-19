@@ -30,8 +30,11 @@ export function StoreButton({
     soon?: string | null;
     className?: string;
 }) {
+    // Yan yana dizildiklerinde 320px'lik ekranlarda etiket iki satira kiriliyordu;
+    // 360px altinda dolgu ve punto bir kademe kisiliyor, 375px ve ustu aynen korunuyor.
     const base =
-        "relative inline-flex flex-1 items-center justify-center gap-2.5 rounded-xl border border-border/60 bg-black/80 px-5 py-3 text-white";
+        "relative inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-border/60 bg-black/80 px-3 py-3 text-white min-[360px]:px-4 sm:gap-2.5 sm:px-5";
+    const labelClass = "whitespace-nowrap text-[13px] font-semibold min-[360px]:text-sm";
 
     if (href) {
         return (
@@ -42,7 +45,7 @@ export function StoreButton({
                 className={cn(base, "transition-all hover:scale-[1.02] hover:border-cyan-400/60 hover:bg-black", className)}
             >
                 {icon}
-                <span className="text-sm font-semibold">{label}</span>
+                <span className={labelClass}>{label}</span>
             </a>
         );
     }
@@ -50,7 +53,7 @@ export function StoreButton({
     return (
         <div className={cn(base, "cursor-default opacity-90", className)}>
             {icon}
-            <span className="text-sm font-semibold">{label}</span>
+            <span className={labelClass}>{label}</span>
             {soon ? (
                 <span className="absolute -right-2 -top-2 rounded-full bg-gradient-to-r from-cyan-500 to-violet-500 px-2 py-0.5 text-[10px] font-bold text-white shadow">
                     {soon}
