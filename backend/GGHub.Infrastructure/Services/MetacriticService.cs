@@ -263,7 +263,7 @@ namespace GGHub.Infrastructure.Services
         /// "DOOM (2016)" -> "doom", "God of War: Ragnarök" -> "godofwarragnarok".
         /// RAWG ile Metacritic ayni oyunu farkli yaziyor: RAWG parantez icinde yil/platform
         /// ekliyor, noktalama iki tarafta tutarsiz ve en sinsisi, aksanlar farkli
-        /// ("Ragnarök" vs "Ragnarok" — tek karakter yuzunden 94 puanli oyun kaciriliyordu).
+        /// ("Ragnarök" vs "Ragnarok"; tek karakter yuzunden 94 puanli oyun kaciriliyordu).
         /// </summary>
         private static string NormalizeTitle(string? title)
         {

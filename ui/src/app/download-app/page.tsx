@@ -28,7 +28,7 @@ type SearchParams = Promise<{ lang?: string | string[] }>;
 export async function generateMetadata({ searchParams }: { searchParams: SearchParams }): Promise<Metadata> {
     const { lang } = await searchParams;
     // When shared without ?lang, crawlers (WhatsApp/Facebook/etc.) have no browser
-    // locale to read, so default the card to Turkish — the primary audience and the
+    // locale to read, so default the card to Turkish, the primary audience and the
     // language of our other social cards. ?lang=en still yields the English card.
     const l = lang ? resolveLang(lang) : "tr";
     const m = META[l];

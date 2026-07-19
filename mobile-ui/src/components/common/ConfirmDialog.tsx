@@ -18,7 +18,7 @@ export type ConfirmFn = (options: ConfirmOptions) => Promise<boolean>;
 const ConfirmContext = createContext<ConfirmFn>(async () => false);
 
 /**
- * Imperative confirmation dialog — a drop-in replacement for `Alert.alert`
+ * Imperative confirmation dialog, a drop-in replacement for `Alert.alert`
  * confirmations. Returns a promise that resolves to `true` (confirmed) or
  * `false` (cancelled / dismissed).
  *

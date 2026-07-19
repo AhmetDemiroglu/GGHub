@@ -8,8 +8,8 @@ namespace GGHub.Infrastructure.Services
 {
     /// <summary>
     /// Gemini harcama defteri. Iki ayri fren var ve karistirilmamali:
-    ///   1) MonthlyBudgetUsd  — BIZIM koydugumuz para tavani (hedef: aylik 500 TL).
-    ///   2) DailyCallCap      — Google'in UCRETSIZ katman gunluk 500 istek limitine karsi koruma.
+    ///   1) MonthlyBudgetUsd:   BIZIM koydugumuz para tavani (hedef: aylik 500 TL).
+    ///   2) DailyCallCap:       Google'in UCRETSIZ katman gunluk 500 istek limitine karsi koruma.
     ///      Bot bu limiti tek basina yerse canli sitedeki "Turkceye cevir" butonu da olur.
     ///
     /// Defter GUNLUK satir tutuyor (PeriodKey = "yyyy-MM-dd"); aylik harcama o ayin gunlerinin

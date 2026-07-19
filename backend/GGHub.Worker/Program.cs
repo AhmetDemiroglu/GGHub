@@ -93,7 +93,7 @@ if (args.Contains("--status"))
 var logger = host.Services.GetRequiredService<ILogger<Program>>();
 
 // Worker BILEREK migration UYGULAMAZ: semanin sahibi WebAPI (Railway'de Production'da
-// Database.Migrate() calisiyor). Ama kod semadan ileri olabilir — ornegin yeni bir kolon
+// Database.Migrate() calisiyor). Ama kod semadan ileri olabilir: ornegin yeni bir kolon
 // eklendi, henuz push edilmedi. O halde bot calisirsa hatayi ancak YAZMA aninda gorur:
 // Gemini cagrisini yapar, token'i yakar, sonra kaydederken patlar ve ceviri kaybolur.
 // Bu yuzden acilista kontrol edip net bir mesajla duruyoruz.

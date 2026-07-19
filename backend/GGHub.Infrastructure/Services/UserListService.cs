@@ -122,7 +122,7 @@ namespace GGHub.Infrastructure.Services
         }
         public async Task<IEnumerable<UserListDto>> GetListsForUserAsync(int userId, int? rawgGameId = null)
         {
-            // Select projection — Include yerine tek SQL sorgusu, uzak DB'de çok daha hızlı
+            // Select projection: Include yerine tek SQL sorgusu, uzak DB'de çok daha hızlı
             var listDtos = await _context.UserLists
                 .Where(l => l.UserId == userId)
                 .Where(l => l.Type != UserListType.Wishlist && l.Type != UserListType.Favorites)
@@ -238,7 +238,7 @@ namespace GGHub.Infrastructure.Services
                 }
             }
 
-            // Tek Select projection sorgusu — Include + AsSplitQuery yerine
+            // Tek Select projection sorgusu, Include + AsSplitQuery yerine
             var detail = await _context.UserLists
                 .Where(l => l.Id == listId)
                 .Select(l => new UserListDetailDto
@@ -316,7 +316,7 @@ namespace GGHub.Infrastructure.Services
 
             var totalCount = await baseQuery.CountAsync();
 
-            // Select projection — Include/AsSplitQuery yerine tek sorgu
+            // Select projection: Include/AsSplitQuery yerine tek sorgu
             var itemDtos = await baseQuery
                 .OrderByDescending(l => l.UpdatedAt)
                 .Skip((query.Page - 1) * query.PageSize)

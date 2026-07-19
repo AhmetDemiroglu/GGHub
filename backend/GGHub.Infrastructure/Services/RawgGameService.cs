@@ -72,7 +72,7 @@ namespace GGHub.Infrastructure.Services
                     }
                     else if (dto.Metacritic != null && IsFutureRelease(dto.Released))
                     {
-                        // Gelecek tarihli oyunda RAWG'den gelen metacritic puanı geçerli olamaz —
+                        // Gelecek tarihli oyunda RAWG'den gelen metacritic puanı geçerli olamaz;
                         // varsa DB'de duranı da temizle.
                         gameInDb.Metacritic = null;
                     }
@@ -526,7 +526,7 @@ namespace GGHub.Infrastructure.Services
         }
 
         /// <summary>
-        /// Henüz çıkmamış oyunlarda metacritic puanı geçersizdir — RAWG arada böyle hatalı
+        /// Henüz çıkmamış oyunlarda metacritic puanı geçersizdir. RAWG arada böyle hatalı
         /// metadata döndürebiliyor. Released gelecek tarihliyse null'a indirir.
         /// </summary>
         private static int? SanitizeMetacritic(int? rawMetacritic, string? released)

@@ -246,7 +246,7 @@ namespace GGHub.Infrastructure.Services
         private IOrderedQueryable<GGHub.Core.Entities.Game> ApplyDefaultOrdering(
             IQueryable<GGHub.Core.Entities.Game> query)
         {
-            // Composite scoring — popülarite ağırlıklı bir öneri kuyruğu.
+            // Composite scoring: popülarite ağırlıklı bir öneri kuyruğu.
             // Ağırlıklar: Pop %40, Metacritic %25, RAWG Rating %15, Recency %15, Rotation %5.
             //
             // Popülarite fallback zinciri: RawgAdded → RawgRatingsCount*10 → RatingCount*50 →

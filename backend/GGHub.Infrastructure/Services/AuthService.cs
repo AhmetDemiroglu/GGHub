@@ -357,7 +357,7 @@ namespace GGHub.Infrastructure.Services
 
             if (!string.IsNullOrWhiteSpace(dto?.IdToken))
             {
-                // ID token flow — used by the mobile app / One Tap.
+                // ID token flow. Used by the mobile app / One Tap.
                 try
                 {
                     var settings = new GoogleJsonWebSignature.ValidationSettings();
@@ -380,7 +380,7 @@ namespace GGHub.Infrastructure.Services
             }
             else if (!string.IsNullOrWhiteSpace(dto?.AccessToken))
             {
-                // Access token flow — used by the custom web button. Verify the token + its audience
+                // Access token flow. Used by the custom web button. Verify the token + its audience
                 // via tokeninfo, then best-effort enrich the profile via userinfo.
                 (subject, email) = await VerifyGoogleAccessTokenAsync(dto.AccessToken);
                 (name, picture) = await GetGoogleUserInfoAsync(dto.AccessToken);

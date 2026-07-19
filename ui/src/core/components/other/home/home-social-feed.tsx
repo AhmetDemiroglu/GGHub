@@ -80,7 +80,7 @@ export default function HomeSocialFeed({ initialActivities, isAuthenticated }: H
     // IntersectionObserver yalnızca kesişme DURUMU değişince tetiklenir. Yükleme
     // sonrası sentinel hâlâ görünürse yeni olay üretmez ve akış durur (desktop'ta
     // hiç, mobilde elle scroll gerektirir). Bu yüzden her append/yükleme bitişinde
-    // observer'ı yeniden kurup kesişmeyi tekrar değerlendiriyoruz — sentinel görünür
+    // observer'ı yeniden kurup kesişmeyi tekrar değerlendiriyoruz: sentinel görünür
     // kaldıkça yükleme kendiliğinden devam eder (X benzeri akışkan sonsuz scroll).
     useEffect(() => {
         if (!isAuthenticated || !hasMore || loadingMore) return;

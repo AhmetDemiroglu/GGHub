@@ -14,8 +14,8 @@ import logoSrc from "@core/assets/logo.png";
  * outside the locale routing (see middleware bypass) so the URL stays clean for
  * Instagram / social bios.
  *
- * The page shows both languages at once — English as the primary line and Turkish
- * as a smaller subtitle beneath it — because the screen is only on-view for a few
+ * The page shows both languages at once (English as the primary line and Turkish
+ * as a smaller subtitle beneath it) because the screen is only on-view for a few
  * seconds before redirecting, so a language switch would never be used. The shared
  * OG/Twitter card is wired up server-side in page.tsx.
  */
@@ -68,12 +68,12 @@ export default function DownloadAppClient() {
                 </div>
                 <h1 className="bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-3xl font-black tracking-tight text-transparent">GGHub</h1>
 
-                {/* Bilingual tagline — English primary, Turkish subtitle */}
+                {/* Bilingual tagline: English primary, Turkish subtitle */}
                 <p className="mx-auto mt-3 max-w-xs text-[15px] font-medium leading-snug text-white/85">
-                    The social platform for gamers — discover, rate, build lists and connect.
+                    The social platform for gamers: discover, rate, build lists and connect.
                 </p>
                 <p className="mx-auto mt-1.5 max-w-xs text-xs leading-snug text-white/45">
-                    Oyuncuların sosyal platformu — keşfet, puanla, liste oluştur ve topluluğa katıl.
+                    Oyuncuların sosyal platformu: keşfet, puanla, liste oluştur ve topluluğa katıl.
                 </p>
 
                 {/* Redirect notice + countdown (only when a matching store exists for this device) */}

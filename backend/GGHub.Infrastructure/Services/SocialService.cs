@@ -318,7 +318,7 @@ namespace GGHub.Infrastructure.Services
 
         public async Task<IEnumerable<ConversationDto>> GetConversationsAsync(int userId)
         {
-            // DB tarafında gruplama — tüm mesajları belleğe çekmek yerine
+            // DB tarafında gruplama, tüm mesajları belleğe çekmek yerine
             var conversations = await _context.Messages
                 .Where(m => (m.SenderId == userId && !m.SenderDeleted) ||
                             (m.RecipientId == userId && !m.RecipientDeleted))

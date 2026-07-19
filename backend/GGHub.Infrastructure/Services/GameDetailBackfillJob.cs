@@ -101,7 +101,7 @@ namespace GGHub.Infrastructure.Services
                 //
                 // "?? 0" SART: Postgres'te ORDER BY x DESC, NULL'lari BASA koyar (NULLS FIRST) ve
                 // EF'in OrderByDescending cevirisi de aynen boyle. Bu haliyle job "en populer once"
-                // yerine RawgAdded'i NULL olan coplerle basliyordu ("GTA 6 (leaked)" gibi) — yani
+                // yerine RawgAdded'i NULL olan coplerle basliyordu ("GTA 6 (leaked)" gibi), yani
                 // kota bitse en degersiz oyunlarda bitecekti, tasarimin tam tersi. COALESCE ile
                 // NULL'lar 0 olup en sona dusuyor.
                 var batch = await context.Games
@@ -247,7 +247,7 @@ namespace GGHub.Infrastructure.Services
 
         /// <summary>
         /// DTO'yu entity'ye isler. RawgGameService.GetGameBySlugOrIdAsync ile AYNI alanlari ayni
-        /// sekilde map'liyor (ozellikle aciklamanin ilk paragrafa kirpilmasi) — UI'in bekledigi
+        /// sekilde map'liyor (ozellikle aciklamanin ilk paragrafa kirpilmasi): UI'in bekledigi
         /// veri sekli o. Kasitli olarak ortak bir mapper cikarilmadi: RawgImportJob da kendi map'ini
         /// yaziyor ve ortak mapper prod okuma yollarini degistirme riski tasiyor.
         /// </summary>

@@ -83,7 +83,7 @@ namespace GGHub.Infrastructure.Services
                 localGames = localGames.Concat(rawgGames).ToList();
             }
 
-            // Username araması — yıl token'larını username sorgusuna karıştırma; orijinal user input'u kullan.
+            // Username araması: yıl token'larını username sorgusuna karıştırma; orijinal user input'u kullan.
             // Normalize edilmis anahtar uzerinden arama: "Ahmet" de "ahmetdemiroğlu" da dogru kisiyi bulur.
             // Contains semantigi korunuyor. Anahtar bosalirsa (ornegin sorgu tamamen Latin disi ise)
             // kullanici aramasi atlanir; aksi halde Contains("") HERKESI dondururdu.

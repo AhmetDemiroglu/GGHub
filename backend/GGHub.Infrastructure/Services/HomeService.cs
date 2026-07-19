@@ -79,7 +79,7 @@ namespace GGHub.Infrastructure.Services
                 })
                 .ToList();
 
-            // Trending oyunları da cache'le (5 dk) — sık değişmez.
+            // Trending oyunları da cache'le (5 dk): sık değişmez.
             // Zaman-ağırlıklı skor: son 7 gün x3, son 30 gün x2, son 90 gün x1.
             // Toplam sayı/puan tiebreaker olarak kalır ki az veri olsa da liste dolsun.
             var trendingGameIds = await _cache.GetOrCreateAsync("trending-game-ids", async entry =>
