@@ -94,9 +94,11 @@ export default function DownloadAnalyticsPage() {
 
     if (isError) {
         return (
-            <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-6 text-center">
-                <p className="text-sm font-medium">{t("admin.loadErrorTitle")}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{t("admin.downloadAnalytics.loadError")}</p>
+            <div className="container px-6 py-6 lg:px-8 lg:py-8">
+                <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-6 text-center">
+                    <p className="text-sm font-medium">{t("admin.loadErrorTitle")}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{t("admin.downloadAnalytics.loadError")}</p>
+                </div>
             </div>
         );
     }
@@ -105,7 +107,9 @@ export default function DownloadAnalyticsPage() {
     const funnel = funnelQuery.data;
 
     return (
-        <div className="space-y-6">
+        // Dolgu diger admin sayfalariyla ayni (dashboard/users/reports); <main>
+        // kendi dolgusunu vermiyor, her sayfa kendi veriyor.
+        <div className="container flex flex-col gap-6 px-6 py-6 lg:px-8 lg:py-8">
             <div>
                 <h1 className="text-2xl font-bold tracking-tight">{t("admin.downloadAnalytics.title")}</h1>
                 <p className="mt-1 text-sm text-muted-foreground">{t("admin.downloadAnalytics.description")}</p>
