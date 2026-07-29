@@ -43,9 +43,9 @@ export default function HomeRightSidebar({ trending, leaders }: HomeRightSidebar
                                     fill
                                     className="object-cover"
                                     sizes="32px"
-                                    // Bu sütun mobilde gizli (hidden xl:block); priority verilirse
-                                    // mobilde hiç görünmeyen görseller için preload üretilir.
-                                    loading="eager"
+                                    // priority/eager YOK: bu sütun mobilde tamamen gizli
+                                    // (hidden xl:block). İkisi de <link rel="preload"> ürettiği
+                                    // için mobilde hiç görünmeyen 8 görsel LCP ile yarışıyordu.
                                 />
                             </div>
                             <div className="min-w-0 flex-1">

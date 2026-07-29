@@ -52,10 +52,12 @@ export default function HomeMobileRails({ trending, leaders }: HomeMobileRailsPr
                                         sizes="124px"
                                         // Mobilde LCP elemanı bu şeridin ilk kartı. next/image
                                         // varsayılanı loading="lazy" olduğu için en son yükleniyordu.
-                                        // Yalnızca ilk karta priority: fazlası <link rel=preload>
-                                        // üretip LCP ile bant genişliği yarışına girer.
+                                        //
+                                        // SADECE ilk karta priority. Diğerlerine loading="eager"
+                                        // denendi ve geri alındı: next/image eager için de
+                                        // <link rel="preload"> üretiyor, prod'da 22 görsel preload'ı
+                                        // oluşup LCP ile bant genişliği yarışına giriyordu.
                                         priority={index === 0}
-                                        loading={index === 0 ? undefined : "eager"}
                                     />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
                                     <span className="absolute left-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-md bg-black/60 text-[10px] font-bold text-white backdrop-blur-sm">
