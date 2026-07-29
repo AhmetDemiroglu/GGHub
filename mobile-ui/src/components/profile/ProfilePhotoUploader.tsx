@@ -5,6 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Avatar } from '@/src/components/common/Avatar';
 import { useTheme } from '@/src/hooks/use-theme';
 import { uploadProfilePhoto } from '@/src/api/photo';
+import { AVATAR_MAX_EDGE, shrinkForUpload } from '@/src/utils/image';
 import { Spacing, BorderRadius } from '@/src/constants/theme';
 
 interface ProfilePhotoUploaderProps {
@@ -40,7 +41,8 @@ export function ProfilePhotoUploader({
     setUploading(true);
 
     try {
-      const response = await uploadProfilePhoto(asset.uri);
+      const uploadUri = await shrinkForUpload(asset, AVATAR_MAX_EDGE);
+      const response = await uploadProfilePhoto(uploadUri);
       onUploaded(response.profileImageUrl);
     } catch {
       // Upload failed

@@ -126,10 +126,19 @@ function NotificationMessage({ notification, onNavigate }: { notification: Notif
 export function SidebarTrigger() {
     const { setMobileOpen } = useSidebar();
     const { unreadNotifCount, unreadMsgCount } = useNavigationData();
+    const t = useI18n();
     const hasUnread = !!(unreadNotifCount?.count || unreadMsgCount?.count);
 
     return (
-        <Button variant="ghost" size="icon" className="relative h-9 w-9 cursor-pointer md:hidden" onClick={() => setMobileOpen(true)}>
+        // aria-label şart: içinde yalnızca bir ikon var, metin yok. Bu buton olmadan
+        // ekran okuyucu kullanıcısı mobil menüyü açamıyordu.
+        <Button
+            variant="ghost"
+            size="icon"
+            aria-label={t("common.openMenu")}
+            className="relative h-9 w-9 cursor-pointer md:hidden"
+            onClick={() => setMobileOpen(true)}
+        >
             <Menu className="h-5 w-5" />
             {hasUnread && <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-destructive" />}
         </Button>

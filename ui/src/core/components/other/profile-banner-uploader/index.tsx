@@ -102,7 +102,9 @@ export function ProfileBannerUploader({ isOpen, onClose }: ProfileBannerUploader
 
     const showCroppedImage = useCallback(async () => {
         if (imageSrc && croppedAreaPixels) {
-            const result = await getCroppedImg(imageSrc, croppedAreaPixels);
+            // Kapak görseli profil sayfasında tam genişlikte gösteriliyor, avatardan
+            // daha yüksek çözünürlük gerekiyor (sunucu tarafı tavanla aynı: 1600 px).
+            const result = await getCroppedImg(imageSrc, croppedAreaPixels, 1600);
             if (result) {
                 setCroppedFile(result);
                 setImageSrc(null);

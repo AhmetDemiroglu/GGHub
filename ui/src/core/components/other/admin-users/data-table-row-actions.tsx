@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Row } from "@tanstack/react-table";
 import { Menu, Eye, Ban, CheckCircle } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import Link from "next/link";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/core/components/ui/dropdown-menu";
@@ -20,7 +20,6 @@ import {
 import { Button } from "@/core/components/ui/button";
 import type { AdminUserSummary, BanUserRequest } from "@/models/admin/admin.model";
 import { banUser, unbanUser } from "@/api/admin/admin.api";
-import { queryClient } from "@core/components/base/providers";
 import { useI18n } from "@/core/contexts/locale-context";
 
 interface DataTableRowActionsProps<TData> {
@@ -35,6 +34,7 @@ type BanMutationVariables = {
 type UnbanMutationVariables = number;
 
 export function DataTableRowActions<TData>({ row }: DataTableRowActionsProps<TData>) {
+    const queryClient = useQueryClient();
     const t = useI18n();
     const user = row.original as AdminUserSummary;
 

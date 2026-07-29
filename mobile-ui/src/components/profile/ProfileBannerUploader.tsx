@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/src/hooks/use-theme';
 import { uploadHeaderPhoto } from '@/src/api/photo';
+import { HEADER_MAX_EDGE, shrinkForUpload } from '@/src/utils/image';
 
 interface ProfileBannerUploaderProps {
   onUploaded: (newUrl: string) => void;
@@ -33,7 +34,8 @@ export function ProfileBannerUploader({ onUploaded }: ProfileBannerUploaderProps
 
     setUploading(true);
     try {
-      const response = await uploadHeaderPhoto(result.assets[0].uri);
+      const uploadUri = await shrinkForUpload(result.assets[0], HEADER_MAX_EDGE);
+      const response = await uploadHeaderPhoto(uploadUri);
       onUploaded(response.headerImageUrl);
     } catch {
       // sessiz; toast veya alert call eden tarafta verilebilir

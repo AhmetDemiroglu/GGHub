@@ -1,6 +1,5 @@
 import { getGameReviews, voteReview, deleteReview, updateReview } from "@/api/review/review.api";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { queryClient } from "@core/components/base/providers";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, MessageSquare, Plus, Search, SortAsc } from "lucide-react";
 import React, { useState } from "react";
 import { toast } from "sonner";
@@ -18,6 +17,7 @@ interface ReviewListProps {
 }
 
 export const ReviewList = ({ gameId, gameName, gameSlug, onAddReview }: ReviewListProps) => {
+    const queryClient = useQueryClient();
     const t = useI18n();
     const { isAuthenticated } = useAuth();
     const [searchQuery, setSearchQuery] = useState("");

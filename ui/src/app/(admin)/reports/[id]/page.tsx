@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useParams } from "next/navigation";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -25,7 +25,6 @@ import {
 import { getReportDetail, respondToReport } from "@/api/admin/admin.api";
 import { ReportStatus } from "@/models/report/report.model";
 import type { AdminReportDetail } from "@/models/admin/admin.model";
-import { queryClient } from "@core/components/base/providers";
 import { getImageUrl } from "@/core/lib/get-image-url";
 import { translateReportStatus, getReportStatusVariant, translateEntityType } from "@/core/lib/report.utils";
 import { Button } from "@/core/components/ui/button";
@@ -37,6 +36,7 @@ import { Separator } from "@/core/components/ui/separator";
 import { useI18n } from "@/core/contexts/locale-context";
 
 export default function ReportDetailPage() {
+    const queryClient = useQueryClient();
     const t = useI18n();
     const params = useParams();
     const reportId = Number(params.id);

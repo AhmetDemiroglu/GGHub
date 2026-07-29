@@ -50,6 +50,12 @@ export default function HomeMobileRails({ trending, leaders }: HomeMobileRailsPr
                                         fill
                                         className="object-cover transition-transform duration-300 group-hover:scale-105"
                                         sizes="124px"
+                                        // Mobilde LCP elemanı bu şeridin ilk kartı. next/image
+                                        // varsayılanı loading="lazy" olduğu için en son yükleniyordu.
+                                        // Yalnızca ilk karta priority: fazlası <link rel=preload>
+                                        // üretip LCP ile bant genişliği yarışına girer.
+                                        priority={index === 0}
+                                        loading={index === 0 ? undefined : "eager"}
                                     />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
                                     <span className="absolute left-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-md bg-black/60 text-[10px] font-bold text-white backdrop-blur-sm">
@@ -84,7 +90,7 @@ export default function HomeMobileRails({ trending, leaders }: HomeMobileRailsPr
                             >
                                 <div className="relative">
                                     <Avatar className="h-12 w-12 border border-border transition-colors group-hover:border-primary">
-                                        <AvatarImage src={getImageUrl(leader.profileImageUrl) || ""} alt={leader.username} className="object-cover" />
+                                        <AvatarImage src={getImageUrl(leader.profileImageUrl) || ""} size={48} alt={leader.username} className="object-cover" />
                                         <AvatarFallback className="text-sm">{leader.username.substring(0, 2).toUpperCase()}</AvatarFallback>
                                     </Avatar>
                                     <span

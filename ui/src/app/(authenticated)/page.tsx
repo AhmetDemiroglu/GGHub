@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import HomeView from "@/core/components/other/home/home-view";
+import { getHomeContentServer } from "@/api/home/home.server";
 import { getMessages } from "@/i18n";
 import { resolveLocaleFromCookies } from "@/i18n/server";
-import { AppLocale } from "@/i18n/config";
+import { AppLocale, isLocale } from "@/i18n/config";
 
 const getSeoCopy = (locale: AppLocale) => {
     const seo = getMessages(locale).seo as Record<string, string>;
@@ -58,10 +59,22 @@ export async function generateMetadata(): Promise<Metadata> {
     };
 }
 
-export default function HomePage() {
+/**
+ * Ana sayfa artık içeriği sunucuda çekiyor. Öncesinde HomeView istemcide `useEffect` ile
+ * fetch ediyordu: HTML yalnızca iskelet geliyor, LCP görseli JS indirilip hydrate olduktan
+ * ve API cevabı geldikten SONRA istenmeye başlıyordu (Lighthouse'ta LCP 9.2 sn).
+ *
+ * `params` opsiyonel: bu bileşen hem prefix'siz ağaçta (`/`) hem de `[locale]` sarmalayıcısı
+ * üzerinden çalışıyor. `[locale]` altındayken dil URL'den, değilken cookie'den okunur.
+ */
+export default async function HomePage({ params }: { params?: Promise<{ locale?: string }> }) {
+    const routeLocale = (await params)?.locale;
+    const locale: AppLocale = routeLocale && isLocale(routeLocale) ? routeLocale : await resolveLocaleFromCookies();
+    const initialContent = await getHomeContentServer(locale);
+
     return (
         <div className="container mx-auto max-w-[1600px] p-4 md:p-6">
-            <HomeView />
+            <HomeView initialContent={initialContent} />
         </div>
     );
 }

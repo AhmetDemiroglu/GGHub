@@ -2,8 +2,8 @@
 
 import { createContext, ReactNode, useEffect, useMemo, useState } from "react";
 import { jwtDecode } from "jwt-decode";
+import { useQueryClient } from "@tanstack/react-query";
 import { AuthenticatedUser } from "@/models/auth/auth.model";
-import { queryClient } from "@core/components/base/providers";
 import { setAuthContextRef } from "@core/lib/axios";
 import { AppLocale, localeStorageKey } from "@/i18n/config";
 
@@ -42,6 +42,9 @@ const getTokenMinutesRemaining = (token: string): number => {
 };
 
 export function AuthProvider({ children, locale }: { children: ReactNode; locale: AppLocale }) {
+    // AuthProvider artık QueryClientProvider'ın İÇİNDE mount ediliyor (providers.tsx), bu
+    // yüzden modül seviyesindeki singleton yerine context'teki client kullanılabiliyor.
+    const queryClient = useQueryClient();
     const [accessToken, setAccessToken] = useState<string | null>(null);
     const [refreshToken, setRefreshToken] = useState<string | null>(null);
     const [user, setUser] = useState<AuthenticatedUser | null>(null);

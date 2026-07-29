@@ -278,7 +278,13 @@ export default function HeroSlider({ games = [] }: HeroSliderProps) {
                                             ) : null}
 
                                             <div className="pt-1.5">
-                                                <Link href={buildLocalizedPathname(`/games/${game.slug || game.rawgId}`, locale)}>
+                                                {/* inline-flex şart: varsayılan inline <a> kutusu satır yüksekliği
+                                                    kadar (20 px) ölçülüyor, içindeki buton 40 px olsa bile.
+                                                    Lighthouse dokunma hedefini anchor'ın kutusundan okuyor. */}
+                                                <Link
+                                                    href={buildLocalizedPathname(`/games/${game.slug || game.rawgId}`, locale)}
+                                                    className="inline-flex"
+                                                >
                                                     <Button size="lg" className="text-md cursor-pointer gap-2 font-semibold shadow-[0_8px_30px_-8px_rgba(0,0,0,0.6)] transition-transform hover:scale-[1.03]">
                                                         <Play className="h-4 w-4 fill-current" />
                                                         {t("home.heroCta")}
@@ -303,19 +309,27 @@ export default function HeroSlider({ games = [] }: HeroSliderProps) {
                     {Array.from({ length: slideCount }).map((_, index) => {
                         const isActive = selectedIndex === index;
                         return (
+                            // Dokunma hedefi: görsel çubuk 16x4 px olduğu için Lighthouse
+                            // "touch targets do not have sufficient size" veriyordu. px/py ile
+                            // tıklanabilir alan 24x24'e çıkarılıp aynı miktarda negatif margin
+                            // verilerek yerleşim birebir korunuyor.
                             <button
                                 key={index}
                                 type="button"
-                                aria-label={`Slide ${index + 1}`}
+                                aria-label={t("home.goToSlide", { index: index + 1 })}
                                 aria-current={isActive}
                                 onClick={() => api?.scrollTo(index)}
-                                className={`h-1 cursor-pointer overflow-hidden rounded-full transition-all duration-400 ${
-                                    isActive ? "w-10 bg-white/20" : "w-4 bg-white/15 hover:bg-white/30"
-                                }`}
+                                className="-mx-1 -my-2.5 flex cursor-pointer items-center px-1 py-2.5"
                             >
-                                {isActive ? (
-                                    <span key={`${selectedIndex}-${progressCycle}`} className="hero-progress-fill block h-full w-full rounded-full bg-white/90" />
-                                ) : null}
+                                <span
+                                    className={`block h-1 overflow-hidden rounded-full transition-all duration-400 ${
+                                        isActive ? "w-10 bg-white/20" : "w-4 bg-white/15 hover:bg-white/30"
+                                    }`}
+                                >
+                                    {isActive ? (
+                                        <span key={`${selectedIndex}-${progressCycle}`} className="hero-progress-fill block h-full w-full rounded-full bg-white/90" />
+                                    ) : null}
+                                </span>
                             </button>
                         );
                     })}

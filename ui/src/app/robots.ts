@@ -24,6 +24,8 @@ export default function robots(): MetadataRoute.Robots {
             ],
         },
         sitemap: "https://gghub.social/sitemap.xml",
-        host: "https://gghub.social",
+        // `host` çıplak alan adı bekliyor, şema kabul etmiyor. Öncesinde
+        // "https://gghub.social" yazıyordu ve robots.txt doğrulayıcıları hata veriyordu.
+        host: "gghub.social",
     };
 }

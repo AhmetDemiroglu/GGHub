@@ -1,13 +1,12 @@
 "use client";
 
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
 import { ArrowLeft, Ban, CheckCircle, UserCheck } from "lucide-react";
 import { getUserDetails, banUser, unbanUser, changeUserRole } from "@/api/admin/admin.api";
 import type { AdminUserDetails, BanUserRequest, ChangeRoleRequest } from "@/models/admin/admin.model";
-import { queryClient } from "@core/components/base/providers";
 import { Avatar, AvatarImage, AvatarFallback } from "@/core/components/ui/avatar";
 import { getImageUrl } from "@/core/lib/get-image-url";
 import { Badge } from "@/core/components/ui/badge";
@@ -31,6 +30,7 @@ import { UserCommentsTab } from "@/core/components/admin/user-comments-tab";
 import { UserReportsTab } from "@/core/components/admin/user-reports-tab";
 
 export default function UserDetailPage() {
+    const queryClient = useQueryClient();
     const params = useParams();
     const userId = Number(params.id);
     const [isBanAlertOpen, setIsBanAlertOpen] = React.useState(false);
@@ -114,7 +114,7 @@ export default function UserDetailPage() {
                 <CardHeader className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="flex items-center gap-4">
                         <Avatar className="h-20 w-20">
-                            <AvatarImage src={getImageUrl(user.profileImageUrl)} alt={user.username} />
+                            <AvatarImage src={getImageUrl(user.profileImageUrl)} size={80} alt={user.username} />
                             <AvatarFallback className="text-3xl">{user.username.charAt(0).toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div>

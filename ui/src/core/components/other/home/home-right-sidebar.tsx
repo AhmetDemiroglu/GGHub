@@ -37,7 +37,16 @@ export default function HomeRightSidebar({ trending, leaders }: HomeRightSidebar
                                 {index + 1}
                             </span>
                             <div className="relative h-10 w-8 shrink-0 overflow-hidden rounded">
-                                <Image src={getImageUrl(game.backgroundImage) || "/assets/placeholder-game.jpg"} alt={game.name} fill className="object-cover" sizes="32px" />
+                                <Image
+                                    src={getImageUrl(game.backgroundImage) || "/assets/placeholder-game.jpg"}
+                                    alt={game.name}
+                                    fill
+                                    className="object-cover"
+                                    sizes="32px"
+                                    // Bu sütun mobilde gizli (hidden xl:block); priority verilirse
+                                    // mobilde hiç görünmeyen görseller için preload üretilir.
+                                    loading="eager"
+                                />
                             </div>
                             <div className="min-w-0 flex-1">
                                 <p className="truncate text-xs font-semibold transition-colors group-hover:text-primary">{game.name}</p>
@@ -68,7 +77,12 @@ export default function HomeRightSidebar({ trending, leaders }: HomeRightSidebar
                                     {index === 0 ? <Crown className="h-2.5 w-2.5" /> : index + 1}
                                 </div>
                                 <Avatar className="h-7 w-7 border border-border transition-colors group-hover:border-primary">
-                                    <AvatarImage src={getImageUrl(user.profileImageUrl) || ""} alt={user.username} className="object-cover" />
+                                    {/* size=48 bilerek: mobil şerit (HomeMobileRails) aynı 10 avatarı
+                                        48 px isteğiyle çekiyor ve iki bileşen de her viewport'ta
+                                        mount ediliyor (yalnızca CSS ile gizleniyor). Aynı genişliği
+                                        kullanınca tarayıcı tek istek yapıyor, 28 px yerine 48 px
+                                        inmesinin maliyeti ise WebP'te birkaç yüz bayt. */}
+                                    <AvatarImage src={getImageUrl(user.profileImageUrl) || ""} size={48} alt={user.username} className="object-cover" />
                                     <AvatarFallback className="text-[10px]">{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
                                 </Avatar>
                                 <div className="min-w-0 flex-1">

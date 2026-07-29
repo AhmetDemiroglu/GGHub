@@ -1,6 +1,7 @@
 export const enUSMessages = {
     common: {
         appName: "GGHub",
+        openMenu: "Open menu",
         loading: "Loading...",
         genericError: "Something went wrong.",
         tryAgain: "Try again",
@@ -268,6 +269,7 @@ export const enUSMessages = {
             dismiss: "Dismiss suggestion",
         },
         trendingTitle: "Trending Games",
+        goToSlide: "Go to slide {index}",
         trendingEmpty: "No trending games yet.",
         leaderboardTitle: "Leaderboard",
         leaderboardEmpty: "No leaders yet.",

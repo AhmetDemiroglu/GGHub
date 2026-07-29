@@ -62,10 +62,18 @@ export function middleware(request: NextRequest) {
 
     const locale = resolveLocale(request);
     const localizedPathname = buildLocalizedPathname(pathname, locale);
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = localizedPathname;
+    const targetUrl = request.nextUrl.clone();
+    targetUrl.pathname = localizedPathname;
 
-    const response = NextResponse.redirect(redirectUrl);
+    // Kök yol + varsayılan dil: redirect yerine rewrite. 307 tam bir gidiş-dönüş demek ve
+    // yavaş mobil bağlantıda Lighthouse bunu ~910 ms olarak ölçtü. Rewrite'ta URL "/" olarak
+    // kalır, içerik doğrudan döner. Çift içerik riski yok: sayfanın generateMetadata'sı
+    // canonical olarak zaten /en-US bildiriyor.
+    // Türkçe çözümlenen ziyaretçi eskisi gibi /tr'ye yönlendirilmeye devam ediyor, çünkü
+    // dilin URL'de görünmesi paylaşılabilirlik açısından önemli.
+    const response =
+        pathname === "/" && locale === defaultLocale ? NextResponse.rewrite(targetUrl) : NextResponse.redirect(targetUrl);
+
     response.cookies.set(localeCookieName, locale, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
     return response;
 }

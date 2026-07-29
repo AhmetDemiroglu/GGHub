@@ -6,12 +6,28 @@ using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Webp;
+using SixLabors.ImageSharp.Processing;
 
 
 namespace GGHub.Infrastructure.Services
 {
     public class PhotoService : IPhotoService
     {
+        // Yüklenen görsel sunucuda küçültülür. Öncesinde orijinal dosya byte-byte R2'ye
+        // kopyalanıyordu: telefondan çekilmiş bir fotoğrafın kırpılmışı 600 KB+ JPEG olarak
+        // gidiyor, ana sayfada 28-48 px'lik avatar dairesine basılıyordu (Lighthouse'ta tek
+        // sayfada ~1.7 MB avatar). İstemci tarafı da kısıtlandı ama bu sunucu tarafı tavan,
+        // eski mobil sürümler ve gelecekteki istemciler için güvenlik ağı.
+        private const int ProfileMaxEdge = 512;
+        private const int HeaderMaxEdge = 1600;
+        private const int WebpQuality = 82;
+
+        // Key'ler GUID içerdiği için içerik hiç değişmez; bir yıl immutable cache güvenli.
+        // Bu başlık olmadığında Cloudflare kendi varsayılanına (4 saat) düşüyordu.
+        private const string AssetCacheControl = "public, max-age=31536000, immutable";
+
         private readonly GGHubDbContext _context;
         private readonly IAmazonS3 _s3Client;
         private readonly string _bucketName;
@@ -34,10 +50,10 @@ namespace GGHub.Infrastructure.Services
         }
 
         public Task<string> UploadProfilePhotoAsync(int userId, IFormFile file) =>
-            UploadAndAssignAsync(userId, file, "profiles", (user, url) => user.ProfileImageUrl = url);
+            UploadAndAssignAsync(userId, file, "profiles", ProfileMaxEdge, (user, url) => user.ProfileImageUrl = url);
 
         public Task<string> UploadHeaderPhotoAsync(int userId, IFormFile file) =>
-            UploadAndAssignAsync(userId, file, "headers", (user, url) => user.HeaderImageUrl = url);
+            UploadAndAssignAsync(userId, file, "headers", HeaderMaxEdge, (user, url) => user.HeaderImageUrl = url);
 
         public async Task DeleteHeaderPhotoAsync(int userId)
         {
@@ -53,6 +69,7 @@ namespace GGHub.Infrastructure.Services
             int userId,
             IFormFile file,
             string keyPrefix,
+            int maxEdge,
             Action<Core.Entities.User, string> assign)
         {
             var user = await _context.Users.FindAsync(userId);
@@ -72,24 +89,24 @@ namespace GGHub.Infrastructure.Services
             if (file.Length > 5 * 1024 * 1024)
                 throw new ArgumentException(AppText.Get("photo.fileTooLarge"));
 
-            var fileName = $"{keyPrefix}/{userId}-{Guid.NewGuid()}{extension}";
+            // Çıktı her zaman WebP: uzantıyı girdi dosyasından değil dönüştürmenin sonucundan al.
+            var fileName = $"{keyPrefix}/{userId}-{Guid.NewGuid()}.webp";
             var transferUtility = new TransferUtility(_s3Client);
 
-            using (var memoryStream = new MemoryStream())
+            using (var uploadStream = await NormalizeAsync(file, maxEdge))
             {
-                await file.CopyToAsync(memoryStream);
-                memoryStream.Position = 0;
-
                 var uploadRequest = new TransferUtilityUploadRequest
                 {
                     BucketName = _bucketName,
                     Key = fileName,
-                    InputStream = memoryStream,
-                    ContentType = file.ContentType,
+                    InputStream = uploadStream,
+                    ContentType = "image/webp",
                     CannedACL = S3CannedACL.PublicRead,
                     DisablePayloadSigning = true,
                     DisableDefaultChecksumValidation = true
                 };
+
+                uploadRequest.Headers.CacheControl = AssetCacheControl;
 
                 await transferUtility.UploadAsync(uploadRequest);
             }
@@ -99,6 +116,54 @@ namespace GGHub.Infrastructure.Services
             await _context.SaveChangesAsync();
 
             return fileUrl;
+        }
+
+        /// <summary>
+        /// Görseli uzun kenarı <paramref name="maxEdge"/> pikseli aşmayacak şekilde küçültüp
+        /// WebP'e çevirir. Küçültme yalnızca gerektiğinde yapılır (küçük görsel büyütülmez).
+        /// EXIF yönlendirmesi uygulanır ve metadata düşer, böylece konum bilgisi de sızmaz.
+        /// </summary>
+        private static async Task<Stream> NormalizeAsync(IFormFile file, int maxEdge)
+        {
+            await using var source = file.OpenReadStream();
+
+            Image image;
+            try
+            {
+                image = await Image.LoadAsync(source);
+            }
+            catch (Exception ex) when (ex is UnknownImageFormatException or InvalidImageContentException)
+            {
+                // Uzantısı doğru ama içeriği görsel olmayan dosya.
+                throw new ArgumentException(AppText.Get("photo.invalidFormat", new Dictionary<string, object?> { ["extension"] = Path.GetExtension(file.FileName) }));
+            }
+
+            using (image)
+            {
+                image.Mutate(ctx =>
+                {
+                    ctx.AutoOrient();
+
+                    if (image.Width > maxEdge || image.Height > maxEdge)
+                    {
+                        ctx.Resize(new ResizeOptions
+                        {
+                            Size = new Size(maxEdge, maxEdge),
+                            Mode = ResizeMode.Max,
+                            Sampler = KnownResamplers.Lanczos3
+                        });
+                    }
+                });
+
+                image.Metadata.ExifProfile = null;
+                image.Metadata.IptcProfile = null;
+                image.Metadata.XmpProfile = null;
+
+                var output = new MemoryStream();
+                await image.SaveAsync(output, new WebpEncoder { Quality = WebpQuality });
+                output.Position = 0;
+                return output;
+            }
         }
     }
 }

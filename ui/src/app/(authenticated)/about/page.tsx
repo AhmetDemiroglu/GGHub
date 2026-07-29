@@ -9,6 +9,8 @@ import { useI18n } from "@/core/contexts/locale-context";
 const font = The_Girl_Next_Door({
     subsets: ["latin"],
     weight: ["400"],
+    display: "swap",
+    preload: false,
 });
 
 export default function AboutPage() {

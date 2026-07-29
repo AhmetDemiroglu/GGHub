@@ -18,30 +18,40 @@ import HomeRightSidebar from "./home-right-sidebar";
 import HomeSocialFeed from "./home-social-feed";
 import HomeStatsBar from "./home-stats-bar";
 
-export default function HomeView() {
+export default function HomeView({ initialContent = null }: { initialContent?: HomeContent | null }) {
     const locale = useCurrentLocale();
     const t = useI18n();
     const { isAuthenticated, isLoading: authLoading } = useAuth();
-    const [content, setContent] = useState<HomeContent | null>(null);
+    const [content, setContent] = useState<HomeContent | null>(initialContent);
     const [feed, setFeed] = useState<Activity[]>([]);
     const [suggestions, setSuggestions] = useState<SuggestedUser[]>([]);
-    const [loading, setLoading] = useState(true);
+    // Sunucu içeriği hazır getirdiyse skeleton'a hiç düşme: hero, trending ve liderlik
+    // tablosu ilk HTML'de geliyor, LCP görseli hydration'ı beklemiyor.
+    const [loading, setLoading] = useState(initialContent === null);
     const [retryCount, setRetryCount] = useState(0);
 
     useEffect(() => {
         // Auth henüz yüklenmediyse fetch yapma: boş feed ve çift istek olmasın
         if (authLoading) return;
 
+        // Sunucudan gelen içerik varsa ve kullanıcı anonimse çekilecek bir şey yok.
+        // (feed ve öneriler yalnızca giriş yapmış kullanıcı için anlamlı)
+        const needsContent = content === null || retryCount > 0;
+        if (!needsContent && !isAuthenticated) {
+            setLoading(false);
+            return;
+        }
+
         let cancelled = false;
         const fetchData = async () => {
             try {
-                setLoading(true);
-                // Paralel fetch: üç isteği aynı anda başlat. Feed ve öneriler best-effort:
+                if (needsContent) setLoading(true);
+                // Paralel fetch: istekleri aynı anda başlat. Feed ve öneriler best-effort:
                 // Promise.all fail-fast olduğu için her biri kendi içinde yakalanır, aksi
                 // halde yalnızca feed düşse bile ana içerik gelmiş sayılmayıp sayfa komple
                 // boş kalıyordu.
                 const [homeData, feedData, suggestionData] = await Promise.all([
-                    getHomeContent(),
+                    needsContent ? getHomeContent() : Promise.resolve(content),
                     isAuthenticated ? getPersonalizedFeed().catch(() => []) : Promise.resolve([]),
                     isAuthenticated ? getSuggestedUsers(12).catch(() => []) : Promise.resolve([]),
                 ]);
@@ -59,9 +69,13 @@ export default function HomeView() {
 
         fetchData();
         return () => { cancelled = true; };
+        // content bilerek bağımlılık listesinde değil: setContent sonrası effect'i yeniden
+        // tetikleyip sonsuz döngü oluştururdu.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthenticated, authLoading, locale, retryCount]);
 
-    if (loading || authLoading) {
+    // Sunucu içeriği varken auth'un yüklenmesini bekleme: içerik zaten ekranda olmalı.
+    if ((loading || authLoading) && content === null) {
         return <HomeSkeleton />;
     }
 

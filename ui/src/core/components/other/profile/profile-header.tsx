@@ -162,7 +162,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                 <div className="p-4 md:p-6">
                     <div className="flex flex-col sm:flex-row justify-between sm:items-start -mt-10 md:-mt-12">
                         <Avatar className="h-28 w-28 md:h-36 md:w-36 border-4 border-card shadow-lg">
-                            <AvatarImage src={avatarSrc} alt={t("profile.header.profileImageAlt", { name: displayName })} />
+                            <AvatarImage src={avatarSrc} size={144} alt={t("profile.header.profileImageAlt", { name: displayName })} />
                             <AvatarFallback className="text-5xl">{profile.username.charAt(0).toUpperCase()}</AvatarFallback>
                         </Avatar>
 
@@ -272,7 +272,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                         <div className="relative shrink-0">
                             <button onClick={() => setPhotoUploaderOpen(true)} className="rounded-full cursor-pointer" aria-label={t("profile.header.editProfilePhoto")}>
                                 <Avatar className="h-28 w-28 md:h-36 md:w-36 border-4 border-card shadow-lg cursor-pointer">
-                                    <AvatarImage src={avatarSrc} alt={t("profile.header.profileImageAlt", { name: displayName })} />
+                                    <AvatarImage src={avatarSrc} size={144} alt={t("profile.header.profileImageAlt", { name: displayName })} />
                                     <AvatarFallback className="text-5xl">{profile.username.charAt(0).toUpperCase()}</AvatarFallback>
                                 </Avatar>
                             </button>
@@ -285,7 +285,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                         </div>
                     ) : (
                         <Avatar className="h-28 w-28 md:h-36 md:w-36 border-4 border-card shadow-lg">
-                            <AvatarImage src={avatarSrc} alt={t("profile.header.profileImageAlt", { name: displayName })} />
+                            <AvatarImage src={avatarSrc} size={144} alt={t("profile.header.profileImageAlt", { name: displayName })} />
                             <AvatarFallback className="text-5xl">{profile.username.charAt(0).toUpperCase()}</AvatarFallback>
                         </Avatar>
                     )}

@@ -1,4 +1,5 @@
 import { Gamepad2, Sparkles, Trophy, Users } from "lucide-react";
+import { GoogleOAuthBoundary } from "./_components/google-oauth-boundary";
 
 export default function UnauthenticatedLayout({
   children,
@@ -23,7 +24,9 @@ export default function UnauthenticatedLayout({
       <Trophy aria-hidden className="pointer-events-none absolute bottom-[18%] left-[16%] h-9 w-9 animate-pulse text-amber-300/15 [animation-duration:5s]" />
       <Users aria-hidden className="pointer-events-none absolute bottom-[20%] right-[12%] h-10 w-10 animate-pulse text-blue-400/15 [animation-duration:6s]" />
 
-      <div className="relative z-10 flex w-full justify-center">{children}</div>
+      <div className="relative z-10 flex w-full justify-center">
+        <GoogleOAuthBoundary>{children}</GoogleOAuthBoundary>
+      </div>
     </div>
   );
 }

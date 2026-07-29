@@ -1,6 +1,7 @@
 export const trMessages = {
     common: {
         appName: "GGHub",
+        openMenu: "Menüyü aç",
         loading: "Yükleniyor...",
         genericError: "Bir hata oluştu.",
         tryAgain: "Tekrar dene",
@@ -268,6 +269,7 @@ export const trMessages = {
             dismiss: "Öneriyi kaldır",
         },
         trendingTitle: "Trend Oyunlar",
+        goToSlide: "{index}. slayta git",
         trendingEmpty: "Henüz trend oyun yok.",
         leaderboardTitle: "Liderlik Tablosu",
         leaderboardEmpty: "Henüz lider yok.",

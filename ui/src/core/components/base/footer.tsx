@@ -9,9 +9,13 @@ import logoSrc2 from "@core/assets/logo2.png";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 import { buildLocalizedPathname } from "@/i18n/config";
 
+// Yalnızca footer'daki dekoratif slogan için. preload:false olmadan next/font bunu <head>'e
+// preload olarak koyuyor ve LCP ile öncelik yarışıyordu; footer ekranın çok altında.
 const font = The_Girl_Next_Door({
     subsets: ["latin"],
     weight: ["400"],
+    display: "swap",
+    preload: false,
 });
 
 export function Footer() {
@@ -34,14 +38,14 @@ export function Footer() {
                             <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 md:gap-12 lg:gap-16">
                                 <div className="flex flex-col gap-3">
                                     <h3 className="text-[11px] font-medium uppercase tracking-[0.3em] text-muted-foreground/60">{t("footer.company")}</h3>
-                                    <div className="flex flex-col gap-2.5">
-                                        <Link href={buildLocalizedPathname("/about", locale)} className="w-fit text-sm text-foreground/80 transition-colors hover:text-primary">
+                                    <div className="flex flex-col gap-0.5">
+                                        <Link href={buildLocalizedPathname("/about", locale)} className="w-fit py-1 text-sm text-foreground/80 transition-colors hover:text-primary">
                                             {t("footer.about")}
                                         </Link>
                                         <a
                                             href="mailto:info@gghub.social"
                                             title="info@gghub.social"
-                                            className="inline-flex w-fit items-center gap-1.5 text-sm text-foreground/80 transition-colors hover:text-primary"
+                                            className="inline-flex w-fit items-center gap-1.5 py-1 text-sm text-foreground/80 transition-colors hover:text-primary"
                                         >
                                             <Mail className="h-3.5 w-3.5" />
                                             {t("footer.contact")}
@@ -50,17 +54,17 @@ export function Footer() {
                                 </div>
                                 <div className="flex flex-col gap-3">
                                     <h3 className="text-[11px] font-medium uppercase tracking-[0.3em] text-muted-foreground/60">{t("footer.legal")}</h3>
-                                    <div className="flex flex-col gap-2.5">
-                                        <Link href={buildLocalizedPathname("/privacy", locale)} className="w-fit text-sm text-foreground/80 transition-colors hover:text-primary">
+                                    <div className="flex flex-col gap-0.5">
+                                        <Link href={buildLocalizedPathname("/privacy", locale)} className="w-fit py-1 text-sm text-foreground/80 transition-colors hover:text-primary">
                                             {t("footer.privacy")}
                                         </Link>
-                                        <Link href={buildLocalizedPathname("/terms", locale)} className="w-fit text-sm text-foreground/80 transition-colors hover:text-primary">
+                                        <Link href={buildLocalizedPathname("/terms", locale)} className="w-fit py-1 text-sm text-foreground/80 transition-colors hover:text-primary">
                                             {t("footer.terms")}
                                         </Link>
-                                        <Link href={buildLocalizedPathname("/data-deletion", locale)} className="w-fit text-sm text-foreground/80 transition-colors hover:text-primary">
+                                        <Link href={buildLocalizedPathname("/data-deletion", locale)} className="w-fit py-1 text-sm text-foreground/80 transition-colors hover:text-primary">
                                             {t("footer.dataDeletion")}
                                         </Link>
-                                        <Link href={buildLocalizedPathname("/child-safety", locale)} className="w-fit text-sm text-foreground/80 transition-colors hover:text-primary">
+                                        <Link href={buildLocalizedPathname("/child-safety", locale)} className="w-fit py-1 text-sm text-foreground/80 transition-colors hover:text-primary">
                                             {t("footer.childSafety")}
                                         </Link>
                                     </div>

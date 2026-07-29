@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import { AxiosError } from "axios";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { GoogleOAuthProvider } from "@react-oauth/google";
 import { toast } from "sonner";
 import { AuthProvider } from "@core/contexts/auth-context";
 import { SignalRProvider } from "@core/contexts/signalr-context";
@@ -43,36 +42,41 @@ const handleGlobalError = (error: unknown, t: (key: string) => string) => {
     }
 };
 
-export const queryClient = new QueryClient({
-    defaultOptions: {
-        queries: {
-            staleTime: 2 * 60 * 1000, // 2 dk: gereksiz refetch'leri önler
-            refetchOnWindowFocus: false,
-            retry: (failureCount, error) => {
-                if (error instanceof AxiosError) {
-                    if (error.response?.status === 429 || error.response?.status === 401) {
-                        return false;
+const createQueryClient = () =>
+    new QueryClient({
+        defaultOptions: {
+            queries: {
+                staleTime: 2 * 60 * 1000, // 2 dk: gereksiz refetch'leri önler
+                refetchOnWindowFocus: false,
+                retry: (failureCount, error) => {
+                    if (error instanceof AxiosError) {
+                        if (error.response?.status === 429 || error.response?.status === 401) {
+                            return false;
+                        }
+
+                        // Ağ hatası / timeout (response YOK) = sunucu yavaş veya erişilemiyor.
+                        // Eskiden buradan failureCount < 3'e düşülüyordu: 4 deneme x 15 sn axios
+                        // timeout + exponential backoff, uygulamayı ~60 sn "hiç açılmıyor" gibi
+                        // gösteriyordu. Bu senaryoda tekrar denemek nadiren işe yarar, tek retry yeter.
+                        if (!error.response) {
+                            return failureCount < 1;
+                        }
                     }
 
-                    // Ağ hatası / timeout (response YOK) = sunucu yavaş veya erişilemiyor.
-                    // Eskiden buradan failureCount < 3'e düşülüyordu: 4 deneme x 15 sn axios
-                    // timeout + exponential backoff, uygulamayı ~60 sn "hiç açılmıyor" gibi
-                    // gösteriyordu. Bu senaryoda tekrar denemek nadiren işe yarar, tek retry yeter.
-                    if (!error.response) {
-                        return failureCount < 1;
-                    }
-                }
-
-                return failureCount < 3;
+                    return failureCount < 3;
+                },
+                // Backoff'u sınırla: varsayılan üstel gecikme uzun beklemelere yol açıyordu.
+                retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
             },
-            // Backoff'u sınırla: varsayılan üstel gecikme uzun beklemelere yol açıyordu.
-            retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
         },
-    },
-});
+    });
 
 export function Providers({ children, locale, messages }: { children: React.ReactNode; locale: AppLocale; messages: Messages }) {
-    const [client] = useState(() => queryClient);
+    // Modül seviyesinde tek bir QueryClient tutuluyordu. Tarayıcıda sorun değil ama modül
+    // SSR sırasında da değerlendiriliyor: aynı Node process'indeki farklı kullanıcıların
+    // istekleri aynı cache'i paylaşabilir. useState içinde üretmek her render ağacına
+    // kendi client'ını verir.
+    const [client] = useState(createQueryClient);
     const tRef = React.useRef((key: string) => translate(messages, key));
     tRef.current = (key: string) => translate(messages, key);
 
@@ -82,15 +86,15 @@ export function Providers({ children, locale, messages }: { children: React.Reac
         client.getMutationCache().config.onError = (error) => handleGlobalError(error, tRef.current);
     }, [client]);
 
-    const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-
+    // GoogleOAuthProvider buradan kaldırıldı: GSI script'i (97 KB) her sayfada iniyordu.
+    // Artık yalnızca (unauthenticated) route grubunda, GoogleOAuthBoundary üzerinden yükleniyor.
+    // Sıra bilerek QueryClientProvider > AuthProvider: AuthProvider logout'ta cache'i
+    // temizlemek için useQueryClient() kullanıyor, dolayısıyla altında olmak zorunda.
     return (
-        <AuthProvider locale={locale}>
-            <QueryClientProvider client={client}>
-                <SignalRProvider>
-                    {googleClientId ? <GoogleOAuthProvider clientId={googleClientId}>{children}</GoogleOAuthProvider> : children}
-                </SignalRProvider>
-            </QueryClientProvider>
-        </AuthProvider>
+        <QueryClientProvider client={client}>
+            <AuthProvider locale={locale}>
+                <SignalRProvider>{children}</SignalRProvider>
+            </AuthProvider>
+        </QueryClientProvider>
     );
 }

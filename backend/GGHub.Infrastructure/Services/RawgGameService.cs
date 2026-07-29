@@ -124,6 +124,16 @@ namespace GGHub.Infrastructure.Services
             {
                 return null;
             }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+            {
+                // Öncesinde yalnızca RAWG'ın 404'ü yakalanıyordu; 401 (anahtar), 429 (kota),
+                // 5xx, timeout ve bozuk JSON dışarı sızıp 500'e dönüşüyordu. Sonuç: var olmayan
+                // her /api/games/{slug} 404 yerine 500 veriyordu (crawler'lar için kötü) ve
+                // RAWG'da geçici bir aksaklık, DB'de kaydı olan oyunun sayfasını da düşürüyordu.
+                //
+                // DB'de bayat da olsa bir kopya varsa onu döndür, yoksa null (=> 404).
+                return gameInDb;
+            }
         }
 
         /// <summary>

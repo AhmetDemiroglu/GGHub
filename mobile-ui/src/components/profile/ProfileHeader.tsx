@@ -15,7 +15,7 @@ import { Avatar } from '@/src/components/common/Avatar';
 import { ProfileBannerUploader } from '@/src/components/profile/ProfileBannerUploader';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
-import { getImageUrl } from '@/src/utils/image';
+import { AVATAR_MAX_EDGE, getImageUrl, shrinkForUpload } from '@/src/utils/image';
 import { formatNumericDate } from '@/src/utils/date';
 import { uploadProfilePhoto } from '@/src/api/photo';
 import { Spacing, FontSize, BorderRadius, Springs, Shadows } from '@/src/constants/theme';
@@ -121,7 +121,8 @@ export function ProfileHeader({
 
     setUploadingAvatar(true);
     try {
-      const response = await uploadProfilePhoto(result.assets[0].uri);
+      const uploadUri = await shrinkForUpload(result.assets[0], AVATAR_MAX_EDGE);
+      const response = await uploadProfilePhoto(uploadUri);
       setLocalAvatar(response.profileImageUrl);
       haptics.success();
       onAvatarUploaded?.(response.profileImageUrl);

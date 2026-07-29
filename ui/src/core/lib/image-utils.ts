@@ -9,9 +9,21 @@ export const createImage = (url: string): Promise<HTMLImageElement> =>
     image.src = url;
   });
 
+/**
+ * Kırpılan alanı hedef boyuta indirip WebP olarak döndürür.
+ *
+ * Öncesinde canvas kaynak piksel çözünürlüğünde açılıyor ve `toBlob`'a kalite verilmiyordu
+ * (tarayıcı varsayılanı ~0.92). Telefon fotoğrafından kırpılan bir avatar 600 KB+ JPEG olarak
+ * yükleniyor, ana sayfada 28-48 px'lik daireye basılıyordu. Sunucu tarafında da ayrıca tavan
+ * var (PhotoService), bu istemci tarafı kısıt yüklemeyi ve bant genişliğini baştan azaltıyor.
+ */
+const DEFAULT_MAX_EDGE = 512;
+const DEFAULT_QUALITY = 0.85;
+
 export async function getCroppedImg(
   imageSrc: string,
-  pixelCrop: Area
+  pixelCrop: Area,
+  maxEdge: number = DEFAULT_MAX_EDGE
 ): Promise<File | null> {
   const image = await createImage(imageSrc);
   const canvas = document.createElement('canvas');
@@ -21,8 +33,16 @@ export async function getCroppedImg(
     return null;
   }
 
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
+  // Küçük kırpmayı büyütme: yalnızca gerekiyorsa ölçekle.
+  const scale = Math.min(1, maxEdge / Math.max(pixelCrop.width, pixelCrop.height));
+  const targetWidth = Math.max(1, Math.round(pixelCrop.width * scale));
+  const targetHeight = Math.max(1, Math.round(pixelCrop.height * scale));
+
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
 
   ctx.drawImage(
     image,
@@ -32,18 +52,29 @@ export async function getCroppedImg(
     pixelCrop.height,
     0,
     0,
-    pixelCrop.width,
-    pixelCrop.height
+    targetWidth,
+    targetHeight
   );
 
   return new Promise((resolve) => {
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        resolve(null);
-        return;
-      }
-      const file = new File([blob], 'cropped-image.jpeg', { type: 'image/jpeg' });
-      resolve(file);
-    }, 'image/jpeg');
+    const encode = (type: string, extension: string) =>
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            // WebP desteklenmiyorsa JPEG'e düş (eski Safari).
+            if (type === 'image/webp') {
+              encode('image/jpeg', 'jpeg');
+              return;
+            }
+            resolve(null);
+            return;
+          }
+          resolve(new File([blob], `cropped-image.${extension}`, { type }));
+        },
+        type,
+        DEFAULT_QUALITY
+      );
+
+    encode('image/webp', 'webp');
   });
 }

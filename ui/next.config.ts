@@ -15,6 +15,9 @@ const nextConfig: NextConfig = {
         return config;
     },
     images: {
+        // AVIF/WebP: avatar ve oyun görselleri JPEG olarak saklanıyor, optimizer bunları
+        // istemcinin desteklediği en küçük formata çevirsin.
+        formats: ["image/avif", "image/webp"],
         remotePatterns: [
             {
                 protocol: "https",
@@ -30,6 +33,18 @@ const nextConfig: NextConfig = {
             {
                 protocol: "https",
                 hostname: "i.pravatar.cc",
+            },
+            {
+                // R2 (profil fotoğrafı + kapak görseli). Buraya eklenmediği sürece bu görseller
+                // next/image'dan geçemiyordu; ham <img> ile tam çözünürlükte iniyorlardı.
+                protocol: "https",
+                hostname: "assets.gghub.social",
+            },
+            {
+                // Google ile giriş yapan kullanıcıların ProfileImageUrl'i doğrudan Google CDN'ini
+                // gösteriyor (AuthService, OAuth "picture" alanı).
+                protocol: "https",
+                hostname: "lh3.googleusercontent.com",
             },
         ],
     },

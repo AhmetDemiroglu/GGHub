@@ -3,6 +3,7 @@ import { Star, Trash2 } from "lucide-react";
 import { memo } from "react";
 import placeHolder3 from "@core/assets/placeholder3.png";
 import Link from "next/link";
+import Image from "next/image";
 import logoSrc from "@core/assets/logo.png";
 import rawgLogoSrc from "@core/assets/rawg_logo.png";
 import metacriticLogoSrc from "@core/assets/metacritic_logo.png";
@@ -46,7 +47,7 @@ export const ListGameCard = memo(function ListGameCard({ game, showRemoveButton,
                         {/* RAWG (Mavi) */}
                         {game.rating ? (
                             <div className="px-2 py-1 rounded-md bg-blue-500/10 text-blue-400 font-bold text-[10px] border border-blue-500/20 flex items-center gap-1.5 tabular-nums" title="RAWG Rating">
-                                <img src={rawgLogoSrc.src} alt="RAWG" className="w-3 h-3 object-contain opacity-80" />
+                                <Image src={rawgLogoSrc} alt="RAWG" width={12} height={12} className="w-3 h-3 object-contain opacity-80" />
                                 {game.rating.toFixed(1)}
                             </div>
                         ) : null}
@@ -54,14 +55,14 @@ export const ListGameCard = memo(function ListGameCard({ game, showRemoveButton,
                         {/* Metacritic (Yeşil) */}
                         {game.metacritic ? (
                             <div className="px-2 py-1 rounded-md bg-green-500/10 text-green-400 font-bold text-[10px] border border-green-500/20 flex items-center gap-1.5 tabular-nums" title="Metascore">
-                                <img src={metacriticLogoSrc.src} alt="Metacritic" className="w-3 h-3 object-contain opacity-80" />
+                                <Image src={metacriticLogoSrc} alt="Metacritic" width={12} height={12} className="w-3 h-3 object-contain opacity-80" />
                                 {game.metacritic}
                             </div>
                         ) : null}
 
                         {/* GGHub (Mor) */}
                         <div className="px-2 py-1 rounded-md bg-purple-500/10 text-purple-400 font-bold text-[10px] border border-purple-500/20 flex items-center gap-1.5 tabular-nums" title="GGHub Puanı">
-                            <img src={logoSrc.src} alt="GGHub" className="w-3 h-3 object-contain opacity-80" />
+                            <Image src={logoSrc} alt="GGHub" width={12} height={12} className="w-3 h-3 object-contain opacity-80" />
                             {game.gghubRating && game.gghubRating > 0 ? game.gghubRating.toFixed(1) : "-"}
                         </div>
                     </div>
