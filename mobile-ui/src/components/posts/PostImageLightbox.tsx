@@ -171,7 +171,7 @@ export function PostImageLightbox({ images, index, onClose }: PostImageLightboxP
         (Reanimated Gesture + Modal ikilisi iOS'ta crash veriyordu, bkz.
         BottomSheet.tsx.)
       */}
-      <GestureHandlerRootView style={styles.root}>
+      <GestureHandlerRootView style={styles.fill}>
         <View style={styles.root} {...panResponder.panHandlers}>
           <Animated.View
             style={[StyleSheet.absoluteFill, styles.backdrop, { opacity: backdropOpacity }]}
@@ -218,6 +218,13 @@ export function PostImageLightbox({ images, index, onClose }: PostImageLightboxP
 }
 
 const styles = StyleSheet.create({
+  // DUZ flex:1, ortalama YOK. Sarmalayiciya root'u (alignItems:'center')
+  // verince ic View capraz eksende icerigine gore daraliyor, absoluteFill zemin
+  // de o dar kutuyu kapliyordu: ekranin iki yaninda gorsel genisligi kadar
+  // (Spacing.xxl / 2) aydinlik serit kaliyordu.
+  fill: {
+    flex: 1,
+  },
   root: {
     flex: 1,
     alignItems: 'center',
