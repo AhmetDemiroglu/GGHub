@@ -15,6 +15,11 @@ import { useDebounce } from "@/core/hooks/use-debounce";
 import { useI18n } from "@/core/contexts/locale-context";
 import { getImageUrl } from "@/core/lib/get-image-url";
 import { downscaleImage } from "@/core/lib/image-utils";
+import {
+    segmentComposerText,
+    toTokenizedContent,
+    type PickedMention,
+} from "@/core/lib/composer-mentions";
 import { cn } from "@/core/lib/utils";
 import {
     MentionTargetType,
@@ -44,14 +49,6 @@ const TYPE_LABEL_KEY: Record<MentionTargetType, string> = {
     [MentionTargetType.Game]: "posts.mention.game",
     [MentionTargetType.List]: "posts.mention.list",
 };
-
-/** Composer'da secilmis bir etiket: gorunen metin + token'a cevrilecek hedef. */
-interface PickedMention {
-    /** Metne eklenen tam parca, ornegin "@Elden Ring". */
-    text: string;
-    type: MentionTargetType;
-    id: number;
-}
 
 interface UploadedImage {
     url: string;
@@ -176,46 +173,10 @@ export function PostComposer({
         element.setSelectionRange(caret, caret);
     }, [value]);
 
-    /**
-     * Gorunen metni token'li metne cevirir.
-     *
-     * Her secilmis etiket metinde SIRAYLA aranir ve ilk tuketilmemis gecisi
-     * token ile degistirilir. Kullanici o parcayi silmis ya da bozmussa
-     * bulunamaz; etiket sessizce duz metin olarak kalir.
-     */
-    const toTokenizedContent = React.useCallback((): string => {
-        let output = "";
-        let cursor = 0;
-        const remaining = [...picked];
-
-        while (cursor < value.length) {
-            let bestIndex = -1;
-            let bestAt = Number.MAX_SAFE_INTEGER;
-
-            for (let i = 0; i < remaining.length; i++) {
-                const at = value.indexOf(remaining[i].text, cursor);
-                if (at !== -1 && at < bestAt) {
-                    bestAt = at;
-                    bestIndex = i;
-                }
-            }
-
-            if (bestIndex === -1) break;
-
-            const hit = remaining[bestIndex];
-            const prefix = hit.type === MentionTargetType.User ? "u" : hit.type === MentionTargetType.Game ? "g" : "l";
-            output += value.slice(cursor, bestAt) + `@[${prefix}:${hit.id}]`;
-            cursor = bestAt + hit.text.length;
-            remaining.splice(bestIndex, 1);
-        }
-
-        return output + value.slice(cursor);
-    }, [picked, value]);
-
     const createMutation = useMutation({
         mutationFn: () =>
             createPost({
-                content: value.trim().length > 0 ? toTokenizedContent() : null,
+                content: value.trim().length > 0 ? toTokenizedContent(value, picked) : null,
                 imageUrls: images.map((i) => i.url),
                 poll: hasPoll
                     ? {
@@ -275,13 +236,48 @@ export function PostComposer({
 
                 <div className="min-w-0 flex-1">
                     <div className="relative">
+                        {/*
+                            YAZARKEN canli vurgulama. <textarea> metnin bir bolumunu
+                            boyayamaz, bu yuzden ARKASINA birebir ayni tipografi ve
+                            kutu metrikleriyle bir katman koyuyoruz: gercek metni o
+                            katman cizer, textarea'nin kendi yazisi seffaftir.
+
+                            Olmadan kullanici etiketinin tuttugunu ancak GONDERDIKTEN
+                            sonra anliyordu; secim yaptigina dair hicbir isaret yoktu.
+                            Ayni numara incelemelerdeki MentionTextarea'da da var.
+                        */}
+                        <div
+                            aria-hidden
+                            className={cn(
+                                "pointer-events-none absolute inset-0 min-h-[60px] whitespace-pre-wrap break-words px-0 py-2 text-base md:text-sm",
+                                "overflow-hidden",
+                            )}
+                        >
+                            {segmentComposerText(value, picked).map((segment, i) =>
+                                segment.kind === "mention" ? (
+                                    <span key={i} className={cn("font-medium", TYPE_CLASS[segment.type])}>
+                                        {segment.value}
+                                    </span>
+                                ) : (
+                                    <span key={i}>{segment.value}</span>
+                                ),
+                            )}
+                            {/* Metin yeni satirla bitiyorsa son satir olcuye girmez;
+                                katman bir satir kisa kalip kaymasin diye sifir
+                                genislikli karakter. */}
+                            {"\u200b"}
+                        </div>
+
                         <Textarea
                             ref={textareaRef}
                             value={value}
                             autoFocus={autoFocus}
                             rows={2}
                             placeholder={placeholder ?? t("posts.placeholder")}
-                            className="min-h-[60px] resize-none border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+                            // Yazi seffaf: gercek metni arkadaki katman ciziyor.
+                            // Imlec ve secim gorunur kalsin diye ayrica veriliyor;
+                            // secim rengi yari saydam olmali yoksa arkadaki metni orter.
+                            className="relative min-h-[60px] resize-none border-0 bg-transparent px-0 py-2 text-transparent shadow-none caret-foreground selection:bg-primary/30 focus-visible:ring-0"
                             onChange={(event) => {
                                 setValue(event.target.value);
                                 if (pendingCaretRef.current === null) syncMentionState(event.target);

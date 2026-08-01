@@ -24,6 +24,11 @@ import { useDebounce } from '@/src/hooks/use-debounce';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useTheme } from '@/src/hooks/use-theme';
 import { shrinkForUpload } from '@/src/utils/image';
+import {
+  segmentComposerText,
+  toTokenizedContent,
+  type PickedMention,
+} from '@/src/utils/composer-mentions';
 import * as haptics from '@/src/utils/haptics';
 import {
   MentionTargetType,
@@ -45,13 +50,6 @@ import {
 const ACTIVE_MENTION_PATTERN = /(^|[^\p{L}\p{N}_.])@([^\n@]{0,30})$/u;
 
 const POST_IMAGE_MAX_EDGE = 1280;
-
-/** Composer'da secilmis bir etiket: gorunen metin + token'a cevrilecek hedef. */
-interface PickedMention {
-  text: string;
-  type: MentionTargetType;
-  id: number;
-}
 
 interface UploadedImage {
   url: string;
@@ -156,45 +154,10 @@ export function PostComposer({ parentPostId, placeholder, autoFocus, onCreated }
     closeSuggestions();
   };
 
-  /**
-   * Gorunen metni token'li metne cevirir. Her secilmis etiket metinde SIRAYLA
-   * aranir ve ilk tuketilmemis gecisi token ile degistirilir. Kullanici o
-   * parcayi silmis ya da bozmussa bulunamaz; etiket duz metin olarak kalir.
-   */
-  const toTokenizedContent = (): string => {
-    let output = '';
-    let cursor = 0;
-    const remaining = [...picked];
-
-    while (cursor < value.length) {
-      let bestIndex = -1;
-      let bestAt = Number.MAX_SAFE_INTEGER;
-
-      for (let i = 0; i < remaining.length; i++) {
-        const at = value.indexOf(remaining[i].text, cursor);
-        if (at !== -1 && at < bestAt) {
-          bestAt = at;
-          bestIndex = i;
-        }
-      }
-
-      if (bestIndex === -1) break;
-
-      const hit = remaining[bestIndex];
-      const prefix =
-        hit.type === MentionTargetType.User ? 'u' : hit.type === MentionTargetType.Game ? 'g' : 'l';
-      output += value.slice(cursor, bestAt) + `@[${prefix}:${hit.id}]`;
-      cursor = bestAt + hit.text.length;
-      remaining.splice(bestIndex, 1);
-    }
-
-    return output + value.slice(cursor);
-  };
-
   const createMutation = useMutation({
     mutationFn: () =>
       createPost({
-        content: value.trim().length > 0 ? toTokenizedContent() : null,
+        content: value.trim().length > 0 ? toTokenizedContent(value, picked) : null,
         imageUrls: images.map((i) => i.url),
         poll: hasPoll
           ? {
@@ -250,6 +213,17 @@ export function PostComposer({ parentPostId, placeholder, autoFocus, onCreated }
     }
   };
 
+  // Renkli parcalar: secilmis etiketler tipine gore boyanir, gerisi duz metin.
+  const children = segmentComposerText(value, picked).map((segment, i) =>
+    segment.kind === 'mention' ? (
+      <Text key={i} style={{ color: colorFor(segment.type), fontWeight: '600' }}>
+        {segment.value}
+      </Text>
+    ) : (
+      <Text key={i}>{segment.value}</Text>
+    ),
+  );
+
   if (!isAuthenticated) return null;
 
   return (
@@ -258,9 +232,21 @@ export function PostComposer({ parentPostId, placeholder, autoFocus, onCreated }
         <Avatar uri={user?.profileImageUrl ?? null} name={user?.username ?? '?'} size={38} />
 
         <View style={styles.body}>
+          {/*
+              YAZARKEN canli vurgulama. RN'de TextInput'un ICERIGI cocuk
+              <Text>'lerle verilebilir ve her parca ayri stillenebilir.
+
+              `value` prop'u BILEREK verilmiyor: cocuklar zaten value'dan
+              turetiliyor, yani alan hala kontrollu. Ikisi birden verilirse
+              icerik iki kaynaktan beslenir ve imlec ziplar. Gonderim sonrasi
+              value='' gelince cocuklar da bosalir, alan temizlenir.
+              (Ayni desen MentionInput'ta da kullaniliyor.)
+
+              Olmadan kullanici etiketinin tuttugunu ancak GONDERDIKTEN sonra
+              anliyordu; secim yaptigina dair hicbir isaret yoktu.
+          */}
           <TextInput
             ref={inputRef}
-            value={value}
             autoFocus={autoFocus}
             multiline
             placeholder={placeholder ?? messages.posts.placeholder}
@@ -274,7 +260,9 @@ export function PostComposer({ parentPostId, placeholder, autoFocus, onCreated }
               selectionRef.current = event.nativeEvent.selection.start;
               syncMentionState(value, event.nativeEvent.selection.start);
             }}
-          />
+          >
+            {children}
+          </TextInput>
 
           {isOpen && (isFetching || suggestions.length > 0) ? (
             <View style={[styles.suggestions, { backgroundColor: colors.surface, borderColor: colors.border }]}>

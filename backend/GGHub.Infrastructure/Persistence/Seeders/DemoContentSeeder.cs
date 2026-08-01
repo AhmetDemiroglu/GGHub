@@ -45,9 +45,16 @@ namespace GGHub.Infrastructure.Persistence.Seeders
         public async Task<int> SeedAsync(CancellationToken cancellationToken = default)
         {
             // Idempotent: iki kez calistirmak icerigi ikiye katlamaz.
+            //
+            // Ama ONARIM yapar: seeder gelistikce (ornegin avatar eklendiginde)
+            // daha once basilmis kayitlar eksik kalir. Eskiden burada dogrudan
+            // return ediliyordu ve eksigi tamamlamanin TEK yolu her seyi silip
+            // yeniden basmakti. Artik tamamlanabilir alanlar yerinde duzeltiliyor;
+            // veri kaybi olmadan, tek cagriyla.
             if (await _context.Users.AnyAsync(u => u.IsSeeded, cancellationToken))
             {
-                _logger.LogInformation("Demo content already seeded, skipping.");
+                var repaired = await RepairAsync(cancellationToken);
+                _logger.LogInformation("Demo content already seeded; repaired {Count} record(s).", repaired);
                 return 0;
             }
 
@@ -63,12 +70,61 @@ namespace GGHub.Infrastructure.Persistence.Seeders
         }
 
         /// <summary>
-        /// Demo icerigi tamamen geri alir.
+        /// Daha once basilmis demo kayitlarindaki EKSIKLERI tamamlar. Silme yok,
+        /// yalnizca bos alanlari doldurma; var olan degerlere dokunulmaz.
         ///
-        /// Silme SIRASI zorunlu: Follow ve UserBlock iki FK'da da Restrict,
-        /// PostPollVote.OptionId de Restrict. Sira bozulursa
-        /// ReferenceConstraintException alinir ve islem yarida kalir.
+        /// Bugun iki sey onariliyor:
+        ///   1. Profil fotografi olmayan seed kullanicilari (avatar seeder'a
+        ///      sonradan eklendi).
+        ///   2. Buyuk harf iceren e-postalar (giris e-postayi birebir
+        ///      karsilastirdigi icin "levelUp40@..." ile giris yapilamiyordu).
         /// </summary>
+        private async Task<int> RepairAsync(CancellationToken cancellationToken)
+        {
+            var users = await _context.Users
+                .Where(u => u.IsSeeded)
+                .ToListAsync(cancellationToken);
+
+            var changed = 0;
+
+            foreach (var user in users)
+            {
+                if (string.IsNullOrWhiteSpace(user.ProfileImageUrl))
+                {
+                    user.ProfileImageUrl = $"https://i.pravatar.cc/300?u={user.Username}";
+                    changed++;
+                }
+
+                var lowered = user.Email.ToLowerInvariant();
+                if (!string.Equals(user.Email, lowered, StringComparison.Ordinal))
+                {
+                    user.Email = lowered;
+                    changed++;
+                }
+            }
+
+            // Kapali dogmus anketleri ac. Bitis tarihi gonderi tarihine gore
+            // hesaplaniyordu ve gonderiler 45 gune yayildigi icin neredeyse tum
+            // demo anketleri dogar dogmaz "Sona erdi" oluyordu; hicbirine oy
+            // verilemiyordu. Yalnizca GECMISTE kalanlar ileri aliniyor.
+            var now = DateTime.UtcNow;
+            var closedPolls = await _context.PostPolls
+                .Where(p => p.EndsAt <= now && p.Post.IsSeeded)
+                .ToListAsync(cancellationToken);
+
+            foreach (var poll in closedPolls)
+            {
+                // Besde biri bilerek kapali kalir ki kapali anket gorunumu de
+                // demoda temsil edilsin.
+                if (poll.Id % 5 == 0) continue;
+                poll.EndsAt = now.AddDays(1 + (poll.Id % 7));
+                changed++;
+            }
+
+            if (changed > 0) await _context.SaveChangesAsync(cancellationToken);
+            return changed;
+        }
+
         /// <summary>
         /// Sahte hesaplarin e-posta alan adlari. IsSeeded bayragi bu seeder ile
         /// geldi; ondan ONCE elle eklenmis demo hesaplar (@fake.gghub.social)
@@ -80,6 +136,13 @@ namespace GGHub.Infrastructure.Persistence.Seeders
             "@fake.gghub.social"
         };
 
+        /// <summary>
+        /// Demo icerigi tamamen geri alir.
+        ///
+        /// Silme SIRASI zorunlu: Follow ve UserBlock iki FK'da da Restrict,
+        /// PostPollVote.OptionId de Restrict. Sira bozulursa
+        /// ReferenceConstraintException alinir ve islem yarida kalir.
+        /// </summary>
         public async Task<int> PurgeAsync(
             bool includeLegacyFakeAccounts = false,
             CancellationToken cancellationToken = default)
