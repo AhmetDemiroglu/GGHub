@@ -10,7 +10,11 @@
 #
 # Kullanim:
 #   scripts/seed-demo --token <JWT>            # uretir
-#   scripts/seed-demo --token <JWT> --purge    # tamamini geri alir
+#   scripts/seed-demo --token <JWT> --purge    # bu seeder'in urettiklerini siler
+#   scripts/seed-demo --token <JWT> --purge --all-fake
+#                                             # + eski @fake.gghub.social hesaplari ve
+#                                             #   TUM icerikleri (inceleme, liste, yorum,
+#                                             #   oy, mesaj, takip). GERI ALINAMAZ.
 #   scripts/seed-demo --token <JWT> --api https://api.gghub.social
 #
 # Token: Admin rolune sahip bir hesapla giris yapip access token'i kullan.
@@ -20,14 +24,16 @@ set -uo pipefail
 API="${GGHUB_API:-http://localhost:5000}"
 TOKEN=""
 METHOD="POST"
+INCLUDE_LEGACY=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --token) TOKEN="$2"; shift 2 ;;
     --api)   API="$2"; shift 2 ;;
     --purge) METHOD="DELETE"; shift ;;
+    --all-fake) INCLUDE_LEGACY=1; shift ;;
     -h|--help)
-      sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *) echo "Bilinmeyen secenek: $1" >&2; exit 2 ;;
@@ -39,7 +45,16 @@ if [[ -z "$TOKEN" ]]; then
   exit 2
 fi
 
+PATH_SUFFIX=""
+if [[ "$INCLUDE_LEGACY" == "1" ]]; then
+  PATH_SUFFIX="?includeLegacy=true"
+fi
+
 if [[ "$METHOD" == "DELETE" ]]; then
+  if [[ "$INCLUDE_LEGACY" == "1" ]]; then
+    echo "seed-demo: DIKKAT. Eski @fake.gghub.social hesaplari ve TUM icerikleri"
+    echo "           (inceleme, liste, yorum, oy, mesaj, takip bagi) da silinecek."
+  fi
   echo "seed-demo: TUM demo icerik silinecek ($API)."
   read -r -p "Devam edilsin mi? [e/H] " answer
   case "$answer" in
@@ -48,11 +63,11 @@ if [[ "$METHOD" == "DELETE" ]]; then
   esac
 fi
 
-echo "seed-demo: $METHOD $API/api/admin/seed/demo"
+echo "seed-demo: $METHOD $API/api/admin/seed/demo$PATH_SUFFIX"
 
 HTTP_BODY=$(mktemp)
 HTTP_CODE=$(curl -s -o "$HTTP_BODY" -w "%{http_code}" \
-  -X "$METHOD" "$API/api/admin/seed/demo" \
+  -X "$METHOD" "$API/api/admin/seed/demo$PATH_SUFFIX" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json")
 

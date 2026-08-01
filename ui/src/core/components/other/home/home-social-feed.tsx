@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { enUS, tr } from "date-fns/locale";
 import { getFeedByTab } from "@/api/activity/activity.api";
+import { useInfiniteScroll } from "@/core/hooks/use-infinite-scroll";
 import { Activity, ActivityActor, ActivityType } from "@/models/activity/activity.model";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 import { buildLocalizedPathname } from "@/i18n/config";
@@ -56,6 +57,25 @@ interface TabState {
 
 const emptyTab = (): TabState => ({ items: [], hasMore: true, loading: false, loaded: false });
 
+/**
+ * Akisin OTURUM ICI hafizasi.
+ *
+ * Neden modul seviyesinde: bir gonderinin detayina girip geri donuldugunde
+ * Next.js bu bileseni yeniden mount ediyor. State bilesende durdugu icin akis
+ * sifirdan cekiliyor, kullanici okudugu yeri kaybediyor ve en basa firliyordu.
+ * Modul degiskeni istemci tarafi gezinmelerde yasar, sert yenilemede (yeni
+ * sayfa yuklemesi) kendiliginden sifirlanir; istenen davranis tam olarak bu.
+ *
+ * Kaydirma konumu da burada: geri donuste ayni piksele donulur.
+ */
+interface FeedMemory {
+    feeds: Record<TabKey, TabState>;
+    activeTab: TabKey;
+    scrollTop: number;
+}
+
+let feedMemory: FeedMemory | null = null;
+
 interface HomeSocialFeedProps {
     isAuthenticated: boolean;
 }
@@ -66,7 +86,7 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
     // Varsayılan sekme mobildeki TabbedActivityFeed ile aynı: Keşfet.
     // Buradaki başlangıç değeri ile <Tabs defaultValue> BİRLİKTE değişmeli,
     // yoksa seçili sekme ile listelenen içerik birbirini tutmaz.
-    const [activeTab, setActiveTab] = useState<TabKey>("discover");
+    const [activeTab, setActiveTab] = useState<TabKey>(() => feedMemory?.activeTab ?? "discover");
     // Her sekme KENDI sayfasini sunucudan ceker.
     //
     // UC SEKME DE emptyTab() ile basliyor. Onceden "all" sekmesi prop'tan
@@ -74,12 +94,14 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
     // efekti de !loaded sartina takiliyordu. Besleyen cagri hatayi yutunca
     // ("catch(() => [])") sekme kalici olarak bos kaliyordu: kullanici tikliyor,
     // hicbir sey olmuyordu. Tohumlama tamamen kaldirildi.
-    const [feeds, setFeeds] = useState<Record<TabKey, TabState>>(() => ({
-        discover: emptyTab(),
-        posts: emptyTab(),
-        reviews: emptyTab(),
-    }));
-    const sentinelRef = useRef<HTMLDivElement | null>(null);
+    const [feeds, setFeeds] = useState<Record<TabKey, TabState>>(
+        () =>
+            feedMemory?.feeds ?? {
+                discover: emptyTab(),
+                posts: emptyTab(),
+                reviews: emptyTab(),
+            },
+    );
     // loadTab closure'ının her render'da güncel listeyi görmesi için ref tutuyoruz.
     const feedsRef = useRef(feeds);
     feedsRef.current = feeds;
@@ -124,6 +146,36 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
         }
     }, []);
 
+    // Her degisimde hafizayi tazele; unmount'ta yazmak yeterli degil, cunku
+    // Next.js gezinmesinde cleanup her zaman guvenilir sirada calismiyor.
+    useEffect(() => {
+        feedMemory = { feeds, activeTab, scrollTop: feedMemory?.scrollTop ?? 0 };
+    }, [feeds, activeTab]);
+
+    // Kaydirma konumu: kabin kendisi <main>, window degil.
+    useEffect(() => {
+        const container = document.querySelector("main");
+        if (!container) return;
+
+        const saved = feedMemory?.scrollTop ?? 0;
+        // Yalnizca gercekten iceriden geri donulduyse (elde veri varsa) geri yukle;
+        // ilk acilista sayfayi ortadan baslatmak istemiyoruz.
+        if (saved > 0 && feeds[activeTab].items.length > 0) {
+            // Kartlar cizildikten SONRA konumlan; ayni karede yukseklik henuz olusmadi.
+            requestAnimationFrame(() => {
+                container.scrollTop = saved;
+            });
+        }
+
+        const onScroll = () => {
+            if (feedMemory) feedMemory.scrollTop = container.scrollTop;
+        };
+        container.addEventListener("scroll", onScroll, { passive: true });
+        return () => container.removeEventListener("scroll", onScroll);
+        // Yalnizca ilk mount'ta konumlan; sekme degisiminde en uste donmek dogru.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     // Açılışta önce varsayılan sekme (Keşfet), ardından diğerleri arka
     // planda; sekme değişince içerik anında hazır olur.
     //
@@ -152,30 +204,19 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
         if (!state.loaded && !state.loading) void loadTab(activeTab, true);
     }, [isAuthenticated, activeTab, loadTab]);
 
-    // IntersectionObserver yalnızca kesişme DURUMU değişince tetiklenir. Yükleme
-    // sonrası sentinel hâlâ görünürse yeni olay üretmez ve akış durur (desktop'ta
-    // hiç, mobilde elle scroll gerektirir). Bu yüzden her append/yükleme bitişinde
-    // observer'ı yeniden kurup kesişmeyi tekrar değerlendiriyoruz: sentinel görünür
-    // kaldıkça yükleme kendiliğinden devam eder (X benzeri akışkan sonsuz scroll).
     const activeState = feeds[activeTab];
 
-    useEffect(() => {
-        if (!isAuthenticated || !activeState.hasMore || activeState.loading) return;
-        const sentinel = sentinelRef.current;
-        if (!sentinel) return;
-
-        const observer = new IntersectionObserver(
-            (entries) => {
-                if (entries[0]?.isIntersecting) {
-                    void loadTab(activeTab, false);
-                }
-            },
-            { rootMargin: "600px 0px" },
-        );
-
-        observer.observe(sentinel);
-        return () => observer.disconnect();
-    }, [isAuthenticated, activeTab, activeState.hasMore, activeState.loading, activeState.items.length, loadTab]);
+    // Sonsuz akış tetikleyicisi. Eskiden burada elle kurulan bir
+    // IntersectionObserver vardı ve iki sorunu vardı: root olarak viewport
+    // kullanıyordu (oysa sayfa <main> içinde kayıyor, dolayısıyla rootMargin
+    // hiç işlemiyordu ve ön yükleme olmuyordu) ve her yüklemede söküp takıldığı
+    // için tetikleyici olaylar kaybolabiliyordu. Hook doğru kabı bulup
+    // scroll dinleyicisiyle de yedekliyor.
+    const sentinelRef = useInfiniteScroll<HTMLDivElement>({
+        enabled: isAuthenticated && activeState.hasMore && activeState.items.length > 0,
+        loading: activeState.loading,
+        onLoadMore: () => void loadTab(activeTab, false),
+    });
 
     if (!isAuthenticated) {
         return (

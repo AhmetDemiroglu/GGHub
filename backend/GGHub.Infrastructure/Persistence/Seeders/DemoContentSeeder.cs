@@ -69,12 +69,32 @@ namespace GGHub.Infrastructure.Persistence.Seeders
         /// PostPollVote.OptionId de Restrict. Sira bozulursa
         /// ReferenceConstraintException alinir ve islem yarida kalir.
         /// </summary>
-        public async Task<int> PurgeAsync(CancellationToken cancellationToken = default)
+        /// <summary>
+        /// Sahte hesaplarin e-posta alan adlari. IsSeeded bayragi bu seeder ile
+        /// geldi; ondan ONCE elle eklenmis demo hesaplar (@fake.gghub.social)
+        /// bayrak tasimiyor, bu yuzden genis temizlikte alan adindan bulunurlar.
+        /// </summary>
+        private static readonly string[] FakeEmailDomains =
         {
-            var userIds = await _context.Users
-                .Where(u => u.IsSeeded)
-                .Select(u => u.Id)
-                .ToListAsync(cancellationToken);
+            "@demo.gghub.social",
+            "@fake.gghub.social"
+        };
+
+        public async Task<int> PurgeAsync(
+            bool includeLegacyFakeAccounts = false,
+            CancellationToken cancellationToken = default)
+        {
+            var query = _context.Users.Where(u => u.IsSeeded);
+
+            if (includeLegacyFakeAccounts)
+            {
+                // IsSeeded bayragi OLMAYAN eski sahte hesaplar da dahil.
+                query = _context.Users.Where(u =>
+                    u.IsSeeded ||
+                    FakeEmailDomains.Any(d => u.Email.EndsWith(d)));
+            }
+
+            var userIds = await query.Select(u => u.Id).ToListAsync(cancellationToken);
 
             if (userIds.Count == 0) return 0;
 
@@ -129,6 +149,73 @@ namespace GGHub.Infrastructure.Persistence.Seeders
             await _context.RefreshTokens.Where(t => userIds.Contains(t.UserId)).ExecuteDeleteAsync(cancellationToken);
             await _context.UserStats.Where(s => userIds.Contains(s.UserId)).ExecuteDeleteAsync(cancellationToken);
 
+            // 4b. Gonderi DISI icerik. Bu seeder inceleme/liste uretmiyor, ama
+            // eski sahte hesaplarin (fake.gghub.social) incelemesi, listesi ve
+            // yorumu VAR; genis temizlikte onlar da gitmeli yoksa kullanici
+            // silinemez (FK) ya da sahipsiz icerik kalir.
+            //
+            // Sira bagimlilik zincirini izler: once oylar, sonra yorumlar,
+            // sonra ana kayitlar.
+            var reviewIds = await _context.Reviews
+                .Where(r => userIds.Contains(r.UserId))
+                .Select(r => r.Id)
+                .ToListAsync(cancellationToken);
+
+            var listIds = await _context.UserLists
+                .Where(l => userIds.Contains(l.UserId))
+                .Select(l => l.Id)
+                .ToListAsync(cancellationToken);
+
+            await _context.ReviewCommentVotes
+                .Where(v => userIds.Contains(v.UserId) ||
+                            _context.ReviewComments.Any(c => c.Id == v.ReviewCommentId && (userIds.Contains(c.UserId) || reviewIds.Contains(c.ReviewId))))
+                .ExecuteDeleteAsync(cancellationToken);
+
+            await _context.ReviewComments
+                .Where(c => userIds.Contains(c.UserId) || reviewIds.Contains(c.ReviewId))
+                .ExecuteDeleteAsync(cancellationToken);
+
+            await _context.ReviewVotes
+                .Where(v => userIds.Contains(v.UserId) || reviewIds.Contains(v.ReviewId))
+                .ExecuteDeleteAsync(cancellationToken);
+
+            await _context.Reviews.Where(r => reviewIds.Contains(r.Id)).ExecuteDeleteAsync(cancellationToken);
+
+            await _context.UserListCommentVotes
+                .Where(v => userIds.Contains(v.UserId) ||
+                            _context.UserListComments.Any(c => c.Id == v.UserListCommentId && (userIds.Contains(c.UserId) || listIds.Contains(c.UserListId))))
+                .ExecuteDeleteAsync(cancellationToken);
+
+            await _context.UserListComments
+                .Where(c => userIds.Contains(c.UserId) || listIds.Contains(c.UserListId))
+                .ExecuteDeleteAsync(cancellationToken);
+
+            await _context.UserListRatings
+                .Where(r => userIds.Contains(r.UserId) || listIds.Contains(r.UserListId))
+                .ExecuteDeleteAsync(cancellationToken);
+
+            await _context.UserListFollows
+                .Where(f => userIds.Contains(f.FollowerUserId) || listIds.Contains(f.FollowedListId))
+                .ExecuteDeleteAsync(cancellationToken);
+
+            await _context.UserListGames
+                .Where(g => listIds.Contains(g.UserListId))
+                .ExecuteDeleteAsync(cancellationToken);
+
+            await _context.UserLists.Where(l => listIds.Contains(l.Id)).ExecuteDeleteAsync(cancellationToken);
+
+            await _context.Messages
+                .Where(m => userIds.Contains(m.SenderId) || userIds.Contains(m.RecipientId))
+                .ExecuteDeleteAsync(cancellationToken);
+
+            await _context.UserAchievements
+                .Where(a => userIds.Contains(a.UserId))
+                .ExecuteDeleteAsync(cancellationToken);
+
+            await _context.ContentReports
+                .Where(r => userIds.Contains(r.ReporterUserId))
+                .ExecuteDeleteAsync(cancellationToken);
+
             // 5. Kullanicilar.
             var deleted = await _context.Users.Where(u => userIds.Contains(u.Id)).ExecuteDeleteAsync(cancellationToken);
 
@@ -150,7 +237,7 @@ namespace GGHub.Infrastructure.Persistence.Seeders
                 {
                     Username = handle,
                     UsernameNormalized = UsernameNormalizer.Normalize(handle),
-                    Email = $"{handle}@demo.gghub.social",
+                    Email = $"{handle.ToLowerInvariant()}@demo.gghub.social",
                     PasswordHash = hash,
                     PasswordSalt = salt,
                     FirstName = FirstNames[_random.Next(FirstNames.Length)],
@@ -295,9 +382,20 @@ namespace GGHub.Infrastructure.Persistence.Seeders
                 // ~%15 anketli. Gorsel ve anket ayni gonderide olmaz (composer da izin vermiyor).
                 if (_random.Next(100) < 15)
                 {
+                    // Bitis SIMDIYE gore hesaplanir, gonderi tarihine gore DEGIL.
+                    // Gonderiler 45 gune yayildigi icin gonderi tarihi + 1-7 gun
+                    // demek anketlerin neredeyse tamaminin dogar dogmaz KAPALI
+                    // olmasi demekti; demo akisinda her anket "Sona erdi" ve %0
+                    // gorunuyor, hicbirine oy verilemiyordu.
+                    //
+                    // Besde biri bilerek kapali birakiliyor ki kapali anket
+                    // gorunumu de demo icinde temsil edilsin.
+                    var closed = _random.Next(5) == 0;
                     var poll = new PostPoll
                     {
-                        EndsAt = post.CreatedAt.AddDays(_random.Next(1, 8)),
+                        EndsAt = closed
+                            ? DateTime.UtcNow.AddDays(-_random.Next(1, 10))
+                            : DateTime.UtcNow.AddDays(_random.Next(1, 8)),
                         CreatedAt = post.CreatedAt
                     };
 

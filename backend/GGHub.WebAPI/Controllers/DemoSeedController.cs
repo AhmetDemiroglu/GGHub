@@ -40,14 +40,26 @@ namespace GGHub.WebAPI.Controllers
             return Ok(new { postsCreated = created });
         }
 
+        /// <summary>
+        /// Demo icerigi siler.
+        ///
+        /// Varsayilan kapsam: yalnizca bu seeder'in urettikleri (IsSeeded=true).
+        ///
+        /// ?includeLegacy=true : IsSeeded bayragi OLMAYAN eski sahte hesaplar
+        /// (@fake.gghub.social) ve onlarin TUM icerigi de silinir; inceleme,
+        /// liste, yorum, oy, mesaj, takip bagi dahil. Platformu tamamen gercek
+        /// veriye dondurmek icin bu kullanilir. Geri alinamaz.
+        /// </summary>
         [HttpDelete("demo")]
-        public async Task<IActionResult> Purge(CancellationToken cancellationToken)
+        public async Task<IActionResult> Purge(
+            [FromQuery] bool includeLegacy = false,
+            CancellationToken cancellationToken = default)
         {
             if (!IsEnabled)
                 return BadRequest(new { message = "Seed:DemoEnabled is false." });
 
-            var removed = await _seeder.PurgeAsync(cancellationToken);
-            return Ok(new { usersRemoved = removed });
+            var removed = await _seeder.PurgeAsync(includeLegacy, cancellationToken);
+            return Ok(new { usersRemoved = removed, includeLegacy });
         }
     }
 }
