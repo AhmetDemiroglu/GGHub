@@ -16,6 +16,7 @@ import { ScreenWrapper } from '@/src/components/common/ScreenWrapper';
 import { ScreenHeader } from '@/src/components/shell';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
 import { Input } from '@/src/components/common/Input';
+import { DateField } from '@/src/components/common/DateField';
 import { Button } from '@/src/components/common/Button';
 import { useToast } from '@/src/components/common/Toast';
 import { ProfilePhotoUploader } from '@/src/components/profile/ProfilePhotoUploader';
@@ -51,6 +52,7 @@ export default function ProfileEditScreen() {
   const [showEmail, setShowEmail] = useState(false);
   const [showPhone, setShowPhone] = useState(false);
   const [showDob, setShowDob] = useState(false);
+  const [dateOfBirth, setDateOfBirth] = useState<string | null>(null);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -62,6 +64,7 @@ export default function ProfileEditScreen() {
       setShowEmail(profile.isEmailPublic);
       setShowPhone(profile.isPhoneNumberPublic);
       setShowDob(profile.isDateOfBirthPublic);
+      setDateOfBirth(profile.dateOfBirth);
       setProfileImageUrl(profile.profileImageUrl);
     }
   }, [profile]);
@@ -84,11 +87,10 @@ export default function ProfileEditScreen() {
       lastName: lastName || null,
       bio: bio || null,
       status: status || null,
+      dateOfBirth,
       // Bu ekran duzenlemiyor ama GONDERMEK ZORUNDA: sunucu alanlari kosulsuz atiyor,
-      // eksik gonderilen alan null'a dusup KALICI olarak siliniyordu (dogum gunu
-      // kutlamasi da dahil, dogum tarihine bagli her sey bu yuzden bosaliyordu).
+      // eksik gonderilen alan null'a dusup KALICI olarak siliniyordu.
       phoneNumber: profile?.phoneNumber ?? null,
-      dateOfBirth: profile?.dateOfBirth ?? null,
       isEmailPublic: showEmail,
       isPhoneNumberPublic: showPhone,
       isDateOfBirthPublic: showDob,
@@ -152,6 +154,8 @@ export default function ProfileEditScreen() {
           onChangeText={setStatus}
           placeholder={ef.status}
         />
+
+        <DateField label={ef.dateOfBirth} value={dateOfBirth} onChange={setDateOfBirth} />
 
         <View style={styles.toggleSection}>
           <View style={[styles.toggleRow, { borderBottomColor: colors.border }]}>
