@@ -53,7 +53,11 @@ namespace GGHub.Infrastructure.Services
                 Bio = user.Bio,
                 ProfileImageUrl = user.ProfileImageUrl,
                 HeaderImageUrl = user.HeaderImageUrl,
+                // Kendi profili: tam tarih doner (duzenleme ekrani bunu okuyor).
                 DateOfBirth = user.DateOfBirth,
+                BirthdayMonthDay = user.IsDateOfBirthPublic && user.DateOfBirth.HasValue
+                    ? user.DateOfBirth.Value.ToUniversalTime().ToString("MM-dd")
+                    : null,
                 CreatedAt = user.CreatedAt,
                 Status = user.Status,
                 IsEmailPublic = user.IsEmailPublic,
@@ -271,7 +275,15 @@ namespace GGHub.Infrastructure.Services
                 Bio = profileUser.Bio,
                 ProfileImageUrl = profileUser.ProfileImageUrl,
                 HeaderImageUrl = profileUser.HeaderImageUrl,
-                DateOfBirth = profileUser.DateOfBirth,
+                // Tam tarih (yil dahil) YALNIZCA kisinin kendisine doner. Eskiden bu alan
+                // KOSULSUZ dolduruluyordu: "Profilde Goster" kapali olsa bile dogum tarihi
+                // profili gorebilen herkese API'den gidiyordu, istemciler sadece cizmiyordu.
+                DateOfBirth = profileUser.Id == currentUserId ? profileUser.DateOfBirth : null,
+                // Baskalari icin yalnizca gun/ay. Yil sunucudan hic cikmadigi icin
+                // yanlislikla ekrana basilma ihtimali de kalmiyor.
+                BirthdayMonthDay = profileUser.IsDateOfBirthPublic && profileUser.DateOfBirth.HasValue
+                    ? profileUser.DateOfBirth.Value.ToUniversalTime().ToString("MM-dd")
+                    : null,
                 CreatedAt = profileUser.CreatedAt,
                 PhoneNumber = (profileUser.IsPhoneNumberPublic || profileUser.Id == currentUserId) ? profileUser.PhoneNumber : null,
                 Status = profileUser.Status,

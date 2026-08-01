@@ -12,7 +12,22 @@ namespace GGHub.Application.Dtos
         public string? Bio { get; set; }
         public string? ProfileImageUrl { get; set; }
         public string? HeaderImageUrl { get; set; }
+        /// <summary>
+        /// TAM dogum tarihi, yil dahil. YALNIZCA kullanicinin kendisine doldurulur
+        /// (GET /profile/me ya da kendi kullanici adiyla bakarken). Baskasinin profilinde
+        /// daima null: dogum YILI hicbir kosulda disariya cikmaz, "Profilde Goster"
+        /// acik olsa bile. Gorunur olan yalnizca gun/ay, o da BirthdayMonthDay ile gider.
+        /// </summary>
         public DateTime? DateOfBirth { get; set; }
+
+        /// <summary>
+        /// Dogum gununun yalnizca gun/ay bileseni, "MM-dd" (ornegin "07-18").
+        /// Yalnizca IsDateOfBirthPublic true iken doldurulur. Istemciler bunu kendi
+        /// dillerinde "18 Temmuz" olarak bicimlendirir; yil hic tasinmadigi icin
+        /// yanlislikla ekrana basilmasi da imkansiz.
+        /// </summary>
+        public string? BirthdayMonthDay { get; set; }
+
         public DateTime CreatedAt { get; set; }
         public string? Status { get; set; }
         public string? PhoneNumber { get; set; }

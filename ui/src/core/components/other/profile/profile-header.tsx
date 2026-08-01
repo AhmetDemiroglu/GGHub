@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar
 import { Button } from "@/core/components/ui/button";
 import { Badge } from "@/core/components/ui/badge";
 import { Separator } from "@/core/components/ui/separator";
-import { Calendar, Mail, Phone, UserPlus, UserMinus, Settings, MessageSquareMore, MessageSquareLock, Ban, ShieldOff, Flag } from "lucide-react";
+import { Cake, Calendar, Mail, Phone, UserPlus, UserMinus, Settings, MessageSquareMore, MessageSquareLock, Ban, ShieldOff, Flag } from "lucide-react";
 import { ReportDialog } from "@core/components/base/report-dialog";
 import { followUser, unfollowUser, blockUser, unblockUser } from "@/api/social/social.api";
 import { toast } from "sonner";
@@ -484,10 +484,13 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                             <span>{t("profile.header.joinedAt", { appName: t("common.appName"), date: dayjs(profile.createdAt).format("MMMM YYYY") })}</span>
                         </div>
 
-                        {profile.isDateOfBirthPublic && profile.dateOfBirth && (
+                        {/* Yil BILEREK yok ve zaten sunucudan gelmiyor: birthdayMonthDay
+                            yalnizca "MM-dd" tasir. Sabit bir yil (artik yil, 29 Subat icin)
+                            yalnizca bicimlendirme amaciyla eklenir, ekrana basilmaz. */}
+                        {profile.birthdayMonthDay && (
                             <div className="flex items-center gap-2">
-                                <Calendar className="h-4 w-4" />
-                                <span>{dayjs(profile.dateOfBirth).format("D MMMM YYYY")}</span>
+                                <Cake className="h-4 w-4" />
+                                <span>{dayjs(`2000-${profile.birthdayMonthDay}`).format("D MMMM")}</span>
                             </div>
                         )}
 

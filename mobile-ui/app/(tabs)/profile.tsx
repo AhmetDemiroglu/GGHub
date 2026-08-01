@@ -228,6 +228,7 @@ export default function OwnProfileScreen() {
               </TouchableOpacity>
             }
             createdAt={profile.createdAt}
+            birthdayMonthDay={profile.birthdayMonthDay}
             level={stats?.currentLevel ?? 1}
             xp={stats?.currentXp ?? 0}
             xpToNextLevel={stats?.nextLevelXp ?? 100}

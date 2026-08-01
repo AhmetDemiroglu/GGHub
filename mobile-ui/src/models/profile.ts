@@ -9,6 +9,8 @@ export interface Profile {
   headerImageUrl: string | null;
   /** JSON'dan string gelir (ISO). PublicProfile ile ayni tip: Date demek yaniltiyordu. */
   dateOfBirth: string | null;
+  /** Yalnizca gun/ay, "MM-dd". Dogum tarihi herkese acik degilse null. */
+  birthdayMonthDay: string | null;
   createdAt: string;
   status: string | null;
   phoneNumber: string | null;
@@ -83,7 +85,10 @@ export interface PublicProfile {
   bio: string | null;
   profileImageUrl: string | null;
   headerImageUrl: string | null;
+  /** Baskasinin profilinde DAIMA null: dogum yili sunucudan hic cikmaz. */
   dateOfBirth: string | null;
+  /** Yalnizca gun/ay, "MM-dd". Dogum tarihi herkese acik degilse null. */
+  birthdayMonthDay: string | null;
   createdAt: string;
   status: string | null;
   phoneNumber: string | null;

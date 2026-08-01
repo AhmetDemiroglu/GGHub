@@ -38,6 +38,8 @@ interface ProfileHeaderProps {
   editableAvatar?: boolean;
   onAvatarUploaded?: (newUrl: string) => void;
   createdAt: string;
+  /** Yalnizca gun/ay, "MM-dd". Sunucu bunu sadece profil herkese acikken doldurur. */
+  birthdayMonthDay?: string | null;
   level?: number;
   xp?: number;
   xpToNextLevel?: number;
@@ -63,6 +65,7 @@ export function ProfileHeader({
   editableAvatar = false,
   onAvatarUploaded,
   createdAt,
+  birthdayMonthDay,
   level = 1,
   xp = 0,
   xpToNextLevel = 100,
@@ -79,6 +82,19 @@ export function ProfileHeader({
 
   const displayName = [firstName, lastName].filter(Boolean).join(' ') || username;
   const joinDate = formatNumericDate(createdAt, locale);
+
+  // Yil BILEREK yok ve zaten sunucudan gelmiyor: birthdayMonthDay yalnizca "MM-dd".
+  // Sabit yil (artik yil, 29 Subat icin) sadece bicimlendirme amacli, ekrana basilmaz.
+  const birthdayLabel = birthdayMonthDay
+    ? (() => {
+        const [month, day] = birthdayMonthDay.split('-').map(Number);
+        if (!month || !day) return null;
+        return new Date(2000, month - 1, day).toLocaleDateString(
+          locale === 'tr' ? 'tr-TR' : 'en-US',
+          { day: 'numeric', month: 'long' },
+        );
+      })()
+    : null;
   const xpPercent = xpToNextLevel > 0 ? Math.min((xp / xpToNextLevel) * 100, 100) : 0;
   const bannerUri = getImageUrl(headerImageUrl);
 
@@ -210,6 +226,13 @@ export function ProfileHeader({
           <Ionicons name="calendar-outline" size={12} color={colors.textMuted} />{' '}
           {h.joinedAt.replace('{date}', joinDate).replace('{appName}', 'GGHub')}
         </Text>
+
+        {birthdayLabel ? (
+          <Text style={[styles.joinDate, { color: colors.textMuted }]}>
+            <Ionicons name="gift-outline" size={12} color={colors.textMuted} />{' '}
+            {birthdayLabel}
+          </Text>
+        ) : null}
 
         <View style={styles.statsRow}>
           <TouchableOpacity onPress={handleFollowingPress} style={styles.statItem}>

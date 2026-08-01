@@ -293,6 +293,7 @@ export default function PublicProfileScreen() {
           avatarUrl={profile.profileImageUrl}
           headerImageUrl={profile.headerImageUrl}
           createdAt={profile.createdAt}
+          birthdayMonthDay={profile.birthdayMonthDay}
           level={stats?.currentLevel ?? 1}
           xp={stats?.currentXp ?? 0}
           xpToNextLevel={stats?.nextLevelXp ?? 100}
