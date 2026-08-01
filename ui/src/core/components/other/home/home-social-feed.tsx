@@ -72,10 +72,13 @@ interface FeedMemory {
     feeds: Record<TabKey, TabState>;
     activeTab: TabKey;
     /**
-     * SEKME BASINA kaydirma konumu. Tek bir sayi tutmak yetmiyordu: Kesfet'te
-     * asagidayken Gonderiler'e gecip geri donunce kullanici en basa dusuyordu.
+     * SEKME BASINA kaydirma konumu.
+     *
+     * Partial: bir sekmenin kaydi YOKSA (hic ziyaret edilmemis) ile konumu 0
+     * OLMASI ayri seyler. Varsayilani 0 saymak, sekme degistirmeyi "sayfanin
+     * en basina firlat" davranisina ceviriyordu.
      */
-    scrollTopByTab: Record<TabKey, number>;
+    scrollTopByTab: Partial<Record<TabKey, number>>;
 }
 
 let feedMemory: FeedMemory | null = null;
@@ -153,7 +156,7 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
     // Her degisimde hafizayi tazele; unmount'ta yazmak yeterli degil, cunku
     // Next.js gezinmesinde cleanup her zaman guvenilir sirada calismiyor.
     useEffect(() => {
-        feedMemory = { feeds, activeTab, scrollTopByTab: feedMemory?.scrollTopByTab ?? { discover: 0, posts: 0, reviews: 0 } };
+        feedMemory = { feeds, activeTab, scrollTopByTab: feedMemory?.scrollTopByTab ?? {} };
     }, [feeds, activeTab]);
 
     // Kaydirma konumu: kabin kendisi <main>, window degil. Kaydedilen konum
@@ -183,19 +186,28 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
         if (!container) return;
 
         restoringRef.current = true;
-        let attempts = 0;
+
+        // Hedefi TEK sefer yazmak yetmiyor, iki ayri sebeple:
+        //
+        //  1. Icerik ilk karede tam yuksekligine ulasmiyor (gorseller, kart
+        //     yukseklikleri), hedef kirpilabiliyor.
+        //  2. Geri navigasyonunda Next.js kendi kaydirma davranisini BIZDEN
+        //     SONRA uyguluyor ve kabi tepeye aliyor; tek yazim yarisi kaybediyor
+        //     ve kullanici en basta buluyordu kendini.
+        //
+        // Bu yuzden kisa bir pencere boyunca hedef tekrar tekrar yaziliyor.
+        // Pencere kisa (yaklasik yarim saniye), dolayisiyla kullanicinin kendi
+        // kaydirmasiyla kavga etmiyor.
+        const deadline = Date.now() + 500;
 
         const tick = () => {
-            attempts += 1;
             container.scrollTop = target;
 
-            const reached = Math.abs(container.scrollTop - target) < 2;
-            if (!reached && attempts < 20) {
+            if (Date.now() < deadline) {
                 requestAnimationFrame(tick);
                 return;
             }
 
-            // Son scroll olayi da yutulsun diye bir kare daha bekle.
             requestAnimationFrame(() => {
                 restoringRef.current = false;
             });
@@ -221,10 +233,49 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
         if (container && feedMemory) feedMemory.scrollTopByTab[tab] = container.scrollTop;
     }, []);
 
-    // Detay sayfasina gidilirken son konumu sakla.
+    /**
+     * Konumu kaydeder, ama YALNIZCA kullanici kaynakli kaydirmalarda.
+     *
+     * Iki tuzak birden var:
+     *
+     * 1. Unmount'ta kaydetmek yetmiyor. Detay sayfasina gidilirken Next.js
+     *    yeni sayfayi cizip kabi tepeye aliyor; temizlik calistiginda scrollTop
+     *    coktan 0 oluyor ve geri donen kullanici en basta buluyordu kendini.
+     *
+     * 2. Duz bir scroll dinleyicisi de yetmiyor. Ayni gecis sirasindaki
+     *    programatik "tepeye al" da bir scroll olayi uretiyor ve 0 degeri
+     *    hafizanin ustune yaziliyordu.
+     *
+     * Cozum: scroll olayi yalnizca yakin zamanda GERCEK bir kullanici hareketi
+     * (tekerlek, dokunus, klavye, kaydirma cubugu) olduysa kaydedilir.
+     * Uygulamanin ya da yonlendiricinin kendi kaydirmalari hafizayi bozamaz.
+     */
     useEffect(() => {
-        return () => saveScroll(activeTabRef.current);
-    }, [saveScroll]);
+        const container = document.querySelector("main");
+        if (!container) return;
+
+        let lastGestureAt = 0;
+        const markGesture = () => {
+            lastGestureAt = Date.now();
+        };
+
+        const GESTURE_WINDOW_MS = 1500;
+        const gestureEvents = ["wheel", "touchmove", "keydown", "pointerdown"];
+        gestureEvents.forEach((type) => container.addEventListener(type, markGesture, { passive: true }));
+
+        const onScroll = () => {
+            if (restoringRef.current) return;
+            if (Date.now() - lastGestureAt > GESTURE_WINDOW_MS) return;
+            if (feedMemory) feedMemory.scrollTopByTab[activeTabRef.current] = container.scrollTop;
+        };
+
+        container.addEventListener("scroll", onScroll, { passive: true });
+
+        return () => {
+            gestureEvents.forEach((type) => container.removeEventListener(type, markGesture));
+            container.removeEventListener("scroll", onScroll);
+        };
+    }, []);
 
     /**
      * Konum geri yuklemesi. HEM ilk mount'ta (detaydan geri donus) HEM de sekme
@@ -239,7 +290,15 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
      * gorup sonra asagi ziplamaz.
      */
     useLayoutEffect(() => {
-        restoreScroll(feedMemory?.scrollTopByTab?.[activeTab] ?? 0);
+        const saved = feedMemory?.scrollTopByTab?.[activeTab];
+
+        // Kayit YOKSA kullanici oldugu yerde kalir. Sekme cubugu yapiskan
+        // oldugu icin baglam kaybolmaz: icerik degisir, konum degismez (X'in
+        // davranisi). Eskiden burada varsayilan 0 kullaniliyordu ve hic
+        // acilmamis bir sekmeye gecmek sayfayi en basa firlatiyordu.
+        if (typeof saved !== "number") return;
+
+        restoreScroll(saved);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeTab]);
 
