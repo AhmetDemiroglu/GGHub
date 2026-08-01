@@ -4,6 +4,6 @@ namespace GGHub.Application.Interfaces
 {
     public interface IStatsService
     {
-        Task<UserStatsDto> GetUserStatsAsync(string username);
+        Task<UserStatsDto> GetUserStatsAsync(string username, int? currentUserId);
     }
 }

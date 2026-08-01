@@ -327,7 +327,7 @@ namespace GGHub.Infrastructure.Services
 
         public async Task<IEnumerable<ReviewDto>> GetReviewsByUserAsync(string username, int? currentUserId = null)
         {
-            var targetUser = await _context.Users.FirstOrDefaultAsync(u => u.UsernameNormalized == UsernameNormalizer.Normalize(username));
+            var targetUser = await ProfileContentAccess.GetViewableUserAsync(_context, username, currentUserId);
             if (targetUser == null) return Enumerable.Empty<ReviewDto>();
 
             var reviews = await _context.Reviews

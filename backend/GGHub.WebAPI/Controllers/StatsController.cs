@@ -1,5 +1,6 @@
 ﻿using GGHub.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace GGHub.WebAPI.Controllers
 {
@@ -17,7 +18,14 @@ namespace GGHub.WebAPI.Controllers
         [HttpGet("user/{username}")]
         public async Task<IActionResult> GetUserStats(string username)
         {
-            var stats = await _statsService.GetUserStatsAsync(username);
+            int? currentUserId = null;
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim != null && int.TryParse(userIdClaim.Value, out var parsedUserId))
+            {
+                currentUserId = parsedUserId;
+            }
+
+            var stats = await _statsService.GetUserStatsAsync(username, currentUserId);
             return Ok(stats);
         }
     }

@@ -47,6 +47,20 @@ export default function ProfileContent({ username }: ProfileContentProps) {
         );
     }
 
+    // Engel iliskisi varken sekmeler HIC basilmaz: ProfileHeader zaten kendi icinde
+    // maskeli karta duser, ama sekmeler ayri uclardan (stats, activity, favorites,
+    // reviews, lists, followers) besleniyordu ve engelleyen kullanicinin butun akisi
+    // gorunuyordu. Sunucu tarafi da ayrica kapatildi; bu, arayuz tarafindaki kapi.
+    const isBlockRelationship = Boolean(profile.isBlockedByMe || profile.isBlockingMe);
+
+    if (isBlockRelationship && !isOwnProfile) {
+        return (
+            <div className="w-full h-full p-5">
+                <ProfileHeader profile={profile} isOwnProfile={isOwnProfile} />
+            </div>
+        );
+    }
+
     return (
         <div className="w-full h-full p-5">
             <div className="space-y-4">

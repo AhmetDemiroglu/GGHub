@@ -22,6 +22,6 @@ namespace GGHub.Application.Interfaces
         Task<IEnumerable<UserListDto>> GetListsByUsernameAsync(string username, int? currentUserId);
         Task<bool> ToggleFavoriteAsync(int userId, int rawgGameId);
         Task<bool> CheckFavoriteStatusAsync(int userId, int rawgGameId);
-        Task<UserListDto?> GetFavoritesListByUsernameAsync(string username);
+        Task<UserListDto?> GetFavoritesListByUsernameAsync(string username, int? currentUserId);
     }
 }

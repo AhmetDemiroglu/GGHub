@@ -352,7 +352,17 @@ namespace GGHub.WebAPI.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetUserFavorites(string username)
         {
-            var list = await _userListService.GetFavoritesListByUsernameAsync(username);
+            int? currentUserId = null;
+            if (User.Identity != null && User.Identity.IsAuthenticated)
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+                if (userIdClaim != null && int.TryParse(userIdClaim.Value, out var parsedId))
+                {
+                    currentUserId = parsedId;
+                }
+            }
+
+            var list = await _userListService.GetFavoritesListByUsernameAsync(username, currentUserId);
             return Ok(list);
         }
     }

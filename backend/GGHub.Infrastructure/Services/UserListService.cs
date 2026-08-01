@@ -226,6 +226,17 @@ namespace GGHub.Infrastructure.Services
             }
             else if (listMeta.UserId != currentUserId.Value)
             {
+                // Engel iki yonlu keser: liste Public olsa bile engelli tarafa acilmaz,
+                // aksi halde profil sekmesi kapaliyken liste linki acik kapi kaliyordu.
+                var isBlocked = await _context.UserBlocks
+                    .AsNoTracking()
+                    .AnyAsync(b =>
+                        (b.BlockerId == currentUserId.Value && b.BlockedId == listMeta.UserId) ||
+                        (b.BlockerId == listMeta.UserId && b.BlockedId == currentUserId.Value));
+
+                if (isBlocked)
+                    throw new UnauthorizedAccessException(AppText.Get("lists.viewPermissionDenied"));
+
                 if (listMeta.Visibility == ListVisibilitySetting.Private)
                     throw new UnauthorizedAccessException(AppText.Get("lists.viewPermissionDenied"));
 
@@ -624,7 +635,7 @@ namespace GGHub.Infrastructure.Services
         }
         public async Task<IEnumerable<UserListDto>> GetListsByUsernameAsync(string username, int? currentUserId)
         {
-            var targetUser = await _context.Users.FirstOrDefaultAsync(u => u.UsernameNormalized == UsernameNormalizer.Normalize(username));
+            var targetUser = await ProfileContentAccess.GetViewableUserAsync(_context, username, currentUserId);
             if (targetUser == null) return Enumerable.Empty<UserListDto>();
 
             var query = _context.UserLists
@@ -746,9 +757,9 @@ namespace GGHub.Infrastructure.Services
                     && ulg.Game.RawgId == rawgGameId);
         }
 
-        public async Task<UserListDto?> GetFavoritesListByUsernameAsync(string username)
+        public async Task<UserListDto?> GetFavoritesListByUsernameAsync(string username, int? currentUserId)
         {
-            var targetUser = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UsernameNormalized == UsernameNormalizer.Normalize(username));
+            var targetUser = await ProfileContentAccess.GetViewableUserAsync(_context, username, currentUserId);
             if (targetUser == null) return null;
 
             var favList = await _context.UserLists

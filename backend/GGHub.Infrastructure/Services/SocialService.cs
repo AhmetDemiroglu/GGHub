@@ -136,7 +136,7 @@ namespace GGHub.Infrastructure.Services
         }
         public async Task<IEnumerable<UserDto>> GetFollowersAsync(string username, int? currentUserId = null)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.UsernameNormalized == UsernameNormalizer.Normalize(username));
+            var user = await ProfileContentAccess.GetViewableUserAsync(_context, username, currentUserId);
             if (user == null) return Enumerable.Empty<UserDto>();
 
             var followers = await _context.Follows
@@ -175,7 +175,7 @@ namespace GGHub.Infrastructure.Services
 
         public async Task<IEnumerable<UserDto>> GetFollowingAsync(string username, int? currentUserId = null)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.UsernameNormalized == UsernameNormalizer.Normalize(username));
+            var user = await ProfileContentAccess.GetViewableUserAsync(_context, username, currentUserId);
             if (user == null) return Enumerable.Empty<UserDto>();
 
             var following = await _context.Follows

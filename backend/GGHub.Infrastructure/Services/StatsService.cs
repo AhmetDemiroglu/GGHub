@@ -17,11 +17,10 @@ namespace GGHub.Infrastructure.Services
             _gamificationService = gamificationService;
         }
 
-        public async Task<UserStatsDto> GetUserStatsAsync(string username)
+        public async Task<UserStatsDto> GetUserStatsAsync(string username, int? currentUserId)
         {
-            var user = await _context.Users
-                .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.UsernameNormalized == UsernameNormalizer.Normalize(username));
+            // Gamer DNA da profil icerigidir: engelli veya gizli profilde bos doner.
+            var user = await ProfileContentAccess.GetViewableUserAsync(_context, username, currentUserId);
 
             if (user == null) return new UserStatsDto();
 

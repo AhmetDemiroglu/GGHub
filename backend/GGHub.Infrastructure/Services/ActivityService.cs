@@ -33,20 +33,16 @@ namespace GGHub.Infrastructure.Services
 
         public async Task<IEnumerable<ActivityDto>> GetUserActivityFeedAsync(string username, int? currentUserId = null, int limit = 20)
         {
-            var user = await _context.Users
-                .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.UsernameNormalized == UsernameNormalizer.Normalize(username));
+            // Gorunurluk + engel kontrolu tek kapidan gecer (ProfileContentAccess).
+            var user = await ProfileContentAccess.GetViewableUserAsync(_context, username, currentUserId);
 
-            if (user == null || user.IsDeleted) return Enumerable.Empty<ActivityDto>();
+            if (user == null) return Enumerable.Empty<ActivityDto>();
 
+            // Kapiyi gectikten SONRA liste gorunurlugu icin gerekli: kapi "profili gorebilir mi"yi,
+            // bu ikisi "hangi listeleri gorebilir"i yanitlar.
             var isOwner = currentUserId == user.Id;
             var isFollowing = currentUserId.HasValue &&
                               await _context.Follows.AnyAsync(f => f.FollowerId == currentUserId.Value && f.FolloweeId == user.Id);
-
-            if (!ProfileAccess.CanView(user.ProfileVisibility, user.Id, currentUserId, isFollowing))
-            {
-                return Enumerable.Empty<ActivityDto>();
-            }
 
             // 1. REVIEWS (Son X adet)
             var reviews = await _context.Reviews
