@@ -1,7 +1,9 @@
 using GGHub.Application.Dtos;
 using GGHub.Application.Dtos.Admin;
 using GGHub.Application.Interfaces;
+using GGHub.Core.Utilities;
 using GGHub.Infrastructure.Localization;
+using GGHub.Infrastructure.Services;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -33,6 +35,86 @@ namespace GGHub.WebAPI.Controllers
         public IActionResult AdminOnlyTest()
         {
             return Ok(AppText.Get("admin.testMessage"));
+        }
+
+        /// <summary>
+        /// GECICI TESHIS UCU. Dogum gunu job'inin gordugu her seyi doner: etkin ayarlar,
+        /// Istanbul saatiyle simdi, job'in KENDI sorgusuyla bulunan adaylar ve o yila ait
+        /// damga satirlari. Sorgu patliyorsa hata mesaji da burada gorunur.
+        ///
+        /// Job'in sorgusunu yeniden yazmak yerine BirthdayGreetingQuery'yi cagiriyor:
+        /// farkli bir sorgu, tam da hata aradigimiz anda yanlis cevap verirdi.
+        /// Sistem dogrulandiktan sonra bu uc kaldirilmali.
+        /// </summary>
+        [HttpGet("birthday-diagnostics")]
+        [ApiExplorerSettings(IgnoreApi = true)]
+        public async Task<IActionResult> BirthdayDiagnostics(
+            [FromServices] IConfiguration configuration,
+            CancellationToken ct)
+        {
+            var nowLocal = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, BirthdayCalendar.Istanbul);
+            var today = DateOnly.FromDateTime(nowLocal.Date);
+
+            object? emailCandidates = null;
+            object? notificationCandidates = null;
+            string? queryError = null;
+
+            try
+            {
+                var email = await BirthdayGreetingQuery.LoadCandidatesAsync(_context, BirthdayChannel.Email, today, 50, ct);
+                var notification = await BirthdayGreetingQuery.LoadCandidatesAsync(_context, BirthdayChannel.Notification, today, 50, ct);
+
+                emailCandidates = email.Select(u => new { u.Id, u.Username, u.Email, u.DateOfBirth }).ToList();
+                notificationCandidates = notification.Select(u => new { u.Id, u.Username }).ToList();
+            }
+            catch (Exception ex)
+            {
+                queryError = $"{ex.GetType().Name}: {ex.Message}";
+            }
+
+            // Aday cikmadiginda hangi kosulun eledigini gormek icin ham kullanici satiri.
+            var me = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var myRow = await _context.Users.AsNoTracking()
+                .Where(u => u.Id == me)
+                .Select(u => new
+                {
+                    u.Id, u.Username, u.Email, u.DateOfBirth, u.IsDeleted, u.IsBanned,
+                    u.IsEmailVerified, u.IsSeeded, u.PreferredLocale
+                })
+                .FirstOrDefaultAsync(ct);
+
+            var greetings = await _context.BirthdayGreetings.AsNoTracking()
+                .Where(g => g.GreetingYear == today.Year)
+                .Select(g => new { g.UserId, g.GreetingYear, g.CelebratedOn, g.EmailSentAt, g.NotificationSentAt })
+                .ToListAsync(ct);
+
+            return Ok(new
+            {
+                config = new
+                {
+                    enabled = configuration.GetValue<bool>("Jobs:BirthdayGreeting:Enabled"),
+                    dryRun = configuration.GetValue<bool>("Jobs:BirthdayGreeting:DryRun"),
+                    emailHourLocal = configuration.GetValue<int?>("Jobs:BirthdayGreeting:EmailHourLocal"),
+                    notificationHourLocal = configuration.GetValue<int?>("Jobs:BirthdayGreeting:NotificationHourLocal"),
+                    tickMinutes = configuration.GetValue<double?>("Jobs:BirthdayGreeting:TickMinutes"),
+                    frontendBaseUrl = configuration["App:FrontendBaseUrl"],
+                    resendFrom = configuration["ResendSettings:FromAddress"]
+                },
+                clock = new
+                {
+                    utcNow = DateTimeOffset.UtcNow,
+                    istanbulNow = nowLocal,
+                    istanbulToday = today.ToString("yyyy-MM-dd"),
+                    istanbulHour = nowLocal.Hour,
+                    timeZoneId = BirthdayCalendar.Istanbul.Id,
+                    leapFallback = BirthdayCalendar.IsLeapDayFallback(today)
+                },
+                queryError,
+                emailCandidates,
+                notificationCandidates,
+                myRow,
+                greetings
+            });
         }
 
         [HttpGet("reports")]

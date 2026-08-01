@@ -31,8 +31,6 @@ namespace GGHub.Infrastructure.Services
     /// </summary>
     public class BirthdayGreetingJob : BackgroundService
     {
-        private enum Channel { Email, Notification }
-
         private readonly IServiceProvider _serviceProvider;
         private readonly IConfiguration _configuration;
         private readonly ILogger<BirthdayGreetingJob> _logger;
@@ -102,10 +100,10 @@ namespace GGHub.Infrastructure.Services
                     // kendiliginden telafi eder. "==" olsaydi o saate denk gelen bir deploy
                     // turu SESSIZCE atlardi ve kullanici o yil hic kutlanmazdi.
                     if (nowLocal.Hour >= _emailHourLocal)
-                        await RunPassAsync(Channel.Email, today, stoppingToken);
+                        await RunPassAsync(BirthdayChannel.Email, today, stoppingToken);
 
                     if (nowLocal.Hour >= _notificationHourLocal)
-                        await RunPassAsync(Channel.Notification, today, stoppingToken);
+                        await RunPassAsync(BirthdayChannel.Notification, today, stoppingToken);
                 }
                 catch (OperationCanceledException)
                 {
@@ -128,12 +126,12 @@ namespace GGHub.Infrastructure.Services
             }
         }
 
-        private async Task RunPassAsync(Channel channel, DateOnly today, CancellationToken ct)
+        private async Task RunPassAsync(BirthdayChannel channel, DateOnly today, CancellationToken ct)
         {
             using var scope = _serviceProvider.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<GGHubDbContext>();
 
-            var candidates = await LoadCandidatesAsync(context, channel, today, ct);
+            var candidates = await BirthdayGreetingQuery.LoadCandidatesAsync(context, channel, today, _maxPerRun, ct);
             if (candidates.Count == 0) return;
 
             _logger.LogInformation(
@@ -169,7 +167,7 @@ namespace GGHub.Infrastructure.Services
 
                 try
                 {
-                    if (channel == Channel.Email)
+                    if (channel == BirthdayChannel.Email)
                         await SendEmailAsync(scope, candidate, locale, ct);
                     else
                         await SendNotificationAsync(scope, candidate, locale);
@@ -187,88 +185,12 @@ namespace GGHub.Infrastructure.Services
                     continue;
                 }
 
-                if (channel == Channel.Email)
+                if (channel == BirthdayChannel.Email)
                 {
                     try { await Task.Delay(SendThrottle, ct); }
                     catch (OperationCanceledException) { return; }
                 }
             }
-        }
-
-        // ---------------------------------------------------------------------
-        // Aday sorgusu
-        // ---------------------------------------------------------------------
-
-        /// <summary>
-        /// EF'in .Month / .Day cevirisi BILEREK kullanilmiyor: EXTRACT bir timestamptz
-        /// uzerinde oturumun TimeZone GUC'una gore degerlendirilir. Railway'de bu ayar
-        /// degisirse her dogum gunu sessizce kayar ve hicbir test patlamaz. "AT TIME ZONE
-        /// 'UTC'" ile saat dilimi SQL icinde sabitlenir.
-        ///
-        /// UTC dogru okuma: web profil formu tarihi offset duzeltmesiyle tam 00:00 UTC'ye
-        /// oturtarak gonderiyor ve DateOfBirth'un baska yazan yolu yok
-        /// (tek yazma noktasi ProfileService.UpdateProfileAsync).
-        /// </summary>
-        private const string CandidateSqlBase = """
-            SELECT u.*
-            FROM "Users" u
-            LEFT JOIN "BirthdayGreetings" g ON g."UserId" = u."Id" AND g."GreetingYear" = @year
-            WHERE u."DateOfBirth" IS NOT NULL
-              AND u."IsDeleted" = FALSE
-              AND u."IsBanned" = FALSE
-              AND u."IsEmailVerified" = TRUE
-              AND u."IsSeeded" = FALSE
-              AND u."Email" IS NOT NULL
-              AND u."Email" <> ''
-            """;
-
-        private const string CandidateSqlDateMatch = """
-              AND (
-                    (EXTRACT(MONTH FROM (u."DateOfBirth" AT TIME ZONE 'UTC')) = @month
-                     AND EXTRACT(DAY FROM (u."DateOfBirth" AT TIME ZONE 'UTC')) = @day)
-                 OR (@leapFallback
-                     AND EXTRACT(MONTH FROM (u."DateOfBirth" AT TIME ZONE 'UTC')) = 2
-                     AND EXTRACT(DAY FROM (u."DateOfBirth" AT TIME ZONE 'UTC')) = 29)
-                  )
-            """;
-
-        // Kolon adlari kanal basina AYRI sabitte; hicbir kolon adi degiskenden gelmiyor
-        // (dinamik SQL yok).
-        private const string EmailPassSql = CandidateSqlBase + """
-
-              -- Sosyal giriste saglayici e-postayi vermezse sentetik adres uretiliyor
-              -- (AuthService: {provider}_{key}@users.gghub.social). Kutu YOK; hard bounce
-              -- Resend alan adi itibarini yakar. Bu kullanicilar bildirimi ve push'u ALIR.
-              AND u."Email" NOT LIKE '%@users.gghub.social'
-            """ + CandidateSqlDateMatch + """
-
-              AND (g."Id" IS NULL OR g."EmailSentAt" IS NULL)
-            ORDER BY u."Id"
-            LIMIT @limit
-            """;
-
-        private const string NotificationPassSql = CandidateSqlBase + CandidateSqlDateMatch + """
-
-              AND (g."Id" IS NULL OR g."NotificationSentAt" IS NULL)
-            ORDER BY u."Id"
-            LIMIT @limit
-            """;
-
-        private async Task<List<User>> LoadCandidatesAsync(
-            GGHubDbContext context, Channel channel, DateOnly today, CancellationToken ct)
-        {
-            var sql = channel == Channel.Email ? EmailPassSql : NotificationPassSql;
-
-            return await context.Users
-                .FromSqlRaw(
-                    sql,
-                    new NpgsqlParameter("year", today.Year),
-                    new NpgsqlParameter("month", today.Month),
-                    new NpgsqlParameter("day", today.Day),
-                    new NpgsqlParameter("leapFallback", BirthdayCalendar.IsLeapDayFallback(today)),
-                    new NpgsqlParameter("limit", _maxPerRun))
-                .AsNoTracking()
-                .ToListAsync(ct);
         }
 
         // ---------------------------------------------------------------------
@@ -303,9 +225,9 @@ namespace GGHub.Infrastructure.Services
 
         /// <summary>0 satir donerse baska bir container zaten almistir, atlanir.</summary>
         private static async Task<bool> TryClaimAsync(
-            GGHubDbContext context, Channel channel, int userId, int year, DateOnly celebratedOn, CancellationToken ct)
+            GGHubDbContext context, BirthdayChannel channel, int userId, int year, DateOnly celebratedOn, CancellationToken ct)
         {
-            var sql = channel == Channel.Email ? ClaimEmailSql : ClaimNotificationSql;
+            var sql = channel == BirthdayChannel.Email ? ClaimEmailSql : ClaimNotificationSql;
 
             var affected = await context.Database.ExecuteSqlRawAsync(
                 sql,
@@ -321,11 +243,11 @@ namespace GGHub.Infrastructure.Services
         }
 
         private async Task ReleaseClaimAsync(
-            GGHubDbContext context, Channel channel, int userId, int year, CancellationToken ct)
+            GGHubDbContext context, BirthdayChannel channel, int userId, int year, CancellationToken ct)
         {
             try
             {
-                var sql = channel == Channel.Email ? ReleaseEmailSql : ReleaseNotificationSql;
+                var sql = channel == BirthdayChannel.Email ? ReleaseEmailSql : ReleaseNotificationSql;
                 await context.Database.ExecuteSqlRawAsync(
                     sql,
                     new[] { new NpgsqlParameter("userId", userId), new NpgsqlParameter("year", year) },
