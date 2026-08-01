@@ -47,6 +47,28 @@ export default function ProfilePage() {
         [t]
     );
 
+    // Gonderi gorunurlugu profil gorunurlugu ile AYNI uc secenek ama ayri bir
+    // enum (PostVisibilitySetting); etiketleri paylasmak iki ayari birbirine
+    // baglar, biri degisirse digeri sessizce yanlis metin gosterir.
+    const postVisibilityMap = useMemo<Record<number, string>>(
+        () => ({
+            0: t("profilePage.everyone"),
+            1: t("profilePage.followersOnly"),
+            2: t("profilePage.onlyMe"),
+        }),
+        [t]
+    );
+
+    const postReplyMap = useMemo<Record<number, string>>(
+        () => ({
+            0: t("profilePage.everyone"),
+            1: t("profilePage.myFollowers"),
+            2: t("profilePage.followingOnly"),
+            3: t("profilePage.nobody"),
+        }),
+        [t]
+    );
+
     if (isLoading) {
         return (
             <AuthGuard>
@@ -153,6 +175,12 @@ export default function ProfilePage() {
             </p>
             <p className="mt-2">
                 <strong>{t("profilePage.messageSetting")}:</strong> {messageSettingMap[data.messageSetting] ?? t("profilePage.unknown")}
+            </p>
+            <p className="mt-2">
+                <strong>{t("profilePage.postVisibility")}:</strong> {postVisibilityMap[data.postVisibility] ?? t("profilePage.unknown")}
+            </p>
+            <p className="mt-2">
+                <strong>{t("profilePage.postReplyPermission")}:</strong> {postReplyMap[data.postReplyPermission] ?? t("profilePage.unknown")}
             </p>
             <div className="flex justify-end-safe text-sm italic">
                 <p className="mb-0">
