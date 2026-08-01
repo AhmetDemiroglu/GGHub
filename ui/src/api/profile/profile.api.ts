@@ -1,5 +1,6 @@
 import { axiosInstance } from "@core/lib/axios";
 import {
+    Birthday,
     Profile,
     ProfileForUpdate,
     UpdateMessageSettingDto,
@@ -18,6 +19,15 @@ export const updateMyProfile = async (data: ProfileForUpdate): Promise<Profile> 
     const response = await axiosInstance.put<Profile>("/profile/me", data);
     return response.data;
 };
+/**
+ * Kutlama sayfasinin verisi. Kullanici kimligi GONDERILMEZ, sunucu token'dan cozer.
+ * Dogum tarihi kayitli degilse 404 doner (sayfa bos duruma duser).
+ */
+export const getMyBirthday = async (): Promise<Birthday> => {
+    const response = await axiosInstance.get<Birthday>("/profile/me/birthday");
+    return response.data;
+};
+
 export const updateProfileVisibility = async (data: UpdateProfileVisibilityDto) => {
     return axiosInstance.put("/profile/me/visibility", data);
 };

@@ -47,6 +47,7 @@ namespace GGHub.Infrastructure.Persistence
         public DbSet<PostPollOption> PostPollOptions { get; set; }
         public DbSet<PostPollVote> PostPollVotes { get; set; }
         public DbSet<PostMention> PostMentions { get; set; }
+        public DbSet<BirthdayGreeting> BirthdayGreetings { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -266,6 +267,23 @@ namespace GGHub.Infrastructure.Persistence
 
                 // Cagri basina maliyet ~0.0009 USD; iki ondalik basamak bunu sifira yuvarlardi.
                 entity.Property(u => u.SpentUsd).HasPrecision(18, 8);
+            });
+
+            // BirthdayGreeting: kullanici basina yil basina TEK satir.
+            modelBuilder.Entity<BirthdayGreeting>(entity =>
+            {
+                // Bu index yalnizca bir dogrulama degil, ESZAMANLILIK KILIDI: Railway rolling
+                // deploy sirasinda eski ve yeni container bir sure birlikte kosar ve ikisi de
+                // ayni kullaniciyi kutlamaya calisir. ON CONFLICT ile birlestiginde mukerrer
+                // dogum gunu maili yapisal olarak imkansiz hale gelir.
+                entity.HasIndex(g => new { g.UserId, g.GreetingYear })
+                    .IsUnique()
+                    .HasDatabaseName("IX_BirthdayGreetings_UserId_GreetingYear");
+
+                entity.HasOne(g => g.User)
+                    .WithMany()
+                    .HasForeignKey(g => g.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             // PushToken: one row per device token, cascade-delete with the user

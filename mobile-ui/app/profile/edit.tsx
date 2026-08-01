@@ -83,6 +83,12 @@ export default function ProfileEditScreen() {
       firstName: firstName || null,
       lastName: lastName || null,
       bio: bio || null,
+      status: status || null,
+      // Bu ekran duzenlemiyor ama GONDERMEK ZORUNDA: sunucu alanlari kosulsuz atiyor,
+      // eksik gonderilen alan null'a dusup KALICI olarak siliniyordu (dogum gunu
+      // kutlamasi da dahil, dogum tarihine bagli her sey bu yuzden bosaliyordu).
+      phoneNumber: profile?.phoneNumber ?? null,
+      dateOfBirth: profile?.dateOfBirth ?? null,
       isEmailPublic: showEmail,
       isPhoneNumberPublic: showPhone,
       isDateOfBirthPublic: showDob,

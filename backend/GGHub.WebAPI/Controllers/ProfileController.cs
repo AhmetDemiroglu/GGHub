@@ -60,6 +60,27 @@ namespace GGHub.WebAPI.Controllers
             var notifications = await _notificationService.GetUserNotificationsAsync(userId);
             return Ok(notifications);
         }
+        /// <summary>
+        /// Kutlama sayfasinin verisi.
+        ///
+        /// URL'de VE govdede kullanici kimligi YOKTUR; kaynak yalnizca token'daki id.
+        /// Boylece baskasinin verisine erisim yapisal olarak imkansiz: "sahiplik kontrolunu
+        /// unutmak" diye bir risk kalmaz, cunku kontrol edilecek bir parametre yoktur.
+        /// Dogum tarihi kayitli degilse 404.
+        /// </summary>
+        [HttpGet("me/birthday")]
+        // Yanit kullanicinin gercek adini tasiyor. Bugun API onunde bir onbellek katmani
+        // yok ama ileride bir CDN/proxy girerse bir kullanicinin adi baskasina servis
+        // edilmesin diye acikca kapatiliyor.
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public async Task<IActionResult> GetMyBirthday()
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var birthday = await _profileService.GetBirthdayAsync(userId);
+
+            return birthday == null ? NotFound() : Ok(birthday);
+        }
+
         [HttpPut("me/message-setting")]
         public async Task<IActionResult> UpdateMyMessageSetting(UpdateMessageSettingDto settingDto)
         {

@@ -245,6 +245,143 @@
     transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* ------------------------------------------------------------------------- */
+/* Dogum gunu kutlama sayfasi                                                 */
+/*                                                                            */
+/* JS animasyon dongusu ve EK BAGIMLILIK yok (framer-motion / canvas-confetti  */
+/* kurulu degil, tek sayfa icin eklemek repoda ilk olurdu). Hareketin tamami   */
+/* compositor'da: yalnizca transform ve opacity.                              */
+/* ------------------------------------------------------------------------- */
+
+@keyframes confetti-fall {
+    0% {
+        transform: translate3d(0, -12vh, 0) rotate(0deg);
+        opacity: 0;
+    }
+    8% {
+        opacity: 1;
+    }
+    100% {
+        transform: translate3d(var(--confetti-drift, 0px), 112vh, 0) rotate(var(--confetti-spin, 720deg));
+        opacity: 1;
+    }
+}
+
+.confetti-piece {
+    position: absolute;
+    top: 0;
+    border-radius: 2px;
+    will-change: transform;
+    animation-name: confetti-fall;
+    animation-timing-function: linear;
+    /* Sonsuz DEGIL: sekmeyi acik birakan kullanicinin pilini yemesin. */
+    animation-iteration-count: 3;
+    animation-fill-mode: forwards;
+}
+
+@keyframes birthday-rise {
+    from {
+        transform: translateY(24px) scale(0.92);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+/* ease-bouncy ile AYNI egri: sayfa genelinde tek bir yaylanma hissi. */
+.birthday-rise {
+    animation: birthday-rise 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Alev titremesi: hafif egilme + boy oynamasi, mumlar arasi faz farki inline delay ile. */
+@keyframes birthday-flame {
+    0%,
+    100% {
+        transform: scale(1, 1) skewX(0deg);
+        opacity: 0.94;
+    }
+    25% {
+        transform: scale(0.94, 1.1) skewX(3deg);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.08, 1.14) skewX(0deg);
+        opacity: 1;
+    }
+    75% {
+        transform: scale(0.96, 1.04) skewX(-3deg);
+        opacity: 0.97;
+    }
+}
+
+/* transform-box ZORUNLU: yoksa SVG transform'u kullanici uzayinin (0,0) noktasina
+   gore calisir ve alev pastadan uzaga firlar. Bu isin klasik tuzagi. */
+.birthday-flame {
+    transform-box: fill-box;
+    transform-origin: center bottom;
+    animation: birthday-flame 1.3s ease-in-out infinite;
+}
+
+/* Mumun cevresindeki isik halesi, alevle ayni ritimde nefes alir. */
+@keyframes birthday-glow {
+    0%,
+    100% {
+        opacity: 0.55;
+        transform: scale(0.94);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.12);
+    }
+}
+
+.birthday-glow {
+    transform-box: fill-box;
+    transform-origin: center center;
+    animation: birthday-glow 1.3s ease-in-out infinite;
+}
+
+@keyframes birthday-sparkle {
+    0% {
+        opacity: 0;
+        transform: scale(0.4) rotate(0deg);
+    }
+    35% {
+        opacity: 1;
+        transform: scale(1) rotate(35deg);
+    }
+    65% {
+        opacity: 1;
+        transform: scale(1.05) rotate(65deg);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1.35) rotate(90deg);
+    }
+}
+
+.birthday-sparkle {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: birthday-sparkle 1.6s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .confetti-piece {
+        animation: none;
+        opacity: 0;
+    }
+
+    .birthday-rise,
+    .birthday-flame,
+    .birthday-glow,
+    .birthday-sparkle {
+        animation: none;
+    }
+}
+
 /* Sidebar text animation - CSS-only sequencing */
 /* Expanding: text fades in AFTER width starts expanding */
 [data-collapsed="false"] .sidebar-label {

@@ -108,6 +108,9 @@ function RootLayoutNav() {
         <Stack.Screen name="posts/new" />
         <Stack.Screen name="posts/[postId]" />
         <Stack.Screen name="notifications" />
+        {/* Bildirim/push linki "/birthday" ile buraya coz: toMobileRoute onu
+            oldugu gibi gecirir, web'de ayni yol locale onekiyle acilir. */}
+        <Stack.Screen name="birthday" />
         <Stack.Screen name="lists/[listId]" />
         <Stack.Screen name="my-lists" />
         <Stack.Screen name="wishlist" />

@@ -34,6 +34,11 @@ public static class AppText
         ["auth.emailVerificationSubject"] = "GGHub Hesap Doğrulama",
         ["auth.passwordResetSubject"] = "GGHub - Şifre Sıfırlama Kodu",
         ["auth.passwordChangedSubject"] = "GGHub - Şifre Değişikliği Bildirimi",
+        // Dogum gunu kutlamasi. Bildirim metni BILEREK {username} tasimaz: aktoru yok,
+        // metni alicinin kendi adiyla baslatmak istemcileri var olmayan bir aktore
+        // link atmaya zorlardi. Kisisellestirme kutlama sayfasinda.
+        ["birthday.emailSubject"] = "GGHub - Doğum Günün Kutlu Olsun 🎉",
+        ["birthday.notification"] = "İyi ki doğdun! Kutlamanı görmek için dokun. 🎂",
         ["lists.notFoundOrUnauthorized"] = "Liste bulunamadı veya bu listeyi görme yetkiniz yok.",
         ["lists.notFound"] = "Liste bulunamadı.",
         ["lists.updateFailed"] = "Liste güncellenemedi.",
@@ -199,6 +204,8 @@ public static class AppText
         ["auth.emailVerificationSubject"] = "GGHub Account Verification",
         ["auth.passwordResetSubject"] = "GGHub - Password Reset Code",
         ["auth.passwordChangedSubject"] = "GGHub - Password Change Notification",
+        ["birthday.emailSubject"] = "GGHub - Happy Birthday 🎉",
+        ["birthday.notification"] = "Happy birthday! Tap to see your celebration. 🎂",
         ["lists.notFoundOrUnauthorized"] = "The list was not found or you do not have permission to view it.",
         ["lists.notFound"] = "List not found.",
         ["lists.updateFailed"] = "The list could not be updated.",

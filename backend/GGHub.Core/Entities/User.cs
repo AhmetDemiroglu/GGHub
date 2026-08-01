@@ -72,5 +72,15 @@ namespace GGHub.Core.Entities
         /// </summary>
         public bool IsSeeded { get; set; } = false;
 
+        /// <summary>
+        /// Kullanicinin son bilinen arayuz dili ("tr" | "en-US"), giris/kayit anindaki
+        /// Accept-Language'dan yazilir.
+        ///
+        /// NEDEN gerekli: arka plan job'larinda istek kulturu YOKTUR, dolayisiyla
+        /// AppText.CurrentLocale() container varsayilanina duser. Mobil cihazlar icin
+        /// PushToken.Locale bu bilgiyi tasiyor ama YALNIZCA web'den giren kullanicilarda
+        /// baska hicbir sinyal yok. Cozum sirasi: PushToken.Locale -> PreferredLocale -> "tr".
+        /// </summary>
+        public string? PreferredLocale { get; set; }
     }
 }

@@ -30,4 +30,6 @@ export enum NotificationType {
     PostLike = 12,
     PostReply = 13,
     PostRepost = 14,
+    // 15 : doğum günü. Aktörü YOKTUR (bildirimi sistem üretir), mesaj düz metin olarak basılır.
+    Birthday = 15,
 }

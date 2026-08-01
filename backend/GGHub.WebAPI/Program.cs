@@ -130,6 +130,12 @@ builder.Services.AddHostedService<BackgroundEmailService>();
 // gelistirici makinesinde acilir. Gunde bir kez partili DELETE, CPU acisindan
 // crawler job'lariyla kiyaslanamaz.
 builder.Services.AddHostedService<DownloadEventRetentionJob>();
+// Ucuncu mesru istisna: dogum gunu kutlamasi KULLANICIYA mail ve bildirim gonderir,
+// tipki BackgroundEmailService gibi prod'da calismak ZORUNDA. Worker yalnizca
+// gelistirici makinesinde acilir, orada dursa hicbir kullanici kutlama almazdi.
+// Maliyet gunde birkac kez tek bir dar seq scan; Enabled bayragi job'in icinde
+// kontrol ediliyor ve varsayilani false.
+builder.Services.AddHostedService<BirthdayGreetingJob>();
 builder.Services.Configure<GeminiSettings>(builder.Configuration.GetSection("Gemini"));
 builder.Services.AddScoped<IGeminiBudgetService, GeminiBudgetService>();
 builder.Services.AddHttpClient<IGeminiService, GeminiService>(client =>

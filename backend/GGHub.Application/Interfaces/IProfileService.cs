@@ -12,6 +12,13 @@ namespace GGHub.Application.Interfaces
         Task UpdatePostVisibilityAsync(int userId, PostVisibilitySetting newVisibility);
         Task UpdatePostReplyPermissionAsync(int userId, PostReplyPermissionSetting newPermission);
         Task<ProfileDto?> GetProfileByUsernameAsync(string username, int? currentUserId = null);
+
+        /// <summary>
+        /// Kutlama sayfasinin verisi. Dogum tarihi kayitli degilse, kullanici silinmis veya
+        /// banlanmissa NULL doner (controller 404'e cevirir): "dogum tarihi yoksa URL hic
+        /// calismasin" kurali UI'da degil VERI KATMANINDA uygulanir.
+        /// </summary>
+        Task<BirthdayDto?> GetBirthdayAsync(int userId);
         Task AnonymizeUserAsync(int userId);
         Task<UserDataExportDto> GetUserDataForExportAsync(int userId);
     }

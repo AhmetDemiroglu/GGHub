@@ -652,6 +652,16 @@ namespace GGHub.Infrastructure.Services
 
         private async Task<LoginResponseDto> IssueTokensAsync(User user)
         {
+            // Kullanicinin son bilinen dilini burada tazeliyoruz: parola, Google ve Apple
+            // girislerinin HEPSI bu metottan geciyor, yani tek yazma noktasi.
+            // Arka plan job'larinda (dogum gunu maili gibi) istek kulturu yoktur ve web'den
+            // giren bir kullanici icin baska hicbir dil sinyali bulunmaz.
+            var currentLocale = AppText.CurrentLocale();
+            if (!string.IsNullOrEmpty(currentLocale) && user.PreferredLocale != currentLocale)
+            {
+                user.PreferredLocale = currentLocale;
+            }
+
             var accessToken = CreateToken(user);
             var refreshToken = new RefreshToken
             {

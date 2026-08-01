@@ -25,6 +25,11 @@
         // tip kaba bir kategori (ikon/renk), asil metni MessageKey tasiyor.
         PostLike,
         PostReply,
-        PostRepost
+        PostRepost,
+        // 15 : dogum gunu kutlamasi. Yine SONA eklendi.
+        // AKTORU YOKTUR (ActorUserId null): bildirimi bir kullanici degil sistem uretir,
+        // bu yuzden metin anahtari da {username} tasimaz. Iki istemci de aktorsuz satiri
+        // zaten duz metne duserek karsiliyor.
+        Birthday
     }
 }

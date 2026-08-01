@@ -22,14 +22,35 @@ export interface Profile {
     isDateOfBirthPublic: boolean;
 }
 
+/**
+ * PUT /profile/me govdesinin TAMAMI. Sunucu (ProfileService.UpdateProfileAsync) alanlari
+ * KOSULSUZ atar, yani gonderilmeyen alan null'a duser ve VERI SILINIR. Bu yuzden alanlarin
+ * hicbiri opsiyonel degil: bir alani unutmak derleme hatasi vermeli, sessiz veri kaybi degil.
+ */
 export interface ProfileForUpdate {
     firstName: string | null;
     lastName: string | null;
     bio: string | null;
+    status: string | null;
+    phoneNumber: string | null;
+    dateOfBirth: Date | string | null;
     isEmailPublic: boolean;
     isPhoneNumberPublic: boolean;
     isDateOfBirthPublic: boolean;
     profileImageUrl: string | null;
+}
+
+/**
+ * Kutlama sayfasinin verisi. GET /profile/me/birthday, YALNIZCA token sahibinin kendisi.
+ * Endpoint kullanici kimligi ALMAZ, dolayisiyla baskasinin sayfasi cagrilamaz.
+ */
+export interface Birthday {
+    displayName: string;
+    username: string;
+    profileImageUrl: string | null;
+    /** "yyyy-MM-dd". En son gerceklesen dogum gunu, sunucuda Istanbul saatiyle hesaplanir. */
+    celebrationDate: string;
+    isToday: boolean;
 }
 
 export enum ProfileVisibilitySetting {

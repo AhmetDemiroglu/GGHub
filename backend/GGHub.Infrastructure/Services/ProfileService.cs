@@ -2,6 +2,7 @@
 using GGHub.Application.Interfaces;
 using GGHub.Core.Enums;
 using GGHub.Core.Specifications;
+using GGHub.Core.Utilities;
 using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -91,6 +92,49 @@ namespace GGHub.Infrastructure.Services
             await _auditService.LogAsync(userId, "UpdateProfile", "User", userId, profileDto);
 
             return await GetProfileAsync(userId);
+        }
+
+        /// <summary>
+        /// Kutlama sayfasinin verisi. Kaynak YALNIZCA token'daki kullanici kimligi.
+        ///
+        /// Ban kontrolu bilerek burada: banlanan bir kullanicinin JWT'si suresi dolana kadar
+        /// gecerli kalir, o arada parti sayfasi degil 404 gormeli.
+        /// </summary>
+        public async Task<BirthdayDto?> GetBirthdayAsync(int userId)
+        {
+            var user = await _context.Users
+                .AsNoTracking()
+                .Where(u => u.Id == userId && !u.IsDeleted && !u.IsBanned && u.DateOfBirth != null)
+                .Select(u => new
+                {
+                    u.Username,
+                    u.FirstName,
+                    u.LastName,
+                    u.ProfileImageUrl,
+                    u.DateOfBirth
+                })
+                .FirstOrDefaultAsync();
+
+            if (user is null) return null;
+
+            // Yil hesabi SUNUCUDA: istemci saati ve saat dilimi tam da onemli oldugu anda
+            // yanlis olur (Los Angeles'ta 17 Temmuz 15:00, Istanbul'da coktan 18 Temmuz) ve
+            // job "bugun senin dogum gunun" kararini zaten Istanbul saatiyle veriyor.
+            // Ayni yardimciyi kullanmak, kullanicinin bildirime dokundugu anda mail ile
+            // sayfanin AYNI tarihi soylemesini garanti eder.
+            var today = BirthdayCalendar.TodayInIstanbul();
+            var celebrationDate = BirthdayCalendar.MostRecentOccurrence(user.DateOfBirth!.Value, today);
+
+            var fullName = $"{user.FirstName} {user.LastName}".Trim();
+
+            return new BirthdayDto
+            {
+                DisplayName = string.IsNullOrWhiteSpace(fullName) ? user.Username : fullName,
+                Username = user.Username,
+                ProfileImageUrl = user.ProfileImageUrl,
+                CelebrationDate = celebrationDate,
+                IsToday = celebrationDate == today
+            };
         }
 
         public async Task UpdateMessageSettingAsync(int userId, MessagePrivacySetting newSetting)

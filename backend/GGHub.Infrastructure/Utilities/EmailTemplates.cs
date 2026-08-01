@@ -188,5 +188,71 @@
 
             return GetBaseTemplate(content);
         }
+
+        /// <summary>
+        /// Dogum gunu kutlamasi. Header ve footer diger maillerle BIREBIR ayni kalir
+        /// (GetBaseTemplate hic degismedi); yalnizca icerik blogu degisir ve alicinin
+        /// diline gore uretilir.
+        /// </summary>
+        /// <param name="displayName">Ad + soyad, yoksa kullanici adi.</param>
+        /// <param name="celebrationUrl">Kutlama sayfasinin tam adresi.</param>
+        /// <param name="locale">"tr" veya "en-US" (AppText.NormalizeLocale ciktisi).</param>
+        public static string GetBirthdayTemplate(string displayName, string celebrationUrl, string locale)
+        {
+            // Ad KULLANICI GIRDISIDIR (FirstName/LastName serbest metin). Ham enjekte
+            // edilirse e-posta govdesine HTML sizar.
+            var safeName = System.Net.WebUtility.HtmlEncode(displayName);
+            var en = locale is not null && locale.StartsWith("en", StringComparison.OrdinalIgnoreCase);
+
+            var heading = en ? $"Happy birthday, {safeName}! 🎉" : $"İyi ki doğdun, {safeName}! 🎉";
+            var intro = en
+                ? "Today is your day. Everyone at GGHub is wishing you a great one."
+                : "Bugün senin günün. GGHub ekibi olarak yeni yaşını kutluyoruz.";
+            var cta = en ? "Open Your Celebration" : "Kutlamanı Aç";
+            var wish = en
+                ? "🎂 Here is to a new year full of great games and hard-won victories."
+                : "🎂 Yeni yaşında bol oyun, bol zafer.";
+            var fallbackNote = en
+                ? "If the button does not work, you can copy and paste the link below into your browser:"
+                : "Butona tıklayamıyorsan, aşağıdaki bağlantıyı tarayıcına kopyala-yapıştır yapabilirsin:";
+
+            var content = $@"
+                <h2 style='margin: 0 0 20px 0; color: #111827; font-size: 24px; font-weight: 600;'>
+                    {heading}
+                </h2>
+                <p style='margin: 0 0 20px 0; color: #4b5563; font-size: 16px; line-height: 1.6;'>
+                    {intro}
+                </p>
+                <div style='text-align: center; margin: 30px 0;'>
+                  <a href='{celebrationUrl}'
+                     style='
+                       display:inline-block;
+                       padding:14px 32px;
+                       background: linear-gradient(135deg, #061423 0%, #0B0F1B 45%, #1A1440 100%);
+                       color:#ffffff;
+                       text-decoration:none;
+                       border-radius:10px;
+                       font-weight:700;
+                       font-size:16px;
+                       border:1px solid rgba(255,255,255,0.08);
+                       box-shadow:0 2px 10px rgba(0,0,0,0.25);
+                     '>
+                    {cta}
+                  </a>
+                </div>
+                <div style='margin: 30px 0; padding: 16px; background-color: #f5f3ff; border-left: 4px solid {BrandEnd}; border-radius: 4px;'>
+                    <p style='margin: 0; color: #4c1d95; font-size: 14px;'>
+                        {wish}
+                    </p>
+                </div>
+                <p style='margin: 20px 0 0 0; color: #6b7280; font-size: 14px; line-height: 1.6;'>
+                    {fallbackNote}
+                </p>
+                <p style='margin: 10px 0 0 0; color: #9ca3af; font-size: 12px; word-break: break-all;'>
+                    {celebrationUrl}
+                </p>";
+
+            return GetBaseTemplate(content);
+        }
     }
 }

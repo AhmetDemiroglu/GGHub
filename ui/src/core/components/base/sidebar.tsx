@@ -12,6 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
     AtSign,
     Bell,
+    Cake,
     Crown,
     FileText,
     Gamepad2,
@@ -102,6 +103,8 @@ const notificationIconMeta = (type: NotificationType): { Icon: IconComponent; co
             return { Icon: MessageSquare, color: "text-sky-500" };
         case NotificationType.PostRepost:
             return { Icon: Repeat2, color: "text-emerald-500" };
+        case NotificationType.Birthday:
+            return { Icon: Cake, color: "text-fuchsia-500" };
         default:
             return { Icon: Bell, color: "text-muted-foreground" };
     }
