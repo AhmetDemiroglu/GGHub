@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -31,24 +31,46 @@ interface PostImageLightboxProps {
 const DISMISS_DISTANCE = 110;
 /** Mesafe yetmese bile bu hizin ustunde firlatma kapatir. */
 const DISMISS_VELOCITY = 0.75;
-/** Parmak bu kadar az oynadiysa surukleme degil DOKUNUS sayilir.
- *  Dar tutulursa ozensiz dokunuslar (parmak 10px kayar) hicbir sey yapmaz. */
+/**
+ * Parmak bu kadar az oynadiysa surukleme degil DOKUNUS sayilir.
+ * Dar tutulursa ozensiz dokunuslar (parmak 10px kayar) hicbir sey yapmaz.
+ */
 const TAP_SLOP = 14;
+const ENTER_MS = 140;
+const EXIT_MS = 140;
+const FLING_MS = 180;
 
 /**
  * Tam ekran gorsel onizleme.
  *
  * BottomSheet DEGIL duz Modal: bu bir sayfa degil, ekrani kaplayan bir katman.
  *
- * TUM ekran tek bir PanResponder'a bagli. Eskiden kapatma isi ust uste binmis
- * uc ayri Pressable'a dagilmisti (zemin + gorsel + X) ve ILK DOKUNUS BOSA
- * GIDIYORDU: lightbox'i acan dokunusun ardindan akistaki ScrollView/Pressable
- * hala RN'in genel "responder"i oluyor, modal icindeki ilk dokunus onu
- * sonlandirmakla harcaniyor, ancak ikinci dokunus onPress'e ulasiyordu.
- * Tek bir kok responder bu pazarligi ilk dokunusta bitiriyor.
+ * ---------------------------------------------------------------------------
+ * ANIMASYON DEGERLERI HER ACILISTA **RENDER SIRASINDA** SIFIRLANIR.
  *
- * Ayni responder dikey surukleme ile kapatmayi da veriyor: gorsel parmagi
- * takip eder, zemin saydamlasir, esigi gecince firlatilip kapanir.
+ * Bunun sebebi cok somut bir hata: translateY/enter degerleri useRef'te
+ * yasiyor ve bilesen (index null iken null donse de) MOUNT KALIYOR. Suruklerek
+ * kapatinca translateY +-height'ta kaliyordu. Bir sonraki acilista Modal ILK
+ * KAREDE gorsel ekran disinda, zemin opakligi 0 olarak monte oluyordu:
+ *
+ *   - kullanici "dokundum ama acilmadi" goruyordu (aslinda ACIKTI, gorunmezdi),
+ *   - ekrani kaplayan gorunmez katman sonraki dokunuslari yutuyordu,
+ *   - akisi kaydirmaya calisinca bu katmanin PanResponder'i jesti aliyor,
+ *     gorsel ekranin disindan iceri girip cikiyordu: "kaydirirken acik olmayan
+ *     gorselin kapandigini goruyorsun".
+ *
+ * Sifirlamayi useEffect'e birakmak yetmiyor: effect ilk karenin ARDINDAN
+ * calisir, yani bozuk kare zaten cizilmis olur. Bu yuzden React'in "render
+ * sirasinda state duzeltme" deseni kullaniliyor.
+ * ---------------------------------------------------------------------------
+ *
+ * animationType="none": acilis/kapanis fade'i BIZDE. Modal'in kendi asenkron
+ * sunum animasyonu kendi animasyonumuzla ust uste binince kapanistan sonra
+ * birkac dokunus daha yutuluyordu.
+ *
+ * Tum ekran tek bir PanResponder'a bagli; ust uste binmis Pressable'lar yerine
+ * tek responder oldugu icin ilk dokunus pazarliga harcanmiyor. Ayni responder
+ * dikey surukleme ile kapatmayi da veriyor.
  *
  * Surukleme RNGH/Reanimated DEGIL PanResponder + RN Animated (native driver)
  * ile: Modal icinde Reanimated jest kombinasyonu iOS'ta native crash veriyordu
@@ -58,32 +80,74 @@ export function PostImageLightbox({ images, index, onClose }: PostImageLightboxP
   const { messages } = useLocale();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
+
   const [current, setCurrent] = useState(index ?? 0);
 
+  /** Surukleme ofseti. */
   const translateY = useRef(new Animated.Value(0)).current;
-  // Kapanis animasyonu suresince onClose'un iki kez cagrilmasini engeller.
+  /** Acilis/kapanis: 0 = yok, 1 = tam gorunur. */
+  const enter = useRef(new Animated.Value(0)).current;
+  /** Kapanis animasyonu suresince yeni jest kabul edilmez, onClose bir kez calisir. */
   const closing = useRef(false);
+  const prevIndex = useRef<number | null>(null);
 
-  useEffect(() => {
-    if (index !== null) {
-      setCurrent(index);
-      closing.current = false;
+  // ---- Render sirasinda senkron sifirlama (yukaridaki nota bak) ----
+  if (index !== prevIndex.current) {
+    const opening = prevIndex.current === null && index !== null;
+    prevIndex.current = index;
+    if (opening) {
       translateY.setValue(0);
+      enter.setValue(0);
+      closing.current = false;
     }
-  }, [index, translateY]);
+    if (index !== null) setCurrent(index);
+  }
 
-  const finishClose = useMemo(
-    () => (direction: number) => {
+  // Acilista zemin ve gorsel yumusak girer.
+  useEffect(() => {
+    if (index === null) return;
+    const anim = Animated.timing(enter, {
+      toValue: 1,
+      duration: ENTER_MS,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    });
+    anim.start();
+    return () => anim.stop();
+  }, [index, enter]);
+
+  // Emniyet kemeri: kapali duruma dusen HER senaryoda degerler temiz kalsin ki
+  // bir sonraki acilis asla gorunmez bir katman uretmesin.
+  useEffect(() => {
+    if (index !== null) return;
+    translateY.setValue(0);
+    enter.setValue(0);
+    closing.current = false;
+  }, [index, enter, translateY]);
+
+  /** direction verilirse gorsel o yone firlatilir, verilmezse yerinde solar. */
+  const close = useCallback(
+    (direction?: 1 | -1) => {
       if (closing.current) return;
       closing.current = true;
-      Animated.timing(translateY, {
-        toValue: direction * height,
-        duration: 180,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }).start(() => onClose());
+
+      const anim = direction
+        ? Animated.timing(translateY, {
+            toValue: direction * height,
+            duration: FLING_MS,
+            easing: Easing.in(Easing.cubic),
+            useNativeDriver: true,
+          })
+        : Animated.timing(enter, {
+            toValue: 0,
+            duration: EXIT_MS,
+            easing: Easing.in(Easing.quad),
+            useNativeDriver: true,
+          });
+
+      anim.start(() => onClose());
     },
-    [height, onClose, translateY],
+    [enter, height, onClose, translateY],
   );
 
   const panResponder = useMemo(
@@ -91,9 +155,9 @@ export function PostImageLightbox({ images, index, onClose }: PostImageLightboxP
       PanResponder.create({
         // Kok seviyesinde BUBBLE (capture degil): X ve ok butonlari daha derinde
         // oldugu icin kendi dokunuslarini once kaparlar, geri kalan her yer
-        // buraya duser.
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 4,
+        // buraya duser. Kapanirken hicbir jest kabul edilmez.
+        onStartShouldSetPanResponder: () => !closing.current,
+        onMoveShouldSetPanResponder: (_, gesture) => !closing.current && Math.abs(gesture.dy) > 4,
         // Altimizda kaydirilabilir bir sey yok; jesti kimseye birakma.
         onPanResponderTerminationRequest: () => false,
         onPanResponderMove: (_, gesture) => {
@@ -106,13 +170,13 @@ export function PostImageLightbox({ images, index, onClose }: PostImageLightboxP
           const movedFar = Math.abs(gesture.dy) > DISMISS_DISTANCE;
           const flung = Math.abs(gesture.vy) > DISMISS_VELOCITY && Math.abs(gesture.dy) > 20;
           if (movedFar || flung) {
-            finishClose(gesture.dy >= 0 ? 1 : -1);
+            close(gesture.dy >= 0 ? 1 : -1);
             return;
           }
 
           // Parmak neredeyse hic oynamadiysa bu bir dokunus: X'teki gibi kapat.
           if (Math.hypot(gesture.dx, gesture.dy) < TAP_SLOP) {
-            onClose();
+            close();
             return;
           }
 
@@ -133,8 +197,29 @@ export function PostImageLightbox({ images, index, onClose }: PostImageLightboxP
           }).start();
         },
       }),
-    [finishClose, onClose, translateY],
+    [close, translateY],
   );
+
+  // Suruklendikce zemin saydamlasir ve gorsel hafifce kuculur: parmagin
+  // altindaki sey gercekten "cikiyor" gibi hissettirir.
+  const { backdropOpacity, scale } = useMemo(() => {
+    const dismissRange = height * 0.45;
+    // Ucdaki +-height noktalari close(direction)'in firlattigi yer: orada zemin
+    // TAM seffaf olsun ki Modal kaldirilirken goze carpan sicrama kalmasin.
+    const dragFade = translateY.interpolate({
+      inputRange: [-height, -dismissRange, 0, dismissRange, height],
+      outputRange: [0, 0.15, 1, 0.15, 0],
+      extrapolate: 'clamp',
+    });
+    return {
+      backdropOpacity: Animated.multiply(enter, dragFade),
+      scale: translateY.interpolate({
+        inputRange: [-dismissRange, 0, dismissRange],
+        outputRange: [0.82, 1, 0.82],
+        extrapolate: 'clamp',
+      }),
+    };
+  }, [enter, height, translateY]);
 
   if (index === null) return null;
 
@@ -143,24 +228,14 @@ export function PostImageLightbox({ images, index, onClose }: PostImageLightboxP
 
   const go = (delta: number) => setCurrent((c) => (c + delta + images.length) % images.length);
 
-  // Suruklendikce zemin saydamlasir ve gorsel hafifce kuculur: parmagin
-  // altindaki sey gercekten "cikiyor" gibi hissettirir.
-  const dismissRange = height * 0.45;
-  // Ucdaki +-height noktalari finishClose'un firlattigi yer: orada zemin TAM
-  // seffaf olsun ki Modal kaldirilirken goze carpan bir sicrama kalmasin.
-  const backdropOpacity = translateY.interpolate({
-    inputRange: [-height, -dismissRange, 0, dismissRange, height],
-    outputRange: [0, 0.15, 1, 0.15, 0],
-    extrapolate: 'clamp',
-  });
-  const scale = translateY.interpolate({
-    inputRange: [-dismissRange, 0, dismissRange],
-    outputRange: [0.82, 1, 0.82],
-    extrapolate: 'clamp',
-  });
-
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+    <Modal
+      visible
+      transparent
+      animationType="none"
+      onRequestClose={() => close()}
+      statusBarTranslucent
+    >
       {/*
         Modal AYRI bir native pencerede acilir; uygulamanin kokundeki
         GestureHandlerRootView bu pencereyi KAPSAMAZ. Kapsamayinca RNGH'nin
@@ -177,7 +252,7 @@ export function PostImageLightbox({ images, index, onClose }: PostImageLightboxP
             style={[StyleSheet.absoluteFill, styles.backdrop, { opacity: backdropOpacity }]}
           />
 
-          <Animated.View style={{ transform: [{ translateY }, { scale }] }}>
+          <Animated.View style={{ opacity: enter, transform: [{ translateY }, { scale }] }}>
             <Image
               source={{ uri: getImageUrl(image.url) }}
               style={{ width: width - Spacing.xxl, height: height * 0.7 }}
@@ -187,9 +262,12 @@ export function PostImageLightbox({ images, index, onClose }: PostImageLightboxP
 
           {/* Butonlar kok responder'in USTUNDE: daha derin olduklari icin kendi
               dokunuslarini once kapiyorlar, surukleme onlarin uzerinde baslamaz. */}
-          <Animated.View style={[styles.chrome, { opacity: backdropOpacity }]} pointerEvents="box-none">
+          <Animated.View
+            style={[styles.chrome, { opacity: backdropOpacity }]}
+            pointerEvents="box-none"
+          >
             <Pressable
-              onPress={onClose}
+              onPress={() => close()}
               style={[styles.close, { top: insets.top + Spacing.md }]}
               hitSlop={12}
               accessibilityLabel={messages.common.close}
