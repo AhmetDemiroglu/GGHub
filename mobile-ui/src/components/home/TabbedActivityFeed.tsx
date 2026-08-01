@@ -134,6 +134,26 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
   const scrollOffsets = useRef<Record<TabKey, number>>({ discover: 0, posts: 0, reviews: 0 });
   const previousTab = useRef<TabKey>('discover');
 
+  // scrollY bir Reanimated shared value ve UI thread'de yaziliyor; JS'ten
+  // okunan kopyasinin bir kac kare geriden gelmesi mumkun. Sekme degisim karari
+  // JS tarafinda veriliyor ve "baslikta miyim yoksa feed'de miyim" sorusunun
+  // yanlis cevaplanmasi kullaniciyi sayfanin tepesine atiyor. Bu yuzden ayrica
+  // JS tarafinda tutulan bir ayna var: kaydirma dururken KESIN (native event),
+  // kaydirma surerken 40px'te bir tazelenen yaklasik deger.
+  const scrollYJs = useRef(0);
+  const rememberScroll = useCallback((y: number) => {
+    scrollYJs.current = y;
+  }, []);
+  const mirroredAt = useSharedValue(0);
+  useAnimatedReaction(
+    () => scrollY.value,
+    (y) => {
+      if (Math.abs(y - mirroredAt.value) < 40) return;
+      mirroredAt.value = y;
+      runOnJS(rememberScroll)(y);
+    },
+  );
+
   // İnteraktif sekme sürüklemesi: içerik dampened kayar, pill parmağı izler.
   const dragX = useSharedValue(0);
   const tabIndexSV = useSharedValue(0);
@@ -282,27 +302,35 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
     });
   }, []);
 
-  // Sekme degisimi: ESKI sekmenin konumu saklanir, YENI sekmenin konumu geri
-  // yuklenir. Boylece sekmeler arasinda gidip gelmek okunan yeri kaybettirmez.
-  //
-  // Kullanici feed'in icindeyken (pill bar pinned iken) yeni sekme daha once
-  // hic acilmamissa en az pin konumuna gidilir; aksi halde bar bir anda
-  // ekranin ortasina dusup "ziplama" hissi veriyordu.
+  /**
+   * Sekme degisimi.
+   *
+   * Liste TEK bir kaydirma kabi ve icerigi iki bolge: ustte HER SEKMEDE AYNI
+   * olan baslik (hero, karuseller, pill bar, gonderi girisi), altinda sekmeye
+   * OZEL kartlar. Kural bu ayrimdan cikiyor:
+   *
+   * - Kullanici baslik bolgesindeyse HIC KIMILDATMA. Baktigi sey sekmeye gore
+   *   degismiyor; onu oynatmak sebepsiz sicrama olur. Eski kod burada da
+   *   scrollToOffset(saved) cagiriyordu ve az ziyaret edilen sekmenin kaydi 0
+   *   oldugu icin kullaniciyi ANA SAYFANIN EN TEPESINE atiyordu. "Incelemeler"
+   *   ucuncu sekme oldugu icin kaydi en sik 0 kalan da oydu.
+   * - Feed'in icindeyse yeni sekmenin kendi konumu geri yuklenir, en az pin
+   *   konumuna kadar: yoksa pill bar tepeden ekranin ortasina duserdi.
+   */
   useEffect(() => {
     const previous = previousTab.current;
-    if (previous !== activeTab) {
-      scrollOffsets.current[previous] = scrollY.value;
-    }
+    if (previous === activeTab) return;
     previousTab.current = activeTab;
 
-    const pinOffset = Math.max(barY.value - Spacing.sm, 0);
-    const wasInsideFeed = barY.value > 0 && scrollY.value > pinOffset;
-    const saved = scrollOffsets.current[activeTab] ?? 0;
-    const target = wasInsideFeed ? Math.max(saved, pinOffset) : saved;
+    const currentY = scrollYJs.current;
+    scrollOffsets.current[previous] = currentY;
 
-    listRef.current?.scrollToOffset({ offset: target, animated: false });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+    const pinOffset = Math.max(barOffset - Spacing.sm, 0);
+    if (barOffset <= 0 || currentY <= pinOffset) return;
+
+    const saved = scrollOffsets.current[activeTab] ?? 0;
+    listRef.current?.scrollToOffset({ offset: Math.max(saved, pinOffset), animated: false });
+  }, [activeTab, barOffset]);
 
   // Commit'in JS fazı: eski kartlar ekran dışına akmışken veri değişir ve
   // yeni kartlar karşı kenardan girip oturur (X'in push geçişi). Header ve
@@ -631,6 +659,10 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
               onEndReached={onEndReached}
               onEndReachedThreshold={0.8}
               onScroll={scrollHandler}
+              // Kaydirma durdugu an JS tarafindaki aynayi KESIN degerle tazele:
+              // sekmeye dokunmadan hemen once olan sey tam olarak budur.
+              onScrollEndDrag={(e) => rememberScroll(e.nativeEvent.contentOffset.y)}
+              onMomentumScrollEnd={(e) => rememberScroll(e.nativeEvent.contentOffset.y)}
               scrollEventThrottle={16}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{
