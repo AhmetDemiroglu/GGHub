@@ -216,8 +216,12 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
                 o yüzden orayı tazeliyoruz. */}
             <PostComposer onCreated={() => void loadTab("posts", true)} />
 
-            {/* Sekme sırası mobildeki TAB_ORDER ile birebir: posts, reviews, discover. */}
-            <Tabs defaultValue="posts" onValueChange={(value) => setActiveTab(value as TabKey)}>
+            {/* Sekme sırası mobildeki TAB_ORDER ile birebir: discover, posts, reviews.
+                KONTROLLÜ kullanılıyor (defaultValue DEĞİL): daha önce state "discover"
+                ile başlarken Tabs'ın kendi defaultValue'su "posts" idi, iki ayrı
+                doğruluk kaynağı birbirini tutmuyordu ve açılışta Keşfet yerine
+                Gönderiler geliyordu. value={activeTab} ile kaynak tek. */}
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabKey)}>
                 {/*
                     Yapışkan sekme çubuğu. Sayfa <body> üzerinde KAYMIYOR; kaydırma
                     kabı (authenticated) layout'undaki <main className="overflow-y-auto">,
