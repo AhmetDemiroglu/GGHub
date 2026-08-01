@@ -5,6 +5,11 @@ import { BottomSheet } from '@/src/components/common/BottomSheet';
 import { Button } from '@/src/components/common/Button';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
+import {
+  calendarMonthName,
+  daysInCalendarMonth,
+  formatCalendarDate,
+} from '@/src/utils/date';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 
 const ROW_HEIGHT = 44;
@@ -19,12 +24,7 @@ interface DateFieldProps {
   placeholder?: string;
 }
 
-/** Verilen ay/yil kac gun cekiyor. Subat ve artik yil dahil dogru. */
-function daysInMonth(year: number, month: number): number {
-  return new Date(year, month, 0).getDate();
-}
-
-/** ISO metinden yerel gun/ay/yil parcalari. UTC'den okunur (yazarken de UTC yaziyoruz). */
+/** ISO metinden gun/ay/yil parcalari. UTC'den okunur (yazarken de UTC yaziyoruz). */
 function partsFromIso(iso: string | null): { day: number; month: number; year: number } | null {
   if (!iso) return null;
   const date = new Date(iso);
@@ -63,18 +63,19 @@ export function DateField({ label, value, onChange, placeholder }: DateFieldProp
     [currentYear],
   );
 
+  // Etiketler UTC uzerinden uretilir: yerel saatle kurulan bir Date, Hermes'in iOS
+  // Intl'inde GMT'ye gore bicimlendirilince bir ay geriye kayiyor ve "Temmuz" yazan
+  // satirin degeri 8 oluyordu (kullanici Temmuz secip Agustos kaydediyordu).
   const months = useMemo(
     () =>
       Array.from({ length: 12 }, (_, i) => ({
         value: i + 1,
-        label: new Date(2000, i, 1).toLocaleDateString(locale === 'tr' ? 'tr-TR' : 'en-US', {
-          month: 'long',
-        }),
+        label: calendarMonthName(i + 1, locale),
       })),
     [locale],
   );
 
-  const maxDay = daysInMonth(year, month);
+  const maxDay = daysInCalendarMonth(year, month);
   const days = useMemo(() => Array.from({ length: maxDay }, (_, i) => i + 1), [maxDay]);
 
   // 31 Mart secilip Subat'a gecilirse gun gecersiz kalir; ayin son gunune cek.
@@ -107,7 +108,7 @@ export function DateField({ label, value, onChange, placeholder }: DateFieldProp
   };
 
   const confirm = () => {
-    const safeDay = Math.min(day, daysInMonth(year, month));
+    const safeDay = Math.min(day, daysInCalendarMonth(year, month));
     onChange(new Date(Date.UTC(year, month - 1, safeDay)).toISOString());
     setOpen(false);
   };
@@ -118,10 +119,7 @@ export function DateField({ label, value, onChange, placeholder }: DateFieldProp
   };
 
   const display = selected
-    ? new Date(Date.UTC(selected.year, selected.month - 1, selected.day)).toLocaleDateString(
-        locale === 'tr' ? 'tr-TR' : 'en-US',
-        { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' },
-      )
+    ? formatCalendarDate(selected.year, selected.month, selected.day, locale)
     : null;
 
   const renderColumn = (

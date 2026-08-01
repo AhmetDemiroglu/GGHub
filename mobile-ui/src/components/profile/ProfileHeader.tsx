@@ -16,7 +16,7 @@ import { ProfileBannerUploader } from '@/src/components/profile/ProfileBannerUpl
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { AVATAR_MAX_EDGE, getImageUrl, shrinkForUpload } from '@/src/utils/image';
-import { formatNumericDate } from '@/src/utils/date';
+import { formatCalendarMonthDay, formatNumericDate } from '@/src/utils/date';
 import { uploadProfilePhoto } from '@/src/api/photo';
 import { Spacing, FontSize, BorderRadius, Springs, Shadows } from '@/src/constants/theme';
 import * as haptics from '@/src/utils/haptics';
@@ -89,10 +89,7 @@ export function ProfileHeader({
     ? (() => {
         const [month, day] = birthdayMonthDay.split('-').map(Number);
         if (!month || !day) return null;
-        return new Date(2000, month - 1, day).toLocaleDateString(
-          locale === 'tr' ? 'tr-TR' : 'en-US',
-          { day: 'numeric', month: 'long' },
-        );
+        return formatCalendarMonthDay(month, day, locale);
       })()
     : null;
   const xpPercent = xpToNextLevel > 0 ? Math.min((xp / xpToNextLevel) * 100, 100) : 0;

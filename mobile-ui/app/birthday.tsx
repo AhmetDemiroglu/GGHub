@@ -16,22 +16,20 @@ import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
 import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { getMyBirthday } from '@/src/api/profile';
+import { formatCalendarDate } from '@/src/utils/date';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 
 /**
  * "2026-07-18" -> "18 Temmuz 2026".
  *
- * DIKKAT: new Date("2026-07-18") UTC gece yarisi olarak parse edilir ve negatif offsetli
- * bir saat diliminde bir onceki gunu yazar. Parcalari ELLE veriyoruz.
+ * Bicimlendirme formatCalendarDate uzerinden: takvim tarihleri UTC'de kurulup UTC'de
+ * bicimlendirilmek ZORUNDA, yoksa Hermes'in iOS Intl'i yerel gece yarisini GMT'ye
+ * cevirip bir onceki gunu yaziyor.
  */
 function formatCelebrationDate(value: string, locale: string): string {
   const [year, month, day] = value.split('-').map(Number);
   if (!year || !month || !day) return value;
-
-  return new Date(year, month - 1, day).toLocaleDateString(
-    locale === 'tr' ? 'tr-TR' : 'en-US',
-    { day: 'numeric', month: 'long', year: 'numeric' },
-  );
+  return formatCalendarDate(year, month, day, locale);
 }
 
 /**

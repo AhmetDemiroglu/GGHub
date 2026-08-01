@@ -1,3 +1,56 @@
+/**
+ * TAKVIM tarihlerini (dogum gunu gibi, saat bileseni olmayan) bicimlendirmenin TEK dogru yolu.
+ *
+ * NEDEN boyle: Hermes'in iOS'taki Intl'i, yerel saatle kurulmus bir Date'i GMT'ye gore
+ * bicimlendirebiliyor. `new Date(2000, 6, 1)` Istanbul'da 1 Temmuz 00:00 ama GMT'de
+ * 30 Haziran 21:00'dir; bicimlendirici "Haziran" yazar. Bu, ay etiketlerinin bir kaymasina
+ * ve kullanicinin Temmuz secip Agustos kaydetmesine yol acti (2 Agu 2026).
+ *
+ * Cozum: tarihi Date.UTC ile kur VE bicimlendirirken timeZone'u UTC'ye sabitle. Boylece
+ * cihazin saat dilimi ne olursa olsun sonuc ayni.
+ */
+const CALENDAR_TZ = 'UTC';
+
+const resolveLocale = (locale: string) => (locale.startsWith('tr') ? 'tr-TR' : 'en-US');
+
+/** (2026, 7, 18) -> "18 Temmuz 2026" */
+export const formatCalendarDate = (
+  year: number,
+  month: number,
+  day: number,
+  locale: string = 'en-US',
+): string =>
+  new Date(Date.UTC(year, month - 1, day)).toLocaleDateString(resolveLocale(locale), {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: CALENDAR_TZ,
+  });
+
+/** (7, 18) -> "18 Temmuz". Yil hic tasinmaz. */
+export const formatCalendarMonthDay = (
+  month: number,
+  day: number,
+  locale: string = 'en-US',
+): string =>
+  // Yil yalnizca bicimlendirme icin; artik yil secildi ki 29 Subat da calissin.
+  new Date(Date.UTC(2000, month - 1, day)).toLocaleDateString(resolveLocale(locale), {
+    day: 'numeric',
+    month: 'long',
+    timeZone: CALENDAR_TZ,
+  });
+
+/** 1..12 -> ["Ocak", ...]. Ay secicisinin etiketleri buradan gelir. */
+export const calendarMonthName = (month: number, locale: string = 'en-US'): string =>
+  new Date(Date.UTC(2000, month - 1, 1)).toLocaleDateString(resolveLocale(locale), {
+    month: 'long',
+    timeZone: CALENDAR_TZ,
+  });
+
+/** Verilen ay/yil kac gun cekiyor. Artik yil dahil dogru, saat diliminden bagimsiz. */
+export const daysInCalendarMonth = (year: number, month: number): number =>
+  new Date(Date.UTC(year, month, 0)).getUTCDate();
+
 // Dile gore sayisal tarih: tr -> GG/AA/YYYY, diger -> AA/GG/YYYY. Iki haneli, slash.
 export const formatNumericDate = (
   dateString: string | null | undefined,
