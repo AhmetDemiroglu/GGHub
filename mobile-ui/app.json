@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.gghub.mobile",
-      "buildNumber": "11",
+      "buildNumber": "9",
       "usesAppleSignIn": true,
       "entitlements": {
         "aps-environment": "production"
@@ -35,7 +35,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png"
       },
       "package": "com.gghub.mobile",
-      "versionCode": 13,
+      "versionCode": 12,
       "googleServicesFile": "./android/app/google-services.json",
       "permissions": [
         "android.permission.INTERNET",
