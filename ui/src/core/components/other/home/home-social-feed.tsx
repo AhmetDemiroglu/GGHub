@@ -34,14 +34,18 @@ import {
 const FEED_PAGE_SIZE = 10;
 
 /**
- * Sekme sirasi mobildeki TAB_ORDER ile birebir: Gonderiler, Incelemeler, Kesfet.
+ * Sekme sirasi mobildeki TAB_ORDER ile birebir: Kesfet, Gonderiler, Incelemeler.
  *
- * Onceki dort sekme (reviews/lists/follows/all) ucе indirildi. Listeler ve
+ * Onceki dort sekme (reviews/lists/follows/all) uce indirildi. Listeler ve
  * takipler artik Kesfet icinde; "Hepsi" sekmesinin yerini Kesfet aldi.
+ *
+ * Kesfet BASTA ve VARSAYILAN: "Gonderiler" yalnizca takip edilenleri gosterir,
+ * dolayisiyla yeni ya da az takip eden bir kullanicida bombos acilir. Acilista
+ * dolu bir akis gormek icin varsayilan kesif olmali.
  */
-type TabKey = "posts" | "reviews" | "discover";
+type TabKey = "discover" | "posts" | "reviews";
 
-const TAB_ORDER: TabKey[] = ["posts", "reviews", "discover"];
+const TAB_ORDER: TabKey[] = ["discover", "posts", "reviews"];
 
 interface TabState {
     items: Activity[];
@@ -59,10 +63,10 @@ interface HomeSocialFeedProps {
 export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps) {
     const locale = useCurrentLocale();
     const t = useI18n();
-    // Varsayılan sekme mobildeki TabbedActivityFeed ile aynı: Gönderiler.
+    // Varsayılan sekme mobildeki TabbedActivityFeed ile aynı: Keşfet.
     // Buradaki başlangıç değeri ile <Tabs defaultValue> BİRLİKTE değişmeli,
     // yoksa seçili sekme ile listelenen içerik birbirini tutmaz.
-    const [activeTab, setActiveTab] = useState<TabKey>("posts");
+    const [activeTab, setActiveTab] = useState<TabKey>("discover");
     // Her sekme KENDI sayfasini sunucudan ceker.
     //
     // UC SEKME DE emptyTab() ile basliyor. Onceden "all" sekmesi prop'tan
@@ -71,9 +75,9 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
     // ("catch(() => [])") sekme kalici olarak bos kaliyordu: kullanici tikliyor,
     // hicbir sey olmuyordu. Tohumlama tamamen kaldirildi.
     const [feeds, setFeeds] = useState<Record<TabKey, TabState>>(() => ({
+        discover: emptyTab(),
         posts: emptyTab(),
         reviews: emptyTab(),
-        discover: emptyTab(),
     }));
     const sentinelRef = useRef<HTMLDivElement | null>(null);
     // loadTab closure'ının her render'da güncel listeyi görmesi için ref tutuyoruz.
@@ -120,7 +124,7 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
         }
     }, []);
 
-    // Açılışta önce varsayılan sekme (Gönderiler), ardından diğerleri arka
+    // Açılışta önce varsayılan sekme (Keşfet), ardından diğerleri arka
     // planda; sekme değişince içerik anında hazır olur.
     //
     // TAB_ORDER üzerinden dönüyor: sekme listesine yeni bir giriş eklendiğinde
@@ -130,7 +134,7 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
         if (!isAuthenticated) return;
         let cancelled = false;
         void (async () => {
-            await loadTab("posts", true);
+            await loadTab("discover", true);
             for (const tab of TAB_ORDER) {
                 if (cancelled) return;
                 if (!feedsRef.current[tab].loaded) await loadTab(tab, true);
@@ -208,6 +212,8 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
                 </div>
             </div>
 
+            {/* Yeni gönderi "Gönderiler" sekmesine düşer (kendi akışın), Keşfet'e değil;
+                o yüzden orayı tazeliyoruz. */}
             <PostComposer onCreated={() => void loadTab("posts", true)} />
 
             {/* Sekme sırası mobildeki TAB_ORDER ile birebir: posts, reviews, discover. */}
@@ -224,14 +230,14 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
                 */}
                 <div className="sticky top-0 z-20 -mx-2 bg-background/95 px-2 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
                     <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="discover" className="gap-1 text-xs">
+                            <Compass className="h-3 w-3" /> {t("home.activityTabs.discover")}
+                        </TabsTrigger>
                         <TabsTrigger value="posts" className="gap-1 text-xs">
                             <MessageSquare className="h-3 w-3" /> {t("home.activityTabs.posts")}
                         </TabsTrigger>
                         <TabsTrigger value="reviews" className="gap-1 text-xs">
                             <Star className="h-3 w-3" /> {t("home.activityTabs.reviews")}
-                        </TabsTrigger>
-                        <TabsTrigger value="discover" className="gap-1 text-xs">
-                            <Compass className="h-3 w-3" /> {t("home.activityTabs.discover")}
                         </TabsTrigger>
                     </TabsList>
                 </div>

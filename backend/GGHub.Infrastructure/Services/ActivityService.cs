@@ -391,6 +391,21 @@ namespace GGHub.Infrastructure.Services
                     Add(await BuildPostCandidatesAsync(currentUserId, trendingAuthorIds, limit, cursor), DiscoverSource.Trending);
             }
 
+            // --- (e) TABAN: hala kisaysa, herkese acik son gonderiler ---
+            //
+            // Kesfet'in ZEMINI. Yukaridaki dort kaynagin hepsi kullanicinin
+            // grafigine bagli: takip etmiyorsa (a) bos, listesi/incelemesi yoksa
+            // (b) bos, ortak takipcisi yoksa (c) bos. Geriye yalnizca 48 saatlik
+            // trend penceresi kaliyor ve o pencere dolunca akis birkac sayfada
+            // kuruyordu ("akisin sonuna geldin"). Yeni kullanicinin gordugu tek
+            // sey buydu.
+            //
+            // Bu kaynakta authorIds = null, yani yazar suzgeci YOK ve zaman
+            // penceresi YOK; yalnizca gorunurluk ve cursor uygulanir. Boylece
+            // herkese acik gonderi kaldigi surece Kesfet sayfalanmaya devam eder.
+            if (candidates.Count < limit)
+                Add(await BuildPostCandidatesAsync(currentUserId, null, limit * 2, cursor), DiscoverSource.Trending);
+
             return await FinalizeAsync(candidates, currentUserId, limit, mutualIds, new DiscoverContext(taste, sourceOf, followingIds.ToHashSet()));
         }
 

@@ -156,6 +156,11 @@ namespace GGHub.Infrastructure.Persistence.Seeders
                     FirstName = FirstNames[_random.Next(FirstNames.Length)],
                     LastName = LastNames[_random.Next(LastNames.Length)],
                     Bio = Bios[_random.Next(Bios.Length)],
+                    // Avatarlar R2'ye YUKLENMEZ. pravatar seed'e gore deterministik
+                    // bir yuz uretiyor: ayni kullanici adi hep ayni resmi verir.
+                    // Sistemdeki mevcut sahte hesaplar da bu deseni kullaniyor,
+                    // yeni seed onlarla gorsel olarak tutarli olsun diye ayni.
+                    ProfileImageUrl = $"https://i.pravatar.cc/300?u={handle}",
                     // Gecmise yayilmis kayit tarihleri: hepsi ayni gun uye olmus
                     // gorunmesin, "yeni kullanici" listeleri gercekci kalsin.
                     CreatedAt = now.AddDays(-_random.Next(5, 400)),

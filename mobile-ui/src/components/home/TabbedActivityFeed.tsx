@@ -38,13 +38,17 @@ import { onReviewVote } from '@/src/utils/review-vote-bus';
 import * as haptics from '@/src/utils/haptics';
 
 /**
- * Sekmeler ucе indirildi: Gonderiler, Incelemeler, Kesfet.
+ * Sekmeler uce indirildi: Kesfet, Gonderiler, Incelemeler.
  * Kaldirilan Listeler/Takipler/Hepsi sekmelerinin icerigi Kesfet'e tasindi,
  * hicbir sey kaybolmadi.
+ *
+ * Kesfet BASTA ve VARSAYILAN: "Gonderiler" yalnizca takip edilenleri gosterir,
+ * dolayisiyla yeni ya da az takip eden bir kullanicida bombos acilir. Acilista
+ * dolu bir akis gormek icin varsayilan kesif olmali.
  */
 type TabKey = FeedTabKey;
 
-const TAB_ORDER: TabKey[] = ['posts', 'reviews', 'discover'];
+const TAB_ORDER: TabKey[] = ['discover', 'posts', 'reviews'];
 
 const PAGE_SIZE = 10;
 const FAB_VISIBLE_OFFSET = 1200;
@@ -99,11 +103,11 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
   const router = useRouter();
   const tt = messages.home.activityTabs;
 
-  const [activeTab, setActiveTab] = useState<TabKey>('posts');
+  const [activeTab, setActiveTab] = useState<TabKey>('discover');
   const [feeds, setFeeds] = useState<Record<TabKey, TabState>>({
+    discover: emptyTab(),
     posts: emptyTab(),
     reviews: emptyTab(),
-    discover: emptyTab(),
   });
   const feedsRef = useRef(feeds);
   feedsRef.current = feeds;
@@ -210,7 +214,7 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
     }
   }, []);
 
-  // Açılışta önce varsayılan sekme (Gönderiler), ardından diğer sekmeler arka
+  // Açılışta önce varsayılan sekme (Keşfet), ardından diğer sekmeler arka
   // planda sırayla doldurulur; sekme değişince içerik ANINDA hazırdır.
   //
   // TAB_ORDER üzerinden dönüyor: sekme listesine yeni giriş eklendiğinde ön
@@ -218,7 +222,7 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      await loadTab('posts', true);
+      await loadTab('discover', true);
       for (const tab of TAB_ORDER) {
         if (cancelled) return;
         if (!feedsRef.current[tab].loaded) await loadTab(tab, true);
@@ -515,9 +519,9 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
 
   const tabItems = useMemo(
     () => [
+      { key: 'discover' as const, label: tt.discover },
       { key: 'posts' as const, label: tt.posts },
       { key: 'reviews' as const, label: tt.reviews },
-      { key: 'discover' as const, label: tt.discover },
     ],
     [tt],
   );
