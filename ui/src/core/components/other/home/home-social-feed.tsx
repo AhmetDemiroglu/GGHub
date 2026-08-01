@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { enUS, tr } from "date-fns/locale";
 import { getFeedByTab } from "@/api/activity/activity.api";
@@ -71,7 +71,11 @@ const emptyTab = (): TabState => ({ items: [], hasMore: true, loading: false, lo
 interface FeedMemory {
     feeds: Record<TabKey, TabState>;
     activeTab: TabKey;
-    scrollTop: number;
+    /**
+     * SEKME BASINA kaydirma konumu. Tek bir sayi tutmak yetmiyordu: Kesfet'te
+     * asagidayken Gonderiler'e gecip geri donunce kullanici en basa dusuyordu.
+     */
+    scrollTopByTab: Record<TabKey, number>;
 }
 
 let feedMemory: FeedMemory | null = null;
@@ -149,32 +153,95 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
     // Her degisimde hafizayi tazele; unmount'ta yazmak yeterli degil, cunku
     // Next.js gezinmesinde cleanup her zaman guvenilir sirada calismiyor.
     useEffect(() => {
-        feedMemory = { feeds, activeTab, scrollTop: feedMemory?.scrollTop ?? 0 };
+        feedMemory = { feeds, activeTab, scrollTopByTab: feedMemory?.scrollTopByTab ?? { discover: 0, posts: 0, reviews: 0 } };
     }, [feeds, activeTab]);
 
-    // Kaydirma konumu: kabin kendisi <main>, window degil.
-    useEffect(() => {
+    // Kaydirma konumu: kabin kendisi <main>, window degil. Kaydedilen konum
+    // AKTIF SEKMEYE yazilir; boylece hem detaydan geri donuste hem de
+    // sekmeler arasi gidip gelmede okunan yer korunur.
+    const activeTabRef = useRef(activeTab);
+    activeTabRef.current = activeTab;
+
+    /**
+     * Geri yukleme suruyor mu. Dinleyici bu sirada YAZMAMALI.
+     *
+     * Aksi halde hafiza kendi kendini bozuyordu: sekme degisiminde hedef
+     * konuma atlanirken yeni sekmenin kartlari henuz cizilmemis oluyor, kap
+     * kisa kaliyor ve tarayici scrollTop'u kirpiyor. Kirpilmis deger de
+     * dinleyici uzerinden kayitli konumun ustune yaziliyor ve kullanici geri
+     * dondugunde yanlis yerde buluyordu kendini.
+     */
+    const restoringRef = useRef(false);
+
+    /**
+     * Hedef konuma, icerik cizilene kadar birkac kare boyunca deneyerek gider.
+     * Tek bir requestAnimationFrame yetmiyor: liste sanallastirilmamis olsa da
+     * gorseller ve kart yukseklikleri ilk karede olusmuyor.
+     */
+    const restoreScroll = useCallback((target: number) => {
         const container = document.querySelector("main");
         if (!container) return;
 
-        const saved = feedMemory?.scrollTop ?? 0;
-        // Yalnizca gercekten iceriden geri donulduyse (elde veri varsa) geri yukle;
-        // ilk acilista sayfayi ortadan baslatmak istemiyoruz.
-        if (saved > 0 && feeds[activeTab].items.length > 0) {
-            // Kartlar cizildikten SONRA konumlan; ayni karede yukseklik henuz olusmadi.
-            requestAnimationFrame(() => {
-                container.scrollTop = saved;
-            });
-        }
+        restoringRef.current = true;
+        let attempts = 0;
 
-        const onScroll = () => {
-            if (feedMemory) feedMemory.scrollTop = container.scrollTop;
+        const tick = () => {
+            attempts += 1;
+            container.scrollTop = target;
+
+            const reached = Math.abs(container.scrollTop - target) < 2;
+            if (!reached && attempts < 20) {
+                requestAnimationFrame(tick);
+                return;
+            }
+
+            // Son scroll olayi da yutulsun diye bir kare daha bekle.
+            requestAnimationFrame(() => {
+                restoringRef.current = false;
+            });
         };
-        container.addEventListener("scroll", onScroll, { passive: true });
-        return () => container.removeEventListener("scroll", onScroll);
-        // Yalnizca ilk mount'ta konumlan; sekme degisiminde en uste donmek dogru.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+
+        requestAnimationFrame(tick);
     }, []);
+
+    /**
+     * Konumu kaydeder. SUREKLI bir scroll dinleyicisi BILEREK yok.
+     *
+     * Dinleyici vardi ve hafizayi kendi kendine bozuyordu: sekme degisiminde
+     * yeni sekmenin icerigi daha kisaysa tarayici scrollTop'u kirpiyor, bu
+     * kirpma da bir scroll olayi uretiyor ve dinleyici o kirpilmis degeri
+     * kaydediyordu. Sonuc: Kesfet'te 2400'de olan kullanici kisa bir sekmeye
+     * gecip geri donunce 700'de buluyordu kendini.
+     *
+     * Konum yalnizca IKI anda gerekiyor: sekme degistirirken ve bilesen
+     * sokulurken (detay sayfasina gidis). Ikisinde de acikca yaziliyor.
+     */
+    const saveScroll = useCallback((tab: TabKey) => {
+        const container = document.querySelector("main");
+        if (container && feedMemory) feedMemory.scrollTopByTab[tab] = container.scrollTop;
+    }, []);
+
+    // Detay sayfasina gidilirken son konumu sakla.
+    useEffect(() => {
+        return () => saveScroll(activeTabRef.current);
+    }, [saveScroll]);
+
+    /**
+     * Konum geri yuklemesi. HEM ilk mount'ta (detaydan geri donus) HEM de sekme
+     * degisiminde calisir.
+     *
+     * Neden efekt, neden olay isleyicisi degil: isleyici React yeni sekmenin
+     * icerigini DOM'a yazmadan ONCE calisiyor. O anda kap hala eski (ve genelde
+     * daha kisa) icerikle duruyor, tarayici hedef konumu kirpiyor ve konum
+     * kayboluyordu. Efekt icerik cizildikten sonra calisir.
+     *
+     * useLayoutEffect: boyamadan once konumlanir, boylece kullanici once en ustu
+     * gorup sonra asagi ziplamaz.
+     */
+    useLayoutEffect(() => {
+        restoreScroll(feedMemory?.scrollTopByTab?.[activeTab] ?? 0);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab]);
 
     // Açılışta önce varsayılan sekme (Keşfet), ardından diğerleri arka
     // planda; sekme değişince içerik anında hazır olur.
@@ -262,7 +329,23 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
                 ile başlarken Tabs'ın kendi defaultValue'su "posts" idi, iki ayrı
                 doğruluk kaynağı birbirini tutmuyordu ve açılışta Keşfet yerine
                 Gönderiler geliyordu. value={activeTab} ile kaynak tek. */}
-            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabKey)}>
+            <Tabs
+                value={activeTab}
+                onValueChange={(value) => {
+                    const next = value as TabKey;
+
+                    // Eski sekmenin konumunu sakla, yeni sekmeninkini geri yukle.
+                    // Sekme degisiminde kosulsuz en uste donmek, kullanicinin
+                    // okudugu yeri her gecatiste kaybettiriyordu.
+                    saveScroll(activeTab);
+
+                    // Geri yukleme BURADA yapilmaz: bu isleyici React yeni
+                    // sekmenin icerigini DOM'a yazmadan once calisiyor ve o anda
+                    // kap hala eski icerikle duruyor, tarayici hedefi kirpiyor.
+                    // Konumlanma activeTab'a bagli layout efektinde.
+                    setActiveTab(next);
+                }}
+            >
                 {/*
                     Yapışkan sekme çubuğu. Sayfa <body> üzerinde KAYMIYOR; kaydırma
                     kabı (authenticated) layout'undaki <main className="overflow-y-auto">,

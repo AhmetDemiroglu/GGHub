@@ -101,7 +101,7 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
   const { colors } = useTheme();
   const { messages } = useLocale();
   const { user, isAuthenticated } = useAuth();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const { openSidebar, sidebarProgress } = useShell();
   const router = useRouter();
   const tt = messages.home.activityTabs;
@@ -125,6 +125,14 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
   const barY = useSharedValue(0);
   const [fabVisible, setFabVisible] = useState(false);
   const [barPinned, setBarPinned] = useState(false);
+  // Pill bar'in liste icindeki y'si JS tarafinda da lazim: icerigin asgari
+  // yuksekligi buna gore hesaplaniyor (asagidaki minHeight notu).
+  const [barOffset, setBarOffset] = useState(0);
+
+  // SEKME BASINA kaydirma konumu. Tek bir konum tutmak yetmiyordu: kullanici
+  // Kesfet'te asagida iken Gonderiler'e gecip geri donunce en basa dusuyordu.
+  const scrollOffsets = useRef<Record<TabKey, number>>({ discover: 0, posts: 0, reviews: 0 });
+  const previousTab = useRef<TabKey>('discover');
 
   // İnteraktif sekme sürüklemesi: içerik dampened kayar, pill parmağı izler.
   const dragX = useSharedValue(0);
@@ -274,13 +282,25 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
     });
   }, []);
 
-  // Sekme değişince: kullanıcı feed'in içindeyse yeni sekmenin başına snap et
-  // (pill bar tam pinned konumda kalır, boşluk hissi oluşmaz).
+  // Sekme degisimi: ESKI sekmenin konumu saklanir, YENI sekmenin konumu geri
+  // yuklenir. Boylece sekmeler arasinda gidip gelmek okunan yeri kaybettirmez.
+  //
+  // Kullanici feed'in icindeyken (pill bar pinned iken) yeni sekme daha once
+  // hic acilmamissa en az pin konumuna gidilir; aksi halde bar bir anda
+  // ekranin ortasina dusup "ziplama" hissi veriyordu.
   useEffect(() => {
-    const pinOffset = barY.value - Spacing.sm;
-    if (barY.value > 0 && scrollY.value > pinOffset) {
-      listRef.current?.scrollToOffset({ offset: pinOffset, animated: false });
+    const previous = previousTab.current;
+    if (previous !== activeTab) {
+      scrollOffsets.current[previous] = scrollY.value;
     }
+    previousTab.current = activeTab;
+
+    const pinOffset = Math.max(barY.value - Spacing.sm, 0);
+    const wasInsideFeed = barY.value > 0 && scrollY.value > pinOffset;
+    const saved = scrollOffsets.current[activeTab] ?? 0;
+    const target = wasInsideFeed ? Math.max(saved, pinOffset) : saved;
+
+    listRef.current?.scrollToOffset({ offset: target, animated: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
@@ -532,7 +552,10 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
   const listHeader = (
     <View>
       {header}
-      <View style={styles.tabBarWrap} onLayout={(e) => (barY.value = e.nativeEvent.layout.y)}>
+      <View style={styles.tabBarWrap} onLayout={(e) => {
+          barY.value = e.nativeEvent.layout.y;
+          setBarOffset(e.nativeEvent.layout.y);
+        }}>
         <SegmentedTabs<TabKey> tabs={tabItems} activeKey={activeTab} onChange={setActiveTab} progress={pillProgress} />
       </View>
 
@@ -610,7 +633,15 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
               onScroll={scrollHandler}
               scrollEventThrottle={16}
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: contentPaddingBottom + Spacing.xl }}
+              contentContainerStyle={{
+                paddingBottom: contentPaddingBottom + Spacing.xl,
+                // Icerik BOS ya da kisa oldugunda liste kaydirilamaz hale
+                // geliyordu; scrollToOffset(pinOffset) kirpiliyor ve pill bar
+                // tepeden ekranin ortasina "cat" diye dusuyordu. Asgari
+                // yukseklik, bar'i her zaman tepeye kaydirabilecek kadar alan
+                // birakir; bos sekmede de bar yerinde kalir, gecis akici olur.
+                minHeight: barOffset + height,
+              }}
               refreshControl={
                 <RefreshControl
                   refreshing={refreshingHome}
