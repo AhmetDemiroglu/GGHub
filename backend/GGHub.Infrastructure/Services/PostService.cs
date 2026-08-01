@@ -624,8 +624,20 @@ namespace GGHub.Infrastructure.Services
             if (posts.Count == 0) return new List<PostDto>();
 
             // Repost kaynaklari da cizilecek, onlar da havuza girer.
+            // Repost kaynaklari da cizilecek, onlar da havuza girer.
+            //
+            // TEKILLESTIRME SART: ayni gonderi havuza IKI kez girebiliyor.
+            //   a) Kendi gonderini repost edersen hem kok kayit hem repost'un
+            //      kaynagi olarak sayfada bulunur.
+            //   b) Iki farkli kisi ayni gonderiyi repost edip ikisi de sayfaya
+            //      duserse kaynak yine iki kez gelir.
+            // Bu olmadan asagidaki ToDictionary yinelenen anahtarda
+            // ArgumentException firlatiyor ve TUM listeleme uclari 500 donuyordu
+            // (tekil gonderi ve yanit uclari saglam gorunuyordu, cunku orada
+            // yineleme hic olusmuyor).
             var all = new List<Post>(posts);
             all.AddRange(posts.Where(p => p.RepostOfPost != null).Select(p => p.RepostOfPost!));
+            all = all.GroupBy(p => p.Id).Select(g => g.First()).ToList();
 
             var parsedByPost = all.ToDictionary(p => p.Id, p => MentionTokens.Parse(p.Content));
             var allParsed = parsedByPost.Values.SelectMany(v => v).ToList();
