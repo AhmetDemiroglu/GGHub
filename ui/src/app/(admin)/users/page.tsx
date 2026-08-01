@@ -63,6 +63,13 @@ export default function UsersPage() {
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
     const columns = createUserColumns(t, dateLocale);
 
+    // Filtre degistiginde ilk sayfaya donulur. Aksi halde 3. sayfada arama yapan kullanici
+    // istegi page=3 ile atar, 4 sonuc donen sorguda o sayfa bostur ve "sonuc bulunamadi"
+    // gorur. Sayfa numarasi URL'de kaldigi icin sayfa yenilense bile sorun surer.
+    const resetToFirstPage = React.useCallback(() => {
+        setPagination((prev) => (prev.pageIndex === 0 ? prev : { ...prev, pageIndex: 0 }));
+    }, []);
+
     React.useEffect(() => {
         const params = new URLSearchParams(searchParams);
         params.set("page", (pagination.pageIndex + 1).toString());
@@ -123,6 +130,19 @@ export default function UsersPage() {
     const tableData = data?.items ?? [];
     const totalCount = data?.totalCount ?? 0;
 
+    // URL'den gelen gecersiz sayfa (ornegin daraltilmis bir listeye ?page=3 ile girmek)
+    // kullaniciyi bos tabloda birakmasin.
+    React.useEffect(() => {
+        if (!data) {
+            return;
+        }
+
+        const lastPageIndex = Math.max(0, Math.ceil(totalCount / pagination.pageSize) - 1);
+        if (pagination.pageIndex > lastPageIndex) {
+            setPagination((prev) => ({ ...prev, pageIndex: lastPageIndex }));
+        }
+    }, [data, totalCount, pagination.pageIndex, pagination.pageSize]);
+
     const clearFilters = () => {
         setSearchTerm("");
         setStatusFilter("All");
@@ -137,8 +157,22 @@ export default function UsersPage() {
                 <p className="text-muted-foreground">{t("admin.usersPageDescription")}</p>
             </div>
             <div className="flex flex-wrap items-center gap-4">
-                <Input placeholder={t("admin.usersPageSearchPlaceholder")} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full sm:w-auto sm:max-w-xs" />
-                <Select value={statusFilter} onValueChange={(value: string) => setStatusFilter(value as UserFilterParams["statusFilter"])}>
+                <Input
+                    placeholder={t("admin.usersPageSearchPlaceholder")}
+                    value={searchTerm}
+                    onChange={(e) => {
+                        setSearchTerm(e.target.value);
+                        resetToFirstPage();
+                    }}
+                    className="w-full sm:w-auto sm:max-w-xs"
+                />
+                <Select
+                    value={statusFilter}
+                    onValueChange={(value: string) => {
+                        setStatusFilter(value as UserFilterParams["statusFilter"]);
+                        resetToFirstPage();
+                    }}
+                >
                     <SelectTrigger className="w-full sm:w-[180px]">
                         <SelectValue placeholder={t("admin.usersPageStatusPlaceholder")} />
                     </SelectTrigger>
@@ -149,8 +183,24 @@ export default function UsersPage() {
                     </SelectContent>
                 </Select>
                 <div className="flex w-full flex-col gap-4 sm:w-auto sm:flex-row sm:gap-2">
-                    <DatePicker date={dateRange?.from} onDateChange={(date) => setDateRange((prev) => ({ from: date, to: prev?.to }))} placeholder={t("admin.usersPageStartDate")} className="w-full" />
-                    <DatePicker date={dateRange?.to} onDateChange={(date) => setDateRange((prev) => ({ from: prev?.from, to: date }))} placeholder={t("admin.usersPageEndDate")} className="w-full" />
+                    <DatePicker
+                        date={dateRange?.from}
+                        onDateChange={(date) => {
+                            setDateRange((prev) => ({ from: date, to: prev?.to }));
+                            resetToFirstPage();
+                        }}
+                        placeholder={t("admin.usersPageStartDate")}
+                        className="w-full"
+                    />
+                    <DatePicker
+                        date={dateRange?.to}
+                        onDateChange={(date) => {
+                            setDateRange((prev) => ({ from: prev?.from, to: date }));
+                            resetToFirstPage();
+                        }}
+                        placeholder={t("admin.usersPageEndDate")}
+                        className="w-full"
+                    />
                 </div>
 
                 <Button variant="ghost" onClick={clearFilters} className="sm:ml-auto border-2 cursor-pointer" aria-label={t("admin.usersPageClearFilters")}>

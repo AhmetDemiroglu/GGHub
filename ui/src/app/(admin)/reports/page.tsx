@@ -98,6 +98,12 @@ export default function ReportsPage() {
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
     const columns = createReportColumns(t, dateLocale);
 
+    // Filtre degistiginde ilk sayfaya donulur. Aksi halde 3. sayfada arama yapan kullanici
+    // istegi page=3 ile atar, birkac sonuc donen sorguda o sayfa bostur ve bos tablo gorur.
+    const resetToFirstPage = React.useCallback(() => {
+        setPagination((prev) => (prev.pageIndex === 0 ? prev : { ...prev, pageIndex: 0 }));
+    }, []);
+
     React.useEffect(() => {
         const params = new URLSearchParams(searchParams);
 
@@ -151,6 +157,18 @@ export default function ReportsPage() {
     const tableData = data?.items ?? [];
     const totalCount = data?.totalCount ?? 0;
 
+    // URL'den gelen gecersiz sayfa kullaniciyi bos tabloda birakmasin.
+    React.useEffect(() => {
+        if (!data) {
+            return;
+        }
+
+        const lastPageIndex = Math.max(0, Math.ceil(totalCount / pagination.pageSize) - 1);
+        if (pagination.pageIndex > lastPageIndex) {
+            setPagination((prev) => ({ ...prev, pageIndex: lastPageIndex }));
+        }
+    }, [data, totalCount, pagination.pageIndex, pagination.pageSize]);
+
     const clearFilters = () => {
         setSearchTerm("");
         setStatusFilter("All");
@@ -168,9 +186,23 @@ export default function ReportsPage() {
 
             <div className="flex flex-wrap items-center gap-4 justify-between">
                 <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                    <Input placeholder={t("admin.reportsPageSearchPlaceholder")} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full sm:w-[240px]" />
+                    <Input
+                        placeholder={t("admin.reportsPageSearchPlaceholder")}
+                        value={searchTerm}
+                        onChange={(e) => {
+                            setSearchTerm(e.target.value);
+                            resetToFirstPage();
+                        }}
+                        className="w-full sm:w-[240px]"
+                    />
 
-                    <Select value={statusFilter.toString()} onValueChange={(val) => setStatusFilter(val === "All" ? "All" : Number(val))}>
+                    <Select
+                        value={statusFilter.toString()}
+                        onValueChange={(val) => {
+                            setStatusFilter(val === "All" ? "All" : Number(val));
+                            resetToFirstPage();
+                        }}
+                    >
                         <SelectTrigger className="w-full sm:w-[160px] cursor-pointer">
                             <SelectValue placeholder={t("admin.reportsPageStatusPlaceholder")} />
                         </SelectTrigger>
@@ -190,7 +222,13 @@ export default function ReportsPage() {
                         </SelectContent>
                     </Select>
 
-                    <Select value={entityTypeFilter} onValueChange={setEntityTypeFilter}>
+                    <Select
+                        value={entityTypeFilter}
+                        onValueChange={(val) => {
+                            setEntityTypeFilter(val);
+                            resetToFirstPage();
+                        }}
+                    >
                         <SelectTrigger className="w-full sm:w-[160px] cursor-pointer">
                             <SelectValue placeholder={t("admin.reportsPageTypePlaceholder")} />
                         </SelectTrigger>
@@ -217,8 +255,24 @@ export default function ReportsPage() {
                     </Select>
 
                     <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                        <DatePicker date={dateRange?.from} onDateChange={(date) => setDateRange((prev) => ({ from: date, to: prev?.to }))} placeholder={t("admin.reportsPageStartDate")} className="w-full sm:w-[180px]" />
-                        <DatePicker date={dateRange?.to} onDateChange={(date) => setDateRange((prev) => ({ from: prev?.from, to: date }))} placeholder={t("admin.reportsPageEndDate")} className="w-full sm:w-[180px]" />
+                        <DatePicker
+                            date={dateRange?.from}
+                            onDateChange={(date) => {
+                                setDateRange((prev) => ({ from: date, to: prev?.to }));
+                                resetToFirstPage();
+                            }}
+                            placeholder={t("admin.reportsPageStartDate")}
+                            className="w-full sm:w-[180px]"
+                        />
+                        <DatePicker
+                            date={dateRange?.to}
+                            onDateChange={(date) => {
+                                setDateRange((prev) => ({ from: prev?.from, to: date }));
+                                resetToFirstPage();
+                            }}
+                            placeholder={t("admin.reportsPageEndDate")}
+                            className="w-full sm:w-[180px]"
+                        />
                         </div>
                 </div>
 

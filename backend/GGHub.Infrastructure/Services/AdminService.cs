@@ -20,6 +20,28 @@ namespace GGHub.Infrastructure.Services
             _auditService = auditService;
         }
 
+        /// <summary>
+        /// Admin listelerindeki serbest metin aramasi icin ILIKE deseni uretir.
+        ///
+        /// Buyuk/kucuk harf katlamasi BILEREK tamamen veritabanina birakildi. Onceki kod
+        /// terimi C# tarafinda <c>ToLower()</c> ile kucultuyordu; istek Accept-Language: tr
+        /// ile geldiginde UseRequestLocalization CurrentCulture'i tr yapiyor ve Turkce kurali
+        /// devreye giriyor: "Ismail" -> "ısmail" (noktasiz i). PostgreSQL'in lower() ciktisi
+        /// "ismail" oldugu icin buyuk I iceren her arama sessizce bos donuyordu.
+        ///
+        /// Kullanicinin yazdigi % ve _ karakterleri joker olarak yorumlanmasin diye desen
+        /// kacislanir; sorgu tarafinda ESCAPE '\' kullanilir.
+        /// </summary>
+        private static string ToSearchPattern(string term)
+        {
+            var escaped = term.Trim()
+                .Replace("\\", "\\\\")
+                .Replace("%", "\\%")
+                .Replace("_", "\\_");
+
+            return $"%{escaped}%";
+        }
+
         public async Task<PaginatedResult<AdminReportDto>> GetContentReportsAsync(ReportFilterParams filterParams)
         {
             var query = _context.ContentReports
@@ -29,9 +51,9 @@ namespace GGHub.Infrastructure.Services
 
             if (!string.IsNullOrWhiteSpace(filterParams.SearchTerm))
             {
-                var term = filterParams.SearchTerm.ToLower();
-                query = query.Where(r => r.Reason.ToLower().Contains(term) ||
-                                         r.ReporterUser.Username.ToLower().Contains(term));
+                var pattern = ToSearchPattern(filterParams.SearchTerm);
+                query = query.Where(r => EF.Functions.ILike(r.Reason, pattern, "\\") ||
+                                         EF.Functions.ILike(r.ReporterUser.Username, pattern, "\\"));
             }
 
             if (filterParams.StatusFilter.HasValue)
@@ -124,9 +146,9 @@ namespace GGHub.Infrastructure.Services
 
             if (!string.IsNullOrWhiteSpace(filterParams.SearchTerm))
             {
-                var searchTermLower = filterParams.SearchTerm.ToLower();
-                query = query.Where(u => u.Username.ToLower().Contains(searchTermLower) ||
-                                         u.Email.ToLower().Contains(searchTermLower));
+                var pattern = ToSearchPattern(filterParams.SearchTerm);
+                query = query.Where(u => EF.Functions.ILike(u.Username, pattern, "\\") ||
+                                         EF.Functions.ILike(u.Email, pattern, "\\"));
             }
 
             if (filterParams.StatusFilter?.ToLower() == "banned")
