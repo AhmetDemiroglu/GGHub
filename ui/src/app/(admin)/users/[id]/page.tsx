@@ -28,6 +28,7 @@ import { UserListsTab } from "@/core/components/admin/user-lists-tab";
 import { UserReviewsTab } from "@/core/components/admin/user-reviews-tab";
 import { UserCommentsTab } from "@/core/components/admin/user-comments-tab";
 import { UserReportsTab } from "@/core/components/admin/user-reports-tab";
+import { UserPostsTab } from "@/core/components/admin/user-posts-tab";
 
 export default function UserDetailPage() {
     const queryClient = useQueryClient();
@@ -169,6 +170,9 @@ export default function UserDetailPage() {
                     <TabsTrigger value="comments" className="cursor-pointer">
                         Yorumlar
                     </TabsTrigger>
+                    <TabsTrigger value="posts" className="cursor-pointer">
+                        Gönderiler
+                    </TabsTrigger>
                     <TabsTrigger value="reports" className="cursor-pointer">
                         Raporlamalar
                     </TabsTrigger>
@@ -206,6 +210,18 @@ export default function UserDetailPage() {
                         </CardHeader>
                         <CardContent>
                             <UserCommentsTab userId={userId} />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="posts" className="mt-3">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Kullanıcının Gönderileri</CardTitle>
+                            <CardDescription>Bu kullanıcının paylaştığı tüm gönderiler, yanıtlar ve yeniden paylaşımlar (gizliler dahil).</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <UserPostsTab userId={userId} />
                         </CardContent>
                     </Card>
                 </TabsContent>

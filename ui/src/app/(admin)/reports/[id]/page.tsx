@@ -84,6 +84,8 @@ export default function ReportDetailPage() {
                 return <MessageCircle className="h-4 w-4" />;
             case "Review":
                 return <FileText className="h-4 w-4" />;
+            case "Post":
+                return <MessageSquare className="h-4 w-4" />;
             default:
                 return <ShieldAlert className="h-4 w-4" />;
         }
@@ -110,6 +112,11 @@ export default function ReportDetailPage() {
                 return {
                     title: t("admin.reportDetail.contentLabels.reviewTitle"),
                     content: t("admin.reportDetail.contentLabels.reviewContent"),
+                };
+            case "Post":
+                return {
+                    title: t("admin.reportDetail.contentLabels.postTitle"),
+                    content: t("admin.reportDetail.contentLabels.postContent"),
                 };
             default:
                 return {

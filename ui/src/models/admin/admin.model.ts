@@ -103,6 +103,20 @@ export interface AdminCommentSummary {
     visibility: ListVisibilitySetting;
     createdAt: string;
 }
+/** Admin panelinde kullanicinin gonderi ozeti. Metin COZULMUS gelir (token degil). */
+export interface AdminPostSummary {
+    id: number;
+    contentPreview: string | null;
+    fullContent: string | null;
+    createdAt: string;
+    likeCount: number;
+    replyCount: number;
+    repostCount: number;
+    imageCount: number;
+    hasPoll: boolean;
+    parentPostId: number | null;
+    repostOfPostId: number | null;
+}
 export interface AdminUserReportSummary {
     reportId: number;
     entityType: string;

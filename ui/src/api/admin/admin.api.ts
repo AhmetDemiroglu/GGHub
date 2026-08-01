@@ -15,6 +15,7 @@ import type {
     AdminUserListSummary,
     AdminReviewSummary,
     AdminCommentSummary,
+    AdminPostSummary,
     AdminUserReportSummary,
     AdminReportDetail,
 } from "@/models/admin/admin.model";
@@ -68,6 +69,9 @@ export const getReviewsForUser = (userId: number) => {
 };
 export const getCommentsForUser = (userId: number) => {
     return axiosInstance.get<AdminCommentSummary[]>(`/admin/users/${userId}/comments`);
+};
+export const getPostsForUser = (userId: number) => {
+    return axiosInstance.get<AdminPostSummary[]>(`/admin/users/${userId}/posts`);
 };
 export const getReportsMadeByUser = (userId: number) => {
     return axiosInstance.get<AdminUserReportSummary[]>(`/admin/users/${userId}/reports-made`);

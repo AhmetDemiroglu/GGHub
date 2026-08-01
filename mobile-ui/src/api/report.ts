@@ -26,6 +26,11 @@ export const reportComment = (
   return axiosInstance.post(`/report/comment/${commentId}`, data);
 };
 
+/** Gonderi raporu. Yanit ve yeniden paylasim da ayni uctan raporlanir (hepsi Post satiri). */
+export const reportPost = (postId: number, data: ReportForCreation) => {
+  return axiosInstance.post(`/report/post/${postId}`, data);
+};
+
 export const getMyReports = () => {
   return axiosInstance.get<MyReportSummary[]>('/report/my-reports');
 };

@@ -17,6 +17,10 @@ export const reportComment = (commentId: number, data: ReportForCreation) => {
 export const reportReviewComment = (commentId: number, data: ReportForCreation) => {
     return axiosInstance.post(`/report/review-comment/${commentId}`, data);
 };
+/** Gonderi raporu. Yanit ve yeniden paylasim da ayni uctan raporlanir (hepsi Post satiri). */
+export const reportPost = (postId: number, data: ReportForCreation) => {
+    return axiosInstance.post(`/report/post/${postId}`, data);
+};
 export const getMyReports = () => {
     return axiosInstance.get<MyReportSummary[]>("/report/my-reports");
 };

@@ -465,6 +465,116 @@ namespace GGHub.Infrastructure.Services
             return comments;
         }
 
+        /// <summary>
+        /// Bir kullanicinin TUM gonderileri (yanit ve repost dahil).
+        ///
+        /// Gorunurluk filtresi BILEREK YOK: moderasyon paneli, kullanicinin
+        /// "Sadece Ben" yaptigi gonderileri de gormek zorunda. Uc zaten Admin
+        /// politikasi arkasinda.
+        ///
+        /// Metindeki tipli etiketler ("@[g:340]") moderatorun okuyabilecegi hale
+        /// getiriliyor; ham token'a bakarak icerik degerlendirilemez.
+        /// </summary>
+        public async Task<IEnumerable<AdminPostSummaryDto>> GetPostsForUserAsync(int userId)
+        {
+            var posts = await _context.Posts
+                .AsNoTracking()
+                .Where(p => p.UserId == userId)
+                .OrderByDescending(p => p.CreatedAt)
+                .Select(p => new
+                {
+                    p.Id,
+                    p.Content,
+                    p.CreatedAt,
+                    p.LikeCount,
+                    p.ReplyCount,
+                    p.RepostCount,
+                    p.ParentPostId,
+                    p.RepostOfPostId,
+                    ImageCount = p.Images.Count,
+                    HasPoll = p.Poll != null
+                })
+                .ToListAsync();
+
+            var parsed = posts
+                .SelectMany(p => MentionTokens.Parse(p.Content))
+                .ToList();
+
+            var displays = await ResolveMentionDisplaysAsync(parsed);
+
+            return posts.Select(p =>
+            {
+                var readable = RenderMentions(p.Content, displays);
+                return new AdminPostSummaryDto
+                {
+                    Id = p.Id,
+                    ContentPreview = readable != null && readable.Length > 100
+                        ? readable.Substring(0, 100) + "..."
+                        : readable,
+                    FullContent = readable,
+                    CreatedAt = p.CreatedAt,
+                    LikeCount = p.LikeCount,
+                    ReplyCount = p.ReplyCount,
+                    RepostCount = p.RepostCount,
+                    ImageCount = p.ImageCount,
+                    HasPoll = p.HasPoll,
+                    ParentPostId = p.ParentPostId,
+                    RepostOfPostId = p.RepostOfPostId
+                };
+            });
+        }
+
+        /// <summary>
+        /// Etiket hedeflerinin GORUNEN adlarini toplu cozer (kisi/oyun/liste
+        /// icin tek'er sorgu). Gorunurluk suzgeci yok: admin gorunumu.
+        /// </summary>
+        private async Task<Dictionary<(MentionTargetType, int), string>> ResolveMentionDisplaysAsync(
+            IReadOnlyList<MentionTokens.ParsedMention> parsed)
+        {
+            var map = new Dictionary<(MentionTargetType, int), string>();
+            if (parsed.Count == 0) return map;
+
+            var userIds = parsed.Where(m => m.Type == MentionTargetType.User).Select(m => m.TargetId).Distinct().ToList();
+            var gameIds = parsed.Where(m => m.Type == MentionTargetType.Game).Select(m => m.TargetId).Distinct().ToList();
+            var listIds = parsed.Where(m => m.Type == MentionTargetType.List).Select(m => m.TargetId).Distinct().ToList();
+
+            if (userIds.Count > 0)
+                foreach (var u in await _context.Users.AsNoTracking().Where(u => userIds.Contains(u.Id))
+                             .Select(u => new { u.Id, u.Username }).ToListAsync())
+                    map[(MentionTargetType.User, u.Id)] = u.Username;
+
+            if (gameIds.Count > 0)
+                foreach (var g in await _context.Games.AsNoTracking().Where(g => gameIds.Contains(g.Id))
+                             .Select(g => new { g.Id, g.Name }).ToListAsync())
+                    map[(MentionTargetType.Game, g.Id)] = g.Name;
+
+            if (listIds.Count > 0)
+                foreach (var l in await _context.UserLists.AsNoTracking().Where(l => listIds.Contains(l.Id))
+                             .Select(l => new { l.Id, l.Name }).ToListAsync())
+                    map[(MentionTargetType.List, l.Id)] = l.Name;
+
+            return map;
+        }
+
+        /// <summary>Token'lari "@GorunenAd" ile degistirir; cozulemeyen "@?" olur.</summary>
+        private static string? RenderMentions(
+            string? content, IReadOnlyDictionary<(MentionTargetType, int), string> displays)
+        {
+            if (string.IsNullOrEmpty(content)) return content;
+
+            var result = content;
+            // Sondan basa: erken degisiklikler sonraki token'larin konumunu kaydirmasin.
+            foreach (var mention in MentionTokens.Parse(content).OrderByDescending(m => m.Position))
+            {
+                var label = displays.TryGetValue((mention.Type, mention.TargetId), out var display)
+                    ? "@" + display
+                    : "@?";
+                result = result.Remove(mention.Position, mention.Length).Insert(mention.Position, label);
+            }
+
+            return result;
+        }
+
         public async Task<IEnumerable<AdminUserReportSummaryDto>> GetReportsMadeByUserAsync(int userId)
         {
             var reports = await _context.ContentReports
@@ -511,6 +621,24 @@ namespace GGHub.Infrastructure.Services
 
             switch (report.EntityType)
             {
+                case "Post":
+                    var post = await _context.Posts
+                        .Include(p => p.User)
+                        .FirstOrDefaultAsync(p => p.Id == report.EntityId);
+                    if (post != null)
+                    {
+                        // Etiketler moderatorun okuyabilecegi hale getirilir.
+                        var postDisplays = await ResolveMentionDisplaysAsync(MentionTokens.Parse(post.Content));
+                        dto.ReportedContent = RenderMentions(post.Content, postDisplays);
+                        dto.ReportedEntityTitle = post.RepostOfPostId != null
+                            ? "Yeniden Paylasim"
+                            : (post.ParentPostId != null ? "Gonderi Yaniti" : "Gonderi");
+                        dto.AccusedUserId = post.UserId;
+                        dto.AccusedUsername = post.User.Username;
+                        dto.AccusedProfileImage = post.User.ProfileImageUrl;
+                    }
+                    break;
+
                 case "Review":
                     var review = await _context.Reviews
                         .Include(r => r.User).Include(r => r.Game)

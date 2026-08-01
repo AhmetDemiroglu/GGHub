@@ -17,11 +17,11 @@ import { Textarea } from "@/core/components/ui/textarea";
 import { Label } from "@/core/components/ui/label";
 import { Button } from "@/core/components/ui/button";
 
-import { reportComment, reportList, reportReview, reportReviewComment, reportUser } from "@/api/report/report.api";
+import { reportComment, reportList, reportPost, reportReview, reportReviewComment, reportUser } from "@/api/report/report.api";
 import type { ReportForCreation } from "@/models/report/report.model";
 import { useI18n } from "@/core/contexts/locale-context";
 
-export type ReportableEntityType = "Review" | "User" | "List" | "Comment" | "ReviewComment";
+export type ReportableEntityType = "Review" | "User" | "List" | "Comment" | "ReviewComment" | "Post";
 
 /** Record kullanildi: yeni bir entity tipi eklenirse derleyici eksik basligi yakalar. */
 const titleKeyByEntityType: Record<ReportableEntityType, string> = {
@@ -30,6 +30,7 @@ const titleKeyByEntityType: Record<ReportableEntityType, string> = {
     List: "report.dialog.title.list",
     Comment: "report.dialog.title.comment",
     ReviewComment: "report.dialog.title.reviewComment",
+    Post: "report.dialog.title.post",
 };
 
 interface ReportDialogProps {
@@ -54,6 +55,8 @@ export const ReportDialog = ({ isOpen, onOpenChange, entityType, entityId }: Rep
                 return (data: ReportForCreation) => reportComment(entityId, data);
             case "ReviewComment":
                 return (data: ReportForCreation) => reportReviewComment(entityId, data);
+            case "Post":
+                return (data: ReportForCreation) => reportPost(entityId, data);
             default:
                 throw new Error(t("report.dialog.invalidType"));
         }

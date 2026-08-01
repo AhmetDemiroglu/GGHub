@@ -95,6 +95,19 @@ namespace GGHub.WebAPI.Controllers
             catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
         }
 
+        [HttpPost("post/{postId}")]
+        public async Task<IActionResult> ReportPost(int postId, ReportForCreationDto reportDto)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                await _reportService.ReportPostAsync(postId, userId, reportDto);
+                return Ok(new { message = AppText.Get("report.postReported") });
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+            catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+        }
+
         [HttpGet("my-reports")]
         public async Task<IActionResult> GetMyReports()
         {

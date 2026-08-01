@@ -22,6 +22,7 @@ namespace GGHub.Application.Interfaces
         Task<IEnumerable<AdminUserListSummaryDto>> GetListsForUserAsync(int userId);
         Task<IEnumerable<AdminReviewSummaryDto>> GetReviewsForUserAsync(int userId);
         Task<IEnumerable<AdminCommentSummaryDto>> GetCommentsForUserAsync(int userId);
+        Task<IEnumerable<AdminPostSummaryDto>> GetPostsForUserAsync(int userId);
         Task<IEnumerable<AdminUserReportSummaryDto>> GetReportsMadeByUserAsync(int userId);
     }
 }

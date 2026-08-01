@@ -8,9 +8,9 @@ import { Spacing, FontSize } from '@/src/constants/theme';
 import { BottomSheet } from '@/src/components/common/BottomSheet';
 import { Button } from '@/src/components/common/Button';
 import { Input } from '@/src/components/common/Input';
-import { reportReview, reportUser, reportList, reportComment } from '@/src/api/report';
+import { reportReview, reportUser, reportList, reportComment, reportPost } from '@/src/api/report';
 
-type EntityType = 'review' | 'user' | 'list' | 'comment';
+type EntityType = 'review' | 'user' | 'list' | 'comment' | 'post';
 
 interface ReportActionSheetProps {
   visible: boolean;
@@ -34,6 +34,7 @@ export function ReportActionSheet({ visible, onClose, entityType, entityId }: Re
       case 'user': return m.reportUser;
       case 'list': return m.reportList;
       case 'comment': return m.reportComment;
+      case 'post': return m.reportPost;
     }
   };
 
@@ -45,6 +46,7 @@ export function ReportActionSheet({ visible, onClose, entityType, entityId }: Re
         case 'user': return reportUser(entityId, data);
         case 'list': return reportList(entityId, data);
         case 'comment': return reportComment(entityId, data);
+        case 'post': return reportPost(entityId, data);
       }
     },
     onSuccess: () => {

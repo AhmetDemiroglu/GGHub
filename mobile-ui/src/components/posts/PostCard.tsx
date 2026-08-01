@@ -11,6 +11,7 @@ import { useToast } from '@/src/components/common/Toast';
 import { PostImageGrid } from '@/src/components/posts/PostImageGrid';
 import { PostPollView } from '@/src/components/posts/PostPollView';
 import { PostText } from '@/src/components/posts/PostText';
+import { ReportActionSheet } from '@/src/components/reports/ReportActionSheet';
 import { BorderRadius, FontSize, Spacing } from '@/src/constants/theme';
 import { useAuth } from '@/src/hooks/use-auth';
 import { useLocale } from '@/src/hooks/use-locale';
@@ -30,7 +31,7 @@ interface PostCardProps {
 export function PostCard({ post, variant = 'feed', onDeleted }: PostCardProps) {
   const { colors } = useTheme();
   const { messages, locale } = useLocale();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { showToast } = useToast();
   const confirm = useConfirm();
   const router = useRouter();
@@ -40,6 +41,7 @@ export function PostCard({ post, variant = 'feed', onDeleted }: PostCardProps) {
   const isRepost = Boolean(post.repostOf);
   const subject = post.repostOf ?? post;
 
+  const [reportOpen, setReportOpen] = useState(false);
   const [liked, setLiked] = useState(subject.isLiked);
   const [likeCount, setLikeCount] = useState(subject.likeCount);
   const [reposted, setReposted] = useState(subject.isReposted);
@@ -99,6 +101,13 @@ export function PostCard({ post, variant = 'feed', onDeleted }: PostCardProps) {
 
   const author = subject.author;
   const timeAgo = formatRelativeTime(post.createdAt, locale);
+
+  /**
+   * Raporlanan sey kartta GORUNEN icerik, yani repost kartinda kaynak gonderi.
+   * Kendi icerigini raporlamak sunucuda zaten reddediliyor; menuyu bosuna
+   * gostermemek icin ayni kontrol burada da var.
+   */
+  const canReport = isAuthenticated && Number(user?.id) !== author.id;
 
   const toggleLike = () => {
     if (!isAuthenticated) return;
@@ -183,9 +192,19 @@ export function PostCard({ post, variant = 'feed', onDeleted }: PostCardProps) {
               </Text>
             </Pressable>
 
-            {post.canDelete ? (
-              <Pressable onPress={askDelete} hitSlop={8} style={styles.moreButton}>
-                <Ionicons name="ellipsis-horizontal" size={16} color={colors.textSecondary} />
+            {/* Sahibi silme onayina, digerleri rapor sayfasina gider: ikisi ayni
+                anda gecerli olamaz (kendi gonderini raporlayamazsin). */}
+            {post.canDelete || canReport ? (
+              <Pressable
+                onPress={post.canDelete ? askDelete : () => setReportOpen(true)}
+                hitSlop={8}
+                style={styles.moreButton}
+              >
+                <Ionicons
+                  name={post.canDelete ? 'ellipsis-horizontal' : 'flag-outline'}
+                  size={16}
+                  color={colors.textSecondary}
+                />
               </Pressable>
             ) : null}
           </View>
@@ -235,6 +254,15 @@ export function PostCard({ post, variant = 'feed', onDeleted }: PostCardProps) {
           </View>
         </View>
       </View>
+
+      {canReport ? (
+        <ReportActionSheet
+          visible={reportOpen}
+          onClose={() => setReportOpen(false)}
+          entityType="post"
+          entityId={subject.id}
+        />
+      ) : null}
     </Pressable>
   );
 }

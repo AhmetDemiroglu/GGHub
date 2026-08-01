@@ -9,6 +9,7 @@ namespace GGHub.Application.Interfaces
         Task ReportListAsync(int listId, int reporterUserId, ReportForCreationDto reportDto);
         Task ReportCommentAsync(int commentId, int reporterUserId, ReportForCreationDto reportDto);
         Task ReportReviewCommentAsync(int commentId, int reporterUserId, ReportForCreationDto reportDto);
+        Task ReportPostAsync(int postId, int reporterUserId, ReportForCreationDto reportDto);
         Task<IEnumerable<MyReportSummaryDto>> GetMyReportsAsync(int reporterUserId);
     }
 }

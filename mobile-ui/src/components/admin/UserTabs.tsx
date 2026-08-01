@@ -7,15 +7,15 @@ import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 import { Badge } from '@/src/components/common/Badge';
-import { getListsForUser, getReviewsForUser, getCommentsForUser, getReportsMadeByUser } from '@/src/api/admin';
+import { getListsForUser, getReviewsForUser, getCommentsForUser, getPostsForUser, getReportsMadeByUser } from '@/src/api/admin';
 import { translateReportStatus, getReportStatusVariant } from '@/src/utils/report';
-import type { AdminUserListSummary, AdminReviewSummary, AdminCommentSummary, AdminUserReportSummary } from '@/src/models/admin';
+import type { AdminUserListSummary, AdminReviewSummary, AdminCommentSummary, AdminPostSummary, AdminUserReportSummary } from '@/src/models/admin';
 
 interface UserTabsProps {
   userId: number;
 }
 
-type TabKey = 'lists' | 'reviews' | 'comments' | 'reports';
+type TabKey = 'lists' | 'reviews' | 'comments' | 'posts' | 'reports';
 
 const variantToColor: Record<string, { bg: string; text: string }> = {
   info: { bg: '#3b82f620', text: '#3b82f6' },
@@ -35,6 +35,7 @@ export function UserTabs({ userId }: UserTabsProps) {
     { key: 'lists', label: m.lists, icon: 'list' },
     { key: 'reviews', label: m.reviews, icon: 'chatbox' },
     { key: 'comments', label: m.comments, icon: 'chatbubbles' },
+    { key: 'posts', label: m.posts, icon: 'megaphone' },
     { key: 'reports', label: m.reportsMade, icon: 'flag' },
   ];
 
@@ -54,6 +55,12 @@ export function UserTabs({ userId }: UserTabsProps) {
     queryKey: ['admin', 'user-comments', userId],
     queryFn: () => getCommentsForUser(userId).then((res) => res.data),
     enabled: activeTab === 'comments',
+  });
+
+  const postsQuery = useQuery({
+    queryKey: ['admin', 'user-posts', userId],
+    queryFn: () => getPostsForUser(userId).then((res) => res.data),
+    enabled: activeTab === 'posts',
   });
 
   const reportsQuery = useQuery({
@@ -111,6 +118,51 @@ export function UserTabs({ userId }: UserTabsProps) {
     </View>
   );
 
+  const renderPostItem = ({ item }: { item: AdminPostSummary }) => {
+    // Yanit/repost kartlarinda metin bos olabilir; tur etiketi her zaman var.
+    const kind = item.repostOfPostId !== null
+      ? m.postRepost
+      : item.parentPostId !== null
+        ? m.postReply
+        : null;
+
+    return (
+      <TouchableOpacity
+        style={[styles.listItem, { borderBottomColor: colors.border }]}
+        onPress={() => router.push(`/posts/${item.id}` as any)}
+      >
+        <View style={styles.listItemContent}>
+          <Text style={[styles.itemTitle, { color: colors.text }]} numberOfLines={3}>
+            {item.fullContent || m.postNoText}
+          </Text>
+          <View style={styles.postMetaRow}>
+            {[kind, item.hasPoll ? m.postPoll : null].filter(Boolean).map((label) => (
+              <Text key={label as string} style={[styles.itemSubtext, { color: colors.textSecondary }]}>
+                {label}
+              </Text>
+            ))}
+            <View style={styles.postStat}>
+              <Ionicons name="heart-outline" size={13} color={colors.textSecondary} />
+              <Text style={[styles.itemSubtext, { color: colors.textSecondary }]}>{item.likeCount}</Text>
+            </View>
+            <View style={styles.postStat}>
+              <Ionicons name="chatbubble-outline" size={13} color={colors.textSecondary} />
+              <Text style={[styles.itemSubtext, { color: colors.textSecondary }]}>{item.replyCount}</Text>
+            </View>
+            <View style={styles.postStat}>
+              <Ionicons name="repeat-outline" size={13} color={colors.textSecondary} />
+              <Text style={[styles.itemSubtext, { color: colors.textSecondary }]}>{item.repostCount}</Text>
+            </View>
+          </View>
+          <Text style={[styles.dateText, { color: colors.textMuted }]}>
+            {new Date(item.createdAt).toLocaleDateString()}
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+      </TouchableOpacity>
+    );
+  };
+
   const renderReportItem = ({ item }: { item: AdminUserReportSummary }) => {
     const variant = getReportStatusVariant(item.status);
     const badgeColor = variantToColor[variant] ?? variantToColor.info;
@@ -144,6 +196,7 @@ export function UserTabs({ userId }: UserTabsProps) {
       case 'lists': return m.noLists;
       case 'reviews': return m.noReviews;
       case 'comments': return m.noComments;
+      case 'posts': return m.noPosts;
       case 'reports': return m.noReports;
     }
   };
@@ -168,6 +221,11 @@ export function UserTabs({ userId }: UserTabsProps) {
         data = commentsQuery.data ?? [];
         renderItem = renderCommentItem;
         isLoading = commentsQuery.isLoading;
+        break;
+      case 'posts':
+        data = postsQuery.data ?? [];
+        renderItem = renderPostItem;
+        isLoading = postsQuery.isLoading;
         break;
       case 'reports':
         data = reportsQuery.data ?? [];
@@ -212,6 +270,8 @@ export function UserTabs({ userId }: UserTabsProps) {
               color={activeTab === tab.key ? colors.primary : colors.textMuted}
             />
             <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
               style={[
                 styles.tabText,
                 { color: activeTab === tab.key ? colors.primary : colors.textMuted },
@@ -234,11 +294,14 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
-    flexDirection: 'row',
+    // 5 sekme yan yana: ikon+etiket ayni satirda "Gonderiler" gibi uzun bir
+    // etikete yer birakmiyordu, o yuzden etiket ikonun ALTINA aliniyor.
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: Spacing.md,
-    gap: 4,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: 2,
+    gap: 2,
   },
   tabText: {
     fontSize: FontSize.xs,
@@ -256,6 +319,18 @@ const styles = StyleSheet.create({
   },
   listItemContent: {
     flex: 1,
+  },
+  postMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+    marginTop: 2,
+  },
+  postStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
   },
   itemTitle: {
     fontSize: FontSize.md,

@@ -7,7 +7,7 @@ import { formatDistanceToNow } from "date-fns";
 import { enUS, tr } from "date-fns/locale";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Heart, MessageCircle, MoreHorizontal, Repeat2, Trash2 } from "lucide-react";
+import { Flag, Heart, MessageCircle, MoreHorizontal, Repeat2, Trash2 } from "lucide-react";
 
 import { deletePost, setPostLike, setPostRepost } from "@/api/post/post.api";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
@@ -17,6 +17,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/core/components/ui/dropdown-menu";
+import { ReportDialog } from "@/core/components/base/report-dialog";
 import { PostText } from "@/core/components/base/post-text";
 import { PostImageGrid } from "@/core/components/other/posts/post-image-grid";
 import { PostPoll } from "@/core/components/other/posts/post-poll";
@@ -40,7 +41,7 @@ export function PostCard({ post, variant = "feed", onDeleted, className }: PostC
     const locale = useCurrentLocale();
     const localizeHref = useLocalizedHref();
     const router = useRouter();
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, user } = useAuth();
 
     // Repost kartinda GORUNEN icerik kaynak gonderidir; etkilesim sayaclari da
     // kaynagin sayaclaridir (X'te oldugu gibi). Repost eden kisi ust satirda
@@ -53,6 +54,7 @@ export function PostCard({ post, variant = "feed", onDeleted, className }: PostC
     const [reposted, setReposted] = useState(subject.isReposted);
     const [repostCount, setRepostCount] = useState(subject.repostCount);
     const [deleted, setDeleted] = useState(false);
+    const [isReportOpen, setIsReportOpen] = useState(false);
 
     // Anket bileseniyle ayni sorun: yerel sayaclar ilk prop'ta donup kaliyordu ve
     // sunucudan gelen TAZE kart (refetch, ya da ayni gonderinin baska bir yerde
@@ -110,6 +112,13 @@ export function PostCard({ post, variant = "feed", onDeleted, className }: PostC
     const author = subject.author;
     const displayName = [author.firstName, author.lastName].filter(Boolean).join(" ") || author.username;
 
+    /**
+     * Raporlanan sey kartta GORUNEN icerik, yani repost kartinda kaynak gonderi.
+     * Kendi icerigini raporlamak sunucuda zaten reddediliyor; menuyu bosuna
+     * gostermemek icin ayni kontrol burada da var.
+     */
+    const canReport = isAuthenticated && Number(user?.id) !== author.id;
+
     const toggleLike = () => {
         if (!isAuthenticated) return;
         const next = !liked;
@@ -147,6 +156,7 @@ export function PostCard({ post, variant = "feed", onDeleted, className }: PostC
     };
 
     return (
+        <>
         <article
             onClick={handleCardClick}
             className={cn(
@@ -193,20 +203,28 @@ export function PostCard({ post, variant = "feed", onDeleted, className }: PostC
                             {timeAgo}
                         </Link>
 
-                        {post.canDelete ? (
+                        {post.canDelete || canReport ? (
                             <DropdownMenu>
                                 <DropdownMenuTrigger className="ml-auto cursor-pointer rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
                                     <MoreHorizontal className="h-4 w-4" />
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                    <DropdownMenuItem
-                                        variant="destructive"
-                                        onClick={() => deleteMutation.mutate()}
-                                        disabled={deleteMutation.isPending}
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                        {t("posts.delete")}
-                                    </DropdownMenuItem>
+                                    {post.canDelete ? (
+                                        <DropdownMenuItem
+                                            variant="destructive"
+                                            onClick={() => deleteMutation.mutate()}
+                                            disabled={deleteMutation.isPending}
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                            {t("posts.delete")}
+                                        </DropdownMenuItem>
+                                    ) : null}
+                                    {canReport ? (
+                                        <DropdownMenuItem variant="destructive" onClick={() => setIsReportOpen(true)}>
+                                            <Flag className="h-4 w-4" />
+                                            {t("posts.report")}
+                                        </DropdownMenuItem>
+                                    ) : null}
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         ) : null}
@@ -272,5 +290,15 @@ export function PostCard({ post, variant = "feed", onDeleted, className }: PostC
                 </div>
             </div>
         </article>
+
+        {/*
+          Diyalog article'in KARDESI: React olaylari React agacinda kabarir, portal
+          DOM'da disari cizse bile icerideki tiklama article'in onClick'ine ulasir
+          ve kullaniciyi detaya atardi (lightbox'ta ayni hataya dusmustuk).
+        */}
+        {canReport ? (
+            <ReportDialog isOpen={isReportOpen} onOpenChange={setIsReportOpen} entityType="Post" entityId={subject.id} />
+        ) : null}
+        </>
     );
 }

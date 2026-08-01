@@ -301,6 +301,13 @@ namespace GGHub.WebAPI.Controllers
             return Ok(comments);
         }
 
+        [HttpGet("users/{userId}/posts")]
+        public async Task<IActionResult> GetPostsForUser(int userId)
+        {
+            var posts = await _adminService.GetPostsForUserAsync(userId);
+            return Ok(posts);
+        }
+
         [HttpGet("users/{userId}/reports-made")]
         public async Task<IActionResult> GetReportsMadeByUser(int userId)
         {
