@@ -70,7 +70,7 @@ export default function ProfileOverview({ username }: ProfileOverviewProps) {
                                     <TooltipProvider key={index}>
                                         <Tooltip delayDuration={200}>
                                             <TooltipTrigger asChild>
-                                                <div className="group flex flex-col items-center gap-2 p-2 rounded-lg hover:bg-muted/50 transition-all duration-300 cursor-help hover:-translate-y-1 border border-transparent hover:border-border/50">
+                                                <div className="group flex flex-col items-center gap-2 p-2 rounded-lg hover:bg-muted/50 transition-all duration-300 hover:-translate-y-1 border border-transparent hover:border-border/50">
                                                     <div className="relative h-12 w-12 drop-shadow-md group-hover:drop-shadow-xl transition-all">
                                                         <Image src={badge.iconUrl} alt={badge.title} fill sizes="48px" className="object-contain" />
                                                     </div>

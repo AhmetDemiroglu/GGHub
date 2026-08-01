@@ -143,6 +143,33 @@
     body {
         @apply bg-background text-foreground;
     }
+
+    /*
+     * Tiklanabilir her ogede el imleci. Tailwind v4 preflight'i buton ve benzeri
+     * ogelerden cursor: pointer'i kaldirdi; bu yuzden proje genelinde 280'den fazla
+     * yerde elle cursor-pointer yaziliyor ve unutulan yerlerde imlec ok ya da metin
+     * imleci olarak kaliyordu. Kural burada tek noktadan veriliyor.
+     *
+     * :where() BILEREK kullanildi: ozgullugu sifirlar, boylede tekil cursor-* siniflari
+     * (devre disi ogelerdeki cursor-not-allowed gibi) bu kurali her zaman ezebilir.
+     * Tiklanabilir olmayan ogelere dokunulmaz, onlarda imlec varsayilan kalir.
+     */
+    :where(
+        button:not(:disabled),
+        summary,
+        a[href],
+        label[for],
+        select:not(:disabled),
+        [role="button"]:not([aria-disabled="true"], [data-disabled]),
+        [role="menuitem"]:not([aria-disabled="true"], [data-disabled]),
+        [role="menuitemcheckbox"]:not([aria-disabled="true"], [data-disabled]),
+        [role="menuitemradio"]:not([aria-disabled="true"], [data-disabled]),
+        [role="option"]:not([aria-disabled="true"], [data-disabled]),
+        [role="tab"]:not([aria-disabled="true"], [data-disabled]),
+        [role="switch"]:not([aria-disabled="true"], [data-disabled])
+    ) {
+        cursor: pointer;
+    }
 }
 
 @layer utilities {

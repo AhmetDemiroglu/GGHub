@@ -410,7 +410,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                                 <TooltipProvider>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
-                                            <div className="relative h-8 w-8 cursor-help hover:scale-110 transition-transform">
+                                            <div className="relative h-8 w-8 hover:scale-110 transition-transform">
                                                 <Image
                                                     src={`/assets/badges/level_${stats.currentLevel}.ico`}
                                                     alt={t("profile.header.levelImageAlt", { level: stats.currentLevel })}

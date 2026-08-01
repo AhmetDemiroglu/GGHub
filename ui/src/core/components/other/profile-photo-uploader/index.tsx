@@ -125,7 +125,7 @@ export function ProfilePhotoUploader({ isOpen, onClose, currentImageUrl, usernam
 
                     {!imageSrc && (
                         <Button variant="outline" onClick={handleFileSelectClick} className="cursor-pointer">
-                            <Upload className="mr-2 h-4 w-4 cursor-poin" />
+                            <Upload className="mr-2 h-4 w-4" />
                             {croppedFile ? "Değiştir" : "Yeni Fotoğraf Seç"}
                         </Button>
                     )}

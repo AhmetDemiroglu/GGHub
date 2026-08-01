@@ -44,7 +44,7 @@ export function PostImageGrid({ images, className }: PostImageGridProps) {
             type="button"
             aria-label={t("posts.imagePreview")}
             onClick={() => setOpenIndex(position)}
-            className={cn("relative cursor-zoom-in overflow-hidden bg-muted", extra)}
+            className={cn("relative cursor-pointer overflow-hidden bg-muted", extra)}
         >
             <Image
                 // getImageUrl bos girdide undefined doner; gorsel adresi hic bos
