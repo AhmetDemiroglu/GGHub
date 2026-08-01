@@ -830,6 +830,13 @@ namespace GGHub.Infrastructure.Services
 
             var mapped = await _postService.MapAsync(posts, currentUserId);
 
+            // Ayni sayfada hem bir gonderi HEM onun repost'u varsa repost'u dusur.
+            // Repost'un isi "bunu su kisi one cikardi" demek; orijinali zaten
+            // goruyorsan ayni icerigi ikinci kez gostermekten baska bir sey
+            // yapmiyor. Kendi gonderini repost etmek tam olarak bu durumu uretiyor.
+            var rootIds = mapped.Where(p => p.RepostOf == null).Select(p => p.Id).ToHashSet();
+            mapped = mapped.Where(p => p.RepostOf == null || !rootIds.Contains(p.RepostOf.Id)).ToList();
+
             return mapped.Select(p => (
                 new ActivityDto
                 {
