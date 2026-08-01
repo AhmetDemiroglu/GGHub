@@ -54,11 +54,16 @@ export function PostImageLightbox({ images, index, onClose }: PostImageLightboxP
         {/* Zemine dokununca kapanir; gorselin uzeri kapatmaz. */}
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
 
-        <Image
-          source={{ uri: getImageUrl(image.url) }}
-          style={{ width: width - Spacing.xxl, height: height * 0.7 }}
-          resizeMode="contain"
-        />
+        {/* Gorselin kendisi de kapatir. Aksi halde ekranin ortasi olu bolge
+            olurdu: kullanici gorsele dokunuyor, hicbir sey olmuyor. X'te de
+            fotografa dokunmak goruntuleyiciyi kapatir. */}
+        <Pressable onPress={onClose}>
+          <Image
+            source={{ uri: getImageUrl(image.url) }}
+            style={{ width: width - Spacing.xxl, height: height * 0.7 }}
+            resizeMode="contain"
+          />
+        </Pressable>
 
         <Pressable
           onPress={onClose}

@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
@@ -29,6 +30,9 @@ interface PostImageLightboxProps {
 export function PostImageLightbox({ images, index, onIndexChange, onClose }: PostImageLightboxProps) {
     const t = useI18n();
     const isOpen = index !== null;
+    // Portal yalnizca istemcide kurulabilir; sunucu render'inda document yok.
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
     const count = images.length;
 
     const go = useCallback(
@@ -58,19 +62,34 @@ export function PostImageLightbox({ images, index, onIndexChange, onClose }: Pos
         };
     }, [go, isOpen, onClose]);
 
-    if (!isOpen) return null;
+    if (!isOpen || !mounted) return null;
 
     const current = images[index];
     if (!current) return null;
 
-    return (
+    const overlay = (
         <div
             role="dialog"
             aria-modal="true"
             aria-label={t("posts.imagePreview")}
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
-            // Zemine tiklayinca kapanir; gorselin uzerine tiklamak kapatmamali.
-            onClick={onClose}
+            // Zemine tiklayinca YALNIZCA kapanir.
+            //
+            // stopPropagation SART: bu bilesen React agacinda hala gonderi
+            // kartinin cocugu. Portal DOM'da body'ye tasiyor ama React olaylari
+            // DOM agacindan degil REACT agacindan yukari cikiyor; onlemezsek
+            // kapatma tiklamasi kartin "bos alana tiklayinca detaya git"
+            // isleyicisine de dusuyor ve onizlemeyi kapatirken ayni anda
+            // gonderi detayina gidiliyordu.
+            onClick={(event) => {
+                event.stopPropagation();
+                onClose();
+            }}
+            // Kart yalnizca onClick dinliyor ama fare olaylarinin tamamini
+            // burada kesmek, ileride karta baska bir dinleyici eklendiginde
+            // ayni hatanin tekrar dogmasini engelliyor.
+            onMouseDown={(event) => event.stopPropagation()}
+            onMouseUp={(event) => event.stopPropagation()}
         >
             <button
                 type="button"
@@ -127,4 +146,9 @@ export function PostImageLightbox({ images, index, onIndexChange, onClose }: Pos
             ) : null}
         </div>
     );
+
+    // body'ye portal: kartin ustunde bir ata `transform`/`filter`/`contain`
+    // tasirsa `position: fixed` o ataya gore konumlanir ve katman ekrani
+    // kaplamaz. Portal bu tuzagi bastan kapatiyor.
+    return createPortal(overlay, document.body);
 }
