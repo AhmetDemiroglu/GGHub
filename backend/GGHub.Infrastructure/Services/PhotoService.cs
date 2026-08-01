@@ -5,6 +5,7 @@ using GGHub.Application.Interfaces;
 using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Webp;
@@ -22,6 +23,11 @@ namespace GGHub.Infrastructure.Services
         // eski mobil sürümler ve gelecekteki istemciler için güvenlik ağı.
         private const int ProfileMaxEdge = 512;
         private const int HeaderMaxEdge = 1600;
+
+        // Gonderi gorseli akista tam genislikte cizilir; avatardan buyuk, kapak
+        // gorselinden kucuk olmali. 1280 retina ekranda da net duruyor.
+        private const int PostImageMaxEdge = 1280;
+
         private const int WebpQuality = 82;
 
         // Key'ler GUID içerdiği için içerik hiç değişmez; bir yıl immutable cache güvenli.
@@ -65,6 +71,23 @@ namespace GGHub.Infrastructure.Services
             await _context.SaveChangesAsync();
         }
 
+        /// <summary>
+        /// Gonderi gorseli. Diger uc metottan farki: sonucu bir User kolonuna
+        /// ATAMAZ, yalnizca adresi ve boyutlari doner. Gorsel gonderi ile
+        /// iliskilendirilmesini PostService yapiyor.
+        ///
+        /// Boyutlar doniyor cunku akista gorsel yuklenmeden once dogru oranli
+        /// yer tutucu cizilmezse kart yuklendikce ziplar (layout shift).
+        /// </summary>
+        public async Task<PostImageUploadResult> UploadPostImageAsync(int userId, IFormFile file)
+        {
+            var userExists = await _context.Users.AnyAsync(u => u.Id == userId);
+            if (!userExists)
+                throw new KeyNotFoundException(AppText.Get("photo.userNotFound"));
+
+            return await UploadToStorageAsync(userId, file, "posts", PostImageMaxEdge);
+        }
+
         private async Task<string> UploadAndAssignAsync(
             int userId,
             IFormFile file,
@@ -76,6 +99,26 @@ namespace GGHub.Infrastructure.Services
             if (user == null)
                 throw new KeyNotFoundException(AppText.Get("photo.userNotFound"));
 
+            var uploaded = await UploadToStorageAsync(userId, file, keyPrefix, maxEdge);
+
+            assign(user, uploaded.Url);
+            await _context.SaveChangesAsync();
+
+            return uploaded.Url;
+        }
+
+        /// <summary>
+        /// Dogrulama + normalize + R2'ye yukleme. Atama yapmaz, veritabanina
+        /// yazmaz. Profil/kapak ve gonderi yollarinin ORTAK govdesi; kural
+        /// (izinli uzantilar, 5 MB tavani, WebP'e cevirme, metadata temizligi)
+        /// tek yerde dursun diye ayrildi.
+        /// </summary>
+        private async Task<PostImageUploadResult> UploadToStorageAsync(
+            int userId,
+            IFormFile file,
+            string keyPrefix,
+            int maxEdge)
+        {
             if (file == null || file.Length == 0)
                 throw new ArgumentException(AppText.Get("photo.fileEmpty"));
 
@@ -93,7 +136,9 @@ namespace GGHub.Infrastructure.Services
             var fileName = $"{keyPrefix}/{userId}-{Guid.NewGuid()}.webp";
             var transferUtility = new TransferUtility(_s3Client);
 
-            using (var uploadStream = await NormalizeAsync(file, maxEdge))
+            var (normalized, width, height) = await NormalizeAsync(file, maxEdge);
+
+            using (var uploadStream = normalized)
             {
                 var uploadRequest = new TransferUtilityUploadRequest
                 {
@@ -111,11 +156,12 @@ namespace GGHub.Infrastructure.Services
                 await transferUtility.UploadAsync(uploadRequest);
             }
 
-            var fileUrl = $"{_publicR2Url}/{fileName}";
-            assign(user, fileUrl);
-            await _context.SaveChangesAsync();
-
-            return fileUrl;
+            return new PostImageUploadResult
+            {
+                Url = $"{_publicR2Url}/{fileName}",
+                Width = width,
+                Height = height
+            };
         }
 
         /// <summary>
@@ -123,7 +169,7 @@ namespace GGHub.Infrastructure.Services
         /// WebP'e çevirir. Küçültme yalnızca gerektiğinde yapılır (küçük görsel büyütülmez).
         /// EXIF yönlendirmesi uygulanır ve metadata düşer, böylece konum bilgisi de sızmaz.
         /// </summary>
-        private static async Task<Stream> NormalizeAsync(IFormFile file, int maxEdge)
+        private static async Task<(Stream Stream, int Width, int Height)> NormalizeAsync(IFormFile file, int maxEdge)
         {
             await using var source = file.OpenReadStream();
 
@@ -162,7 +208,10 @@ namespace GGHub.Infrastructure.Services
                 var output = new MemoryStream();
                 await image.SaveAsync(output, new WebpEncoder { Quality = WebpQuality });
                 output.Position = 0;
-                return output;
+
+                // Boyutlar kucultme SONRASI okunuyor; istemcinin yer tutucuda
+                // kullanacagi oran depolanan dosyanin orani olmali.
+                return (output, image.Width, image.Height);
             }
         }
     }

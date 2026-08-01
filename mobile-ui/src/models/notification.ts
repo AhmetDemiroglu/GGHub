@@ -26,4 +26,8 @@ export enum NotificationType {
   ReviewCommentReply = 9,
   ReviewCommentLike = 10,
   Mention = 11,
+  // 12+ : gonderiler. Gonderide etiketlenme icin ayri tip YOK, Mention (11) kullanilir.
+  PostLike = 12,
+  PostReply = 13,
+  PostRepost = 14,
 }

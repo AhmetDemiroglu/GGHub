@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { enUS, tr } from "date-fns/locale";
-import { getPersonalizedFeed } from "@/api/activity/activity.api";
+import { getFeedByTab } from "@/api/activity/activity.api";
 import { Activity, ActivityActor, ActivityType } from "@/models/activity/activity.model";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 import { buildLocalizedPathname } from "@/i18n/config";
@@ -17,19 +17,31 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/core/components/ui/tabs";
 import { Skeleton } from "@/core/components/ui/skeleton";
 import { MentionText } from "@/core/components/base/mention-text";
-import { Activity as ActivityIcon, Flame, Heart, List, Loader2, MessageCircle, Star, UserPlus } from "lucide-react";
+import { PostCard } from "@/core/components/other/posts/post-card";
+import { PostComposer } from "@/core/components/other/posts/post-composer";
+import {
+    Activity as ActivityIcon,
+    Compass,
+    Heart,
+    List,
+    Loader2,
+    MessageCircle,
+    MessageSquare,
+    Star,
+    UserPlus,
+} from "lucide-react";
 
 const FEED_PAGE_SIZE = 10;
 
-/** Sekme sirasi mobildeki TAB_ORDER ile birebir. */
-type TabKey = "reviews" | "lists" | "follows" | "all";
+/**
+ * Sekme sirasi mobildeki TAB_ORDER ile birebir: Gonderiler, Incelemeler, Kesfet.
+ *
+ * Onceki dort sekme (reviews/lists/follows/all) ucе indirildi. Listeler ve
+ * takipler artik Kesfet icinde; "Hepsi" sekmesinin yerini Kesfet aldi.
+ */
+type TabKey = "posts" | "reviews" | "discover";
 
-const TAB_TYPE: Record<TabKey, ActivityType | undefined> = {
-    reviews: ActivityType.Review,
-    lists: ActivityType.ListCreated,
-    follows: ActivityType.FollowUser,
-    all: undefined,
-};
+const TAB_ORDER: TabKey[] = ["posts", "reviews", "discover"];
 
 interface TabState {
     items: Activity[];
@@ -41,49 +53,32 @@ interface TabState {
 const emptyTab = (): TabState => ({ items: [], hasMore: true, loading: false, loaded: false });
 
 interface HomeSocialFeedProps {
-    initialActivities: Activity[];
     isAuthenticated: boolean;
 }
 
-export default function HomeSocialFeed({ initialActivities, isAuthenticated }: HomeSocialFeedProps) {
+export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps) {
     const locale = useCurrentLocale();
     const t = useI18n();
-    // Varsayılan sekme mobildeki TabbedActivityFeed ile aynı: İncelemeler.
+    // Varsayılan sekme mobildeki TabbedActivityFeed ile aynı: Gönderiler.
     // Buradaki başlangıç değeri ile <Tabs defaultValue> BİRLİKTE değişmeli,
     // yoksa seçili sekme ile listelenen içerik birbirini tutmaz.
-    const [activeTab, setActiveTab] = useState<TabKey>("reviews");
-    // Her sekme KENDI sayfasini sunucudan ceker. Onceden tek bir karisik akis
-    // cekilip istemcide filtreleniyordu; 10 kayitlik sayfaya kac inceleme
-    // dustuyse "Incelemeler" sekmesi yalnizca onu gosterdigi icin web, mobile
-    // gore neredeyse bos gorunuyordu. Mobildeki TabbedActivityFeed ile ayni model.
+    const [activeTab, setActiveTab] = useState<TabKey>("posts");
+    // Her sekme KENDI sayfasini sunucudan ceker.
+    //
+    // UC SEKME DE emptyTab() ile basliyor. Onceden "all" sekmesi prop'tan
+    // loaded:true ile tohumlaniyordu; on yukleme dongusu onu atliyor, emniyet
+    // efekti de !loaded sartina takiliyordu. Besleyen cagri hatayi yutunca
+    // ("catch(() => [])") sekme kalici olarak bos kaliyordu: kullanici tikliyor,
+    // hicbir sey olmuyordu. Tohumlama tamamen kaldirildi.
     const [feeds, setFeeds] = useState<Record<TabKey, TabState>>(() => ({
+        posts: emptyTab(),
         reviews: emptyTab(),
-        lists: emptyTab(),
-        follows: emptyTab(),
-        // Sunucudan gelen ilk akis zaten karisik: dogrudan "all" sekmesini besler.
-        all: {
-            items: initialActivities,
-            hasMore: initialActivities.length >= FEED_PAGE_SIZE,
-            loading: false,
-            loaded: true,
-        },
+        discover: emptyTab(),
     }));
     const sentinelRef = useRef<HTMLDivElement | null>(null);
     // loadTab closure'ının her render'da güncel listeyi görmesi için ref tutuyoruz.
     const feedsRef = useRef(feeds);
     feedsRef.current = feeds;
-
-    useEffect(() => {
-        setFeeds((current) => ({
-            ...current,
-            all: {
-                items: initialActivities,
-                hasMore: initialActivities.length >= FEED_PAGE_SIZE,
-                loading: false,
-                loaded: true,
-            },
-        }));
-    }, [initialActivities]);
 
     const loadTab = useCallback(async (tab: TabKey, reset: boolean) => {
         const current = feedsRef.current[tab];
@@ -102,7 +97,7 @@ export default function HomeSocialFeed({ initialActivities, isAuthenticated }: H
                       undefined,
                   );
 
-            const page = await getPersonalizedFeed(FEED_PAGE_SIZE, cursor, TAB_TYPE[tab]);
+            const page = await getFeedByTab(tab, FEED_PAGE_SIZE, cursor);
 
             setFeeds((prev) => {
                 const base = reset ? [] : prev[tab].items;
@@ -125,15 +120,18 @@ export default function HomeSocialFeed({ initialActivities, isAuthenticated }: H
         }
     }, []);
 
-    // Açılışta önce varsayılan sekme (İncelemeler), ardından diğerleri arka
-    // planda; sekme değişince içerik anında hazır olur. "all" zaten sunucudan
-    // gelen ilk akışla dolu, tekrar çekilmez.
+    // Açılışta önce varsayılan sekme (Gönderiler), ardından diğerleri arka
+    // planda; sekme değişince içerik anında hazır olur.
+    //
+    // TAB_ORDER üzerinden dönüyor: sekme listesine yeni bir giriş eklendiğinde
+    // ön yüklemeye eklemeyi unutmak mümkün olmasın (eski "Hepsi" hatası tam
+    // olarak buydu, elle yazılmış listede o sekme yoktu).
     useEffect(() => {
         if (!isAuthenticated) return;
         let cancelled = false;
         void (async () => {
-            await loadTab("reviews", true);
-            for (const tab of ["lists", "follows"] as TabKey[]) {
+            await loadTab("posts", true);
+            for (const tab of TAB_ORDER) {
                 if (cancelled) return;
                 if (!feedsRef.current[tab].loaded) await loadTab(tab, true);
             }
@@ -210,22 +208,33 @@ export default function HomeSocialFeed({ initialActivities, isAuthenticated }: H
                 </div>
             </div>
 
-            {/* Sekme sırası mobildeki TAB_ORDER ile birebir: reviews, lists, follows, all. */}
-            <Tabs defaultValue="reviews" onValueChange={(value) => setActiveTab(value as TabKey)}>
-                <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="reviews" className="gap-1 text-xs">
-                        <Star className="h-3 w-3" /> {t("home.activityTabs.reviews")}
-                    </TabsTrigger>
-                    <TabsTrigger value="lists" className="gap-1 text-xs">
-                        <List className="h-3 w-3" /> {t("home.activityTabs.lists")}
-                    </TabsTrigger>
-                    <TabsTrigger value="follows" className="gap-1 text-xs">
-                        <UserPlus className="h-3 w-3" /> {t("home.activityTabs.follows")}
-                    </TabsTrigger>
-                    <TabsTrigger value="all" className="gap-1 text-xs">
-                        <Flame className="h-3 w-3" /> {t("home.activityTabs.all")}
-                    </TabsTrigger>
-                </TabsList>
+            <PostComposer onCreated={() => void loadTab("posts", true)} />
+
+            {/* Sekme sırası mobildeki TAB_ORDER ile birebir: posts, reviews, discover. */}
+            <Tabs defaultValue="posts" onValueChange={(value) => setActiveTab(value as TabKey)}>
+                {/*
+                    Yapışkan sekme çubuğu. Sayfa <body> üzerinde KAYMIYOR; kaydırma
+                    kabı (authenticated) layout'undaki <main className="overflow-y-auto">,
+                    dolayısıyla top-0 ona göre çözülüyor (yan menünün sticky top-4'ü de
+                    zaten bu yüzden çalışıyor).
+
+                    Sarmalayıcı şart: TabsList bg-muted ve köşeleri yuvarlak, doğrudan
+                    sticky verilince altından kayan içerik köşelerden görünüyor.
+                    Negatif margin + padding, kartların gölgesi kenardan kırpılmasın diye.
+                */}
+                <div className="sticky top-0 z-20 -mx-2 bg-background/95 px-2 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+                    <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="posts" className="gap-1 text-xs">
+                            <MessageSquare className="h-3 w-3" /> {t("home.activityTabs.posts")}
+                        </TabsTrigger>
+                        <TabsTrigger value="reviews" className="gap-1 text-xs">
+                            <Star className="h-3 w-3" /> {t("home.activityTabs.reviews")}
+                        </TabsTrigger>
+                        <TabsTrigger value="discover" className="gap-1 text-xs">
+                            <Compass className="h-3 w-3" /> {t("home.activityTabs.discover")}
+                        </TabsTrigger>
+                    </TabsList>
+                </div>
 
                 <TabsContent value={activeTab} className="mt-4">
                     <div className="space-y-3">
@@ -272,6 +281,11 @@ function FeedCard({ activity, locale }: { activity: Activity; locale: "tr" | "en
     const timeAgo = formatDistanceToNow(new Date(activity.occurredAt), { addSuffix: true, locale: locale === "tr" ? tr : enUS });
 
     switch (activity.type) {
+        case ActivityType.Post:
+        case ActivityType.Repost:
+            // postData yoksa hiç çizme: sunucu her zaman dolduruyor ama eski bir
+            // yanıt önbellekten gelirse kart boş referansla patlamasın.
+            return activity.postData ? <PostCard post={activity.postData} /> : null;
         case ActivityType.Review:
             return <ReviewCard activity={activity} timeAgo={timeAgo} locale={locale} />;
         case ActivityType.ListCreated:
@@ -279,6 +293,10 @@ function FeedCard({ activity, locale }: { activity: Activity; locale: "tr" | "en
         case ActivityType.FollowUser:
             return <FollowCard activity={activity} timeAgo={timeAgo} locale={locale} />;
         default:
+            // Bilinmeyen tip sessizce atlanır. Bu KASITLI: sunucu ileride yeni
+            // bir kart tipi eklerse güncellenmemiş istemci çökmek yerine o kartı
+            // görmez. Aynı gerekçeyle mağazadaki eski mobil sürümler ?type=
+            // yolunu kullanıyor ve hiç Post/Repost almıyor.
             return null;
     }
 }

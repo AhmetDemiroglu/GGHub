@@ -78,3 +78,61 @@ export async function getCroppedImg(
     encode('image/webp', 'webp');
   });
 }
+
+/**
+ * Kırpma OLMADAN yeniden boyutlandırma. Gönderi görselleri için: kullanıcı
+ * bir kare seçmiyor, görseli olduğu gibi ekliyor, biz yalnızca uzun kenarı
+ * sınırlıyoruz.
+ *
+ * getCroppedImg ile aynı kodlama yolu (WebP, düşerse JPEG) ama girdi bir
+ * `File` ve çıktı da `File`; hata durumunda orijinal dosya aynen döner, çünkü
+ * yüklemenin küçültme yüzünden hiç yapılamaması kullanıcı için daha kötü.
+ */
+export async function downscaleImage(file: File, maxEdge: number): Promise<File> {
+  try {
+    const objectUrl = URL.createObjectURL(file);
+    try {
+      const image = await createImage(objectUrl);
+
+      const scale = Math.min(1, maxEdge / Math.max(image.width, image.height));
+      // Zaten yeterince küçükse yeniden kodlamaya değmez.
+      if (scale === 1) return file;
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return file;
+
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+      return await new Promise<File>((resolve) => {
+        const encode = (type: string, extension: string) =>
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                if (type === 'image/webp') {
+                  encode('image/jpeg', 'jpeg');
+                  return;
+                }
+                resolve(file);
+                return;
+              }
+              resolve(new File([blob], `post-image.${extension}`, { type }));
+            },
+            type,
+            DEFAULT_QUALITY
+          );
+
+        encode('image/webp', 'webp');
+      });
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  } catch {
+    return file;
+  }
+}

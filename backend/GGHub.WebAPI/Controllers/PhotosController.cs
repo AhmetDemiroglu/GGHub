@@ -45,6 +45,32 @@ public class PhotosController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Gonderi gorseli. Istemci gorselleri TEK TEK yukler (en fazla 4) ve
+    /// donen adresleri gonderi govdesinde yollar. Cok dosyali tek istek yerine
+    /// bu secildi: mevcut tek dosyalik buildFormData yardimcilari bozulmuyor ve
+    /// kullaniciya gorsel basina ilerleme gosterilebiliyor.
+    ///
+    /// RequestSizeLimit BILEREK acikca konuldu: servis zaten 5 MB'i reddediyor
+    /// ama o kontrol dosya TAMAMEN alindiktan sonra calisiyor. Bu oznitelik
+    /// istegi daha okunmadan kesiyor.
+    /// </summary>
+    [HttpPost("post")]
+    [RequestSizeLimit(5 * 1024 * 1024)]
+    public async Task<IActionResult> UploadPostImage(IFormFile file)
+    {
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        try
+        {
+            var result = await _photoService.UploadPostImageAsync(userId, file);
+            return Ok(new { url = result.Url, width = result.Width, height = result.Height });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
     [HttpDelete("header")]
     public async Task<IActionResult> DeleteHeaderPhoto()
     {

@@ -1,5 +1,12 @@
 import { axiosInstance } from "@core/lib/axios";
-import { Profile, ProfileForUpdate, UpdateProfileVisibilityDto, UpdateMessageSettingDto } from "@/models/profile/profile.model";
+import {
+    Profile,
+    ProfileForUpdate,
+    UpdateMessageSettingDto,
+    UpdatePostReplyPermissionDto,
+    UpdatePostVisibilityDto,
+    UpdateProfileVisibilityDto,
+} from "@/models/profile/profile.model";
 import { AxiosResponse } from "axios";
 import { PublicProfile } from "@/models/profile/profile.model";
 
@@ -27,6 +34,16 @@ export const deleteMyAccount = async (): Promise<void> => {
 
 export const updateMessageSetting = async (data: UpdateMessageSettingDto) => {
     return axiosInstance.put("/profile/me/message-setting", data);
+};
+
+// Gonderi gizliligi CANLI: bu ucun donusu sonrasi gecmis gonderiler de yeni
+// ayara gore suzulur, gonderide saklanan bir kopya yok.
+export const updatePostVisibility = async (data: UpdatePostVisibilityDto) => {
+    return axiosInstance.put("/profile/me/post-visibility", data);
+};
+
+export const updatePostReplyPermission = async (data: UpdatePostReplyPermissionDto) => {
+    return axiosInstance.put("/profile/me/post-reply-permission", data);
 };
 
 export const getProfileByUsername = (username: string): Promise<PublicProfile> => {

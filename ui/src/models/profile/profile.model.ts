@@ -1,3 +1,5 @@
+import { PostReplyPermissionSetting, PostVisibilitySetting } from "@/models/post/post.model";
+
 export interface Profile {
     id: number;
     username: string;
@@ -13,6 +15,8 @@ export interface Profile {
     phoneNumber: string | null;
     profileVisibility: number;
     messageSetting: number;
+    postVisibility: number;
+    postReplyPermission: number;
     isEmailPublic: boolean;
     isPhoneNumberPublic: boolean;
     isDateOfBirthPublic: boolean;
@@ -46,6 +50,14 @@ export interface UpdateProfileVisibilityDto {
 
 export interface UpdateMessageSettingDto {
     newSetting: MessagePrivacySetting;
+}
+
+export interface UpdatePostVisibilityDto {
+    newVisibility: PostVisibilitySetting;
+}
+
+export interface UpdatePostReplyPermissionDto {
+    newPermission: PostReplyPermissionSetting;
 }
 
 export interface PublicProfile {

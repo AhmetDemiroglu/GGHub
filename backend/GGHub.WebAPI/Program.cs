@@ -114,6 +114,15 @@ builder.Services.AddScoped<IPhotoService, PhotoService>();
 builder.Services.AddScoped<IUserListRatingService, UserListRatingService>();
 builder.Services.AddScoped<IUserListCommentService, UserListCommentService>();
 builder.Services.AddScoped<IReviewCommentService, ReviewCommentService>();
+// Somut tip de kayitli: ActivityService gonderi kartlarini cizmek icin
+// PostService.MapAsync / WithIncludes'i kullaniyor ve bunlar Post entity'siyle
+// calistigi icin IPostService'e konamaz (Core entity'leri Application arayuzune
+// sizmasin). Arayuz AYNI ornekten cozuluyor, istek basina tek nesne.
+// Demo seeder yalnizca DemoSeedController'dan cagriliyor; acilista
+// CALISTIRILMAZ (gelistirme baglantisi canli veritabanina gidiyor).
+builder.Services.AddScoped<DemoContentSeeder>();
+builder.Services.AddScoped<PostService>();
+builder.Services.AddScoped<IPostService>(sp => sp.GetRequiredService<PostService>());
 builder.Services.AddSingleton<IEmailQueue, EmailQueue>();
 builder.Services.AddHostedService<BackgroundEmailService>();
 // Ikinci mesru istisna (bkz. asagidaki katalog job'lari notu): DownloadPageEvents
@@ -241,6 +250,20 @@ builder.Services.AddRateLimiter(options =>
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = 60,
+                Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0
+            }));
+
+    // Gonderi olusturma spam'e en acik yazma ucu: akisin en ustune dusuyor ve
+    // her kayit bildirim + push zinciri tetikleyebiliyor. Partition anahtari
+    // yine kullanici kimligi (IP neden kullanilamaz: yukaridaki not).
+    // 20/5dk normal kullanimin cok uzerinde, kotuye kullanimin cok altinda.
+    options.AddPolicy("PostCreatePolicy", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "anonymous",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
                 Window = TimeSpan.FromMinutes(5),
                 QueueLimit = 0
             }));

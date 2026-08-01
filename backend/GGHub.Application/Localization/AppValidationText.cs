@@ -15,6 +15,12 @@ public static class AppValidationText
         ["validation.listDescriptionLength"] = "Açıklama en fazla 500 karakter olabilir.",
         ["validation.ratingValueRequired"] = "Puan değeri zorunludur.",
         ["validation.ratingValueRange"] = "Puan 1 ile 5 arasında olmalıdır.",
+        ["validation.postContentLength"] = "Gönderi en fazla 200 karakter olabilir.",
+        ["validation.postEmpty"] = "Gönderi boş olamaz. Metin, görsel veya anket ekleyin.",
+        ["validation.postImageCount"] = "Bir gönderiye en fazla 4 görsel eklenebilir.",
+        ["validation.pollOptionCount"] = "Anket 2 ila 4 seçenek içermelidir.",
+        ["validation.pollOptionLength"] = "Anket seçeneği 1 ila 40 karakter arasında olmalıdır.",
+        ["validation.pollDurationRange"] = "Anket süresi 1 ile 7 gün arasında olmalıdır.",
     };
 
     private static readonly IReadOnlyDictionary<string, string> EnUs = new Dictionary<string, string>
@@ -28,6 +34,12 @@ public static class AppValidationText
         ["validation.listDescriptionLength"] = "Description can be at most 500 characters.",
         ["validation.ratingValueRequired"] = "Rating value is required.",
         ["validation.ratingValueRange"] = "Rating must be between 1 and 5.",
+        ["validation.postContentLength"] = "A post can be at most 200 characters.",
+        ["validation.postEmpty"] = "A post cannot be empty. Add text, an image or a poll.",
+        ["validation.postImageCount"] = "A post can have at most 4 images.",
+        ["validation.pollOptionCount"] = "A poll must have between 2 and 4 options.",
+        ["validation.pollOptionLength"] = "A poll option must be between 1 and 40 characters.",
+        ["validation.pollDurationRange"] = "Poll duration must be between 1 and 7 days.",
     };
 
     public static string CommentContentRequired => Get("validation.commentContentRequired");
@@ -39,6 +51,12 @@ public static class AppValidationText
     public static string ListDescriptionLength => Get("validation.listDescriptionLength");
     public static string RatingValueRequired => Get("validation.ratingValueRequired");
     public static string RatingValueRange => Get("validation.ratingValueRange");
+    public static string PostContentLength => Get("validation.postContentLength");
+    public static string PostEmpty => Get("validation.postEmpty");
+    public static string PostImageCount => Get("validation.postImageCount");
+    public static string PollOptionCount => Get("validation.pollOptionCount");
+    public static string PollOptionLength => Get("validation.pollOptionLength");
+    public static string PollDurationRange => Get("validation.pollDurationRange");
 
     private static string Get(string key)
     {

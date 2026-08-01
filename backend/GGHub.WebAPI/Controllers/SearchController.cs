@@ -1,5 +1,6 @@
 using GGHub.Application.Dtos;
 using GGHub.Application.Interfaces;
+using GGHub.Core.Enums;
 using GGHub.Infrastructure.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -70,6 +71,52 @@ namespace GGHub.WebAPI.Controllers
 
             var userId = int.Parse(userIdClaim.Value);
             var results = await _searchService.SearchMentionableUsersAsync(q, userId);
+            return Ok(results);
+        }
+
+        /// <summary>
+        /// Gonderi composer'i icin TIPLI etiket onerileri. Mevcut /mentions ucu
+        /// BILEREK degistirilmedi: mağazadaki eski mobil surumler onu cagiriyor
+        /// ve UserDto[] bekliyor; donus sekli degisirse o surumler kirilirdi.
+        /// </summary>
+        [Authorize]
+        [HttpGet("mention-targets")]
+        public async Task<IActionResult> SearchMentionTargets(
+            [FromQuery] string q,
+            [FromQuery] string? types = null)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return Unauthorized();
+
+            if (string.IsNullOrWhiteSpace(q))
+            {
+                return Ok(Array.Empty<MentionSuggestionDto>());
+            }
+
+            // Varsayilan: uc tip birden. "types=user,game" ile daraltilabilir.
+            var requested = new List<MentionTargetType>();
+            if (string.IsNullOrWhiteSpace(types))
+            {
+                requested.AddRange(new[]
+                {
+                    MentionTargetType.User, MentionTargetType.Game, MentionTargetType.List
+                });
+            }
+            else
+            {
+                foreach (var raw in types.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    switch (raw.ToLowerInvariant())
+                    {
+                        case "user": requested.Add(MentionTargetType.User); break;
+                        case "game": requested.Add(MentionTargetType.Game); break;
+                        case "list": requested.Add(MentionTargetType.List); break;
+                    }
+                }
+            }
+
+            var userId = int.Parse(userIdClaim.Value);
+            var results = await _searchService.SearchMentionTargetsAsync(q, userId, requested);
             return Ok(results);
         }
     }

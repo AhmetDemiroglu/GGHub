@@ -42,6 +42,14 @@ namespace GGHub.Core.Entities
         public ICollection<UserBlock> BlockedByUsers { get; set; } = new List<UserBlock>();
         public MessagePrivacySetting MessageSetting { get; set; } = MessagePrivacySetting.Everyone;
         public ProfileVisibilitySetting ProfileVisibility { get; set; } = ProfileVisibilitySetting.Public;
+
+        // Gonderi gizliligi BILEREK Post satirinda degil burada duruyor: ayar canli
+        // uygulanir, degistirildigi anda gecmis gonderiler de etkilenir. Gonderiye
+        // kopyalansaydi ayari sikilastirmak eski gonderileri gizlemez, surpriz
+        // sizinti birakirdi. Kural PostAccess (bellek ici) ve PostQueryExtensions
+        // (EF) ikilisinde tek kaynaktan uygulanir.
+        public PostVisibilitySetting PostVisibility { get; set; } = PostVisibilitySetting.Everyone;
+        public PostReplyPermissionSetting PostReplyPermission { get; set; } = PostReplyPermissionSetting.Everyone;
         public string? Status { get; set; }
         public string? PhoneNumber { get; set; }
         public bool IsEmailPublic { get; set; } = false; 
@@ -56,6 +64,13 @@ namespace GGHub.Core.Entities
         public string? BanReason { get; set; }
         public UserStats? Stats { get; set; }
         public ICollection<UserAchievement> Achievements { get; set; } = new List<UserAchievement>();
+
+        /// <summary>
+        /// Demo icerik damgasi. Yalnizca DemoContentSeeder true yazar; temizlik
+        /// komutu seed kullanicilarini ve gonderilerini bu bayrakla bulur.
+        /// Gercek kullanicilarda her zaman false.
+        /// </summary>
+        public bool IsSeeded { get; set; } = false;
 
     }
 }

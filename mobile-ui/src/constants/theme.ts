@@ -10,6 +10,12 @@ export const Colors = {
     primary: '#6366f1',
     primaryLight: '#818cf8',
     accent: '#8b5cf6',
+    // Gonderilerde uc etiket tipi RENKLE ayrilir: kisi primary/primaryLight
+    // (yukarida), oyun kehribar, liste mavi. Uc tip de ayni "@" ile yazildigi
+    // icin renk tek ayirt edici isaret. Web'deki --mention-game / --mention-list
+    // token'lariyla ayni tonlar.
+    mentionGame: '#fbbf24',
+    mentionList: '#38bdf8',
     success: '#22c55e',
     warning: '#f59e0b',
     error: '#ef4444',
@@ -36,6 +42,9 @@ export const Colors = {
     primary: '#6366f1',
     primaryLight: '#818cf8',
     accent: '#8b5cf6',
+    // Aydinlik zeminde koyu tonlar; koyu temadaki acik tonlar burada okunmuyor.
+    mentionGame: '#d97706',
+    mentionList: '#0284c7',
     success: '#22c55e',
     warning: '#f59e0b',
     error: '#ef4444',

@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getPersonalizedFeed } from "@/api/activity/activity.api";
 import { getSuggestedUsers } from "@/api/social/social.api";
 import { getHomeContent } from "@/api/home/home.api";
-import { Activity } from "@/models/activity/activity.model";
 import { HomeContent } from "@/models/home/home.model";
 import { SuggestedUser } from "@/models/social/social.model";
 import { useAuth } from "@/core/hooks/use-auth";
@@ -23,7 +21,6 @@ export default function HomeView({ initialContent = null }: { initialContent?: H
     const t = useI18n();
     const { isAuthenticated, isLoading: authLoading } = useAuth();
     const [content, setContent] = useState<HomeContent | null>(initialContent);
-    const [feed, setFeed] = useState<Activity[]>([]);
     const [suggestions, setSuggestions] = useState<SuggestedUser[]>([]);
     // Sunucu içeriği hazır getirdiyse skeleton'a hiç düşme: hero, trending ve liderlik
     // tablosu ilk HTML'de geliyor, LCP görseli hydration'ı beklemiyor.
@@ -50,14 +47,17 @@ export default function HomeView({ initialContent = null }: { initialContent?: H
                 // Promise.all fail-fast olduğu için her biri kendi içinde yakalanır, aksi
                 // halde yalnızca feed düşse bile ana içerik gelmiş sayılmayıp sayfa komple
                 // boş kalıyordu.
-                const [homeData, feedData, suggestionData] = await Promise.all([
+                // Akış artık BURADAN çekilmiyor. Önceden ilk sayfa burada alınıp
+                // HomeSocialFeed'e prop olarak veriliyor ve "Hepsi" sekmesi yalnızca
+                // ona bağlı kalıyordu; istek başarısız olunca (hata sessizce yutuluyordu)
+                // o sekme kalıcı olarak boş kalıyordu. Artık her sekme kendi verisini
+                // kendisi çekiyor ve hatada yeniden deneyebiliyor.
+                const [homeData, suggestionData] = await Promise.all([
                     needsContent ? getHomeContent() : Promise.resolve(content),
-                    isAuthenticated ? getPersonalizedFeed().catch(() => []) : Promise.resolve([]),
                     isAuthenticated ? getSuggestedUsers(12).catch(() => []) : Promise.resolve([]),
                 ]);
                 if (!cancelled) {
                     setContent(homeData);
-                    setFeed(feedData);
                     setSuggestions(suggestionData);
                 }
             } catch (error) {
@@ -115,7 +115,7 @@ export default function HomeView({ initialContent = null }: { initialContent?: H
                     <div className="xl:hidden">
                         <HomeMobileRails trending={content.trendingLocal} leaders={content.topGamers} />
                     </div>
-                    <HomeSocialFeed initialActivities={feed} isAuthenticated={isAuthenticated} />
+                    <HomeSocialFeed isAuthenticated={isAuthenticated} />
                 </div>
 
                 {/* Desktop sidebar: viewport'a sabit; içeriği taşarsa sayfa dışına

@@ -3,6 +3,7 @@ using GGHub.Application.DTOs.Common;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
 using GGHub.Core.Enums;
+using GGHub.Core.Specifications;
 using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -27,31 +28,44 @@ namespace GGHub.Infrastructure.Services
         }
 
         /// <summary>
-        /// Incelemeye erisim kontrolu. Liste yorumlarindaki CheckListVisibility'nin
-        /// profil/liste gorunurluk kapisi BILEREK tasinmadi: ReviewService.GetReviewsForGameAsync
-        /// bugun incelemeleri yazarin ProfileVisibility'sinden bagimsiz donduruyor. Buraya
-        /// gorunurluk kapisi koymak halihazirda gorunen incelemelerin yorumlarini yok ederdi;
-        /// bu ayna degil, regresyon olurdu. Yalnizca varlik + cift yonlu engel kontrol edilir.
+        /// Incelemeye erisim kontrolu: varlik + profil gorunurlugu + cift yonlu engel.
+        ///
+        /// Gorunurluk kapisi uzun sure BILEREK yoktu, cunku ReviewService.GetReviewsForGameAsync
+        /// incelemeleri yazarin ProfileVisibility'sinden bagimsiz donduruyordu ve buraya kapi
+        /// koymak "goruneni ama yorumlanamayani" uretirdi. O sorgu artik suzuyor, dolayisiyla
+        /// gerekce ortadan kalkti ve kapi buraya da kondu: aksi halde gizli profilli birinin
+        /// incelemesinin yorumlari uc dogrudan cagrilarak okunabilirdi.
         /// </summary>
         private async Task CheckReviewAccess(int reviewId, int? userId)
         {
             var review = await _context.Reviews.AsNoTracking()
                 .Where(r => r.Id == reviewId)
-                .Select(r => new { r.Id, r.UserId })
+                .Select(r => new { r.Id, r.UserId, r.User.ProfileVisibility, r.User.IsDeleted, r.User.IsBanned })
                 .FirstOrDefaultAsync();
 
             if (review == null) throw new KeyNotFoundException(AppText.Get("reviewComments.reviewNotFound"));
 
-            if (!userId.HasValue) return;
-            if (review.UserId == userId.Value) return;
+            if (userId.HasValue && review.UserId == userId.Value) return;
 
-            // Cift yonlu engel: taraflardan biri digerini engellediyse erisim yok.
-            var isBlocked = await _context.UserBlocks.AnyAsync(b =>
-                (b.BlockerId == userId.Value && b.BlockedId == review.UserId) ||
-                (b.BlockerId == review.UserId && b.BlockedId == userId.Value));
+            if (review.IsDeleted || review.IsBanned)
+                throw new KeyNotFoundException(AppText.Get("reviewComments.reviewNotFound"));
 
-            if (isBlocked)
-                throw new UnauthorizedAccessException(AppText.Get("reviewComments.blocked"));
+            if (userId.HasValue)
+            {
+                // Cift yonlu engel: taraflardan biri digerini engellediyse erisim yok.
+                var isBlocked = await _context.UserBlocks.AnyAsync(b =>
+                    (b.BlockerId == userId.Value && b.BlockedId == review.UserId) ||
+                    (b.BlockerId == review.UserId && b.BlockedId == userId.Value));
+
+                if (isBlocked)
+                    throw new UnauthorizedAccessException(AppText.Get("reviewComments.blocked"));
+            }
+
+            var isFollowing = userId.HasValue && await _context.Follows.AsNoTracking()
+                .AnyAsync(f => f.FollowerId == userId.Value && f.FolloweeId == review.UserId);
+
+            if (!ProfileAccess.CanView(review.ProfileVisibility, review.UserId, userId, isFollowing))
+                throw new KeyNotFoundException(AppText.Get("reviewComments.reviewNotFound"));
         }
 
         public async Task<ReviewCommentDto> CreateCommentAsync(int reviewId, int userId, ReviewCommentForCreationDto dto)

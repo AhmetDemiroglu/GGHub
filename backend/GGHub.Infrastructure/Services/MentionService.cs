@@ -121,6 +121,42 @@ namespace GGHub.Infrastructure.Services
             }
         }
 
+        public async Task NotifyUserIdsAsync(
+            int actorUserId,
+            IEnumerable<int> recipientUserIds,
+            string messageKey,
+            string link,
+            IEnumerable<int>? excludeUserIds = null)
+        {
+            try
+            {
+                var candidateIds = recipientUserIds
+                    .Where(id => id != actorUserId)
+                    .Distinct()
+                    .Take(MaxMentionsPerBody)
+                    .ToList();
+
+                if (candidateIds.Count == 0) return;
+
+                // Handle tabanli yol ile AYNI suzgecler: silinmis/banli yok,
+                // gorunmeyen profile bildirim yok, engelli taraflar birbirine
+                // bildirim uretmez.
+                var recipients = await _context.Users
+                    .AsNoTracking()
+                    .Where(u => candidateIds.Contains(u.Id) && !u.IsDeleted && !u.IsBanned)
+                    .WhereVisibleTo(_context, actorUserId)
+                    .WhereNotBlockedWith(_context, actorUserId)
+                    .Select(u => u.Id)
+                    .ToListAsync();
+
+                await DispatchAsync(actorUserId, recipients, messageKey, link, excludeUserIds);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to process resolved mentions for actor {ActorUserId} on link {Link}", actorUserId, link);
+            }
+        }
+
         private async Task NotifyResolvedAsync(
             int actorUserId,
             IReadOnlyCollection<string> handles,
@@ -140,8 +176,6 @@ namespace GGHub.Infrastructure.Services
 
             if (normalizedHandles.Count == 0) return;
 
-            var excluded = excludeUserIds?.ToHashSet() ?? new HashSet<int>();
-
             var recipients = await _context.Users
                 .AsNoTracking()
                 .Where(u => normalizedHandles.Contains(u.UsernameNormalized!) && !u.IsDeleted && !u.IsBanned)
@@ -149,6 +183,23 @@ namespace GGHub.Infrastructure.Services
                 .WhereNotBlockedWith(_context, actorUserId)
                 .Select(u => u.Id)
                 .ToListAsync();
+
+            await DispatchAsync(actorUserId, recipients, messageKey, link, excludeUserIds);
+        }
+
+        /// <summary>
+        /// Cozulmus alici listesine bildirim yazar. Handle tabanli ve id tabanli
+        /// iki yolun ORTAK son adimi; kendine-bildirim ve tekrar-bildirim elemesi
+        /// tek yerde dursun diye ayrildi.
+        /// </summary>
+        private async Task DispatchAsync(
+            int actorUserId,
+            IReadOnlyCollection<int> recipients,
+            string messageKey,
+            string link,
+            IEnumerable<int>? excludeUserIds)
+        {
+            var excluded = excludeUserIds?.ToHashSet() ?? new HashSet<int>();
 
             foreach (var recipientId in recipients)
             {

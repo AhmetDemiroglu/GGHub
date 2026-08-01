@@ -29,6 +29,7 @@ import {
     Reply,
     PanelLeftClose,
     PanelLeftOpen,
+    Repeat2,
     Search,
     Settings,
     Star,
@@ -95,6 +96,12 @@ const notificationIconMeta = (type: NotificationType): { Icon: IconComponent; co
             return { Icon: ThumbsUp, color: "text-pink-500" };
         case NotificationType.Mention:
             return { Icon: AtSign, color: "text-orange-500" };
+        case NotificationType.PostLike:
+            return { Icon: Heart, color: "text-rose-500" };
+        case NotificationType.PostReply:
+            return { Icon: MessageSquare, color: "text-sky-500" };
+        case NotificationType.PostRepost:
+            return { Icon: Repeat2, color: "text-emerald-500" };
         default:
             return { Icon: Bell, color: "text-muted-foreground" };
     }

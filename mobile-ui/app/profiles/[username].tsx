@@ -20,6 +20,7 @@ import { LoadingScreen } from '@/src/components/common/LoadingScreen';
 import { Card } from '@/src/components/common/Card';
 import { Button } from '@/src/components/common/Button';
 import { SegmentedTabs } from '@/src/components/common/SegmentedTabs';
+import { ProfilePostList } from '@/src/components/posts/ProfilePostList';
 import { ProfileHeader } from '@/src/components/profile/ProfileHeader';
 import { FollowersModal } from '@/src/components/profile/FollowersModal';
 import { GamerDnaChart } from '@/src/components/profile/GamerDnaChart';
@@ -45,7 +46,7 @@ import type { UserList } from '@/src/models/list';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 import { MentionText } from '@/src/components/common/MentionText';
 
-type ProfileTab = 'overview' | 'reviews' | 'lists';
+type ProfileTab = 'overview' | 'posts' | 'reviews' | 'lists';
 
 export default function PublicProfileScreen() {
   const { username } = useLocalSearchParams<{ username: string }>();
@@ -359,6 +360,7 @@ export default function PublicProfileScreen() {
               <SegmentedTabs
                 tabs={[
                   { key: 'overview' as const, label: messages.home.activityTitle },
+                  { key: 'posts' as const, label: messages.posts.tabLabel },
                   { key: 'reviews' as const, label: messages.home.activityTabs.reviews },
                   { key: 'lists' as const, label: messages.home.activityTabs.lists },
                 ]}
@@ -374,6 +376,10 @@ export default function PublicProfileScreen() {
                   <View style={styles.sectionGap} />
                   <ActivityFeedList activities={activityQuery.data ?? []} />
                 </>
+              ) : null}
+
+              {activeTab === 'posts' ? (
+                <ProfilePostList username={username} enabled={activeTab === 'posts'} />
               ) : null}
 
               {activeTab === 'reviews' ? (

@@ -44,6 +44,8 @@
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
     --color-mention: var(--mention);
+    --color-mention-game: var(--mention-game);
+    --color-mention-list: var(--mention-list);
 }
 
 :root {
@@ -84,6 +86,12 @@
        metinden ayirt edilemiyordu. Bu indigo, mobildeki colors.primary
        (#6366f1) ile ayni; iki platform birebir ayni gorunsun diye. */
     --mention: oklch(0.585 0.233 277.117);
+
+    /* Gonderilerde uc etiket tipi var ve birbirinden RENKLE ayriliyor:
+       kisi indigo (yukaridaki --mention), oyun kehribar, liste mavi.
+       Uc tip de ayni "@" ile yazildigi icin renk tek ayirt edici isaret. */
+    --mention-game: oklch(0.646 0.161 65.5);
+    --mention-list: oklch(0.588 0.158 241.966);
 }
 
 .dark {
@@ -121,6 +129,11 @@
     /* Koyu zeminde indigo-500 sonuk kaliyor; mobildeki primaryLight (#818cf8)
        ile ayni olan bir ton acigi kullaniliyor. */
     --mention: oklch(0.673 0.182 276.935);
+
+    /* Koyu zeminde her ikisi de bir ton acik: aydinlik temadaki tonlar
+       koyu arka planda okunaksiz kaliyor. */
+    --mention-game: oklch(0.769 0.148 70.08);
+    --mention-list: oklch(0.702 0.142 242.435);
 }
 
 @layer base {

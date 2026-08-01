@@ -6,6 +6,7 @@ import type {
   UpdateMessageSettingDto,
   PublicProfile,
 } from '../models/profile';
+import type { PostReplyPermissionSetting, PostVisibilitySetting } from '../models/post';
 
 export const getMyProfile = async (): Promise<Profile> => {
   const response = await axiosInstance.get<Profile>('/profile/me');
@@ -27,6 +28,20 @@ export const updateProfileVisibility = async (
 
 export const deleteMyAccount = async (): Promise<void> => {
   await axiosInstance.delete('/profile/me');
+};
+
+// Gonderi gizliligi CANLI: bu ucun donusu sonrasi gecmis gonderiler de yeni
+// ayara gore suzulur, gonderide saklanan bir kopya yok.
+export const updatePostVisibility = async (data: {
+  newVisibility: PostVisibilitySetting;
+}): Promise<void> => {
+  await axiosInstance.put('/profile/me/post-visibility', data);
+};
+
+export const updatePostReplyPermission = async (data: {
+  newPermission: PostReplyPermissionSetting;
+}): Promise<void> => {
+  await axiosInstance.put('/profile/me/post-reply-permission', data);
 };
 
 export const updateMessageSetting = async (

@@ -23,11 +23,18 @@ import { useAuth } from '@/src/hooks/use-auth';
 import { useConfirm } from '@/src/components/common/ConfirmDialog';
 import { useToast } from '@/src/components/common/Toast';
 import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
-import { getMyProfile, updateProfileVisibility, updateMessageSetting } from '@/src/api/profile';
+import {
+  getMyProfile,
+  updateMessageSetting,
+  updatePostReplyPermission,
+  updatePostVisibility,
+  updateProfileVisibility,
+} from '@/src/api/profile';
 import {
   ProfileVisibilitySetting,
   MessagePrivacySetting,
 } from '@/src/models/profile';
+import { PostReplyPermissionSetting, PostVisibilitySetting } from '@/src/models/post';
 import type { AppLocale } from '@/src/i18n';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 
@@ -61,6 +68,24 @@ export default function ProfileSettingsScreen() {
   const messageSettingMutation = useMutation({
     mutationFn: (newSetting: MessagePrivacySetting) =>
       updateMessageSetting({ newSetting }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myProfile'] });
+    },
+  });
+
+  const postVisibilityMutation = useMutation({
+    mutationFn: (newVisibility: PostVisibilitySetting) =>
+      updatePostVisibility({ newVisibility }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myProfile'] });
+      // Gizlilik canli: kendi gonderi listeleri de yeni ayara gore suzulmeli.
+      queryClient.invalidateQueries({ queryKey: ['userPosts'] });
+    },
+  });
+
+  const postReplyMutation = useMutation({
+    mutationFn: (newPermission: PostReplyPermissionSetting) =>
+      updatePostReplyPermission({ newPermission }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['myProfile'] });
     },
@@ -183,8 +208,12 @@ export default function ProfileSettingsScreen() {
             <PrivacySettings
               profileVisibility={profile.profileVisibility as ProfileVisibilitySetting}
               messageSetting={profile.messageSetting as MessagePrivacySetting}
+              postVisibility={profile.postVisibility as PostVisibilitySetting}
+              postReplyPermission={profile.postReplyPermission as PostReplyPermissionSetting}
               onVisibilityChange={(v) => visibilityMutation.mutate(v)}
               onMessageSettingChange={(v) => messageSettingMutation.mutate(v)}
+              onPostVisibilityChange={(v) => postVisibilityMutation.mutate(v)}
+              onPostReplyChange={(v) => postReplyMutation.mutate(v)}
             />
           ) : null}
         </View>

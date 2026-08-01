@@ -6,10 +6,11 @@ import ProfileHeader from "./profile-header";
 import ProfileReviews from "./profile-reviews";
 import { useAuth } from "@core/hooks/use-auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/core/components/ui/tabs";
-import { Loader2, LayoutDashboard, Star, Library, Users } from "lucide-react";
+import { Loader2, LayoutDashboard, MessageSquare, Star, Library, Users } from "lucide-react";
 import ProfileLists from "./profile-lists";
 import ProfileNetwork from "./profile-network";
 import ProfileOverview from "./overview/profile-overview";
+import ProfilePosts from "./profile-posts";
 
 interface ProfileContentProps {
     username: string;
@@ -76,7 +77,16 @@ export default function ProfileContent({ username }: ProfileContentProps) {
                             <span className="font-semibold">Genel Bakış</span>
                         </TabsTrigger>
 
-                        {/* 2. İNCELEMELER */}
+                        {/* 2. GÖNDERİLER */}
+                        <TabsTrigger
+                            value="posts"
+                            className="cursor-pointer group relative flex items-center gap-2 h-full rounded-none border-b-2 border-transparent px-6 text-muted-foreground transition-all hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 data-[state=active]:border-indigo-500 data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-400 data-[state=active]:bg-indigo-50 dark:data-[state=active]:bg-indigo-950/30"
+                        >
+                            <MessageSquare className="h-4 w-4" />
+                            <span className="font-semibold">Gönderiler</span>
+                        </TabsTrigger>
+
+                        {/* 3. İNCELEMELER */}
                         <TabsTrigger
                             value="reviews"
                             className="cursor-pointer group relative flex items-center gap-2 h-full rounded-none border-b-2 border-transparent px-6 text-muted-foreground transition-all hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20 data-[state=active]:border-amber-500 data-[state=active]:text-amber-600 dark:data-[state=active]:text-amber-400 data-[state=active]:bg-amber-50 dark:data-[state=active]:bg-amber-950/30"
@@ -90,7 +100,7 @@ export default function ProfileContent({ username }: ProfileContentProps) {
                             )}
                         </TabsTrigger>
 
-                        {/* 3. LİSTELER */}
+                        {/* 4. LİSTELER */}
                         <TabsTrigger
                             value="lists"
                             className="cursor-pointer group relative flex items-center gap-2 h-full rounded-none border-b-2 border-transparent px-6 text-muted-foreground transition-all hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/20 data-[state=active]:border-blue-500 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-950/30"
@@ -104,7 +114,7 @@ export default function ProfileContent({ username }: ProfileContentProps) {
                             )}
                         </TabsTrigger>
 
-                        {/* 4. AĞ */}
+                        {/* 5. AĞ */}
                         <TabsTrigger
                             value="network"
                             className="cursor-pointer group relative flex items-center gap-2 h-full rounded-none border-b-2 border-transparent px-6 text-muted-foreground transition-all hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/20 data-[state=active]:border-purple-500 data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 data-[state=active]:bg-purple-50 dark:data-[state=active]:bg-purple-950/30"
@@ -117,6 +127,10 @@ export default function ProfileContent({ username }: ProfileContentProps) {
                     {/* --- İÇERİKLER --- */}
                     <TabsContent value="overview" className="mt-0 mb-1 animate-in fade-in-50 duration-300">
                         <ProfileOverview username={profile.username} />
+                    </TabsContent>
+
+                    <TabsContent value="posts" className="mt-0 mb-1 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
+                        <ProfilePosts username={profile.username} />
                     </TabsContent>
 
                     <TabsContent value="reviews" className="mt-0 mb-1 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">

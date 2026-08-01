@@ -510,6 +510,237 @@ namespace GGHub.Infrastructure.Migrations
                     b.ToTable("Notifications");
                 });
 
+            modelBuilder.Entity("GGHub.Core.Entities.Post", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Content")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsSeeded")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("LikeCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ParentPostId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ReplyCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RepostCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("RepostOfPostId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("IX_Posts_CreatedAt");
+
+                    b.HasIndex("RepostOfPostId")
+                        .HasDatabaseName("IX_Posts_RepostOfPostId");
+
+                    b.HasIndex("ParentPostId", "CreatedAt")
+                        .HasDatabaseName("IX_Posts_ParentPostId_CreatedAt");
+
+                    b.HasIndex("UserId", "CreatedAt")
+                        .HasDatabaseName("IX_Posts_UserId_CreatedAt");
+
+                    b.ToTable("Posts");
+                });
+
+            modelBuilder.Entity("GGHub.Core.Entities.PostImage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("Height")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PostId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<int?>("Width")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PostId")
+                        .HasDatabaseName("IX_PostImages_PostId");
+
+                    b.ToTable("PostImages");
+                });
+
+            modelBuilder.Entity("GGHub.Core.Entities.PostLike", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PostId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId", "PostId");
+
+                    b.HasIndex("PostId")
+                        .HasDatabaseName("IX_PostLikes_PostId");
+
+                    b.ToTable("PostLikes");
+                });
+
+            modelBuilder.Entity("GGHub.Core.Entities.PostMention", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Length")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PostId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TargetGameId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TargetListId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TargetType")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TargetUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PostId")
+                        .HasDatabaseName("IX_PostMentions_PostId");
+
+                    b.HasIndex("TargetGameId")
+                        .HasDatabaseName("IX_PostMentions_TargetGameId");
+
+                    b.HasIndex("TargetListId")
+                        .HasDatabaseName("IX_PostMentions_TargetListId");
+
+                    b.HasIndex("TargetUserId")
+                        .HasDatabaseName("IX_PostMentions_TargetUserId");
+
+                    b.ToTable("PostMentions");
+                });
+
+            modelBuilder.Entity("GGHub.Core.Entities.PostPoll", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("EndsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("PostId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PostId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_PostPolls_PostId");
+
+                    b.ToTable("PostPolls");
+                });
+
+            modelBuilder.Entity("GGHub.Core.Entities.PostPollOption", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("PollId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<int>("VoteCount")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PollId")
+                        .HasDatabaseName("IX_PostPollOptions_PollId");
+
+                    b.ToTable("PostPollOptions");
+                });
+
+            modelBuilder.Entity("GGHub.Core.Entities.PostPollVote", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PollId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("OptionId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("UserId", "PollId");
+
+                    b.HasIndex("OptionId")
+                        .HasDatabaseName("IX_PostPollVotes_OptionId");
+
+                    b.HasIndex("PollId");
+
+                    b.ToTable("PostPollVotes");
+                });
+
             modelBuilder.Entity("GGHub.Core.Entities.PushToken", b =>
                 {
                     b.Property<int>("Id")
@@ -818,6 +1049,9 @@ namespace GGHub.Infrastructure.Migrations
                     b.Property<bool>("IsPhoneNumberPublic")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsSeeded")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("LastName")
                         .HasColumnType("text");
 
@@ -838,6 +1072,12 @@ namespace GGHub.Infrastructure.Migrations
 
                     b.Property<string>("PhoneNumber")
                         .HasColumnType("text");
+
+                    b.Property<int>("PostReplyPermission")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PostVisibility")
+                        .HasColumnType("integer");
 
                     b.Property<string>("ProfileImageUrl")
                         .HasColumnType("text");
@@ -1186,6 +1426,142 @@ namespace GGHub.Infrastructure.Migrations
                     b.Navigation("RecipientUser");
                 });
 
+            modelBuilder.Entity("GGHub.Core.Entities.Post", b =>
+                {
+                    b.HasOne("GGHub.Core.Entities.Post", "ParentPost")
+                        .WithMany("Replies")
+                        .HasForeignKey("ParentPostId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("GGHub.Core.Entities.Post", "RepostOfPost")
+                        .WithMany("Reposts")
+                        .HasForeignKey("RepostOfPostId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("GGHub.Core.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ParentPost");
+
+                    b.Navigation("RepostOfPost");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("GGHub.Core.Entities.PostImage", b =>
+                {
+                    b.HasOne("GGHub.Core.Entities.Post", "Post")
+                        .WithMany("Images")
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Post");
+                });
+
+            modelBuilder.Entity("GGHub.Core.Entities.PostLike", b =>
+                {
+                    b.HasOne("GGHub.Core.Entities.Post", "Post")
+                        .WithMany("Likes")
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("GGHub.Core.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Post");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("GGHub.Core.Entities.PostMention", b =>
+                {
+                    b.HasOne("GGHub.Core.Entities.Post", "Post")
+                        .WithMany("Mentions")
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("GGHub.Core.Entities.Game", "TargetGame")
+                        .WithMany()
+                        .HasForeignKey("TargetGameId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("GGHub.Core.Entities.UserList", "TargetList")
+                        .WithMany()
+                        .HasForeignKey("TargetListId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("GGHub.Core.Entities.User", "TargetUser")
+                        .WithMany()
+                        .HasForeignKey("TargetUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Post");
+
+                    b.Navigation("TargetGame");
+
+                    b.Navigation("TargetList");
+
+                    b.Navigation("TargetUser");
+                });
+
+            modelBuilder.Entity("GGHub.Core.Entities.PostPoll", b =>
+                {
+                    b.HasOne("GGHub.Core.Entities.Post", "Post")
+                        .WithOne("Poll")
+                        .HasForeignKey("GGHub.Core.Entities.PostPoll", "PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Post");
+                });
+
+            modelBuilder.Entity("GGHub.Core.Entities.PostPollOption", b =>
+                {
+                    b.HasOne("GGHub.Core.Entities.PostPoll", "Poll")
+                        .WithMany("Options")
+                        .HasForeignKey("PollId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Poll");
+                });
+
+            modelBuilder.Entity("GGHub.Core.Entities.PostPollVote", b =>
+                {
+                    b.HasOne("GGHub.Core.Entities.PostPollOption", "Option")
+                        .WithMany("Votes")
+                        .HasForeignKey("OptionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("GGHub.Core.Entities.PostPoll", "Poll")
+                        .WithMany("Votes")
+                        .HasForeignKey("PollId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("GGHub.Core.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Option");
+
+                    b.Navigation("Poll");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("GGHub.Core.Entities.PushToken", b =>
                 {
                     b.HasOne("GGHub.Core.Entities.User", "User")
@@ -1450,6 +1826,33 @@ namespace GGHub.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("GGHub.Core.Entities.Post", b =>
+                {
+                    b.Navigation("Images");
+
+                    b.Navigation("Likes");
+
+                    b.Navigation("Mentions");
+
+                    b.Navigation("Poll");
+
+                    b.Navigation("Replies");
+
+                    b.Navigation("Reposts");
+                });
+
+            modelBuilder.Entity("GGHub.Core.Entities.PostPoll", b =>
+                {
+                    b.Navigation("Options");
+
+                    b.Navigation("Votes");
+                });
+
+            modelBuilder.Entity("GGHub.Core.Entities.PostPollOption", b =>
+                {
+                    b.Navigation("Votes");
                 });
 
             modelBuilder.Entity("GGHub.Core.Entities.Review", b =>

@@ -18,3 +18,16 @@ export const getPersonalizedFeed = (limit: number = 10, cursor?: string, type?: 
     if (type !== undefined) params.set("type", String(type));
     return axiosInstance.get<Activity[]>(`/activities/feed?${params.toString()}`).then((response) => response.data);
 };
+
+/** Akis sekmeleri. Backend'deki FeedTab ile birebir. */
+export type FeedTabKey = "posts" | "reviews" | "discover";
+
+/**
+ * Sekme tabanli akis. Eski ?type= yolu (yukaridaki getPersonalizedFeed)
+ * magazadaki mobil surumler icin duruyor; web artik bunu kullaniyor.
+ */
+export const getFeedByTab = (tab: FeedTabKey, limit: number = 10, cursor?: string): Promise<Activity[]> => {
+    const params = new URLSearchParams({ limit: String(limit), tab });
+    if (cursor) params.set("cursor", cursor);
+    return axiosInstance.get<Activity[]>(`/activities/feed?${params.toString()}`).then((response) => response.data);
+};

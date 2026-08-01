@@ -103,6 +103,10 @@ function RootLayoutNav() {
             iOS'ta native interaktif geri jesti alir (X mimarisi). */}
         <Stack.Screen name="messages/index" />
         <Stack.Screen name="messages/[username]" />
+        {/* Statik segment dinamigi yener: "/posts/new" ilk ekrana,
+            "/posts/123" ikinciye cozulur (reviews'taki ayni desen). */}
+        <Stack.Screen name="posts/new" />
+        <Stack.Screen name="posts/[postId]" />
         <Stack.Screen name="notifications" />
         <Stack.Screen name="lists/[listId]" />
         <Stack.Screen name="my-lists" />

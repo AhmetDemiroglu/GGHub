@@ -59,6 +59,8 @@ namespace GGHub.Infrastructure.Services
                 IsPhoneNumberPublic = user.IsPhoneNumberPublic,
                 ProfileVisibility = user.ProfileVisibility,
                 MessageSetting = user.MessageSetting,
+                PostVisibility = user.PostVisibility,
+                PostReplyPermission = user.PostReplyPermission,
                 IsDateOfBirthPublic = user.IsDateOfBirthPublic,
                 ReviewCount = counts?.ReviewCount ?? 0,
                 ListCount = counts?.ListCount ?? 0,
@@ -106,6 +108,29 @@ namespace GGHub.Infrastructure.Services
             if (user == null) return;
 
             user.ProfileVisibility = newVisibility;
+            user.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+
+        // Gonderi gizliligi CANLI: ayrica bir yerde saklanan kopya yok, bu kolon
+        // degisir degismez gecmis gonderiler de yeni ayara gore suzulur
+        // (PostQueryExtensions.WhereVisibleTo her okumada bu kolonu okuyor).
+        public async Task UpdatePostVisibilityAsync(int userId, PostVisibilitySetting newVisibility)
+        {
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null) return;
+
+            user.PostVisibility = newVisibility;
+            user.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task UpdatePostReplyPermissionAsync(int userId, PostReplyPermissionSetting newPermission)
+        {
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null) return;
+
+            user.PostReplyPermission = newPermission;
             user.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
         }

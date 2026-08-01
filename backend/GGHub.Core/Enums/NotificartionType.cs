@@ -19,6 +19,12 @@
         ReviewComment,
         ReviewCommentReply,
         ReviewCommentLike,
-        Mention
+        Mention,
+        // 12+ : gonderiler. Yine SONA eklendi.
+        // Gonderide ETIKETLENME icin ayri bir tip YOK, mevcut Mention (11) kullaniliyor:
+        // tip kaba bir kategori (ikon/renk), asil metni MessageKey tasiyor.
+        PostLike,
+        PostReply,
+        PostRepost
     }
 }

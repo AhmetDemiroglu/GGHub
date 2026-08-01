@@ -293,8 +293,33 @@ namespace GGHub.Infrastructure.Services
                 return Enumerable.Empty<ReviewDto>();
             }
 
-            var reviews = await _context.Reviews
+            // GORUNURLUK KAPISI. Bu sorgu uzun sure yazarin ProfileVisibility
+            // ayarini HIC dikkate almiyordu: profilini "Sadece Ben" yapan bir
+            // kullanicinin incelemeleri oyun sayfasinda adiyla, avatariyla
+            // listelenmeye devam ediyordu. Kapi burada acilinca ReviewCommentService
+            // icindeki "bilerek atlandi" notu da gecersizlesiyor (orada gerekce,
+            // buranin suzmemesiydi).
+            //
+            // Cift yonlu engel de ayni yerde uygulaniyor: engelledigim kisinin
+            // incelemesi bana, benim incelemem ona gorunmemeli.
+            var reviewsQuery = _context.Reviews
                 .Where(r => r.GameId == gameInDb.Id)
+                .Where(r => !r.User.IsDeleted && !r.User.IsBanned)
+                .Where(r =>
+                    r.User.ProfileVisibility == ProfileVisibilitySetting.Public ||
+                    r.User.Id == userId ||
+                    (r.User.ProfileVisibility == ProfileVisibilitySetting.Followers &&
+                     userId != null &&
+                     _context.Follows.Any(f => f.FolloweeId == r.User.Id && f.FollowerId == userId)));
+
+            if (userId.HasValue)
+            {
+                reviewsQuery = reviewsQuery.Where(r => !_context.UserBlocks.Any(b =>
+                    (b.BlockerId == userId.Value && b.BlockedId == r.UserId) ||
+                    (b.BlockerId == r.UserId && b.BlockedId == userId.Value)));
+            }
+
+            var reviews = await reviewsQuery
                 .Include(r => r.User)
                 .Include(r => r.ReviewVotes)
                 .OrderByDescending(r => r.CreatedAt)

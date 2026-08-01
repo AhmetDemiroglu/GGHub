@@ -1,0 +1,68 @@
+#!/bin/bash
+# Demo icerik (sahte kullanici + gonderi) uretir ya da temizler.
+#
+# DIKKAT: Bu komut CANLI veritabanina yazar. Gelistirme ortamindaki baglanti
+# dizesi de uretim veritabanini gosteriyor, dolayisiyla "lokalde denerim"
+# diye bir sey YOK. Sunucu tarafinda iki kapi var:
+#   1. Admin rolu (JWT)
+#   2. Seed:DemoEnabled = true yapilandirmasi
+# Ikisi de gecilmeden uc 400 doner.
+#
+# Kullanim:
+#   scripts/seed-demo --token <JWT>            # uretir
+#   scripts/seed-demo --token <JWT> --purge    # tamamini geri alir
+#   scripts/seed-demo --token <JWT> --api https://api.gghub.social
+#
+# Token: Admin rolune sahip bir hesapla giris yapip access token'i kullan.
+
+set -uo pipefail
+
+API="${GGHUB_API:-http://localhost:5000}"
+TOKEN=""
+METHOD="POST"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --token) TOKEN="$2"; shift 2 ;;
+    --api)   API="$2"; shift 2 ;;
+    --purge) METHOD="DELETE"; shift ;;
+    -h|--help)
+      sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'
+      exit 0
+      ;;
+    *) echo "Bilinmeyen secenek: $1" >&2; exit 2 ;;
+  esac
+done
+
+if [[ -z "$TOKEN" ]]; then
+  echo "seed-demo: --token zorunlu (Admin rolunde bir hesabin access token'i)." >&2
+  exit 2
+fi
+
+if [[ "$METHOD" == "DELETE" ]]; then
+  echo "seed-demo: TUM demo icerik silinecek ($API)."
+  read -r -p "Devam edilsin mi? [e/H] " answer
+  case "$answer" in
+    e|E|y|Y) ;;
+    *) echo "Iptal edildi."; exit 0 ;;
+  esac
+fi
+
+echo "seed-demo: $METHOD $API/api/admin/seed/demo"
+
+HTTP_BODY=$(mktemp)
+HTTP_CODE=$(curl -s -o "$HTTP_BODY" -w "%{http_code}" \
+  -X "$METHOD" "$API/api/admin/seed/demo" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json")
+
+cat "$HTTP_BODY"
+echo
+rm -f "$HTTP_BODY"
+
+if [[ "$HTTP_CODE" != "200" ]]; then
+  echo "seed-demo: basarisiz (HTTP $HTTP_CODE)." >&2
+  exit 1
+fi
+
+echo "seed-demo: tamam."

@@ -13,6 +13,7 @@ export * from './api';
 export * from './photo';
 export * from './search';
 export * from './analytics';
+export * from './post';
 export * from './activity';
 export * from './home';
 export * from './stats';

@@ -45,5 +45,25 @@ namespace GGHub.Application.Interfaces
             string messageKey,
             string link,
             IEnumerable<int>? excludeUserIds = null);
+
+        /// <summary>
+        /// Hedefleri ZATEN COZULMUS bahisler icin bildirim gonderir.
+        ///
+        /// Gonderilerdeki tipli etiketler ("@[u:12]") kullanici adindan degil
+        /// dogrudan id'den cozuluyor ve PostMention tablosuna yaziliyor; metni
+        /// tekrar regex'ten gecirmek hem gereksiz hem de token bicimini bu
+        /// servise sizdirirdi.
+        ///
+        /// Standart suzgecler (silinmis/banli, profil gorunurlugu, cift yonlu
+        /// engel, kendine bildirim yok) burada da uygulanir. Icerige OZEL
+        /// gorunurluk (ornegin gonderinin takipcilere kapali olmasi) cagiranin
+        /// sorumlulugundadir; bu servis gonderiyi bilmez.
+        /// </summary>
+        Task NotifyUserIdsAsync(
+            int actorUserId,
+            IEnumerable<int> recipientUserIds,
+            string messageKey,
+            string link,
+            IEnumerable<int>? excludeUserIds = null);
     }
 }

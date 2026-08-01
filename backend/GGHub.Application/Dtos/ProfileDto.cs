@@ -21,6 +21,17 @@ namespace GGHub.Application.Dtos
         public ProfileVisibilitySetting ProfileVisibility { get; set; }
         public bool IsDateOfBirthPublic { get; set; }
         public MessagePrivacySetting MessageSetting { get; set; }
+        // YALNIZCA kendi profilinde (GET /profile/me) doldurulur. Gizlilik ekrani
+        // bu iki alani okuyup secili secenegi isaretliyor; dondurulmezse radyo
+        // gruplari varsayilansiz acilir ve kullanici kendi ayarini goremez.
+        //
+        // Baskasinin profilinde BILEREK doldurulmuyor: "bu kisinin gonderileri
+        // takipcilere ozel" bilgisi disariya sizmasin. Doldurulmadigi icin o
+        // yollarda her zaman varsayilan (Everyone) doner, yani gercek ayar hakkinda
+        // hicbir sey soylemez. Yanit izni istemcide zaten PostDto.CanReply'dan
+        // okunuyor, o da sunucuda hesaplaniyor.
+        public PostVisibilitySetting PostVisibility { get; set; }
+        public PostReplyPermissionSetting PostReplyPermission { get; set; }
         public bool IsFollowing { get; set; }
         public bool IsFollowedBy { get; set; }
         public int FollowerCount { get; set; }

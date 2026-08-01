@@ -22,3 +22,22 @@ export const getPersonalizedFeed = (
     .get<Activity[]>(`/activities/feed?${params.toString()}`)
     .then((response) => response.data);
 };
+
+/** Akis sekmeleri. Backend'deki FeedTab ile birebir. */
+export type FeedTabKey = 'posts' | 'reviews' | 'discover';
+
+/**
+ * Sekme tabanli akis. Eski ?type= yolu (getPersonalizedFeed) magazadaki
+ * surumler icin duruyor; guncel uygulama bunu kullaniyor.
+ */
+export const getFeedByTab = (
+  tab: FeedTabKey,
+  limit: number = 10,
+  cursor?: string,
+): Promise<Activity[]> => {
+  const params = new URLSearchParams({ limit: String(limit), tab });
+  if (cursor) params.set('cursor', cursor);
+  return axiosInstance
+    .get<Activity[]>(`/activities/feed?${params.toString()}`)
+    .then((response) => response.data);
+};

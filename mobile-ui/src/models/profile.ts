@@ -13,6 +13,8 @@ export interface Profile {
   phoneNumber: string | null;
   profileVisibility: number;
   messageSetting: number;
+  postVisibility: number;
+  postReplyPermission: number;
   isEmailPublic: boolean;
   isPhoneNumberPublic: boolean;
   isDateOfBirthPublic: boolean;

@@ -1,10 +1,16 @@
 import { GameSummary } from "../review/review.model";
 import { ReviewUser } from "../review/review.model";
+import type { Post } from "../post/post.model";
 
+/**
+ * Backend aynasi (GGHub.Application/Dtos/ActivityDto.cs). SADECE sona eklenir.
+ */
 export enum ActivityType {
     Review = 0,
     ListCreated = 1,
     FollowUser = 2,
+    Post = 3,
+    Repost = 4,
 }
 
 export interface ReviewActivityData {
@@ -47,4 +53,6 @@ export interface Activity {
     reviewData?: ReviewActivityData;
     listData?: ListActivityData;
     followData?: FollowActivityData;
+    /** Gonderi ve repost kartlari. Repost'ta postData.repostOf kaynak gonderiyi tasir. */
+    postData?: Post;
 }

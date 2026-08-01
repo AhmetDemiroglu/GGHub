@@ -214,6 +214,110 @@ namespace GGHub.Infrastructure.Services
             }).ToList();
         }
 
+        public async Task<IEnumerable<MentionSuggestionDto>> SearchMentionTargetsAsync(
+            string query, int currentUserId, IReadOnlyCollection<MentionTargetType> types, int limit = 8)
+        {
+            if (string.IsNullOrWhiteSpace(query)) return Array.Empty<MentionSuggestionDto>();
+            if (types.Count == 0) return Array.Empty<MentionSuggestionDto>();
+
+            var results = new List<MentionSuggestionDto>();
+            var raw = query.Trim();
+
+            if (types.Contains(MentionTargetType.User))
+            {
+                // Kisi aramasi mevcut yolu AYNEN kullanir; gizlilik ve engel
+                // kapilari orada zaten uygulaniyor, ikinci bir kopya sapabilirdi.
+                var users = await SearchMentionableUsersAsync(raw, currentUserId, limit);
+                results.AddRange(users.Select(u => new MentionSuggestionDto
+                {
+                    Type = MentionTargetType.User,
+                    Id = u.Id,
+                    Display = u.Username,
+                    ImageUrl = u.ProfileImageUrl,
+                    Subtitle = string.Join(" ", new[] { u.FirstName, u.LastName }
+                        .Where(s => !string.IsNullOrWhiteSpace(s)))
+                }));
+            }
+
+            if (types.Contains(MentionTargetType.Game))
+            {
+                // Oyunlar herkese acik katalog: gorunurluk suzgeci yok.
+                // Basi eslesenler once, sonra populerlik (RatingCount).
+                var lowered = raw.ToLower();
+                var games = await _context.Games
+                    .AsNoTracking()
+                    .Where(g => g.Name.ToLower().Contains(lowered))
+                    .Select(g => new
+                    {
+                        g.Id,
+                        g.Name,
+                        g.CoverImage,
+                        g.BackgroundImage,
+                        g.Released,
+                        g.RatingCount,
+                        IsPrefixMatch = g.Name.ToLower().StartsWith(lowered)
+                    })
+                    .OrderByDescending(g => g.IsPrefixMatch)
+                    .ThenByDescending(g => g.RatingCount)
+                    .ThenBy(g => g.Name)
+                    .Take(limit)
+                    .ToListAsync();
+
+                results.AddRange(games.Select(g => new MentionSuggestionDto
+                {
+                    Type = MentionTargetType.Game,
+                    Id = g.Id,
+                    Display = g.Name,
+                    ImageUrl = g.CoverImage ?? g.BackgroundImage,
+                    // Released "2015-05-19" biciminde; yalnizca yil gosteriliyor.
+                    Subtitle = g.Released != null && g.Released.Length >= 4 ? g.Released[..4] : null
+                }));
+            }
+
+            if (types.Contains(MentionTargetType.List))
+            {
+                // Liste gorunurlugu: herkese acik, kendi listem, ya da takipcilere
+                // acik olup sahibini takip ediyorum. Ozel listeler HIC onerilmez;
+                // aksi halde adlari composer'da sizardi.
+                var lowered = raw.ToLower();
+                var lists = await _context.UserLists
+                    .AsNoTracking()
+                    .Where(l => l.Name.ToLower().Contains(lowered))
+                    .Where(l => !l.User.IsDeleted && !l.User.IsBanned)
+                    .Where(l =>
+                        l.Visibility == ListVisibilitySetting.Public ||
+                        l.UserId == currentUserId ||
+                        (l.Visibility == ListVisibilitySetting.Followers &&
+                         _context.Follows.Any(f => f.FolloweeId == l.UserId && f.FollowerId == currentUserId)))
+                    .Where(l => !_context.UserBlocks.Any(b =>
+                        (b.BlockerId == currentUserId && b.BlockedId == l.UserId) ||
+                        (b.BlockerId == l.UserId && b.BlockedId == currentUserId)))
+                    .Select(l => new
+                    {
+                        l.Id,
+                        l.Name,
+                        OwnerUsername = l.User.Username,
+                        FollowerCount = l.Followers.Count,
+                        IsPrefixMatch = l.Name.ToLower().StartsWith(lowered)
+                    })
+                    .OrderByDescending(l => l.IsPrefixMatch)
+                    .ThenByDescending(l => l.FollowerCount)
+                    .ThenBy(l => l.Name)
+                    .Take(limit)
+                    .ToListAsync();
+
+                results.AddRange(lists.Select(l => new MentionSuggestionDto
+                {
+                    Type = MentionTargetType.List,
+                    Id = l.Id,
+                    Display = l.Name,
+                    Subtitle = l.OwnerUsername
+                }));
+            }
+
+            return results;
+        }
+
         private static (string nameQuery, int? year) ParseQuery(string raw)
         {
             var match = YearTokenRegex.Match(raw);

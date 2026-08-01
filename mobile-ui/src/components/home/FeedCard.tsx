@@ -7,6 +7,7 @@ import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
 import { Avatar } from '@/src/components/common/Avatar';
 import { MentionText } from '@/src/components/common/MentionText';
+import { PostCard } from '@/src/components/posts/PostCard';
 import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
 import { getImageUrl } from '@/src/utils/image';
 import { formatRelativeTime } from '@/src/utils/date';
@@ -228,6 +229,9 @@ function FollowCard({ activity }: { activity: Activity }) {
 
 function FeedCardBase({ activity }: FeedCardProps) {
   switch (activity.type) {
+    case ActivityType.Post:
+    case ActivityType.Repost:
+      return activity.postData ? <PostCard post={activity.postData} /> : null;
     case ActivityType.Review:
       return activity.reviewData ? <ReviewCard activity={activity} /> : null;
     case ActivityType.ListCreated:
@@ -235,6 +239,10 @@ function FeedCardBase({ activity }: FeedCardProps) {
     case ActivityType.FollowUser:
       return activity.followData ? <FollowCard activity={activity} /> : null;
     default:
+      // Bilinmeyen tip sessizce atlanir. KASITLI: sunucu ileride yeni bir kart
+      // tipi eklerse guncellenmemis istemci cokmek yerine o karti gormez.
+      // Magazadaki eski surumler de bu yuzden ?type= yolunu kullaniyor ve hic
+      // Post/Repost almiyor.
       return null;
   }
 }

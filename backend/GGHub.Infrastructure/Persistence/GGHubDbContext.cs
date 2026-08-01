@@ -40,6 +40,13 @@ namespace GGHub.Infrastructure.Persistence
         public DbSet<PushToken> PushTokens { get; set; }
         public DbSet<GeminiUsage> GeminiUsages { get; set; }
         public DbSet<DownloadPageEvent> DownloadPageEvents { get; set; }
+        public DbSet<Post> Posts { get; set; }
+        public DbSet<PostLike> PostLikes { get; set; }
+        public DbSet<PostImage> PostImages { get; set; }
+        public DbSet<PostPoll> PostPolls { get; set; }
+        public DbSet<PostPollOption> PostPollOptions { get; set; }
+        public DbSet<PostPollVote> PostPollVotes { get; set; }
+        public DbSet<PostMention> PostMentions { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -112,6 +119,12 @@ namespace GGHub.Infrastructure.Persistence
             modelBuilder.Entity<Review>()
                 .HasIndex(r => new { r.UserId, r.GameId })
                 .IsUnique();
+
+            // NOT (Kesfet zevk grafigi icin): "su oyunlari iceren listeler" ve
+            // "su oyunlar hakkindaki incelemeler" sorgulari GameId uzerinden ters
+            // okuma yapiyor. Ikisinin de indeksi ZATEN VAR: EF her FK kolonuna
+            // otomatik index aciyor (IX_UserListGames_GameId, IX_Reviews_GameId).
+            // Elle yeniden tanimlamaya gerek yok, sadece snapshot'i kirletir.
             modelBuilder.Entity<Follow>(entity =>
             {
                 entity.HasKey(k => new { k.FollowerId, k.FolloweeId });
@@ -306,6 +319,178 @@ namespace GGHub.Infrastructure.Persistence
                 // index'i + heap onu zaten karşılıyor.
                 entity.HasIndex(e => new { e.UtmCampaign, e.OccurredAt })
                     .HasDatabaseName("IX_DownloadPageEvents_UtmCampaign_OccurredAt");
+            });
+
+            modelBuilder.Entity<Post>(entity =>
+            {
+                entity.Property(e => e.Content).HasMaxLength(500);
+
+                // Restrict: kullanicilar soft-delete ediliyor (IsDeleted), gercek
+                // silme yalnizca seed temizliginde oluyor. Cascade birakmak kazara
+                // bir User silmesinde tum gonderileri goturur.
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // ReviewComment ile AYNI gerekce (yukaridaki uzun yorum): ClientSetNull
+                // ile yaniti olan bir gonderi silinirken EF yuklenmemis cocuklarin
+                // FK'sini null'layamiyor ve DbUpdateException firlatiyor. Cascade'de
+                // silmeyi Postgres ustleniyor, cok seviyeli self-referencing zinciri
+                // sorunsuz isliyor.
+                entity.HasOne(e => e.ParentPost)
+                    .WithMany(e => e.Replies)
+                    .HasForeignKey(e => e.ParentPostId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Kaynak gonderi silinince repost'lari da gitmeli; aksi halde
+                // icerigi olmayan hayalet kartlar akista kalirdi.
+                entity.HasOne(e => e.RepostOfPost)
+                    .WithMany(e => e.Reposts)
+                    .HasForeignKey(e => e.RepostOfPostId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Profil "Gonderiler" sekmesi ve akisin ag ici aday sorgusu.
+                entity.HasIndex(e => new { e.UserId, e.CreatedAt })
+                    .HasDatabaseName("IX_Posts_UserId_CreatedAt");
+
+                // Kesfet'in trend/ag disi aday havuzu ve cursor sayfalamasi.
+                entity.HasIndex(e => e.CreatedAt)
+                    .HasDatabaseName("IX_Posts_CreatedAt");
+
+                // Yanit sayfalamasi (ParentPostId + kronoloji).
+                entity.HasIndex(e => new { e.ParentPostId, e.CreatedAt })
+                    .HasDatabaseName("IX_Posts_ParentPostId_CreatedAt");
+
+                // "Bu gonderiyi repost ettim mi" ve repost zinciri gorunurluk suzgeci.
+                entity.HasIndex(e => e.RepostOfPostId)
+                    .HasDatabaseName("IX_Posts_RepostOfPostId");
+            });
+
+            modelBuilder.Entity<PostLike>(entity =>
+            {
+                entity.HasKey(k => new { k.UserId, k.PostId });
+
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.Post)
+                    .WithMany(p => p.Likes)
+                    .HasForeignKey(e => e.PostId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // PK (UserId, PostId) "ben begendim mi" sorgusunu karsiliyor ama
+                // "bu gonderiyi kimler begendi" icin PostId onde bir index sart.
+                entity.HasIndex(e => e.PostId)
+                    .HasDatabaseName("IX_PostLikes_PostId");
+            });
+
+            modelBuilder.Entity<PostImage>(entity =>
+            {
+                entity.Property(e => e.Url).HasMaxLength(512).IsRequired();
+
+                entity.HasOne(e => e.Post)
+                    .WithMany(p => p.Images)
+                    .HasForeignKey(e => e.PostId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => e.PostId)
+                    .HasDatabaseName("IX_PostImages_PostId");
+            });
+
+            modelBuilder.Entity<PostPoll>(entity =>
+            {
+                entity.HasOne(e => e.Post)
+                    .WithOne(p => p.Poll)
+                    .HasForeignKey<PostPoll>(e => e.PostId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Gonderi basina en fazla bir anket, veritabani seviyesinde.
+                entity.HasIndex(e => e.PostId)
+                    .IsUnique()
+                    .HasDatabaseName("IX_PostPolls_PostId");
+            });
+
+            modelBuilder.Entity<PostPollOption>(entity =>
+            {
+                entity.Property(e => e.Text).HasMaxLength(40).IsRequired();
+
+                entity.HasOne(e => e.Poll)
+                    .WithMany(p => p.Options)
+                    .HasForeignKey(e => e.PollId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => e.PollId)
+                    .HasDatabaseName("IX_PostPollOptions_PollId");
+            });
+
+            modelBuilder.Entity<PostPollVote>(entity =>
+            {
+                // Anket basina tek oy. (UserId, OptionId) olsaydi ayni kisi birden
+                // fazla secenege oy verebilirdi; anahtar BILEREK PollId uzerinden.
+                entity.HasKey(k => new { k.UserId, k.PollId });
+
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.Poll)
+                    .WithMany(p => p.Votes)
+                    .HasForeignKey(e => e.PollId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Restrict SART: Poll -> Option -> Vote ile Poll -> Vote iki ayri
+                // cascade yolu olusturur ve EF model dogrulamasi bunu reddeder.
+                // Anket silinince oylar zaten PollId cascade'i ile gidiyor.
+                entity.HasOne(e => e.Option)
+                    .WithMany(o => o.Votes)
+                    .HasForeignKey(e => e.OptionId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(e => e.OptionId)
+                    .HasDatabaseName("IX_PostPollVotes_OptionId");
+            });
+
+            modelBuilder.Entity<PostMention>(entity =>
+            {
+                entity.HasOne(e => e.Post)
+                    .WithMany(p => p.Mentions)
+                    .HasForeignKey(e => e.PostId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Uc hedef de Restrict: etiketlenen kullanici/oyun/liste silinince
+                // gonderi kaybolmamali. Etiket cozumsuz kalir, istemci duz gri metin
+                // basar (PostMentionDto.Resolved = false).
+                entity.HasOne(e => e.TargetUser)
+                    .WithMany()
+                    .HasForeignKey(e => e.TargetUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.TargetGame)
+                    .WithMany()
+                    .HasForeignKey(e => e.TargetGameId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.TargetList)
+                    .WithMany()
+                    .HasForeignKey(e => e.TargetListId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(e => e.PostId)
+                    .HasDatabaseName("IX_PostMentions_PostId");
+
+                // Kesfet'in zevk grafigi: kullanicinin etiketledigi oyunlar.
+                entity.HasIndex(e => e.TargetGameId)
+                    .HasDatabaseName("IX_PostMentions_TargetGameId");
+
+                entity.HasIndex(e => e.TargetListId)
+                    .HasDatabaseName("IX_PostMentions_TargetListId");
+
+                entity.HasIndex(e => e.TargetUserId)
+                    .HasDatabaseName("IX_PostMentions_TargetUserId");
             });
         }
     }

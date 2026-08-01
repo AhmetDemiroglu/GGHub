@@ -23,6 +23,7 @@ import Animated, {
   Extrapolation,
 } from 'react-native-reanimated';
 import { useScrollToTop } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
@@ -31,23 +32,25 @@ import { SegmentedTabs } from '@/src/components/common/SegmentedTabs';
 import { FeedCard } from '@/src/components/home/FeedCard';
 import { HomePanProvider } from '@/src/components/home/HorizontalScrollGuard';
 import { FontSize, Spacing, Shadows, Springs } from '@/src/constants/theme';
-import { getPersonalizedFeed } from '@/src/api/activity';
+import { getFeedByTab, type FeedTabKey } from '@/src/api/activity';
 import { Activity, ActivityType } from '@/src/models/activity';
 import { onReviewVote } from '@/src/utils/review-vote-bus';
 import * as haptics from '@/src/utils/haptics';
 
-type TabKey = 'reviews' | 'lists' | 'follows' | 'all';
+/**
+ * Sekmeler ucе indirildi: Gonderiler, Incelemeler, Kesfet.
+ * Kaldirilan Listeler/Takipler/Hepsi sekmelerinin icerigi Kesfet'e tasindi,
+ * hicbir sey kaybolmadi.
+ */
+type TabKey = FeedTabKey;
 
-const TAB_ORDER: TabKey[] = ['reviews', 'lists', 'follows', 'all'];
-const TAB_TYPE: Record<TabKey, ActivityType | undefined> = {
-  reviews: ActivityType.Review,
-  lists: ActivityType.ListCreated,
-  follows: ActivityType.FollowUser,
-  all: undefined,
-};
+const TAB_ORDER: TabKey[] = ['posts', 'reviews', 'discover'];
 
 const PAGE_SIZE = 10;
 const FAB_VISIBLE_OFFSET = 1200;
+// Yeni gonderi FAB'i; uygulamadaki diger FAB'larla ayni olcu
+// (lists.tsx, messages/index.tsx).
+const COMPOSE_FAB_SIZE = 56;
 // Hızlı flick eşiği; mesafe eşiği ekran genişliğine oranla hesaplanır.
 const COMMIT_VELOCITY = 650;
 const COMMIT_RATIO = 0.3;
@@ -69,6 +72,9 @@ interface TabState {
 const emptyTab = (): TabState => ({ items: [], hasMore: true, loading: false, loaded: false });
 
 function activityKey(a: Activity): string {
+  if (a.type === ActivityType.Post || a.type === ActivityType.Repost) {
+    return `p-${a.postData?.id}-${a.occurredAt}`;
+  }
   if (a.type === ActivityType.Review) return `r-${a.reviewData?.reviewId}-${a.occurredAt}`;
   if (a.type === ActivityType.ListCreated) return `l-${a.listData?.listId}-${a.occurredAt}`;
   return `f-${a.actor?.username}-${a.followData?.username}-${a.occurredAt}`;
@@ -90,14 +96,14 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
   const { messages } = useLocale();
   const { width } = useWindowDimensions();
   const { openSidebar, sidebarProgress } = useShell();
+  const router = useRouter();
   const tt = messages.home.activityTabs;
 
-  const [activeTab, setActiveTab] = useState<TabKey>('reviews');
+  const [activeTab, setActiveTab] = useState<TabKey>('posts');
   const [feeds, setFeeds] = useState<Record<TabKey, TabState>>({
+    posts: emptyTab(),
     reviews: emptyTab(),
-    lists: emptyTab(),
-    follows: emptyTab(),
-    all: emptyTab(),
+    discover: emptyTab(),
   });
   const feedsRef = useRef(feeds);
   feedsRef.current = feeds;
@@ -182,7 +188,7 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
             (min, a) => (min === undefined || a.occurredAt < min ? a.occurredAt : min),
             undefined,
           );
-      const page = await getPersonalizedFeed(PAGE_SIZE, cursor, TAB_TYPE[tab]);
+      const page = await getFeedByTab(tab, PAGE_SIZE, cursor);
 
       setFeeds((prev) => {
         const base = reset ? [] : prev[tab].items;
@@ -204,13 +210,16 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
     }
   }, []);
 
-  // Açılışta önce varsayılan sekme (İncelemeler), ardından diğer sekmeler arka
+  // Açılışta önce varsayılan sekme (Gönderiler), ardından diğer sekmeler arka
   // planda sırayla doldurulur; sekme değişince içerik ANINDA hazırdır.
+  //
+  // TAB_ORDER üzerinden dönüyor: sekme listesine yeni giriş eklendiğinde ön
+  // yüklemeye eklemeyi unutmak mümkün olmasın.
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      await loadTab('reviews', true);
-      for (const tab of ['lists', 'follows', 'all'] as TabKey[]) {
+      await loadTab('posts', true);
+      for (const tab of TAB_ORDER) {
         if (cancelled) return;
         if (!feedsRef.current[tab].loaded) await loadTab(tab, true);
       }
@@ -506,10 +515,9 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
 
   const tabItems = useMemo(
     () => [
+      { key: 'posts' as const, label: tt.posts },
       { key: 'reviews' as const, label: tt.reviews },
-      { key: 'lists' as const, label: tt.lists },
-      { key: 'follows' as const, label: tt.follows },
-      { key: 'all' as const, label: tt.all },
+      { key: 'discover' as const, label: tt.discover },
     ],
     [tt],
   );
@@ -605,17 +613,43 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
           <SegmentedTabs<TabKey> tabs={tabItems} activeKey={activeTab} onChange={setActiveTab} progress={pillProgress} />
         </Animated.View>
 
+        {/*
+            Iki FAB ust uste. Yeni gonderi FAB'i (56px, diger ekranlardakiyle
+            ayni olcu) EN ALTTA ve HER ZAMAN gorunur; yukari-kaydir FAB'i (42px)
+            onun ustune tasindi ve yalnizca kullanici asagi indiginde cikiyor.
+            Boylece "yeni gonderi" birincil eylem olarak basparmagin dogal
+            noktasinda kaliyor.
+        */}
+        <Pressable
+          onPress={() => {
+            haptics.impactLight();
+            router.push('/posts/new' as never);
+          }}
+          style={[
+            styles.composeFab,
+            { backgroundColor: colors.primary, bottom: contentPaddingBottom + Spacing.md },
+            Shadows.lg,
+          ]}
+          accessibilityLabel={messages.posts.newTitle}
+        >
+          <Ionicons name="add" size={26} color="#ffffff" />
+        </Pressable>
+
         {fabVisible ? (
           <Pressable
             onPress={scrollToTop}
             style={[
               styles.fab,
-              { backgroundColor: colors.primary, bottom: contentPaddingBottom + Spacing.md },
+              {
+                backgroundColor: colors.surfaceHighlight,
+                borderColor: colors.border,
+                bottom: contentPaddingBottom + Spacing.md + COMPOSE_FAB_SIZE + Spacing.sm,
+              },
               Shadows.md,
             ]}
             accessibilityLabel={messages.home.backToTop}
           >
-            <Ionicons name="arrow-up" size={20} color="#ffffff" />
+            <Ionicons name="arrow-up" size={20} color={colors.text} />
           </Pressable>
         ) : null}
       </View>
@@ -676,6 +710,16 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  composeFab: {
+    position: 'absolute',
+    right: Spacing.lg,
+    width: COMPOSE_FAB_SIZE,
+    height: COMPOSE_FAB_SIZE,
+    borderRadius: COMPOSE_FAB_SIZE / 2,
     alignItems: 'center',
     justifyContent: 'center',
   },

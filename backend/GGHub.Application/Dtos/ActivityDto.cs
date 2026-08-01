@@ -1,11 +1,22 @@
 ﻿
 namespace GGHub.Application.Dtos
 {
+    /// <summary>
+    /// Akis karti tipi. Istemci enum'lari bunu aynaliyor (web
+    /// models/activity/activity.model.ts, mobil models/activity.ts), bu yuzden
+    /// SONA eklenir, mevcut sayilar degismez.
+    ///
+    /// Mağazadaki eski mobil surumler ?type=0|1|2 gonderiyor ve bu dallar
+    /// Post/Repost URETMEZ; dolayisiyla o surumler bilmedikleri bir tiple
+    /// karsilasip bos kart cizmiyorlar (FeedCard'daki "default: return null").
+    /// </summary>
     public enum ActivityType
     {
         Review = 0,
         ListCreated = 1,
-        FollowUser = 2
+        FollowUser = 2,
+        Post = 3,
+        Repost = 4
     }
 
     public class ActivityDto
@@ -20,6 +31,12 @@ namespace GGHub.Application.Dtos
         public ReviewActivityDto? ReviewData { get; set; }
         public ListActivityDto? ListData { get; set; }
         public UserDto? FollowData { get; set; }
+
+        /// <summary>
+        /// Gonderi ve repost kartlarinin verisi. Repost'ta PostData.RepostOf
+        /// kaynak gonderiyi tasir, Actor ise repost EDEN kisidir.
+        /// </summary>
+        public PostDto? PostData { get; set; }
     }
 
     public class ReviewActivityDto

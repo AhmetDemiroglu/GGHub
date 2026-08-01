@@ -25,6 +25,9 @@ const NOTIFICATION_ICONS: Record<NotificationType, keyof typeof Ionicons.glyphMa
   [NotificationType.ReviewCommentReply]: 'arrow-undo-outline',
   [NotificationType.ReviewCommentLike]: 'heart-outline',
   [NotificationType.Mention]: 'at-outline',
+  [NotificationType.PostLike]: 'heart-outline',
+  [NotificationType.PostReply]: 'chatbubble-outline',
+  [NotificationType.PostRepost]: 'repeat-outline',
 };
 
 const NOTIFICATION_COLORS: Record<NotificationType, string> = {
@@ -40,6 +43,9 @@ const NOTIFICATION_COLORS: Record<NotificationType, string> = {
   [NotificationType.ReviewCommentReply]: '#14b8a6',
   [NotificationType.ReviewCommentLike]: '#ef4444',
   [NotificationType.Mention]: '#a855f7',
+  [NotificationType.PostLike]: '#f43f5e',
+  [NotificationType.PostReply]: '#0ea5e9',
+  [NotificationType.PostRepost]: '#10b981',
 };
 
 function formatTimeAgo(dateStr: string): string {
