@@ -159,6 +159,12 @@ export default function PublicProfileScreen() {
     profile.profileVisibility === ProfileVisibilitySetting.Private && !profile.isFollowing;
   const isMe = user?.username === username;
 
+  // Gonderisi olmayan profilde Gonderiler sekmesi cizilmez. Sekme gizliyken
+  // activeTab orada takili kalirsa hicbir icerik gorunmez (profil kullanici
+  // degistirmeden gezilebiliyor), o yuzden Genel Bakis'a dusulur.
+  const hasPosts = (profile.postCount ?? 0) > 0;
+  const effectiveTab: ProfileTab = activeTab === 'posts' && !hasPosts ? 'overview' : activeTab;
+
   if (isBlockedByThem) {
     return (
       <ScreenWrapper noPadding safeArea={false}>
@@ -360,17 +366,19 @@ export default function PublicProfileScreen() {
               <SegmentedTabs
                 tabs={[
                   { key: 'overview' as const, label: messages.home.activityTitle },
-                  { key: 'posts' as const, label: messages.posts.tabLabel },
+                  // Gonderisi olmayan profilde sekme hic cizilmez; sayi sunucudan
+                  // okuyucunun gorebildigi haliyle geliyor (ProfileDto.postCount).
+                  ...(hasPosts ? [{ key: 'posts' as const, label: messages.posts.tabLabel }] : []),
                   { key: 'reviews' as const, label: messages.home.activityTabs.reviews },
                   { key: 'lists' as const, label: messages.home.activityTabs.lists },
                 ]}
-                activeKey={activeTab}
+                activeKey={effectiveTab}
                 onChange={(k) => setActiveTab(k)}
               />
             </View>
 
             <View style={styles.tabContent}>
-              {activeTab === 'overview' ? (
+              {effectiveTab === 'overview' ? (
                 <>
                   <GamerDnaChart data={statsQuery.data?.gamerDna ?? []} username={username} />
                   <View style={styles.sectionGap} />
@@ -378,11 +386,11 @@ export default function PublicProfileScreen() {
                 </>
               ) : null}
 
-              {activeTab === 'posts' ? (
-                <ProfilePostList username={username} enabled={activeTab === 'posts'} />
+              {effectiveTab === 'posts' ? (
+                <ProfilePostList username={username} enabled={effectiveTab === 'posts'} />
               ) : null}
 
-              {activeTab === 'reviews' ? (
+              {effectiveTab === 'reviews' ? (
                 reviewsQuery.data && reviewsQuery.data.length > 0 ? (
                   reviewsQuery.data.map((r, i) => renderReview(r, i))
                 ) : (
@@ -392,7 +400,7 @@ export default function PublicProfileScreen() {
                 )
               ) : null}
 
-              {activeTab === 'lists' ? (
+              {effectiveTab === 'lists' ? (
                 <FlatList
                   data={listsQuery.data ?? []}
                   renderItem={renderList}

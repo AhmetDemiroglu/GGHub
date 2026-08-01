@@ -41,5 +41,10 @@ namespace GGHub.Application.Dtos
         public int ReviewCount { get; set; }
         public int ListCount { get; set; }
 
+        /// <summary>
+        /// Okuyucunun GOREBILDIGI kok gonderi sayisi. Gonderiler sekmesi bu deger
+        /// 0 iken hic cizilmez, o yuzden GetUserPostsAsync ile ayni suzgecten gecer.
+        /// </summary>
+        public int PostCount { get; set; }
     }
 }

@@ -78,4 +78,6 @@ export interface PublicProfile {
   isBlockingMe?: boolean;
   reviewCount?: number;
   listCount?: number;
+  /** Okuyucunun gorebildigi kok gonderi sayisi; 0 ise Gonderiler sekmesi cizilmez. */
+  postCount?: number;
 }

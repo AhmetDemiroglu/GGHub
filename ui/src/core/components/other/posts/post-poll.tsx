@@ -21,9 +21,19 @@ interface PostPollProps {
  * Anket. Sonuclar YALNIZCA oy verildikten sonra ya da anket kapandiktan sonra
  * gosterilir (X davranisi): erken gosterilen sonuc oyu yonlendirir.
  */
-export function PostPoll({ postId, poll: initialPoll, canVote }: PostPollProps) {
+export function PostPoll({ postId, poll: incomingPoll, canVote }: PostPollProps) {
     const t = useI18n();
-    const [poll, setPoll] = useState(initialPoll);
+    const [poll, setPoll] = useState(incomingPoll);
+
+    // Sunucudan TAZE anket geldiginde yerel kopya ona teslim olur.
+    // Onceden ilk deger disindaki prop guncellemeleri yutuluyordu: oy verilmis
+    // anket, akis yeniden yuklendiginde sonucsuz gorunuyordu. Karsilastirma
+    // KIMLIK uzerinden, boylece ayni nesne tekrar gecerse yerel sonuc ezilmez.
+    const [syncedFrom, setSyncedFrom] = useState(incomingPoll);
+    if (incomingPoll !== syncedFrom) {
+        setSyncedFrom(incomingPoll);
+        setPoll(incomingPoll);
+    }
 
     const { mutate, isPending } = useMutation({
         mutationFn: (optionId: number) => votePostPoll(postId, optionId),

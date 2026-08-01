@@ -22,11 +22,28 @@ interface PostPollViewProps {
  * Anket. Sonuclar YALNIZCA oy verildikten ya da anket kapandiktan sonra
  * gosterilir (X davranisi): erken gosterilen sonuc oyu yonlendirir.
  */
-export function PostPollView({ postId, poll: initialPoll, canVote }: PostPollViewProps) {
+export function PostPollView({ postId, poll: incomingPoll, canVote }: PostPollViewProps) {
   const { colors } = useTheme();
   const { messages } = useLocale();
   const { showToast } = useToast();
-  const [poll, setPoll] = useState(initialPoll);
+  const [poll, setPoll] = useState(incomingPoll);
+
+  // Sunucudan TAZE anket geldiginde yerel kopya ona teslim olur.
+  //
+  // Onceden yalnizca `useState(initialPoll)` vardi ve ilk deger disindaki hicbir
+  // prop guncellemesi ice alinmiyordu. Akis once React Query'nin BAYAT kopyasiyla
+  // ciziliyor (0 oy, myOptionId null), arkadan gelen dogru cevap ise yutuluyordu:
+  // oy verilmis anket ana akista sonucsuz gorunuyordu, detay sayfasi ise ayni
+  // gonderiyi tek basina cektigi icin dogru gosteriyordu.
+  //
+  // Karsilastirma KIMLIK uzerinden: yalnizca gercekten yeni bir nesne geldiginde
+  // (refetch) senkronlanir. Web ana akisi listeyi kendi state'inde tuttugu ve ayni
+  // nesneyi tekrar tekrar gecirdigi icin, oy sonrasi yerel sonuc ezilmez.
+  const [syncedFrom, setSyncedFrom] = useState(incomingPoll);
+  if (incomingPoll !== syncedFrom) {
+    setSyncedFrom(incomingPoll);
+    setPoll(incomingPoll);
+  }
 
   const { mutate, isPending } = useMutation({
     mutationFn: (optionId: number) => votePostPoll(postId, optionId),

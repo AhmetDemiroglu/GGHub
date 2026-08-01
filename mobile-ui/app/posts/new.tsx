@@ -22,8 +22,10 @@ export default function NewPostScreen() {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
 
+  // ScreenHeader ust guvenli alani kendisi uyguluyor; ScreenWrapper de sarinca
+  // bosluk iki kez binip basligi asagi itiyordu (bkz. posts/[postId]).
   return (
-    <ScreenWrapper>
+    <ScreenWrapper noPadding safeArea={false}>
       <ScreenHeader title={messages.posts.newTitle} onBack={() => router.back()} />
 
       {!isAuthenticated ? (

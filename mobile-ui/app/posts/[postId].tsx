@@ -56,8 +56,13 @@ export default function PostDetailScreen() {
     void queryClient.invalidateQueries({ queryKey: postQueryKey });
   };
 
+  // ScreenHeader kendi `paddingTop: insets.top` degerini uyguluyor; ScreenWrapper
+  // varsayilan `safeArea` ile SafeAreaView sarinca ust bosluk IKI kez binip basligi
+  // ve geri butonunu asagi itiyordu. Inceleme/profil ekranlarindaki desen bu:
+  // ScreenHeader kullanan ekran `noPadding safeArea={false}` verir. Yatay bosluk
+  // zaten icerik stillerinde (section, composer) var, kaybolmuyor.
   return (
-    <ScreenWrapper>
+    <ScreenWrapper noPadding safeArea={false}>
       <ScreenHeader title={messages.posts.detailTitle} onBack={() => router.back()} />
 
       {isLoading ? (

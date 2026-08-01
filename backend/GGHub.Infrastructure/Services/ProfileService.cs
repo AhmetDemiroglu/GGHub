@@ -206,6 +206,17 @@ namespace GGHub.Infrastructure.Services
                 })
                 .FirstOrDefaultAsync();
 
+            // Gonderi sayisi AYRI sorgu: gorunurluk suzgeci (WhereVisibleTo) context
+            // aldigi icin yukaridaki tek projeksiyona giremiyor. Filtre
+            // GetUserPostsAsync ile BIREBIR ayni olmak zorunda; aksi halde profil
+            // "3 gonderi" deyip sekme bos acilir (ya da tam tersi).
+            var postCount = await _context.Posts
+                .AsNoTracking()
+                .Where(p => p.UserId == profileUser.Id)
+                .WhereRootLevel()
+                .WhereVisibleTo(_context, currentUserId)
+                .CountAsync();
+
             return new ProfileDto
             {
                 Id = profileUser.Id,
@@ -230,7 +241,8 @@ namespace GGHub.Infrastructure.Services
                 FollowerCount = counts?.FollowerCount ?? 0,
                 FollowingCount = counts?.FollowingCount ?? 0,
                 ReviewCount = counts?.ReviewCount ?? 0,
-                ListCount = counts?.ListCount ?? 0
+                ListCount = counts?.ListCount ?? 0,
+                PostCount = postCount
             };
         }
         public async Task AnonymizeUserAsync(int userId)

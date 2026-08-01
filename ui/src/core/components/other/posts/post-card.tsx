@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { enUS, tr } from "date-fns/locale";
 import { useMutation } from "@tanstack/react-query";
@@ -38,6 +39,7 @@ export function PostCard({ post, variant = "feed", onDeleted, className }: PostC
     const t = useI18n();
     const locale = useCurrentLocale();
     const localizeHref = useLocalizedHref();
+    const router = useRouter();
     const { isAuthenticated } = useAuth();
 
     // Repost kartinda GORUNEN icerik kaynak gonderidir; etkilesim sayaclari da
@@ -51,6 +53,18 @@ export function PostCard({ post, variant = "feed", onDeleted, className }: PostC
     const [reposted, setReposted] = useState(subject.isReposted);
     const [repostCount, setRepostCount] = useState(subject.repostCount);
     const [deleted, setDeleted] = useState(false);
+
+    // Anket bileseniyle ayni sorun: yerel sayaclar ilk prop'ta donup kaliyordu ve
+    // sunucudan gelen TAZE kart (refetch, ya da ayni gonderinin baska bir yerde
+    // begenilmis hali) yutuluyordu. Kimlik degisince sunucuya teslim ol.
+    const [syncedFrom, setSyncedFrom] = useState(subject);
+    if (subject !== syncedFrom) {
+        setSyncedFrom(subject);
+        setLiked(subject.isLiked);
+        setLikeCount(subject.likeCount);
+        setReposted(subject.isReposted);
+        setRepostCount(subject.repostCount);
+    }
 
     const likeMutation = useMutation({
         mutationFn: (next: boolean) => setPostLike(subject.id, next),
@@ -112,11 +126,32 @@ export function PostCard({ post, variant = "feed", onDeleted, className }: PostC
         repostMutation.mutate(next);
     };
 
+    /**
+     * Kartin BOS alanina tiklayinca gonderi detayi acilir (X davranisi).
+     *
+     * Ic ogeler (yazar linki, aksiyon butonlari, menu, anket) kendi islerini
+     * yapmaya devam etmeli, o yuzden tiklama gercekten etkilesimli bir ogeden
+     * geldiyse burada hicbir sey yapilmaz. Bunu her ic ogeye stopPropagation
+     * ekleyerek degil tek noktada closest() ile cozuyoruz: yeni bir buton
+     * eklendiginde kimsenin bir sey hatirlamasi gerekmiyor.
+     *
+     * Metin secmek icin surukleyen kullaniciyi sayfadan atmamak icin aktif
+     * secim varsa da cikilir. Klavye/ekran okuyucu yolu ayrica duruyor:
+     * zaman damgasi ve yanit sayaci gercek <a> olarak detaya baglaniyor.
+     */
+    const handleCardClick = (event: React.MouseEvent<HTMLElement>) => {
+        if (variant === "detail") return;
+        if (event.target instanceof HTMLElement && event.target.closest("a,button,input,textarea,[role='menuitem']")) return;
+        if (window.getSelection()?.toString()) return;
+        router.push(localizeHref(`/posts/${subject.id}`));
+    };
+
     return (
         <article
+            onClick={handleCardClick}
             className={cn(
                 "rounded-xl border border-border/50 bg-card/50 p-4 transition-colors",
-                variant === "feed" && "hover:bg-card/80",
+                variant === "feed" && "cursor-pointer hover:bg-card/80",
                 className,
             )}
         >

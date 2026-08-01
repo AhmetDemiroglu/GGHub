@@ -46,6 +46,18 @@ export function PostCard({ post, variant = 'feed', onDeleted }: PostCardProps) {
   const [repostCount, setRepostCount] = useState(subject.repostCount);
   const [deleted, setDeleted] = useState(false);
 
+  // Anket bileseniyle ayni sorun: yerel sayaclar ilk prop'ta donup kaliyordu ve
+  // sunucudan gelen TAZE kart (refetch, ya da ayni gonderinin baska bir yerde
+  // begenilmis hali) yutuluyordu. Kimlik degisince sunucuya teslim ol.
+  const [syncedFrom, setSyncedFrom] = useState(subject);
+  if (subject !== syncedFrom) {
+    setSyncedFrom(subject);
+    setLiked(subject.isLiked);
+    setLikeCount(subject.likeCount);
+    setReposted(subject.isReposted);
+    setRepostCount(subject.repostCount);
+  }
+
   const likeMutation = useMutation({
     mutationFn: (next: boolean) => setPostLike(subject.id, next),
     onSuccess: (result) => {
@@ -123,8 +135,21 @@ export function PostCard({ post, variant = 'feed', onDeleted }: PostCardProps) {
     router.push(`/posts/${subject.id}` as never);
   };
 
+  const openProfile = () => {
+    haptics.impactLight();
+    router.push(`/profiles/${author.username}` as never);
+  };
+
+  // Kartin BOS alani da gonderi detayini acar (X davranisi). Ic Pressable'lar
+  // (avatar, isim, anket, aksiyonlar) dokunmayi kendileri yakalar; RN'de en
+  // icteki responder oldugu icin disaridaki devreye girmez, ayrica yayilim
+  // durdurmak gerekmiyor.
   return (
-    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <Pressable
+      onPress={openDetail}
+      disabled={variant === 'detail'}
+      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+    >
       {isRepost ? (
         <View style={styles.contextRow}>
           <Ionicons name="repeat" size={13} color={colors.textSecondary} />
@@ -141,25 +166,22 @@ export function PostCard({ post, variant = 'feed', onDeleted }: PostCardProps) {
       ) : null}
 
       <View style={styles.row}>
-        <Pressable
-          onPress={() => {
-            haptics.impactLight();
-            router.push(`/profiles/${author.username}` as never);
-          }}
-        >
+        <Pressable onPress={openProfile}>
           <Avatar uri={author.profileImageUrl} name={author.username} size={38} />
         </Pressable>
 
         <View style={styles.body}>
           <View style={styles.headerRow}>
-            <View style={styles.headerText}>
+            {/* Kart gövdesi detaya gittigi icin isim/kullanici adi profile giden
+                acik hedef olarak kaliyor; yoksa profile tek yol kucuk avatar olurdu. */}
+            <Pressable style={styles.headerText} onPress={openProfile}>
               <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
                 {displayName(author)}
               </Text>
               <Text style={[styles.handle, { color: colors.textSecondary }]} numberOfLines={1}>
                 @{author.username} · {timeAgo}
               </Text>
-            </View>
+            </Pressable>
 
             {post.canDelete ? (
               <Pressable onPress={askDelete} hitSlop={8} style={styles.moreButton}>
@@ -213,7 +235,7 @@ export function PostCard({ post, variant = 'feed', onDeleted }: PostCardProps) {
           </View>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 

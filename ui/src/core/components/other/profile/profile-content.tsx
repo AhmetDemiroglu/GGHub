@@ -53,6 +53,7 @@ export default function ProfileContent({ username }: ProfileContentProps) {
     // reviews, lists, followers) besleniyordu ve engelleyen kullanicinin butun akisi
     // gorunuyordu. Sunucu tarafi da ayrica kapatildi; bu, arayuz tarafindaki kapi.
     const isBlockRelationship = Boolean(profile.isBlockedByMe || profile.isBlockingMe);
+    const hasPosts = (profile.postCount ?? 0) > 0;
 
     if (isBlockRelationship && !isOwnProfile) {
         return (
@@ -77,14 +78,20 @@ export default function ProfileContent({ username }: ProfileContentProps) {
                             <span className="font-semibold">Genel Bakış</span>
                         </TabsTrigger>
 
-                        {/* 2. GÖNDERİLER */}
-                        <TabsTrigger
-                            value="posts"
-                            className="cursor-pointer group relative flex items-center gap-2 h-full rounded-none border-b-2 border-transparent px-6 text-muted-foreground transition-all hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 data-[state=active]:border-indigo-500 data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-400 data-[state=active]:bg-indigo-50 dark:data-[state=active]:bg-indigo-950/30"
-                        >
-                            <MessageSquare className="h-4 w-4" />
-                            <span className="font-semibold">Gönderiler</span>
-                        </TabsTrigger>
+                        {/* 2. GÖNDERİLER - gonderisi yoksa sekme hic cizilmez.
+                            Sayi sunucudan okuyucunun gorebildigi haliyle geliyor. */}
+                        {hasPosts && (
+                            <TabsTrigger
+                                value="posts"
+                                className="cursor-pointer group relative flex items-center gap-2 h-full rounded-none border-b-2 border-transparent px-6 text-muted-foreground transition-all hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 data-[state=active]:border-indigo-500 data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-400 data-[state=active]:bg-indigo-50 dark:data-[state=active]:bg-indigo-950/30"
+                            >
+                                <MessageSquare className="h-4 w-4" />
+                                <span className="font-semibold">Gönderiler</span>
+                                <span className="ml-1.5 flex h-5 min-w-5 items-center justify-center rounded-md bg-muted px-1.5 text-[11px] font-bold group-data-[state=active]:bg-indigo-100 group-data-[state=active]:text-indigo-700 dark:group-data-[state=active]:bg-indigo-900/40 dark:group-data-[state=active]:text-indigo-300">
+                                    {profile.postCount}
+                                </span>
+                            </TabsTrigger>
+                        )}
 
                         {/* 3. İNCELEMELER */}
                         <TabsTrigger
@@ -129,9 +136,11 @@ export default function ProfileContent({ username }: ProfileContentProps) {
                         <ProfileOverview username={profile.username} />
                     </TabsContent>
 
-                    <TabsContent value="posts" className="mt-0 mb-1 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
-                        <ProfilePosts username={profile.username} />
-                    </TabsContent>
+                    {hasPosts && (
+                        <TabsContent value="posts" className="mt-0 mb-1 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
+                            <ProfilePosts username={profile.username} />
+                        </TabsContent>
+                    )}
 
                     <TabsContent value="reviews" className="mt-0 mb-1 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
                         <ProfileReviews username={profile.username} />

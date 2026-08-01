@@ -27,11 +27,13 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
+import { useAuth } from '@/src/hooks/use-auth';
+import { Avatar } from '@/src/components/common/Avatar';
 import { useShell, SIDEBAR_WIDTH } from '@/src/contexts/shell-context';
 import { SegmentedTabs } from '@/src/components/common/SegmentedTabs';
 import { FeedCard } from '@/src/components/home/FeedCard';
 import { HomePanProvider } from '@/src/components/home/HorizontalScrollGuard';
-import { FontSize, Spacing, Shadows, Springs } from '@/src/constants/theme';
+import { BorderRadius, FontSize, Spacing, Shadows, Springs } from '@/src/constants/theme';
 import { getFeedByTab, type FeedTabKey } from '@/src/api/activity';
 import { Activity, ActivityType } from '@/src/models/activity';
 import { onReviewVote } from '@/src/utils/review-vote-bus';
@@ -98,6 +100,7 @@ interface TabbedActivityFeedProps {
 export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, contentPaddingBottom }: TabbedActivityFeedProps) {
   const { colors } = useTheme();
   const { messages } = useLocale();
+  const { user, isAuthenticated } = useAuth();
   const { width } = useWindowDimensions();
   const { openSidebar, sidebarProgress } = useShell();
   const router = useRouter();
@@ -532,6 +535,31 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
       <View style={styles.tabBarWrap} onLayout={(e) => (barY.value = e.nativeEvent.layout.y)}>
         <SegmentedTabs<TabKey> tabs={tabItems} activeKey={activeTab} onChange={setActiveTab} progress={pillProgress} />
       </View>
+
+      {/*
+          Akisin en ustundeki gonderi girisi (X deseni). Tam composer DEGIL,
+          yalnizca giris: dokununca /posts/new acilir. Boylece akis hafif kalir
+          (klavye, tasla yukleme, anket duzenleyici listenin basinda durmaz) ve
+          FAB ile ayni eyleme iki dogal yol olur. Anonim kullaniciya cizilmez;
+          gonderemeyecegi bir alani gostermek bos vaat olurdu.
+      */}
+      {isAuthenticated ? (
+        <Pressable
+          onPress={() => {
+            haptics.impactLight();
+            router.push('/posts/new' as never);
+          }}
+          style={[styles.composerEntry, { backgroundColor: colors.card, borderColor: colors.border }]}
+          accessibilityRole="button"
+          accessibilityLabel={messages.posts.newTitle}
+        >
+          <Avatar uri={user?.profileImageUrl} name={user?.username ?? ''} size={36} />
+          <Text style={[styles.composerEntryText, { color: colors.textSecondary }]} numberOfLines={1}>
+            {messages.posts.placeholder}
+          </Text>
+          <Ionicons name="images-outline" size={18} color={colors.textSecondary} />
+        </Pressable>
+      ) : null}
     </View>
   );
 
@@ -669,6 +697,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     marginTop: Spacing.lg,
     marginBottom: Spacing.md,
+  },
+  composerEntry: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  composerEntryText: {
+    flex: 1,
+    fontSize: FontSize.sm,
   },
   pinnedBar: {
     position: 'absolute',
