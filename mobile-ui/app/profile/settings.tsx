@@ -138,10 +138,11 @@ export default function ProfileSettingsScreen() {
         </TouchableOpacity>
 
         {/* Sidebar'daki tema/dil grubundaki girisin ikizi: kullanicilar bildirim
-            ayarini once "Ayarlar" ekraninda arar. */}
+            ayarini once "Ayarlar" ekraninda arar. `as never` gerekcesi icin bkz.
+            (admin)/dashboard: uretilmis rota tipleri yeni ekrani henuz bilmiyor. */}
         <TouchableOpacity
           style={[styles.menuItem, { borderBottomColor: colors.border }]}
-          onPress={() => router.push('/notification-settings')}
+          onPress={() => router.push('/notification-settings' as never)}
         >
           <Ionicons name="notifications-outline" size={22} color={colors.text} />
           <Text style={[styles.menuText, { color: colors.text }]}>

@@ -183,11 +183,17 @@ export default function AdminDashboard() {
         </View>
       </View>
 
-      {/* Kampanya analitigi kendi ekraninda: filtreler, huni, egilim ve
-          kirilimlar dashboard'a sigmayacak kadar cok yer istiyor. */}
+      {/*
+          Kampanya analitigi kendi ekraninda: filtreler, huni, egilim ve
+          kirilimlar dashboard'a sigmayacak kadar cok yer istiyor.
+
+          `as never`: expo-router'in URETILMIS rota tipleri (.expo/types) yeni
+          ekranlari ancak dev server bir kez calistiktan sonra taniyor. Projede
+          yeni rotalar icin kullanilan desen bu (bkz. posts/new cagrilari).
+      */}
       <TouchableOpacity
         style={[styles.section, styles.linkRow, { backgroundColor: colors.card, borderColor: colors.border }]}
-        onPress={() => router.push('/(admin)/download-analytics')}
+        onPress={() => router.push('/(admin)/download-analytics' as never)}
       >
         <Ionicons name="analytics-outline" size={22} color={colors.primary} />
         <View style={styles.linkText}>
