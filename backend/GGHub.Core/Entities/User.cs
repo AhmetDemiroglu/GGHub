@@ -82,5 +82,22 @@ namespace GGHub.Core.Entities
         /// baska hicbir sinyal yok. Cozum sirasi: PushToken.Locale -> PreferredLocale -> "tr".
         /// </summary>
         public string? PreferredLocale { get; set; }
+
+        /// <summary>
+        /// Cihaza (OS seviyesinde) push gönderilsin mi. Uygulama İÇİ bildirimleri etkilemez:
+        /// kapatıldığında zil ekranı ve rozet çalışmaya devam eder, yalnızca telefona düşen
+        /// bildirim kesilir. Tip bazlı tercihlerden BAĞIMSIZ bir ana şalter
+        /// (bkz. <see cref="UserNotificationPreference"/>).
+        ///
+        /// Uygulama noktası ExpoPushNotificationService.GetTokensAsync: her push oradan token
+        /// okuyor, dolayısıyla tek kapı yeterli ve yeni bir push akışı eklenirken atlanamaz.
+        /// </summary>
+        public bool PushNotificationsEnabled { get; set; } = true;
+
+        /// <summary>
+        /// Tip bazlı bildirim tercihleri. Satırın YOKLUĞU "açık" demektir; yalnızca kullanıcının
+        /// dokunduğu tipler yazılır.
+        /// </summary>
+        public ICollection<UserNotificationPreference> NotificationPreferences { get; set; } = new List<UserNotificationPreference>();
     }
 }

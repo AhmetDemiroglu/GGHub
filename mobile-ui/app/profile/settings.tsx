@@ -137,6 +137,19 @@ export default function ProfileSettingsScreen() {
           <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
         </TouchableOpacity>
 
+        {/* Sidebar'daki tema/dil grubundaki girisin ikizi: kullanicilar bildirim
+            ayarini once "Ayarlar" ekraninda arar. */}
+        <TouchableOpacity
+          style={[styles.menuItem, { borderBottomColor: colors.border }]}
+          onPress={() => router.push('/notification-settings')}
+        >
+          <Ionicons name="notifications-outline" size={22} color={colors.text} />
+          <Text style={[styles.menuText, { color: colors.text }]}>
+            {messages.nav.screenTitles.notificationSettings}
+          </Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={[styles.menuItem, { borderBottomColor: colors.border }]}
           onPress={toggleLocale}

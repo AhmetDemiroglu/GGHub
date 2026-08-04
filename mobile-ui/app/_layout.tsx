@@ -118,6 +118,7 @@ function RootLayoutNav() {
         <Stack.Screen name="my-reports" />
         <Stack.Screen name="profile/settings" />
         <Stack.Screen name="profile/edit" />
+        <Stack.Screen name="notification-settings" />
         <Stack.Screen name="about" />
         <Stack.Screen name="terms" />
         <Stack.Screen name="privacy" />

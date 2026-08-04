@@ -104,6 +104,7 @@ builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddScoped<IDownloadAnalyticsService, DownloadAnalyticsService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<INotificationPreferenceService, NotificationPreferenceService>();
 builder.Services.AddScoped<IMentionService, MentionService>();
 builder.Services.AddHttpClient<IPushNotificationService, ExpoPushNotificationService>();
 builder.Services.AddScoped<ISocialService, SocialService>();

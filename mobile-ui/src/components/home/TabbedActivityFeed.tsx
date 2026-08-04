@@ -37,6 +37,7 @@ import { BorderRadius, FontSize, Spacing, Shadows, Springs } from '@/src/constan
 import { getFeedByTab, type FeedTabKey } from '@/src/api/activity';
 import { Activity, ActivityType } from '@/src/models/activity';
 import { onReviewVote } from '@/src/utils/review-vote-bus';
+import { onPostCreated, postToActivity } from '@/src/utils/post-created-bus';
 import * as haptics from '@/src/utils/haptics';
 
 /**
@@ -297,6 +298,37 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
             ),
           };
         }
+        return changed ? next : prev;
+      });
+    });
+  }, []);
+
+  // Yeni gonderi ANINDA akisin basina. Sunucu yeniden cagrilmiyor: bekleme
+  // olmaz, yuklenmis sayfalar ve kaydirma konumu korunur. Yalnizca kullanicinin
+  // KENDI gonderilerinin dustugu sekmelere eklenir (Kesfet ve Gonderiler);
+  // Incelemeler sekmesinde gonderi karti hic yok.
+  //
+  // Sonraki gercek yenilemede ayni kart sunucudan da gelir; activityKey
+  // (id + occurredAt) ayni oldugu icin loadTab'in tekillestirmesi kopyayi eler.
+  useEffect(() => {
+    return onPostCreated((post) => {
+      const activity = postToActivity(post);
+      const key = activityKey(activity);
+
+      setFeeds((prev) => {
+        const next = { ...prev };
+        let changed = false;
+
+        for (const tab of ['discover', 'posts'] as const) {
+          // Henuz yuklenmemis sekmeye dokunma: ilk yukleme zaten sunucudan
+          // gonderiyi getirecek, araya eklemek reset ile silinirdi.
+          if (!prev[tab].loaded) continue;
+          if (prev[tab].items.some((a) => activityKey(a) === key)) continue;
+
+          next[tab] = { ...prev[tab], items: [activity, ...prev[tab].items] };
+          changed = true;
+        }
+
         return changed ? next : prev;
       });
     });

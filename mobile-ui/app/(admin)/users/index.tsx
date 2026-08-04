@@ -1,9 +1,10 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useCallback, useMemo } from 'react';
+import { View, Text, ActivityIndicator, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
+import { useDebounce } from '@/src/hooks/use-debounce';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 import { Input } from '@/src/components/common/Input';
 import { Avatar } from '@/src/components/common/Avatar';
@@ -25,24 +26,40 @@ export default function AdminUsersScreen() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('All');
-  const [page, setPage] = useState(1);
   const pageSize = APP_CONFIG.paginationDefaults.adminPageSize;
 
-  const params: UserFilterParams = {
-    page,
-    pageSize,
-    searchTerm: searchTerm || undefined,
-    statusFilter: statusFilter === 'All' ? undefined : statusFilter,
-  };
+  // Arama her tus vurusunda sunucuya gitmesin; sorgu anahtari da bu degerle
+  // kuruluyor, yani yazarken liste bastan yuklenip durmuyor.
+  const debouncedSearch = useDebounce(searchTerm, 350);
 
-  const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['admin', 'users', params],
-    queryFn: () => getUsers(params).then((res) => res.data),
+  /**
+   * useInfiniteQuery: sayfalar BIRIKTIRILIR.
+   *
+   * Eskiden yalnizca bir `page` state'i vardi ve sorgu anahtarinin parcasiydi;
+   * sayfa artinca react-query yeni sayfanin verisini donduruyor, onceki sayfa
+   * ekrandan siliniyordu. Sonuc: listenin altindaki kullanicilara HIC
+   * ulasilamiyordu (asagi inildikce liste bastan basliyordu).
+   */
+  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useInfiniteQuery({
+    queryKey: ['admin', 'users', debouncedSearch, statusFilter, pageSize],
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) => {
+      const params: UserFilterParams = {
+        page: pageParam,
+        pageSize,
+        searchTerm: debouncedSearch || undefined,
+        statusFilter: statusFilter === 'All' ? undefined : statusFilter,
+      };
+      return getUsers(params).then((res) => res.data);
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((sum, page) => sum + page.items.length, 0);
+      return loaded < lastPage.totalCount ? allPages.length + 1 : undefined;
+    },
   });
 
-  const users = data?.items ?? [];
-  const totalCount = data?.totalCount ?? 0;
-  const hasMore = page * pageSize < totalCount;
+  const users = useMemo(() => (data?.pages ?? []).flatMap((page) => page.items), [data]);
+  const totalCount = data?.pages[0]?.totalCount ?? 0;
 
   const statusFilters: { key: StatusFilter; label: string }[] = [
     { key: 'All', label: m.statusAll },
@@ -51,10 +68,10 @@ export default function AdminUsersScreen() {
   ];
 
   const loadMore = useCallback(() => {
-    if (hasMore && !isFetching) {
-      setPage((p) => p + 1);
+    if (hasNextPage && !isFetchingNextPage) {
+      void fetchNextPage();
     }
-  }, [hasMore, isFetching]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const renderUser = useCallback(
     ({ item }: { item: AdminUserSummary }) => (
@@ -94,10 +111,7 @@ export default function AdminUsersScreen() {
         <Input
           placeholder={m.searchUsersPlaceholder}
           value={searchTerm}
-          onChangeText={(text) => {
-            setSearchTerm(text);
-            setPage(1);
-          }}
+          onChangeText={setSearchTerm}
           autoCapitalize="none"
         />
         <View style={styles.filters}>
@@ -111,10 +125,7 @@ export default function AdminUsersScreen() {
                   borderColor: statusFilter === f.key ? colors.primary : colors.border,
                 },
               ]}
-              onPress={() => {
-                setStatusFilter(f.key);
-                setPage(1);
-              }}
+              onPress={() => setStatusFilter(f.key)}
             >
               <Text
                 style={[
@@ -142,6 +153,17 @@ export default function AdminUsersScreen() {
           onEndReached={loadMore}
           onEndReachedThreshold={0.3}
           showsVerticalScrollIndicator={false}
+          ListFooterComponent={
+            isFetchingNextPage ? (
+              <ActivityIndicator color={colors.primary} style={styles.footer} />
+            ) : (
+              <Text style={[styles.footerText, { color: colors.textMuted }]}>
+                {m.showingUsers
+                  .replace('{shownCount}', String(users.length))
+                  .replace('{totalCount}', String(totalCount))}
+              </Text>
+            )
+          }
         />
       )}
     </View>
@@ -175,6 +197,14 @@ const styles = StyleSheet.create({
   list: {
     padding: Spacing.lg,
     gap: Spacing.md,
+  },
+  footer: {
+    paddingVertical: Spacing.md,
+  },
+  footerText: {
+    fontSize: FontSize.xs,
+    textAlign: 'center',
+    paddingVertical: Spacing.md,
   },
   userCard: {
     flexDirection: 'row',

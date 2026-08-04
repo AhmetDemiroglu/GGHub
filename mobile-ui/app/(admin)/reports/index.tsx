@@ -1,9 +1,10 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useCallback, useMemo } from 'react';
+import { View, Text, ActivityIndicator, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
+import { useDebounce } from '@/src/hooks/use-debounce';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 import { Input } from '@/src/components/common/Input';
 import { Badge } from '@/src/components/common/Badge';
@@ -31,25 +32,35 @@ export default function AdminReportsScreen() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<ReportStatus | undefined>(undefined);
   const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
-  const [page, setPage] = useState(1);
   const pageSize = APP_CONFIG.paginationDefaults.adminPageSize;
 
-  const params: ReportFilterParams = {
-    page,
-    pageSize,
-    searchTerm: searchTerm || undefined,
-    statusFilter,
-    entityTypeFilter: typeFilter,
-  };
+  // Arama her tus vurusunda sunucuya gitmesin; sorgu anahtari da bu degerle
+  // kuruluyor, yani yazarken liste bastan yuklenip durmuyor.
+  const debouncedSearch = useDebounce(searchTerm, 350);
 
-  const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['admin', 'reports', params],
-    queryFn: () => getReports(params).then((res) => res.data),
+  // Sayfalar BIRIKTIRILIR (bkz. (admin)/users/index): eski kurulumda `page`
+  // sorgu anahtarinin parcasiydi ve her yeni sayfa oncekini ekrandan siliyordu.
+  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useInfiniteQuery({
+    queryKey: ['admin', 'reports', debouncedSearch, statusFilter, typeFilter, pageSize],
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) => {
+      const params: ReportFilterParams = {
+        page: pageParam,
+        pageSize,
+        searchTerm: debouncedSearch || undefined,
+        statusFilter,
+        entityTypeFilter: typeFilter,
+      };
+      return getReports(params).then((res) => res.data);
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((sum, page) => sum + page.items.length, 0);
+      return loaded < lastPage.totalCount ? allPages.length + 1 : undefined;
+    },
   });
 
-  const reports = data?.items ?? [];
-  const totalCount = data?.totalCount ?? 0;
-  const hasMore = page * pageSize < totalCount;
+  const reports = useMemo(() => (data?.pages ?? []).flatMap((page) => page.items), [data]);
+  const totalCount = data?.pages[0]?.totalCount ?? 0;
 
   const statusFilters: { key: ReportStatus | undefined; label: string }[] = [
     { key: undefined, label: m.statusAll },
@@ -67,10 +78,10 @@ export default function AdminReportsScreen() {
   ];
 
   const loadMore = useCallback(() => {
-    if (hasMore && !isFetching) {
-      setPage((p) => p + 1);
+    if (hasNextPage && !isFetchingNextPage) {
+      void fetchNextPage();
     }
-  }, [hasMore, isFetching]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const renderReport = useCallback(
     ({ item }: { item: AdminReport }) => {
@@ -111,10 +122,7 @@ export default function AdminReportsScreen() {
         <Input
           placeholder={messages.common.search}
           value={searchTerm}
-          onChangeText={(text) => {
-            setSearchTerm(text);
-            setPage(1);
-          }}
+          onChangeText={setSearchTerm}
           autoCapitalize="none"
         />
         <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>{m.tableStatus}</Text>
@@ -129,10 +137,7 @@ export default function AdminReportsScreen() {
                   borderColor: statusFilter === f.key ? colors.primary : colors.border,
                 },
               ]}
-              onPress={() => {
-                setStatusFilter(f.key);
-                setPage(1);
-              }}
+              onPress={() => setStatusFilter(f.key)}
             >
               <Text
                 style={[
@@ -156,10 +161,7 @@ export default function AdminReportsScreen() {
                   borderColor: typeFilter === f.key ? colors.primary : colors.border,
                 },
               ]}
-              onPress={() => {
-                setTypeFilter(f.key);
-                setPage(1);
-              }}
+              onPress={() => setTypeFilter(f.key)}
             >
               <Text
                 style={[
@@ -187,6 +189,17 @@ export default function AdminReportsScreen() {
           onEndReached={loadMore}
           onEndReachedThreshold={0.3}
           showsVerticalScrollIndicator={false}
+          ListFooterComponent={
+            isFetchingNextPage ? (
+              <ActivityIndicator color={colors.primary} style={styles.footer} />
+            ) : (
+              <Text style={[styles.footerText, { color: colors.textMuted }]}>
+                {m.showingReports
+                  .replace('{shownCount}', String(reports.length))
+                  .replace('{totalCount}', String(totalCount))}
+              </Text>
+            )
+          }
         />
       )}
     </View>
@@ -226,6 +239,14 @@ const styles = StyleSheet.create({
   list: {
     padding: Spacing.lg,
     gap: Spacing.md,
+  },
+  footer: {
+    paddingVertical: Spacing.md,
+  },
+  footerText: {
+    fontSize: FontSize.xs,
+    textAlign: 'center',
+    paddingVertical: Spacing.md,
   },
   reportCard: {
     padding: Spacing.lg,

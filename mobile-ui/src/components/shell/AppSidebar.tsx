@@ -449,7 +449,7 @@ export function AppSidebar({ children }: AppSidebarProps) {
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-          {/* ── Görünüm + dil (kompakt) ── */}
+          {/* ── Görünüm + dil + bildirimler (kompakt) ── */}
           <View style={styles.settingRow}>
             <View style={styles.settingLabelWrap}>
               <Ionicons name="contrast-outline" size={20} color={colors.textSecondary} />
@@ -464,6 +464,29 @@ export function AppSidebar({ children }: AppSidebarProps) {
             </View>
             <LanguageControl locale={locale} onSwitch={handleLocaleSwitch} colors={colors} />
           </View>
+
+          {/*
+              Bildirim ayarlari tema/dil ile AYNI grupta ama kendi ekranini aciyor:
+              on bese yakin anahtar sidebar'a sigmaz. Yalnizca girisli kullaniciya
+              cizilir, ayarlar hesaba bagli.
+          */}
+          {isAuthenticated && (
+            <Pressable
+              onPress={() => {
+                haptics.selection();
+                navigate('/notification-settings');
+              }}
+              style={({ pressed }) => [styles.settingRow, pressed && { opacity: 0.6 }]}
+            >
+              <View style={styles.settingLabelWrap}>
+                <Ionicons name="notifications-outline" size={20} color={colors.textSecondary} />
+                <Text style={[styles.settingLabel, { color: colors.textSecondary }]}>
+                  {nav.notificationSettings}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </Pressable>
+          )}
 
           {/* ── Çıkış ── */}
           {isAuthenticated && (

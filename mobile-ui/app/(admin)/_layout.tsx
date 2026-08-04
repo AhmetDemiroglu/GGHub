@@ -27,6 +27,7 @@ export default function AdminLayout() {
         <Stack.Screen name="users/[id]" options={{ title: m.userDetail }} />
         <Stack.Screen name="reports/index" options={{ title: m.reports }} />
         <Stack.Screen name="reports/[id]" options={{ title: m.reportDetailTitle }} />
+        <Stack.Screen name="download-analytics" options={{ title: m.downloadAnalytics.title }} />
       </Stack>
     </AuthGuard>
   );

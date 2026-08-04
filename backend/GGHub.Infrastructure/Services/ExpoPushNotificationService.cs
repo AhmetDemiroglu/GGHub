@@ -109,8 +109,25 @@ namespace GGHub.Infrastructure.Services
             await SendAsync(userId, payloads, link, notificationId);
         }
 
+        /// <summary>
+        /// Kullanicinin cihaz token'lari. Ana push salteri BURADA uygulaniyor: her gonderim
+        /// yolu (hazir metin ve yerelleştirilmiş) token'lari buradan okuyor, dolayisiyla tek
+        /// kapi yeterli ve ileride eklenecek bir push akisinda atlanamaz.
+        ///
+        /// Salter yalnizca CIHAZ push'unu keser; uygulama ici bildirim, zil rozeti ve SignalR
+        /// olaylari etkilenmez. Tip bazli tercihler ayri bir katman
+        /// (bkz. INotificationPreferenceService).
+        /// </summary>
         private async Task<List<PushToken>> GetTokensAsync(int userId)
         {
+            var pushEnabled = await _context.Users
+                .AsNoTracking()
+                .Where(u => u.Id == userId)
+                .Select(u => u.PushNotificationsEnabled)
+                .FirstOrDefaultAsync();
+
+            if (!pushEnabled) return new List<PushToken>();
+
             return await _context.PushTokens
                 .AsNoTracking()
                 .Where(t => t.UserId == userId)

@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 
 import { createPost, searchMentionTargets, uploadPostImage } from '@/src/api/post';
@@ -24,6 +24,7 @@ import { useDebounce } from '@/src/hooks/use-debounce';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useTheme } from '@/src/hooks/use-theme';
 import { shrinkForUpload } from '@/src/utils/image';
+import { emitPostCreated } from '@/src/utils/post-created-bus';
 import {
   segmentComposerText,
   toTokenizedContent,
@@ -80,6 +81,7 @@ export function PostComposer({ parentPostId, placeholder, autoFocus, onCreated }
   const { messages } = useLocale();
   const { user, isAuthenticated } = useAuth();
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
 
   const inputRef = useRef<TextInput | null>(null);
   const anchorRef = useRef<{ start: number; end: number } | null>(null);
@@ -174,6 +176,14 @@ export function PostComposer({ parentPostId, placeholder, autoFocus, onCreated }
       setImages([]);
       setPoll(null);
       showToast('success', parentPostId ? messages.posts.replySent : messages.posts.created);
+
+      // Profildeki gonderi listesi react-query'de: yeni gonderi orada da gorunsun.
+      queryClient.invalidateQueries({ queryKey: ['userPosts'] });
+
+      // Ana sayfa akisini haberdar et. YALNIZCA kok gonderiler: akis
+      // WhereRootLevel() ile suzuluyor, yanitlar zaten oraya girmez.
+      if (!parentPostId) emitPostCreated(post);
+
       onCreated?.(post);
     },
     onError: () => showToast('error', messages.posts.createError),

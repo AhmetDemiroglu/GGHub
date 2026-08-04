@@ -38,6 +38,7 @@ namespace GGHub.Infrastructure.Persistence
         public DbSet<UserStats> UserStats { get; set; }
         public DbSet<RawgImportCheckpoint> RawgImportCheckpoints { get; set; }
         public DbSet<PushToken> PushTokens { get; set; }
+        public DbSet<UserNotificationPreference> UserNotificationPreferences { get; set; }
         public DbSet<GeminiUsage> GeminiUsages { get; set; }
         public DbSet<DownloadPageEvent> DownloadPageEvents { get; set; }
         public DbSet<Post> Posts { get; set; }
@@ -81,6 +82,20 @@ namespace GGHub.Infrastructure.Persistence
                 .HasIndex(u => u.AppleId)
                 .IsUnique()
                 .HasFilter("\"AppleId\" IS NOT NULL");
+
+            // Push ana salteri VARSAYILAN ACIK olmali; DB varsayilani acikca veriliyor.
+            // Aksi halde EF kolonu "default false" ile ekliyor (C# tarafindaki `= true`
+            // baslatici SQL varsayilanina yansimaz) ve migration MEVCUT TUM kullanicilarin
+            // push'unu kapatirdi.
+            //
+            // UserNotificationPreference.Enabled'a AYNI SEY YAPILMADI, bilerek: bool bir
+            // kolonda store varsayilani varsa EF, deger CLR varsayilanina (false) esit oldugunda
+            // onu INSERT'e hic koymaz ve DB varsayilani (true) kazanir. Yani "bu bildirimi
+            // kapat" ilk kez kaydedilirken satir sessizce ACIK olarak yazilirdi. O tabloda
+            // deger her zaman acikca yaziliyor ve tablo yeni oldugu icin varsayilana ihtiyac yok.
+            modelBuilder.Entity<User>()
+                .Property(u => u.PushNotificationsEnabled)
+                .HasDefaultValue(true);
 
             modelBuilder.Entity<UserListRating>()
                 .HasKey(r => new { r.UserId, r.UserListId });
@@ -299,6 +314,21 @@ namespace GGHub.Infrastructure.Persistence
                 entity.HasOne(t => t.User)
                     .WithMany()
                     .HasForeignKey(t => t.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // UserNotificationPreference: kullanici basina TIP basina tek satir.
+            // Unique index hem upsert'in dogrulugunu garanti eder hem de okuma
+            // sorgusunun (UserId) indeksli kalmasini saglar.
+            modelBuilder.Entity<UserNotificationPreference>(entity =>
+            {
+                entity.HasIndex(p => new { p.UserId, p.Type })
+                    .IsUnique()
+                    .HasDatabaseName("IX_UserNotificationPreferences_UserId_Type");
+
+                entity.HasOne(p => p.User)
+                    .WithMany(u => u.NotificationPreferences)
+                    .HasForeignKey(p => p.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
 

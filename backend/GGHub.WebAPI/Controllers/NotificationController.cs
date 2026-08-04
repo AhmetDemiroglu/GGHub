@@ -14,11 +14,16 @@ namespace GGHub.WebAPI.Controllers
     {
         private readonly INotificationService _notificationService;
         private readonly IPushNotificationService _pushNotificationService;
+        private readonly INotificationPreferenceService _preferenceService;
 
-        public NotificationsController(INotificationService notificationService, IPushNotificationService pushNotificationService)
+        public NotificationsController(
+            INotificationService notificationService,
+            IPushNotificationService pushNotificationService,
+            INotificationPreferenceService preferenceService)
         {
             _notificationService = notificationService;
             _pushNotificationService = pushNotificationService;
+            _preferenceService = preferenceService;
         }
 
         [HttpGet]
@@ -57,6 +62,29 @@ namespace GGHub.WebAPI.Controllers
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
             await _notificationService.MarkAllAsReadAsync(userId);
             return Ok();
+        }
+
+        /// <summary>
+        /// Bildirim ayarlarinin tamami. Yanit her zaman yapilandirilabilir TUM tipleri tasir
+        /// (dogum gunu haric); kaydedilmemis tipler acik doner.
+        /// </summary>
+        [HttpGet("settings")]
+        public async Task<IActionResult> GetSettings()
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            return Ok(await _preferenceService.GetSettingsAsync(userId));
+        }
+
+        /// <summary>
+        /// Kismi guncelleme: yalnizca gonderilen alanlar uygulanir, guncel ayarlarin tamami doner.
+        /// </summary>
+        [HttpPut("settings")]
+        public async Task<IActionResult> UpdateSettings(NotificationSettingsForUpdateDto dto)
+        {
+            if (dto == null) return BadRequest();
+
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            return Ok(await _preferenceService.UpdateSettingsAsync(userId, dto));
         }
 
         [HttpPost("register-token")]

@@ -33,3 +33,26 @@ export enum NotificationType {
   // 15 : dogum gunu. Aktoru YOKTUR (bildirimi sistem uretir), mesaj duz metin basilir.
   Birthday = 15,
 }
+
+/** Tek bir bildirim tipinin acik/kapali durumu. */
+export interface NotificationPreference {
+  type: NotificationType;
+  enabled: boolean;
+}
+
+/**
+ * Bildirim ayarlarinin tamami. `preferences` her zaman yapilandirilabilir TUM
+ * tipleri tasir (dogum gunu haric) ve kaydedilmemis tipler acik doner; istemcinin
+ * varsayilani bilmesi gerekmez.
+ */
+export interface NotificationSettings {
+  /** Cihaza push gonderilsin mi. Uygulama ici bildirimleri etkilemez. */
+  pushEnabled: boolean;
+  preferences: NotificationPreference[];
+}
+
+/** Kismi guncelleme: yalnizca gonderilen alanlar uygulanir. */
+export interface NotificationSettingsForUpdate {
+  pushEnabled?: boolean;
+  preferences?: NotificationPreference[];
+}

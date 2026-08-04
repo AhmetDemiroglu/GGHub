@@ -2,7 +2,7 @@ import React, { useCallback } from 'react';
 import { View, Text, ScrollView, RefreshControl, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, Stack } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
@@ -25,6 +25,7 @@ export default function AdminDashboard() {
   const router = useRouter();
   const { logout } = useAuth();
   const confirm = useConfirm();
+  const queryClient = useQueryClient();
   const m = messages.admin;
 
   const handleBackToApp = useCallback(() => {
@@ -83,7 +84,12 @@ export default function AdminDashboard() {
     recentReportsQuery.refetch();
     recentUsersQuery.refetch();
     recentReviewsQuery.refetch();
-  }, []);
+    // Siralama kartlari TopCards icinde kendi sorgularini tutuyor; asagi cekince
+    // onlar da tazelensin (eskiden ilk yuklemede kalip guncellenmiyorlardi).
+    queryClient.invalidateQueries({ queryKey: ['admin', 'top-users'] });
+    queryClient.invalidateQueries({ queryKey: ['admin', 'top-lists'] });
+    queryClient.invalidateQueries({ queryKey: ['admin', 'top-games'] });
+  }, [queryClient]);
 
   if (isLoading) {
     return <LoadingScreen />;
@@ -177,6 +183,22 @@ export default function AdminDashboard() {
         </View>
       </View>
 
+      {/* Kampanya analitigi kendi ekraninda: filtreler, huni, egilim ve
+          kirilimlar dashboard'a sigmayacak kadar cok yer istiyor. */}
+      <TouchableOpacity
+        style={[styles.section, styles.linkRow, { backgroundColor: colors.card, borderColor: colors.border }]}
+        onPress={() => router.push('/(admin)/download-analytics')}
+      >
+        <Ionicons name="analytics-outline" size={22} color={colors.primary} />
+        <View style={styles.linkText}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{m.downloadAnalytics.title}</Text>
+          <Text style={[styles.linkSubtitle, { color: colors.textMuted }]} numberOfLines={2}>
+            {m.downloadAnalytics.description}
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+      </TouchableOpacity>
+
       <TopCards />
     </ScrollView>
     </>
@@ -221,5 +243,18 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     marginTop: Spacing.sm,
+  },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  linkText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  linkSubtitle: {
+    fontSize: FontSize.xs,
+    marginTop: 2,
   },
 });

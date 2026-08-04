@@ -15,11 +15,17 @@ namespace GGHub.Infrastructure.Services
         private readonly GGHubDbContext _context;
         private readonly IHubNotificationService _hubNotificationService;
         private readonly IPushNotificationService _pushNotificationService;
-        public NotificationService(GGHubDbContext context, IHubNotificationService hubNotificationService, IPushNotificationService pushNotificationService)
+        private readonly INotificationPreferenceService _preferenceService;
+        public NotificationService(
+            GGHubDbContext context,
+            IHubNotificationService hubNotificationService,
+            IPushNotificationService pushNotificationService,
+            INotificationPreferenceService preferenceService)
         {
             _context = context;
             _hubNotificationService = hubNotificationService;
             _pushNotificationService = pushNotificationService;
+            _preferenceService = preferenceService;
         }
 
         public async Task CreateNotificationAsync(
@@ -30,6 +36,15 @@ namespace GGHub.Infrastructure.Services
             string? link = null,
             int? actorUserId = null)
         {
+            // Kullanici tercihi burada uygulaniyor: bildirimin TEK uretim noktasi bu metot,
+            // dolayisiyla kapatilan tip icin ne DB satiri, ne SignalR olayi, ne de push uretilir.
+            // Kullanici "bu bildirimi almak istemiyorum" dediginde zil ekraninda da gorunmemesi
+            // gerekir; sadece push'u kesmek yarim bir kapatma olurdu.
+            //
+            // Dogum gunu tercihe tabi DEGIL (bkz. NotificationPreferences), IsEnabledAsync
+            // onun icin her zaman true doner.
+            if (!await _preferenceService.IsEnabledAsync(recipientUserId, type)) return;
+
             var args = messageArgs is null
                 ? new Dictionary<string, string>()
                 : new Dictionary<string, string>(messageArgs);

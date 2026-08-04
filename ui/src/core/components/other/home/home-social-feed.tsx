@@ -8,6 +8,7 @@ import { enUS, tr } from "date-fns/locale";
 import { getFeedByTab } from "@/api/activity/activity.api";
 import { useInfiniteScroll } from "@/core/hooks/use-infinite-scroll";
 import { Activity, ActivityActor, ActivityType } from "@/models/activity/activity.model";
+import type { Post } from "@/models/post/post.model";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 import { buildLocalizedPathname } from "@/i18n/config";
 import { enUSMessages } from "@/i18n/messages/en-US";
@@ -151,6 +152,48 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
         } catch {
             setFeeds((prev) => ({ ...prev, [tab]: { ...prev[tab], loading: false, loaded: true, hasMore: false } }));
         }
+    }, []);
+
+    /**
+     * Yeni gonderiyi akisin basina ANINDA ekler.
+     *
+     * Onceden yalnizca loadTab("posts", true) cagriliyordu ve iki sorun vardi:
+     * varsayilan sekme Kesfet oldugu icin kullanici gonderisini goremiyor, bir
+     * de reset yuklenmis sayfalari atip Gonderiler sekmesini basa sariyordu.
+     * Simdi donen gonderi kullanicinin kendi gonderilerinin dustugu iki sekmeye
+     * (Kesfet ve Gonderiler) istemcide ekleniyor; sunucu beklenmiyor.
+     *
+     * Alanlar backend'in ActivityDto uretimiyle birebir ayni
+     * (bkz. ActivityService.BuildPostCandidatesAsync), dolayisiyla sonraki
+     * gercek yenilemede ayni kart sunucudan gelirse getActivityKey ayni cikar
+     * ve loadTab'in tekillestirmesi kopyayi eler.
+     */
+    const prependPost = useCallback((post: Post) => {
+        const activity: Activity = {
+            id: post.id,
+            type: post.repostOf ? ActivityType.Repost : ActivityType.Post,
+            occurredAt: post.createdAt,
+            actor: post.author,
+            postData: post,
+        };
+        const key = getActivityKey(activity);
+
+        setFeeds((prev) => {
+            const next = { ...prev };
+            let changed = false;
+
+            for (const tab of ["discover", "posts"] as const) {
+                // Henuz yuklenmemis sekmeye dokunma: ilk yukleme gonderiyi zaten
+                // sunucudan getirir, araya eklenen kart reset ile silinirdi.
+                if (!prev[tab].loaded) continue;
+                if (prev[tab].items.some((item) => getActivityKey(item) === key)) continue;
+
+                next[tab] = { ...prev[tab], items: [activity, ...prev[tab].items] };
+                changed = true;
+            }
+
+            return changed ? next : prev;
+        });
     }, []);
 
     // Her degisimde hafizayi tazele; unmount'ta yazmak yeterli degil, cunku
@@ -381,7 +424,9 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
 
             {/* Yeni gönderi "Gönderiler" sekmesine düşer (kendi akışın), Keşfet'e değil;
                 o yüzden orayı tazeliyoruz. */}
-            <PostComposer onCreated={() => void loadTab("posts", true)} />
+            {/* Yanitlar akista gorunmez (sunucu WhereRootLevel() ile suzuyor);
+                buradaki composer kok gonderi uretir, dolayisiyla kosul yok. */}
+            <PostComposer onCreated={prependPost} />
 
             {/* Sekme sırası mobildeki TAB_ORDER ile birebir: discover, posts, reviews.
                 KONTROLLÜ kullanılıyor (defaultValue DEĞİL): daha önce state "discover"

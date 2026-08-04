@@ -7,11 +7,14 @@ import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 interface StatsCardProps {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
-  value: number;
+  /** Sayi binlik ayraciyla bicimlenir; hazir metin (ör. "%12,5") oldugu gibi basilir. */
+  value: number | string;
   color: string;
+  /** Deger altina kucuk aciklama satiri (kampanya analitigi kartlarinda kullaniliyor). */
+  description?: string;
 }
 
-export function StatsCard({ icon, label, value, color }: StatsCardProps) {
+export function StatsCard({ icon, label, value, color, description }: StatsCardProps) {
   const { colors } = useTheme();
 
   return (
@@ -19,10 +22,17 @@ export function StatsCard({ icon, label, value, color }: StatsCardProps) {
       <View style={[styles.iconContainer, { backgroundColor: color + '20' }]}>
         <Ionicons name={icon} size={24} color={color} />
       </View>
-      <Text style={[styles.value, { color: colors.text }]}>{value.toLocaleString()}</Text>
-      <Text style={[styles.label, { color: colors.textSecondary }]} numberOfLines={1}>
+      <Text style={[styles.value, { color: colors.text }]}>
+        {typeof value === 'number' ? value.toLocaleString() : value}
+      </Text>
+      <Text style={[styles.label, { color: colors.textSecondary }]} numberOfLines={2}>
         {label}
       </Text>
+      {description ? (
+        <Text style={[styles.description, { color: colors.textMuted }]} numberOfLines={2}>
+          {description}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -52,5 +62,10 @@ const styles = StyleSheet.create({
   label: {
     fontSize: FontSize.xs,
     textAlign: 'center',
+  },
+  description: {
+    fontSize: FontSize.xs,
+    textAlign: 'center',
+    marginTop: 2,
   },
 });

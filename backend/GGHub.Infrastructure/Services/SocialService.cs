@@ -18,7 +18,8 @@ namespace GGHub.Infrastructure.Services
         private readonly IPushNotificationService _pushNotificationService;
         private readonly IUserSuggestionService _userSuggestionService;
         private readonly IUserDtoEnricher _userDtoEnricher;
-        public SocialService(GGHubDbContext context, INotificationService notificationService, IGamificationService gamificationService, IHubNotificationService hubNotificationService, IPushNotificationService pushNotificationService, IUserSuggestionService userSuggestionService, IUserDtoEnricher userDtoEnricher)
+        private readonly INotificationPreferenceService _notificationPreferenceService;
+        public SocialService(GGHubDbContext context, INotificationService notificationService, IGamificationService gamificationService, IHubNotificationService hubNotificationService, IPushNotificationService pushNotificationService, IUserSuggestionService userSuggestionService, IUserDtoEnricher userDtoEnricher, INotificationPreferenceService notificationPreferenceService)
         {
             _context = context;
             _notificationService = notificationService;
@@ -27,6 +28,7 @@ namespace GGHub.Infrastructure.Services
             _pushNotificationService = pushNotificationService;
             _userSuggestionService = userSuggestionService;
             _userDtoEnricher = userDtoEnricher;
+            _notificationPreferenceService = notificationPreferenceService;
         }
         public async Task<bool> FollowUserAsync(int followerId, string followeeUsername)
         {
@@ -271,7 +273,15 @@ namespace GGHub.Infrastructure.Services
             await _hubNotificationService.SendMessageAsync(recipient.Id, result);
 
             // OS-level push for the new message (delivered when the app is backgrounded/closed). Best-effort.
-            await _pushNotificationService.SendToUserAsync(recipient.Id, sender!.Username, message.Content, $"/messages/{sender.Username}");
+            //
+            // Mesaj push'u NotificationService'ten GECMIYOR (bir Notification satiri uretmez,
+            // konusma listesi ve okunmamis sayaci kendi olaylariyla yurur), bu yuzden tip bazli
+            // tercih burada ayrica soruluyor. Kapatan kullanici mesajlari uygulama icinde gormeye
+            // devam eder; kesilen yalnizca telefona dusen bildirim.
+            if (await _notificationPreferenceService.IsEnabledAsync(recipient.Id, NotificationType.Message))
+            {
+                await _pushNotificationService.SendToUserAsync(recipient.Id, sender!.Username, message.Content, $"/messages/{sender.Username}");
+            }
 
             // Update unread message count for recipient
             var recipientUnreadCount = await GetUnreadMessageCountAsync(recipient.Id);
