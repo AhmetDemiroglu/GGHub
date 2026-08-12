@@ -25,8 +25,9 @@ export const GameSidebar = ({ game }: { game: Game }) => {
                     <ScoreBadge type="metacritic" score={game.metacritic} />
                     {/* RAWG */}
                     <ScoreBadge type="rawg" score={game.rating} />
-                    {/* IGDB: yalnızca puanı olan oyunlarda gösterilir */}
-                    {game.igdbRating ? <ScoreBadge type="igdb" score={game.igdbRating} /> : null}
+                    {/* IGDB: diğer rozetler gibi HER ZAMAN görünür; puan yoksa "-" yazar.
+                        Gizlemek "eksik/bozuk" hissi veriyordu. */}
+                    <ScoreBadge type="igdb" score={game.igdbRating ?? null} />
                     {/* GGHub topluluk puanı */}
                     <ScoreBadge type="gghub" score={game.gghubRating || null} />
                 </div>

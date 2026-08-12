@@ -135,9 +135,30 @@ namespace GGHub.Infrastructure.Services
                     .ToListAsync(ct))
                     .ToDictionary(x => x.IgdbId!.Value, x => x.Released);
 
+                // Isim eslesmeleri de TEK sorguda: eskiden her yeni oyun icin ayri ILIKE
+                // atiliyordu ve 500 kayitlik sayfa uzak Postgres'te dakikalar suruyordu
+                // (olculdu: takvim senkronu saatlerce bitmedi). Sayfadaki tum isimler bir kerede
+                // cekilip bellekte normalize edilerek eslestiriliyor.
+                var pageNames = rows
+                    .Select(r => ((r.Game?.VersionParent ?? r.Game?.ParentGame)?.Name ?? r.Game?.Name))
+                    .Where(n => !string.IsNullOrWhiteSpace(n))
+                    .Select(n => n!.ToLower())
+                    .Distinct()
+                    .ToList();
+                var nameMatches = (await _context.Games
+                    .Where(g => pageNames.Contains(g.Name.ToLower()))
+                    .ToListAsync(ct))
+                    .GroupBy(g => NormalizeName(g.Name))
+                    .ToDictionary(g => g.Key, g => g.ToList());
+
                 foreach (var row in rows)
                 {
                     if (row.Game == null || row.Date == null || string.IsNullOrWhiteSpace(row.Game.Name)) continue;
+
+                    // Ana oyuna baglanamayan surum kaydi ("EA Sports FC 27: Ultimate Edition")
+                    // katalogda ana oyunun kopyasi olarak gorunuyordu; ingest edilmez.
+                    var hasParent = row.Game.VersionParent != null || row.Game.ParentGame != null;
+                    if (!hasParent && GameTitleMatcher.IsEditionVariant(row.Game.Name)) continue;
 
                     var released = DateTimeOffset.FromUnixTimeSeconds(row.Date.Value).UtcDateTime.ToString("yyyy-MM-dd");
 
@@ -170,7 +191,7 @@ namespace GGHub.Infrastructure.Services
                     if (knownIgdbIds.TryGetValue(game.Id, out var knownReleased) && knownReleased == released)
                         continue;
 
-                    var outcome = await UpsertAsync(game, released, ct);
+                    var outcome = await UpsertAsync(game, released, ct, nameMatches);
                     if (outcome == UpsertOutcome.Added) added++;
                     else if (outcome == UpsertOutcome.Updated) updated++;
                 }
@@ -456,7 +477,9 @@ namespace GGHub.Infrastructure.Services
 
         private enum UpsertOutcome { Skipped, Added, Updated }
 
-        private async Task<UpsertOutcome> UpsertAsync(IgdbGameDto dto, string? released, CancellationToken ct)
+        private async Task<UpsertOutcome> UpsertAsync(
+            IgdbGameDto dto, string? released, CancellationToken ct,
+            Dictionary<string, List<Game>>? preloadedNameMatches = null)
         {
             var syntheticRawgId = -(IgdbRawgIdOffset + dto.Id);
 
@@ -464,7 +487,10 @@ namespace GGHub.Infrastructure.Services
 
             // IGDB kaydi yoksa: ayni oyun baska kaynaktan (RAWG/Steam) gelmis olabilir.
             // Isim + yil eslesmesiyle mevcut satiri bul, yeni satir acmak yerine ONU tazele.
-            existing ??= await FindByNameAndYearAsync(dto.Name!, released, ct);
+            // Toplu senkronda sozluk onceden dolduruldugu icin ekstra sorgu atilmaz.
+            existing ??= preloadedNameMatches != null
+                ? MatchFromPreloaded(preloadedNameMatches, dto.Name!, released)
+                : await FindByNameAndYearAsync(dto.Name!, released, ct);
 
             if (existing != null)
             {
@@ -592,10 +618,30 @@ namespace GGHub.Infrastructure.Services
             }
         }
 
+        /// <summary>Onceden yuklenmis isim sozlugunden yil toleransli eslesme secer.</summary>
+        private static Game? MatchFromPreloaded(Dictionary<string, List<Game>> byNormalizedName, string name, string? released)
+        {
+            if (!byNormalizedName.TryGetValue(NormalizeName(name), out var candidates)) return null;
+
+            var year = released != null && released.Length >= 4 && int.TryParse(released[..4], out var y) ? y : (int?)null;
+
+            foreach (var candidate in candidates)
+            {
+                var candidateYear = candidate.Released != null && candidate.Released.Length >= 4
+                    && int.TryParse(candidate.Released[..4], out var cy) ? cy : (int?)null;
+
+                // Tarihi olmayan kayit IGDB'nin tarihiyle tamamlanmali; null yil eslesmeyi engellemez.
+                if (year != null && candidateYear != null && year != candidateYear) continue;
+                return candidate;
+            }
+
+            return null;
+        }
+
         private async Task<Game?> FindByNameAndYearAsync(string name, string? released, CancellationToken ct)
         {
             var candidates = await _context.Games
-                .Where(g => EF.Functions.ILike(g.Name, name))
+                .Where(g => EF.Functions.ILike(g.Name, GameTitleMatcher.BuildLikePattern(name)))
                 .Take(10)
                 .ToListAsync(ct);
 
@@ -636,15 +682,8 @@ namespace GGHub.Infrastructure.Services
                     .Select(p => new { Name = p.Abbreviation ?? p.Name!, Slug = p.Slug ?? SlugifyName(p.Name!) })
                     .ToList());
 
-        private static string NormalizeName(string name)
-        {
-            var sb = new StringBuilder(name.Length);
-            foreach (var ch in name.ToLowerInvariant())
-            {
-                if (char.IsLetterOrDigit(ch)) sb.Append(ch);
-            }
-            return sb.ToString();
-        }
+        /// <summary>Ortak baslik katlamasi (parantez/TM/surum eki temizler). Bkz. GameTitleMatcher.</summary>
+        private static string NormalizeName(string name) => GameTitleMatcher.Normalize(name);
 
         private static string SlugifyName(string value)
         {

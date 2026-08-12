@@ -231,7 +231,7 @@ namespace GGHub.Infrastructure.Services
         private static async Task<Game?> FindSteamOnlyMatchAsync(GGHubDbContext context, RawgGameDto dto, CancellationToken ct)
         {
             var candidates = await context.Games
-                .Where(g => g.RawgId < 0 && EF.Functions.ILike(g.Name, dto.Name))
+                .Where(g => g.RawgId < 0 && EF.Functions.ILike(g.Name, GameTitleMatcher.BuildLikePattern(dto.Name)))
                 .Take(5)
                 .ToListAsync(ct);
 
@@ -255,14 +255,7 @@ namespace GGHub.Infrastructure.Services
             return null;
         }
 
-        private static string NormalizeName(string name)
-        {
-            var sb = new StringBuilder(name.Length);
-            foreach (var ch in name.ToLowerInvariant())
-            {
-                if (char.IsLetterOrDigit(ch)) sb.Append(ch);
-            }
-            return sb.ToString();
-        }
+        /// <summary>Ortak baslik katlamasi. Bkz. GameTitleMatcher.</summary>
+        private static string NormalizeName(string name) => GameTitleMatcher.Normalize(name);
     }
 }

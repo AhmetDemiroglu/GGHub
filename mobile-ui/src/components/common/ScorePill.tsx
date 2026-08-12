@@ -110,8 +110,8 @@ export function ScorePillRow({
     <View style={[styles.row, { gap }]}>
       <ScorePill type="rawg" value={rawg} size={size} />
       <ScorePill type="metacritic" value={metacritic} size={size} />
-      {/* IGDB yalnizca puani olan oyunlarda gosterilir: bos rozet satiri sisirmesin. */}
-      {igdb != null && igdb > 0 ? <ScorePill type="igdb" value={igdb} size={size} /> : null}
+      {/* Dort kaynak da HER ZAMAN gorunur; puani olmayan "-" yazar (web ile ayni kural). */}
+      <ScorePill type="igdb" value={igdb} size={size} />
       <ScorePill type="gghub" value={gghub} count={gghubCount} size={size} />
     </View>
   );

@@ -323,7 +323,7 @@ namespace GGHub.Infrastructure.Services
         {
             // ILIKE ile dar bir aday kumesi cek, normalize edilmis isimle bellek icinde karsilastir.
             var candidates = await _context.Games
-                .Where(g => EF.Functions.ILike(g.Name, name))
+                .Where(g => EF.Functions.ILike(g.Name, GameTitleMatcher.BuildLikePattern(name)))
                 .Take(10)
                 .ToListAsync(ct);
 
@@ -456,15 +456,8 @@ namespace GGHub.Infrastructure.Services
             return null;
         }
 
-        private static string NormalizeName(string name)
-        {
-            var sb = new StringBuilder(name.Length);
-            foreach (var ch in name.ToLowerInvariant())
-            {
-                if (char.IsLetterOrDigit(ch)) sb.Append(ch);
-            }
-            return sb.ToString();
-        }
+        /// <summary>Ortak baslik katlamasi (parantez/TM/surum eki temizler). Bkz. GameTitleMatcher.</summary>
+        private static string NormalizeName(string name) => GameTitleMatcher.Normalize(name);
 
         private static string Slugify(string value)
         {
