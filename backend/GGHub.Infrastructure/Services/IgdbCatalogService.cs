@@ -339,7 +339,7 @@ namespace GGHub.Infrastructure.Services
             {
                 var safeName = game.Name.Replace("\"", string.Empty);
                 var matches = await QueryGamesAsync(
-                    $"fields id, name, total_rating, total_rating_count, first_release_date; where name = \"{safeName}\"; limit 5;", ct);
+                    $"fields id, name, total_rating, total_rating_count, first_release_date, platforms.name, platforms.abbreviation, platforms.slug; where name = \"{safeName}\"; limit 5;", ct);
 
                 var match = PickBestMatch(matches, game.Name, game.Released);
 
@@ -498,7 +498,8 @@ namespace GGHub.Infrastructure.Services
                 {
                     // Apicalypse'te tirnak kacisi: ad icindeki " karakteri sorguyu bozar.
                     var safeName = item.Name.Replace("\"", string.Empty);
-                    var query = "fields id, name, total_rating, total_rating_count, first_release_date; " +
+                    var query = "fields id, name, total_rating, total_rating_count, first_release_date, " +
+                                "platforms.name, platforms.abbreviation, platforms.slug; " +
                                 $"where name = \"{safeName}\"; limit 5;";
 
                     using var request = new HttpRequestMessage(HttpMethod.Post, $"{_settings.BaseUrl}games");
@@ -535,6 +536,10 @@ namespace GGHub.Infrastructure.Services
                                 game.IgdbRating = Math.Round(match.TotalRating.Value, 1);
                                 game.IgdbRatingCount = match.TotalRatingCount;
                             }
+                            // Platformlari tamamla (birlestirerek): RAWG kaydinda eksik kalan
+                            // konsol platformlari boylece geri geliyor.
+                            if (match.Platforms?.Count > 0)
+                                game.PlatformsJson = MergePlatformJson(game.PlatformsJson, SerializePlatforms(match.Platforms));
                         }
                     }
 
@@ -647,15 +652,16 @@ namespace GGHub.Infrastructure.Services
                     existing.GenresJson = SerializeGenres(dto.Genres);
                     dirty = true;
                 }
-                // Platformlar: bos ise doldur, DOLU ise de IGDB slug'lari katalog slug'larina
-                // eslenmemis olabilir (harita sonradan eklendi; eski satirlarda "win"/"series-x"
-                // gibi degerler kaldi ve kartlarda platform ikonlari gorunmuyordu).
+                // Platformlar BIRLESTIRILIR, uzerine YAZILMAZ. Uzerine yazan ilk surum agir bir
+                // veri kaybina yol acti: bir oyunun IGDB kaydinda yalnizca yeni bir surumun
+                // platformu bulunabiliyor ve mevcut tam liste siliniyordu (olculdu: Elden Ring
+                // "switch-2" tek platformuna dustu).
                 if (dto.Platforms?.Count > 0)
                 {
-                    var mappedPlatforms = SerializePlatforms(dto.Platforms);
-                    if (existing.PlatformsJson != mappedPlatforms)
+                    var merged = MergePlatformJson(existing.PlatformsJson, SerializePlatforms(dto.Platforms));
+                    if (existing.PlatformsJson != merged)
                     {
-                        existing.PlatformsJson = mappedPlatforms;
+                        existing.PlatformsJson = merged;
                         dirty = true;
                     }
                 }
@@ -864,6 +870,40 @@ namespace GGHub.Infrastructure.Services
             ["ios"] = ("iOS", "ios"),
             ["android"] = ("Android", "android"),
         };
+
+        /// <summary>
+        /// Iki platform JSON listesini Slug'a gore tekillestirerek birlestirir. Kaynaklarin
+        /// hicbiri tek basina tam listeye sahip degil (Steam yalnizca PC, IGDB kaydi bazen tek
+        /// surumun platformu); birlestirmek tek dogru davranis.
+        /// </summary>
+        private static string MergePlatformJson(string? existingJson, string incomingJson)
+        {
+            if (string.IsNullOrEmpty(existingJson)) return incomingJson;
+
+            try
+            {
+                var current = System.Text.Json.JsonSerializer.Deserialize<List<PlatformEntry>>(existingJson) ?? new();
+                var incoming = System.Text.Json.JsonSerializer.Deserialize<List<PlatformEntry>>(incomingJson) ?? new();
+
+                var merged = current.Concat(incoming)
+                    .Where(p => !string.IsNullOrWhiteSpace(p.Slug))
+                    .GroupBy(p => p.Slug!, StringComparer.OrdinalIgnoreCase)
+                    .Select(g => g.First())
+                    .ToList();
+
+                return merged.Count == 0 ? existingJson : System.Text.Json.JsonSerializer.Serialize(merged);
+            }
+            catch
+            {
+                return existingJson;
+            }
+        }
+
+        private sealed class PlatformEntry
+        {
+            public string? Name { get; set; }
+            public string? Slug { get; set; }
+        }
 
         private static string SerializePlatforms(List<IgdbPlatformDto> platforms) =>
             System.Text.Json.JsonSerializer.Serialize(

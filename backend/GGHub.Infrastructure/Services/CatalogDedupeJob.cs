@@ -112,6 +112,38 @@ namespace GGHub.Infrastructure.Services
 
             await FixLegacyPlatformSlugsAsync(context, ct);
             await CleanTrademarkSymbolsAsync(context, ct);
+            await RepairTruncatedPlatformsAsync(context, ct);
+        }
+
+        /// <summary>
+        /// IGDB zenginlestirmesinin bir surumunde platform listesi BIRLESTIRILMEK yerine
+        /// UZERINE YAZILIYORDU; cok platformlu oyunlar tek platforma dustu (olculdu: Elden Ring
+        /// yalnizca "switch-2" kaldi). Kod duzeltildi, bu adim hasarli satirlari onarir:
+        /// tek platformu yeni nesil konsol olan ama coklu platform sinyali tasiyan (RAWG'dan
+        /// gelmis) kayitlarin platformlari IGDB'den yeniden cekilsin diye IgdbCheckedAt sifirlanir.
+        /// </summary>
+        private async Task RepairTruncatedPlatformsAsync(GGHubDbContext context, CancellationToken ct)
+        {
+            // Tek elemanli platform listesi + IGDB baglantisi olan kayitlar supheli.
+            var suspects = await context.Games
+                .Where(g => g.IgdbId != null
+                    && g.PlatformsJson != null
+                    && (g.PlatformsJson == "[{\"Name\":\"Switch 2\",\"Slug\":\"nintendo-switch\"}]"
+                        || g.PlatformsJson.Contains("switch-2")))
+                .Take(300)
+                .ToListAsync(ct);
+
+            if (suspects.Count == 0) return;
+
+            foreach (var game in suspects)
+            {
+                // Yalnizca "yeniden kontrol et" isareti konur; PlatformsJson SILINMEZ.
+                // Silmek, IGDB tekrar dolduramazsa oyunu platformsuz birakirdi.
+                game.IgdbCheckedAt = null;
+            }
+
+            await context.SaveChangesAsync(ct);
+            _logger.LogInformation("[Dedupe] {Count} satirda kirpilmis platform listesi onarim icin sifirlandi.", suspects.Count);
         }
 
         /// <summary>
