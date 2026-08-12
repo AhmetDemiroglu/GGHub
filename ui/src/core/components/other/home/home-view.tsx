@@ -95,7 +95,7 @@ export default function HomeView({ initialContent = null }: { initialContent?: H
     return (
         <div className="animate-in space-y-5 pb-10 fade-in duration-500">
             <section>
-                <HeroSlider games={content.heroGames} />
+                <HeroSlider games={content.heroGames} agendaGames={content.newReleases} />
             </section>
 
             {content.siteStats ? (

@@ -34,6 +34,7 @@ export const enUSMessages = {
     nav: {
         home: "Home",
         discover: "Discover games",
+        agenda: "Game Agenda",
         lists: "Discover lists",
         myLists: "My lists",
         messages: "Messages",
@@ -239,6 +240,9 @@ export const enUSMessages = {
     home: {
         promoTitle: "Our mobile app is live!",
         promoSubtitle: "Take GGHub with you. Discover games, rate them, build lists and stay close to the community wherever you are.",
+        agendaPromoTitle: "Game Agenda",
+        agendaPromoSubtitle: "This month's releases and upcoming games on a single page. Explore the calendar and never miss a launch.",
+        agendaPromoCta: "Open the Agenda",
         heroCta: "Start Reviewing",
         joinTitle: "Join the community",
         joinDescription: "Follow your friends, keep up with their activity, and stay close to the gaming scene.",
@@ -300,6 +304,18 @@ export const enUSMessages = {
         unavailableTitle: "Game details are temporarily unavailable",
         unavailableDescription: "The game catalog provider cannot be reached right now. Please try again shortly.",
         retry: "Try again",
+    },
+    agenda: {
+        title: "Game Agenda",
+        subtitle: "Explore this month's releases and upcoming games. Change the year and month to browse past releases or the future calendar.",
+        releasedThisMonth: "Released this month",
+        upcoming: "Coming up",
+        emptyReleased: "No recorded releases for this month.",
+        emptyUpcoming: "No expected releases for this month.",
+        month: "Month",
+        year: "Year",
+        gamesCount: "{count} games",
+        loadError: "The agenda cannot be loaded right now. Please try again.",
     },
     notFound: {
         badge: "The page you were looking for could not be found",

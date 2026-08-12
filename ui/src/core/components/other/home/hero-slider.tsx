@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Play } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { gameApi } from "@/api/gaming/game.api";
 import { HomeGame } from "@/models/home/home.model";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
@@ -19,6 +19,8 @@ import rawgLogoSrc from "@core/assets/rawg_logo.png";
 
 interface HeroSliderProps {
     games: HomeGame[];
+    /** Oyun Gündemi slaytında listelenecek oyunlar (home content'in newReleases alanı). */
+    agendaGames?: HomeGame[];
 }
 
 const AUTOPLAY_DELAY = 6000;
@@ -49,7 +51,7 @@ function ScoreBadge({ score, logo, logoAlt, accentClassName }: { score: string; 
     );
 }
 
-export default function HeroSlider({ games = [] }: HeroSliderProps) {
+export default function HeroSlider({ games = [], agendaGames = [] }: HeroSliderProps) {
     const locale = useCurrentLocale();
     const t = useI18n();
     const [api, setApi] = useState<CarouselApi>();
@@ -59,7 +61,9 @@ export default function HeroSlider({ games = [] }: HeroSliderProps) {
     const [progressCycle, setProgressCycle] = useState(0);
     const [descriptionOverrides, setDescriptionOverrides] = useState<Record<string, string>>({});
 
-    const slideCount = games.length + 1;
+    // 2 sabit slayt: mobil uygulama tanıtımı + Oyun Gündemi. Oyun slaytları 3. sıradan başlar.
+    const FIXED_SLIDES = 2;
+    const slideCount = games.length + FIXED_SLIDES;
 
     useEffect(() => {
         if (!api) return;
@@ -220,10 +224,77 @@ export default function HeroSlider({ games = [] }: HeroSliderProps) {
                         </div>
                     </CarouselItem>
 
+                    {/* Sabit 2. slayt: Oyun Gündemi. Bu ayın yeni çıkanları + sayfaya CTA. */}
+                    <CarouselItem key="agenda-promo">
+                        <div className="relative h-[340px] w-full overflow-hidden rounded-2xl bg-[#080910] ring-1 ring-white/10 md:h-[420px]">
+                            <div className="absolute inset-0 z-0 bg-gradient-to-br from-amber-500/15 via-[#080910] to-rose-600/20" />
+                            <div
+                                aria-hidden
+                                className="absolute inset-0 z-0 opacity-[0.35]"
+                                style={{
+                                    backgroundImage:
+                                        "linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px)",
+                                    backgroundSize: "56px 56px",
+                                    maskImage: "radial-gradient(ellipse 90% 70% at 30% 40%, black 30%, transparent 75%)",
+                                }}
+                            />
+                            <div aria-hidden className="pointer-events-none absolute -left-24 -top-24 z-0 h-80 w-80 rounded-full bg-amber-500/10 blur-3xl" />
+                            <div aria-hidden className="pointer-events-none absolute -bottom-28 right-1/4 z-0 h-96 w-96 rounded-full bg-rose-600/15 blur-3xl" />
+
+                            <div className="relative z-10 flex h-full flex-col justify-center gap-3 px-5 pb-12 pt-5 md:max-w-[55%] md:gap-4 md:p-12 md:pb-16 lg:px-16">
+                                <div className="flex items-center gap-2 text-amber-300/90">
+                                    <CalendarDays className="h-5 w-5 md:h-6 md:w-6" />
+                                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-white/50">GGHub</span>
+                                </div>
+                                <h2 className="text-2xl font-black tracking-tight text-white drop-shadow-xl md:text-3xl lg:text-[2.6rem] lg:leading-[1.05]">
+                                    {t("home.agendaPromoTitle")}
+                                </h2>
+                                <p className="line-clamp-2 max-w-md text-sm text-white/65 md:line-clamp-none md:text-base">{t("home.agendaPromoSubtitle")}</p>
+                                <div className="pt-1.5">
+                                    <Link href={buildLocalizedPathname("/agenda", locale)} className="inline-flex">
+                                        <Button size="lg" className="text-md cursor-pointer gap-2 font-semibold shadow-[0_8px_30px_-8px_rgba(0,0,0,0.6)] transition-transform hover:scale-[1.03]">
+                                            <CalendarDays className="h-4 w-4" />
+                                            {t("home.agendaPromoCta")}
+                                        </Button>
+                                    </Link>
+                                </div>
+                            </div>
+
+                            {/* Sağda bu ayın oyunlarından mini liste (mobilde gizli) */}
+                            {agendaGames.length > 0 ? (
+                                <div className="absolute right-4 top-1/2 z-10 hidden w-[300px] -translate-y-1/2 flex-col gap-2.5 md:flex lg:right-16 lg:w-[340px]">
+                                    {agendaGames.slice(0, 4).map((game) => (
+                                        <Link
+                                            key={game.id}
+                                            href={buildLocalizedPathname(`/games/${game.slug || game.rawgId}`, locale)}
+                                            className="group flex items-center gap-3 rounded-xl border border-white/10 bg-black/40 p-2 backdrop-blur-md transition-colors hover:bg-black/60"
+                                        >
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img
+                                                src={getImageUrl(game.backgroundImage) || "/assets/placeholder-game.jpg"}
+                                                alt={game.name}
+                                                className="h-12 w-12 shrink-0 rounded-lg object-cover"
+                                                loading="lazy"
+                                            />
+                                            <div className="min-w-0 flex-1">
+                                                <p className="truncate text-sm font-semibold text-white/90 group-hover:text-white">{game.name}</p>
+                                                <p className="text-xs text-white/50">
+                                                    {game.releaseDate
+                                                        ? new Intl.DateTimeFormat(locale, { day: "numeric", month: "long" }).format(new Date(`${game.releaseDate}T00:00:00`))
+                                                        : t("common.tba")}
+                                                </p>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            ) : null}
+                        </div>
+                    </CarouselItem>
+
                     {games.map((game, index) => {
                         const descriptionKey = `${locale}:${game.id || game.rawgId}`;
                         const resolvedDescription = normalizeDescription(game.description) ?? descriptionOverrides[descriptionKey] ?? null;
-                        const isActive = selectedIndex === index + 1;
+                        const isActive = selectedIndex === index + FIXED_SLIDES;
                         const releaseYear = game.releaseDate ? new Date(game.releaseDate).getFullYear() : null;
 
                         return (
@@ -296,7 +367,7 @@ export default function HeroSlider({ games = [] }: HeroSliderProps) {
 
                                     {/* Slayt sayacı */}
                                     <div className="absolute right-5 top-5 z-10 rounded-full border border-white/10 bg-black/40 px-2.5 py-1 font-mono text-[11px] tracking-widest text-white/60 backdrop-blur-md md:right-8 md:top-6">
-                                        {String(index + 2).padStart(2, "0")}&thinsp;/&thinsp;{String(slideCount).padStart(2, "0")}
+                                        {String(index + FIXED_SLIDES + 1).padStart(2, "0")}&thinsp;/&thinsp;{String(slideCount).padStart(2, "0")}
                                     </div>
                                 </div>
                             </CarouselItem>

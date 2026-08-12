@@ -13,6 +13,7 @@ import {
     AtSign,
     Bell,
     Cake,
+    CalendarDays,
     Crown,
     FileText,
     Gamepad2,
@@ -253,6 +254,7 @@ function SidebarInner({ isMobile }: { isMobile: boolean }) {
     const mainNavItems = [
         { href: "/", label: t("nav.home"), icon: Home },
         { href: "/discover", label: t("nav.discover"), icon: Gamepad2 },
+        { href: "/agenda", label: t("nav.agenda"), icon: CalendarDays },
         ...(isAuthenticated
             ? [
                   { href: "/lists", label: t("nav.lists"), icon: Library },

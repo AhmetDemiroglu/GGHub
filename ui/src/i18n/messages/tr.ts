@@ -34,6 +34,7 @@ export const trMessages = {
     nav: {
         home: "Ana sayfa",
         discover: "Oyunları keşfet",
+        agenda: "Oyun Gündemi",
         lists: "Listeleri keşfet",
         myLists: "Listelerim",
         messages: "Mesajlar",
@@ -239,6 +240,9 @@ export const trMessages = {
     home: {
         promoTitle: "Mobil uygulamamız yayında!",
         promoSubtitle: "GGHub'ı yanına al. Oyunları keşfet, puanla, listeler oluştur ve nerede olursan ol topluluğa yakın kal.",
+        agendaPromoTitle: "Oyun Gündemi",
+        agendaPromoSubtitle: "Bu ay çıkan ve çıkacak oyunlar tek sayfada. Takvimi keşfet, hiçbir çıkışı kaçırma.",
+        agendaPromoCta: "Gündeme Git",
         heroCta: "İncelemeye Başla",
         joinTitle: "Topluluğa Katıl",
         joinDescription: "Arkadaşlarını takip et, aktivitelerini kaçırma ve oyun dünyasının nabzını tut.",
@@ -301,6 +305,18 @@ export const trMessages = {
         unavailableTitle: "Oyun bilgisi şu anda getirilemiyor",
         unavailableDescription: "Oyun kataloğu sağlayıcısına şu anda ulaşılamıyor. Lütfen birazdan tekrar deneyin.",
         retry: "Tekrar dene",
+    },
+    agenda: {
+        title: "Oyun Gündemi",
+        subtitle: "Bu ay çıkan ve çıkacak oyunları keşfet. Yılı ve ayı değiştirerek geçmiş çıkışlara veya gelecek takvime bakabilirsin.",
+        releasedThisMonth: "Bu ay çıkanlar",
+        upcoming: "Çıkacaklar",
+        emptyReleased: "Bu ay için kayıtlı çıkış bulunamadı.",
+        emptyUpcoming: "Bu ay için beklenen çıkış bulunamadı.",
+        month: "Ay",
+        year: "Yıl",
+        gamesCount: "{count} oyun",
+        loadError: "Gündem şu anda yüklenemiyor. Lütfen tekrar deneyin.",
     },
     notFound: {
         badge: "Aradığın sayfa bulunamadı",
