@@ -24,8 +24,10 @@ namespace GGHub.Infrastructure.Services
         private readonly IGeminiService _geminiService;
         private readonly ILogger<RawgGameService> _logger;
         private readonly IMemoryCache _cache;
+        private readonly ISteamCatalogService _steamCatalog;
+        private readonly SteamCatalogSettings _steamSettings;
 
-        public RawgGameService(IHttpClientFactory httpClientFactory, IOptions<RawgApiSettings> apiSettings, GGHubDbContext context, IGeminiService geminiService, ILogger<RawgGameService> logger, IMemoryCache cache)
+        public RawgGameService(IHttpClientFactory httpClientFactory, IOptions<RawgApiSettings> apiSettings, GGHubDbContext context, IGeminiService geminiService, ILogger<RawgGameService> logger, IMemoryCache cache, ISteamCatalogService steamCatalog, IOptions<SteamCatalogSettings> steamSettings)
         {
             // "Rawg" adli client: kisa timeout + retry + circuit breaker (WebAPI Program.cs).
             // Worker gibi bu adi kaydetmeyen host'larda CreateClient bos varsayilan client dondurur,
@@ -36,6 +38,8 @@ namespace GGHub.Infrastructure.Services
             _geminiService = geminiService;
             _logger = logger;
             _cache = cache;
+            _steamCatalog = steamCatalog;
+            _steamSettings = steamSettings.Value;
         }
         public async Task<Game?> GetGameBySlugOrIdAsync(string idOrSlug)
         {
@@ -43,6 +47,18 @@ namespace GGHub.Infrastructure.Services
             var gameInDb = isId
                 ? await _context.Games.AsNoTracking().FirstOrDefaultAsync(g => g.RawgId == rawgId)
                 : await _context.Games.AsNoTracking().FirstOrDefaultAsync(g => g.Slug == idOrSlug);
+
+            // Steam kaynakli oyunlar (RawgId < 0) icin RAWG'a ASLA gidilmez: appdetails verisi
+            // ingest sirasinda tam alinmistir, RAWG bu id'yi zaten tanimaz.
+            if (isId && rawgId < 0)
+            {
+                gameInDb ??= await _context.Games.AsNoTracking().FirstOrDefaultAsync(g => g.SteamAppId == -rawgId);
+                return gameInDb;
+            }
+            if (gameInDb != null && gameInDb.RawgId < 0)
+            {
+                return gameInDb;
+            }
 
             // DB-first: detay verisi bir kez dolmussa yastan bagimsiz HEMEN don. Eski kural
             // (LastSyncedAt < 1 gun) neredeyse hic saglanmiyordu cunku backfill job bilerek
@@ -196,6 +212,22 @@ namespace GGHub.Infrastructure.Services
 
             int totalCount = await query.CountAsync();
 
+            // On-demand Steam tamamlama: arama DB'de yeterli sonuc bulamadiysa (ilk sayfada)
+            // Steam magazasinda ara, eksik oyunlari ingest et ve DB sorgusunu BIR kez tekrarla.
+            // "Anomaly President" sinifi vaka: oyun Steam'de gercek, RAWG kataloğunda yok.
+            // SearchAndIngestAsync hatalari sessizce yutar; arama asla Steam yuzunden dusmez.
+            if (!string.IsNullOrWhiteSpace(queryParams.Search)
+                && queryParams.Page == 1
+                && totalCount < 3
+                && _steamSettings.OnDemandEnabled)
+            {
+                var ingestedCount = await _steamCatalog.SearchAndIngestAsync(queryParams.Search.Trim(), _steamSettings.OnDemandMaxIngest);
+                if (ingestedCount > 0)
+                {
+                    totalCount = await query.CountAsync();
+                }
+            }
+
             IOrderedQueryable<Game> ordered = queryParams.Ordering switch
             {
                 "-metacritic" => query.OrderByDescending(g => g.Metacritic ?? 0).ThenByDescending(g => g.Rating ?? 0),
@@ -279,6 +311,19 @@ namespace GGHub.Infrastructure.Services
         {
             var rawgDto = rawgDtoObj as RawgGameDto;
             var gameInDb = await _context.Games.FirstOrDefaultAsync(g => g.RawgId == rawgId);
+
+            // Steam kaynakli oyun (RawgId < 0): RAWG'a gidilmez. Satir yoksa Steam'den ingest
+            // denenir (ornegin baska ortamda eklenmis bir oyunun linki paylasildiysa).
+            if (rawgId < 0)
+            {
+                gameInDb ??= await _context.Games.FirstOrDefaultAsync(g => g.SteamAppId == -rawgId);
+                if (gameInDb != null) return gameInDb;
+
+                var ingested = await _steamCatalog.IngestAppAsync(-rawgId);
+                if (ingested != null) return ingested;
+
+                throw new ExternalCatalogUnavailableException($"Steam kaynakli oyun bulunamadi: rawgId={rawgId}");
+            }
 
             // Review/wishlist/liste ekleme icin oyunun DB'de temel verisiyle var olmasi yeter.
             // Eski 24 saatlik tazelik sarti, RAWG'in coktugu gunlerde bu akislari da

@@ -248,6 +248,14 @@ namespace GGHub.Infrastructure.Persistence
                 .IsUnique()
                 .HasDatabaseName("IX_Games_RawgId");
 
+            // Game: Steam appid baglantisi (Steam kaynakli oyunlar + RAWG satirina sonradan
+            // baglanan appid'ler). Partial unique: NULL'lar index'e girmez.
+            modelBuilder.Entity<Game>()
+                .HasIndex(g => g.SteamAppId)
+                .IsUnique()
+                .HasFilter("\"SteamAppId\" IS NOT NULL")
+                .HasDatabaseName("IX_Games_SteamAppId");
+
             // Game: index for import queries
             modelBuilder.Entity<Game>()
                 .HasIndex(g => g.ImportSource)

@@ -150,10 +150,13 @@ namespace GGHub.Infrastructure.Services
             {
                 // Filtresiz default feed: minimum kalite eşiğini uygula.
                 // Metacritic, RAWG rating veya popülerlik sinyallerinden biri yeterli.
+                // Steam kaynaklı oyunlar istisna: Steam'in öne çıkanlar listesi veya kullanıcı
+                // aramasıyla girdiler (küratörlü/talep edilmiş) ve henüz RAWG sinyalleri yok.
                 query = query.Where(g =>
                     (g.Metacritic != null && g.Metacritic >= DEFAULT_MIN_METACRITIC)
                     || (g.Rating != null && g.Rating >= DEFAULT_MIN_RATING)
-                    || (g.RawgAdded != null && g.RawgAdded >= DEFAULT_MIN_ADDED));
+                    || (g.RawgAdded != null && g.RawgAdded >= DEFAULT_MIN_ADDED)
+                    || g.ImportSource == "steam");
             }
 
             if (!string.IsNullOrWhiteSpace(q.Search))

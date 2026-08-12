@@ -15,18 +15,41 @@ namespace GGHub.WebAPI.Controllers
         private readonly IGameService _gameService;
         private readonly IDiscoverService _discoverService;
         private readonly IReviewService _reviewService;
+        private readonly IAgendaService _agendaService;
         private readonly ILogger<GamesController> _logger;
 
         public GamesController(
             IGameService gameService,
             IDiscoverService discoverService,
             IReviewService reviewService,
+            IAgendaService agendaService,
             ILogger<GamesController> logger)
         {
             _gameService = gameService;
             _discoverService = discoverService;
             _reviewService = reviewService;
+            _agendaService = agendaService;
             _logger = logger;
+        }
+
+        /// <summary>
+        /// Oyun Gundemi: secilen ayin cikmis + cikacak oyunlari. DB-only, memory-cache'li.
+        /// Literal "agenda" segmenti {idOrSlug} rotasindan once eslesir.
+        /// </summary>
+        [HttpGet("agenda")]
+        public async Task<IActionResult> GetAgenda([FromQuery] int? year, [FromQuery] int? month)
+        {
+            var now = DateTime.UtcNow;
+            var y = year ?? now.Year;
+            var m = month ?? now.Month;
+
+            if (y < 2000 || y > 2100 || m < 1 || m > 12)
+            {
+                return BadRequest(new { message = "Geçersiz yıl veya ay." });
+            }
+
+            var result = await _agendaService.GetAgendaAsync(y, m);
+            return Ok(result);
         }
 
         /// <summary>

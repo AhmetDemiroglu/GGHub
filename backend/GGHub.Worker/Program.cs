@@ -62,6 +62,14 @@ builder.Services.Configure<RawgApiSettings>(builder.Configuration.GetSection("Ra
 builder.Services.Configure<RawgImportSettings>(builder.Configuration.GetSection("Jobs:RawgImport"));
 builder.Services.Configure<GameDetailBackfillSettings>(builder.Configuration.GetSection("Jobs:GameDetailBackfill"));
 builder.Services.Configure<DescriptionTranslationSettings>(builder.Configuration.GetSection("Jobs:DescriptionTranslation"));
+builder.Services.Configure<RawgUpcomingSyncSettings>(builder.Configuration.GetSection("Jobs:RawgUpcomingSync"));
+
+// Steam katalog senkronu: WebAPI ile AYNI "SteamCatalog" bolumunden okur (Jobs:* degil),
+// cunku ayarlarin bir kismi (OnDemandEnabled) WebAPI tarafinda da gecerli.
+builder.Services.Configure<SteamCatalogSettings>(builder.Configuration.GetSection("SteamCatalog"));
+builder.Services.AddHttpClient("Steam");
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<ISteamCatalogService, SteamCatalogService>();
 
 // Kosulsuz kaydediyoruz; "acik mi kapali mi" sorusunun tek cevap yeri appsettings.json olsun.
 // Bunun calismasi icin her job'in Enabled bayragini KENDI ICINDE kontrol etmesi sart. Bayraklar
@@ -72,6 +80,8 @@ builder.Services.AddHostedService<MetacriticSyncJob>();
 builder.Services.AddHostedService<GameDetailBackfillJob>();
 builder.Services.AddHostedService<DescriptionTranslationJob>();
 builder.Services.AddHostedService<FutureMetacriticCleanupJob>();
+builder.Services.AddHostedService<SteamNewReleasesSyncJob>();
+builder.Services.AddHostedService<RawgUpcomingSyncJob>();
 
 // RawgImportJob (genisleme/breadth) BILEREK kayitli degil. 4 stratejide de ~950. sayfada duruyor;
 // oradaki oyunlari RAWG'de 13 kisi eklemis, kendi MinAdded=20 esigimizin altinda. Sayfa 5000'de

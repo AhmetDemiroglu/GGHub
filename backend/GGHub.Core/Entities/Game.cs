@@ -25,6 +25,15 @@
         public string? DescriptionTr { get; set; }
         public string? MetacriticUrl { get; set; }
 
+        /// <summary>
+        /// Steam appid (varsa). Steam kaynakli oyunlarda RawgId = -SteamAppId (sentetik negatif id):
+        /// wishlist/favori/review uclari sahadaki istemcilerden rawgId aldigi icin kolon nullable
+        /// yapilamadi; negatif aralik RAWG'in pozitif id'leriyle CAKISAMAZ ve istemciler id'yi
+        /// oldugu gibi geri gonderdigi icin akislarin hicbiri degismedi. RAWG ayni oyunu sonradan
+        /// getirirse RawgId gercek pozitif id'ye cevrilir, SteamAppId baglanti olarak kalir.
+        /// </summary>
+        public int? SteamAppId { get; set; }
+
         // RAWG Import tracking
         public string? ImportSource { get; set; }
         public DateTime? ImportedAt { get; set; }

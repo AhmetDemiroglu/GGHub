@@ -131,6 +131,52 @@ namespace GGHub.Infrastructure.Services
                 .Where(g => g != null)
                 .ToList()!;
 
+            // Yeni cikanlar: son 30 gunun kalite kapili oyunlari. Iki frontend de
+            // HomeContent.newReleases alanini bastan beri tipliyordu ama alan hic
+            // doldurulmuyordu (hep [] donuyordu); Oyun Gundemi kartlari bunu kullaniyor.
+            var newReleaseIds = await _cache.GetOrCreateAsync("new-release-ids", async entry =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30);
+                var today = DateTime.UtcNow.ToString("yyyy-MM-dd");
+                var monthAgo = DateTime.UtcNow.AddDays(-30).ToString("yyyy-MM-dd");
+                return await _context.Games
+                    .AsNoTracking()
+                    .Where(g => g.Released != null
+                        && string.Compare(g.Released, monthAgo) >= 0
+                        && string.Compare(g.Released, today) <= 0
+                        && g.BackgroundImage != null
+                        && (g.Metacritic >= 60 || g.Rating >= 3.5 || g.RawgAdded >= 200 || g.ImportSource == "steam"))
+                    .OrderByDescending(g => g.Released)
+                    .ThenByDescending(g => g.RawgAdded ?? 0)
+                    .Take(10)
+                    .Select(g => g.Id)
+                    .ToListAsync();
+            }) ?? new List<int>();
+
+            var newReleases = await _context.Games
+                .AsNoTracking()
+                .Where(g => newReleaseIds.Contains(g.Id))
+                .Select(g => new HomeGameDto
+                {
+                    Id = g.Id,
+                    RawgId = g.RawgId,
+                    Name = g.Name,
+                    Slug = g.Slug,
+                    BackgroundImage = g.CoverImage ?? g.BackgroundImage,
+                    ReleaseDate = g.Released,
+                    MetacriticScore = g.Metacritic,
+                    RawgRating = g.Rating,
+                    GghubRating = g.AverageRating,
+                    GghubRatingCount = g.RatingCount,
+                    Description = ResolveDescription(g.Description, g.DescriptionTr, preferTurkish)
+                })
+                .ToListAsync();
+
+            viewModel.NewReleases = newReleaseIds
+                .Select(id => newReleases.FirstOrDefault(g => g.Id == id))
+                .Where(g => g != null)
+                .ToList()!;
+
             viewModel.TopGamers = await _cache.GetOrCreateAsync("top-gamers", async entry =>
             {
                 entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(15);

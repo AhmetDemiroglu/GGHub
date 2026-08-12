@@ -86,6 +86,18 @@ builder.Services.AddHttpClient("Rawg")
         options.CircuitBreaker.BreakDuration = TimeSpan.FromSeconds(60);
     });
 
+// Steam magaza uclari (anahtarsiz): arama tamamlamada on-demand ingest icin.
+// Ayni kisa-timeout mantigi: Steam yavas/erisilemezse arama DB-only davranisa doner.
+builder.Services.Configure<SteamCatalogSettings>(builder.Configuration.GetSection("SteamCatalog"));
+builder.Services.AddHttpClient("Steam")
+    .AddStandardResilienceHandler(options =>
+    {
+        options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(5);
+        options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(12);
+        options.Retry.MaxRetryAttempts = 1;
+    });
+builder.Services.AddScoped<ISteamCatalogService, SteamCatalogService>();
+
 builder.Services.AddSingleton<IAmazonS3>(sp =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
@@ -112,6 +124,7 @@ builder.Services.AddHttpClient<IResend, ResendClient>();
 
 builder.Services.AddScoped<IGameService, RawgGameService>();
 builder.Services.AddScoped<IDiscoverService, DiscoverService>();
+builder.Services.AddScoped<IAgendaService, AgendaService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserDtoEnricher, UserDtoEnricher>();
 builder.Services.AddScoped<IReviewService, ReviewService>();

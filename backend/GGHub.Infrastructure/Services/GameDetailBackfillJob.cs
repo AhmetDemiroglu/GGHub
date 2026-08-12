@@ -105,7 +105,8 @@ namespace GGHub.Infrastructure.Services
                 // kota bitse en degersiz oyunlarda bitecekti, tasarimin tam tersi. COALESCE ile
                 // NULL'lar 0 olup en sona dusuyor.
                 var batch = await context.Games
-                    .Where(g => g.DetailSyncedAt == null)
+                    // RawgId < 0 = Steam kaynakli sentetik id; RAWG games/{id} bu id'yi tanimaz.
+                    .Where(g => g.DetailSyncedAt == null && g.RawgId > 0)
                     .OrderByDescending(g => g.RawgAdded ?? 0)
                     .Take(_settings.BatchSize)
                     .Select(g => new { g.Id, g.RawgId, g.Name })
