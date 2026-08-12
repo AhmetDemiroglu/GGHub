@@ -87,8 +87,10 @@ export default function HeroSlider({ games = [] }: HeroSliderProps) {
         if (!agendaData) return [];
         const seen = new Set<number>();
         const picks: Game[] = [];
-        // Backend'in popülerliğe göre seçtiği vitrin önce; kalanı yaklaşan çıkışlardan tamamla.
-        for (const game of [...agendaData.highlights, ...agendaData.upcoming, ...agendaData.tba]) {
+        // Yalnızca backend'in POPÜLERLİĞE göre seçtiği vitrin (6 adet gelir) ve tarihi
+        // açıklanmamış büyük beklenenler. Yaklaşan çıkışlar listesi TARİH sıralı olduğu için
+        // buraya karıştırılmıyordu: araya rastgele indie oyunlar giriyordu.
+        for (const game of [...agendaData.highlights, ...agendaData.tba]) {
             if (picks.length >= 5) break;
             if (!game.backgroundImage || seen.has(game.id)) continue;
             picks.push(game);

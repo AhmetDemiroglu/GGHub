@@ -290,7 +290,9 @@ namespace GGHub.Infrastructure.Services
                 .OrderByDescending(g =>
                     // Canlı trend skoru (TrendScoreJob). Bileşenlerin en ağırlıklısı: keşfet
                     // listesinin gerçekten hareket etmesini sağlayan tek sinyal budur.
-                    Math.Min(g.TrendScore, 600) * 0.55
+                    // Tavan yüksek tutuluyor; düşük tavan güncel çıkışları eski klasiklerle
+                    // aynı seviyeye çekip listeyi yine donduruyordu.
+                    Math.Min(g.TrendScore, 1200) * 0.85
                     // Pop signal (capped & normalized to 0-100)
                     + (
                         (g.RawgAdded != null && g.RawgAdded > 0

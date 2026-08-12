@@ -46,6 +46,32 @@ const nextConfig: NextConfig = {
                 protocol: "https",
                 hostname: "lh3.googleusercontent.com",
             },
+            {
+                // IGDB kapak/görselleri. Buraya eklenmediği sürece next/image bu görselleri
+                // REDDEDİYOR ve hero slaytı bomboş görünüyordu (detay sayfası ham <img>
+                // kullandığı için orada sorun yoktu, hata bu yüzden geç fark edildi).
+                protocol: "https",
+                hostname: "images.igdb.com",
+                pathname: "/igdb/image/**",
+            },
+            {
+                // Steam mağaza görselleri (header_image). Steam birden fazla CDN ana makinesi
+                // kullanıyor; hepsi aynı yol şemasını paylaşıyor.
+                protocol: "https",
+                hostname: "shared.akamai.steamstatic.com",
+            },
+            {
+                protocol: "https",
+                hostname: "shared.cloudflare.steamstatic.com",
+            },
+            {
+                protocol: "https",
+                hostname: "cdn.akamai.steamstatic.com",
+            },
+            {
+                protocol: "https",
+                hostname: "cdn.cloudflare.steamstatic.com",
+            },
         ],
     },
     devIndicators: false,

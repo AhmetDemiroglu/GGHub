@@ -114,19 +114,24 @@ namespace GGHub.Infrastructure.Services
 
             // Vitrin: tarih sirasi DEGIL, populerlik sirasi. Once yaklasan cikislar (kullanici
             // "neler geliyor" diye bakiyor), yer kalirsa donemin en cok konusulan cikanlari.
+            // 6 adet: sayfa vitrini ilk 3'unu, ana sayfa hero kolaji 5'ini kullaniyor. Daha az
+            // dondurulunce hero kalan yerleri TARIH sirali listeden dolduruyordu ve araya
+            // "Low-Budget Repairs" gibi rastgele indie oyunlar giriyordu.
+            const int highlightCount = 6;
+
             var highlights = upcomingGames
                 .OrderByDescending(g => g.TrendScore > 0 ? g.TrendScore * 3 : PopularityScore(g.RawgAdded, g.Dto))
-                .Take(3)
+                .Take(highlightCount)
                 .Select(g => g.Dto)
                 .ToList();
 
-            if (highlights.Count < 3)
+            if (highlights.Count < highlightCount)
             {
                 var fillers = releasedGames
                     .OrderByDescending(g => g.TrendScore > 0 ? g.TrendScore * 3 : PopularityScore(g.RawgAdded, g.Dto))
                     .Select(g => g.Dto)
                     .Where(dto => highlights.All(h => h.Id != dto.Id))
-                    .Take(3 - highlights.Count);
+                    .Take(highlightCount - highlights.Count);
                 highlights.AddRange(fillers);
             }
 

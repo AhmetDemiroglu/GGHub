@@ -177,6 +177,9 @@ namespace GGHub.Infrastructure.Services
                     .ToListAsync(ct))
                     .ToHashSet();
 
+                // Sayfa icinde eklenen IGDB id'leri (ayni oyunun platform satirlari icin).
+                var pageAdded = new HashSet<int>();
+
                 foreach (var row in rows)
                 {
                     if (row.Game == null || row.Date == null || string.IsNullOrWhiteSpace(row.Game.Name)) continue;
@@ -217,7 +220,7 @@ namespace GGHub.Infrastructure.Services
                     if (knownIgdbIds.TryGetValue(game.Id, out var knownReleased) && knownReleased == released)
                         continue;
 
-                    var outcome = await UpsertAsync(game, released, ct, nameMatches, deferSave: true, takenSlugs: pageSlugs);
+                    var outcome = await UpsertAsync(game, released, ct, nameMatches, deferSave: true, takenSlugs: pageSlugs, pageAddedIgdbIds: pageAdded);
                     if (outcome == UpsertOutcome.Added) added++;
                     else if (outcome == UpsertOutcome.Updated) updated++;
                 }
@@ -231,7 +234,7 @@ namespace GGHub.Infrastructure.Services
                 {
                     // Bir satir catisirsa (yaris, unique index) sayfanin tamami kaybolmasin:
                     // izleyiciyi temizleyip sonraki sayfaya devam edilir.
-                    _logger.LogWarning(ex, "[IGDB] Sayfa yazilamadi, atlaniyor (sayfa {Page}).", page);
+                    _logger.LogWarning("[IGDB] Sayfa yazilamadi, atlaniyor (sayfa {Page}): {Error}", page, ex.InnerException?.Message ?? ex.Message);
                 }
                 finally
                 {
@@ -537,9 +540,15 @@ namespace GGHub.Infrastructure.Services
         private async Task<UpsertOutcome> UpsertAsync(
             IgdbGameDto dto, string? released, CancellationToken ct,
             Dictionary<string, List<Game>>? preloadedNameMatches = null, bool deferSave = false,
-            HashSet<string>? takenSlugs = null)
+            HashSet<string>? takenSlugs = null, HashSet<int>? pageAddedIgdbIds = null)
         {
             var syntheticRawgId = -(IgdbRawgIdOffset + dto.Id);
+
+            // IGDB ayni oyun icin HER PLATFORMA ayri release_date satiri donduruyor (PS5, PC,
+            // Xbox...). Toplu yazmada bu satirlarin ikincisi ayni IgdbId ile ikinci kez
+            // eklenmeye calisiyor ve unique index ihlali TUM sayfayi dusuruyordu.
+            if (pageAddedIgdbIds != null && pageAddedIgdbIds.Contains(dto.Id))
+                return UpsertOutcome.Skipped;
 
             var existing = await _context.Games.FirstOrDefaultAsync(g => g.IgdbId == dto.Id, ct);
 
@@ -686,6 +695,7 @@ namespace GGHub.Infrastructure.Services
             if (deferSave)
             {
                 await _context.Games.AddAsync(newGame, ct);
+                pageAddedIgdbIds?.Add(dto.Id);
                 return UpsertOutcome.Added;
             }
 

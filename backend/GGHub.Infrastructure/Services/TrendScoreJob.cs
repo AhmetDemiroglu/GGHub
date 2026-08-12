@@ -135,17 +135,19 @@ namespace GGHub.Infrastructure.Services
                 score += Math.Min(game.RawgAdded ?? 0, 2000) * 0.05;
                 score += Math.Min(game.IgdbRatingCount ?? 0, 3000) * 0.02;
 
-                // Kalite
-                score += (game.Metacritic ?? 0) * 0.35;
-                score += (game.IgdbRating ?? 0) * 0.25;
-                score += (game.Rating ?? 0) * 8;
-                score += game.AverageRating * game.RatingCount * 0.5;
+                // Kalite: skorun TABANI, tepesi degil. Agirliklar bilerek dusuk; yuksek olunca
+                // liste yillar once cikmis klasiklerle donuyor ve "guncel populerlik" hissi
+                // kayboluyordu (olculdu: Portal 2 / Half-Life 2 her zaman ilk sirada kaliyordu).
+                score += (game.Metacritic ?? 0) * 0.15;
+                score += (game.IgdbRating ?? 0) * 0.10;
+                score += (game.Rating ?? 0) * 4;
+                score += Math.Min(game.AverageRating * game.RatingCount, 60) * 0.3;
 
-                // Yenilik: son bir yilda cikan veya yakinda cikacak oyunlara donem bonusu.
+                // Yenilik: "su an konusulan" hissi icin en belirleyici ikinci bilesen.
                 if (game.Released != null)
                 {
-                    if (string.CompareOrdinal(game.Released, today) > 0) score += 45;          // yakinda
-                    else if (string.CompareOrdinal(game.Released, lastYear) >= 0) score += 30; // son 1 yil
+                    if (string.CompareOrdinal(game.Released, today) > 0) score += 120;          // yakinda cikacak
+                    else if (string.CompareOrdinal(game.Released, lastYear) >= 0) score += 90;  // son 1 yil
                 }
 
                 if (Math.Abs(game.TrendScore - score) > 0.01)
