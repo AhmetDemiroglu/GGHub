@@ -83,7 +83,7 @@ namespace GGHub.Infrastructure.Services
                 // Kalite kapisi olarak kapak sarti yeterli; siralama/vitrin zaten populerlige gore.
                 var query = new StringBuilder()
                     .Append("fields date, date_format, human, game.id, game.name, game.slug, game.summary, game.hypes, ")
-                    .Append("game.total_rating, game.aggregated_rating, game.cover.image_id, game.genres.name, game.genres.slug, ")
+                    .Append("game.total_rating, game.total_rating_count, game.aggregated_rating, game.cover.image_id, game.genres.name, game.genres.slug, ")
                     .Append("game.platforms.name, game.platforms.abbreviation, game.platforms.slug, ")
                     .Append("game.involved_companies.company.name, game.involved_companies.developer, game.involved_companies.publisher, ")
                     .Append("game.websites.url, game.websites.category, ")
@@ -141,6 +141,7 @@ namespace GGHub.Infrastructure.Services
                             Summary = game.Summary,
                             Hypes = game.Hypes,
                             TotalRating = game.TotalRating,
+                            TotalRatingCount = game.TotalRatingCount,
                             AggregatedRating = game.AggregatedRating,
                             Cover = game.Cover,
                             Genres = game.Genres,
@@ -161,6 +162,112 @@ namespace GGHub.Infrastructure.Services
 
             _logger.LogInformation("[IGDB] Senkron bitti: {Added} yeni, {Updated} guncellendi.", added, updated);
             return (added, updated);
+        }
+
+        public async Task<int> EnrichExistingGamesAsync(int batchSize, CancellationToken ct = default)
+        {
+            if (!IsConfigured) return 0;
+
+            var token = await GetAccessTokenAsync(ct);
+            if (token == null) return 0;
+
+            // Kuyruk: IGDB eslesmesi olmayan, populerlige gore en degerli oyunlar once.
+            // IgdbId dolduktan sonra satir kuyruktan cikar, boylece is bittikce kuyruk kurur.
+            var recheckBefore = DateTime.UtcNow.AddDays(-30);
+            var batch = await _context.Games
+                .Where(g => g.RawgId > 0
+                    && (g.IgdbCheckedAt == null || (g.IgdbId != null && g.IgdbCheckedAt < recheckBefore)))
+                .OrderBy(g => g.IgdbCheckedAt == null ? 0 : 1)
+                .ThenByDescending(g => g.RawgAdded ?? 0)
+                .Take(batchSize)
+                .Select(g => new { g.Id, g.Name, g.Released })
+                .ToListAsync(ct);
+
+            if (batch.Count == 0) return 0;
+
+            var processed = 0;
+
+            foreach (var item in batch)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                try
+                {
+                    // Apicalypse'te tirnak kacisi: ad icindeki " karakteri sorguyu bozar.
+                    var safeName = item.Name.Replace("\"", string.Empty);
+                    var query = "fields id, name, total_rating, total_rating_count, first_release_date; " +
+                                $"where name = \"{safeName}\"; limit 5;";
+
+                    using var request = new HttpRequestMessage(HttpMethod.Post, $"{_settings.BaseUrl}games");
+                    request.Headers.Add("Client-ID", _settings.ClientId);
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                    request.Content = new StringContent(query, Encoding.UTF8, "text/plain");
+
+                    var response = await _httpClient.SendAsync(request, ct);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        // 429 gibi durumlarda kuyrugu yakmadan cik; sonraki kosuda devam eder.
+                        _logger.LogWarning("[IGDB] Zenginlestirme durdu ({Status}).", response.StatusCode);
+                        break;
+                    }
+
+                    var matches = await response.Content.ReadFromJsonAsync<List<IgdbGameDto>>(cancellationToken: ct);
+                    var match = PickBestMatch(matches, item.Name, item.Released);
+
+                    var game = await _context.Games.FirstOrDefaultAsync(g => g.Id == item.Id, ct);
+                    if (game == null) continue;
+
+                    // Eslesme bulunsun bulunmasin isaretle: kuyruk ancak boyle kuruyor.
+                    game.IgdbCheckedAt = DateTime.UtcNow;
+
+                    if (match != null)
+                    {
+                        // Ayni IGDB kaydi baska bir satira baglanmis olabilir (unique index).
+                        var taken = await _context.Games.AnyAsync(g => g.IgdbId == match.Id && g.Id != game.Id, ct);
+                        if (!taken)
+                        {
+                            game.IgdbId = match.Id;
+                            if (match.TotalRating > 0)
+                            {
+                                game.IgdbRating = Math.Round(match.TotalRating.Value, 1);
+                                game.IgdbRatingCount = match.TotalRatingCount;
+                            }
+                        }
+                    }
+
+                    await _context.SaveChangesAsync(ct);
+                    processed++;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[IGDB] Zenginlestirme hatasi ({Name})", item.Name);
+                }
+
+                await Task.Delay(_settings.DelayBetweenRequestsMs, ct);
+            }
+
+            _logger.LogInformation("[IGDB] Zenginlestirme: {Processed} oyun islendi.", processed);
+            return processed;
+        }
+
+        /// <summary>Isim ayni olan birden fazla IGDB kaydindan yila en yakin olani secer.</summary>
+        private static IgdbGameDto? PickBestMatch(List<IgdbGameDto>? matches, string name, string? released)
+        {
+            if (matches == null || matches.Count == 0) return null;
+            if (matches.Count == 1) return matches[0];
+
+            var year = released != null && released.Length >= 4 && int.TryParse(released[..4], out var y) ? y : (int?)null;
+            if (year == null) return matches.OrderByDescending(m => m.TotalRatingCount ?? 0).First();
+
+            return matches
+                .OrderBy(m =>
+                {
+                    if (m.FirstReleaseDate == null) return int.MaxValue;
+                    var mYear = DateTimeOffset.FromUnixTimeSeconds(m.FirstReleaseDate.Value).Year;
+                    return Math.Abs(mYear - year.Value);
+                })
+                .ThenByDescending(m => m.TotalRatingCount ?? 0)
+                .First();
         }
 
         private async Task<string?> GetAccessTokenAsync(CancellationToken ct)
@@ -236,6 +343,15 @@ namespace GGHub.Infrastructure.Services
                     dirty = true;
                 }
 
+                // IGDB puani her zaman tazelenir: puanlar zamanla degisir ve bu alan
+                // yalnizca IGDB'ye ait (baska kaynagin verisini ezmez).
+                if (dto.TotalRating > 0 && Math.Abs((existing.IgdbRating ?? 0) - dto.TotalRating.Value) > 0.01)
+                {
+                    existing.IgdbRating = Math.Round(dto.TotalRating.Value, 1);
+                    existing.IgdbRatingCount = dto.TotalRatingCount;
+                    dirty = true;
+                }
+
                 if (!dirty) return UpsertOutcome.Skipped;
 
                 try
@@ -282,6 +398,8 @@ namespace GGHub.Infrastructure.Services
                     ? (int)Math.Round(dto.AggregatedRating.Value)
                     : null,
                 Rating = dto.TotalRating > 0 ? Math.Round(dto.TotalRating.Value / 20.0, 2) : null,
+                IgdbRating = dto.TotalRating > 0 ? Math.Round(dto.TotalRating.Value, 1) : null,
+                IgdbRatingCount = dto.TotalRatingCount,
                 RawgAdded = dto.Hypes,
                 GenresJson = dto.Genres?.Count > 0 ? SerializeGenres(dto.Genres) : null,
                 PlatformsJson = dto.Platforms?.Count > 0 ? SerializePlatforms(dto.Platforms) : null,

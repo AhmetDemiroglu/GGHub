@@ -253,7 +253,7 @@ namespace GGHub.Infrastructure.Services
                 {
                     g.Id, g.RawgId, g.Slug, g.Name, g.Released,
                     g.BackgroundImage, g.Rating, g.Metacritic,
-                    g.AverageRating, g.RatingCount,
+                    g.AverageRating, g.RatingCount, g.IgdbRating, g.IgdbRatingCount,
                     g.GenresJson, g.PlatformsJson,
                 })
                 .ToListAsync();
@@ -281,6 +281,8 @@ namespace GGHub.Infrastructure.Services
                 Metacritic        = g.Metacritic,
                 GghubRating       = g.AverageRating,
                 GghubRatingCount  = g.RatingCount,
+                IgdbRating        = g.IgdbRating,
+                IgdbRatingCount   = g.IgdbRatingCount,
                 IsInWishlist      = wishlistSet.Contains(g.RawgId),
                 Platforms         = DeserializePlatforms(g.PlatformsJson),
                 Genres            = DeserializeGenres(g.GenresJson),
@@ -578,7 +580,7 @@ namespace GGHub.Infrastructure.Services
                 {
                     g.Id, g.RawgId, g.Name, g.Slug, g.Released,
                     g.BackgroundImage, g.Rating, g.Metacritic,
-                    g.AverageRating, g.RatingCount,
+                    g.AverageRating, g.RatingCount, g.IgdbRating, g.IgdbRatingCount,
                 })
                 .ToListAsync();
 
@@ -593,7 +595,9 @@ namespace GGHub.Infrastructure.Services
                 Rating = g.Rating,
                 Metacritic = g.Metacritic,
                 GghubRating = g.AverageRating,
-                GghubRatingCount = g.RatingCount
+                GghubRatingCount = g.RatingCount,
+                IgdbRating = g.IgdbRating,
+                IgdbRatingCount = g.IgdbRatingCount
             }).ToList();
 
             _cache.Set(cacheKey, result, TimeSpan.FromHours(6));

@@ -40,5 +40,12 @@ namespace GGHub.Infrastructure.Settings
         public int MinHypes { get; set; } = 3;
 
         public int RunIntervalHours { get; set; } = 12;
+
+        /// <summary>
+        /// Mevcut katalogu zenginlestirme (IGDB puani + eslesme) kosu basi oyun sayisi.
+        /// 300 x 350 ms ~ 2 dk. Katalog ~32 bin oyun oldugu icin tam tarama zaman alir;
+        /// kuyruk populerlige gore siralandigindan degerli oyunlar ilk gunlerde biter.
+        /// </summary>
+        public int EnrichBatchSize { get; set; } = 300;
     }
 }

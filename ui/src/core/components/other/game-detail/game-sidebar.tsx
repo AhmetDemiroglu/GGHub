@@ -20,13 +20,15 @@ export const GameSidebar = ({ game }: { game: Game }) => {
             {/* 1. Puanlama Rozetleri (Badge) */}
             <div className="space-y-3">
                 <h3 className="text-sm font-medium text-zinc-500 uppercase tracking-wider">Puanlar</h3>
-                <div className="flex gap-4">
+                <div className="flex flex-wrap gap-4">
                     {/* Metacritic */}
                     <ScoreBadge type="metacritic" score={game.metacritic} />
                     {/* RAWG */}
                     <ScoreBadge type="rawg" score={game.rating} />
-                    {/* GGHub (Henüz backend hesaplaması yok, null geçiyoruz) */}
-                    <ScoreBadge type="gghub" score={null} />
+                    {/* IGDB: yalnızca puanı olan oyunlarda gösterilir */}
+                    {game.igdbRating ? <ScoreBadge type="igdb" score={game.igdbRating} /> : null}
+                    {/* GGHub topluluk puanı */}
+                    <ScoreBadge type="gghub" score={game.gghubRating || null} />
                 </div>
             </div>
 

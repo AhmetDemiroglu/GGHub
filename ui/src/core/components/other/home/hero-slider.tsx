@@ -15,6 +15,7 @@ import { buildLocalizedPathname } from "@/i18n/config";
 import { Button } from "@/core/components/ui/button";
 import { Carousel, CarouselApi, CarouselContent, CarouselItem } from "@/core/components/ui/carousel";
 import { PlatformIcons } from "@/core/components/other/platform-icons";
+import { IgdbLogo } from "@/core/components/other/igdb-logo";
 import { StoreButtons } from "@/core/components/other/public/store-buttons";
 import logoSrc from "@core/assets/logo.png";
 import metacriticLogoSrc from "@core/assets/metacritic_logo.png";
@@ -38,14 +39,19 @@ const normalizeDescription = (value: string | null | undefined) => {
     return plainText || null;
 };
 
-function ScoreBadge({ score, logo, logoAlt, accentClassName }: { score: string; logo: typeof logoSrc; logoAlt: string; accentClassName: string }) {
+function ScoreBadge({ score, logo, logoAlt, accentClassName }: { score: string; logo?: typeof logoSrc; logoAlt: string; accentClassName: string }) {
     return (
         <div
             className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/45 py-1 pl-1.5 pr-2.5 backdrop-blur-md"
             title={logoAlt}
         >
             <span className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-black/60 ring-1 ring-white/10">
-                <Image src={logo} alt={logoAlt} width={12} height={12} className="object-contain" />
+                {/* IGDB'nin PNG asset'i yok; SVG rozetiyle çizilir (bkz. igdb-logo). */}
+                {logo ? (
+                    <Image src={logo} alt={logoAlt} width={12} height={12} className="object-contain" />
+                ) : (
+                    <IgdbLogo className="h-3 w-3" />
+                )}
             </span>
             <span className={`text-sm font-bold leading-none ${accentClassName}`}>{score}</span>
         </div>
@@ -373,6 +379,9 @@ export default function HeroSlider({ games = [] }: HeroSliderProps) {
                                                 ) : null}
                                                 {game.rawgRating != null && game.rawgRating > 0 ? (
                                                     <ScoreBadge score={game.rawgRating.toFixed(1)} logo={rawgLogoSrc} logoAlt="RAWG" accentClassName="text-sky-400" />
+                                                ) : null}
+                                                {game.igdbRating != null && game.igdbRating > 0 ? (
+                                                    <ScoreBadge score={String(Math.round(game.igdbRating))} logoAlt="IGDB" accentClassName="text-indigo-300" />
                                                 ) : null}
                                                 {game.gghubRating > 0 ? (
                                                     <ScoreBadge score={game.gghubRating.toFixed(1)} logo={logoSrc} logoAlt="GGHub" accentClassName="text-violet-400" />

@@ -68,7 +68,7 @@ namespace GGHub.Infrastructure.Services
                 {
                     g.Id, g.RawgId, g.Slug, g.Name, g.Released,
                     g.BackgroundImage, g.CoverImage, g.Rating, g.Metacritic,
-                    g.AverageRating, g.RatingCount, g.RawgAdded,
+                    g.AverageRating, g.RatingCount, g.RawgAdded, g.IgdbRating, g.IgdbRatingCount,
                     g.PlatformsJson, g.GenresJson,
                 })
                 .ToListAsync();
@@ -91,6 +91,8 @@ namespace GGHub.Infrastructure.Services
                         Metacritic = g.Metacritic,
                         GghubRating = g.AverageRating,
                         GghubRatingCount = g.RatingCount,
+                        IgdbRating = g.IgdbRating,
+                        IgdbRatingCount = g.IgdbRatingCount,
                         Platforms = DeserializeList<PlatformDto>(g.PlatformsJson),
                         Genres = DeserializeList<GenreDto>(g.GenresJson),
                     },
@@ -169,7 +171,7 @@ namespace GGHub.Infrastructure.Services
                 {
                     g.Id, g.RawgId, g.Slug, g.Name,
                     g.BackgroundImage, g.CoverImage, g.Rating, g.Metacritic,
-                    g.AverageRating, g.RatingCount,
+                    g.AverageRating, g.RatingCount, g.IgdbRating, g.IgdbRatingCount,
                     g.PlatformsJson, g.GenresJson,
                 })
                 .ToListAsync();
@@ -187,6 +189,8 @@ namespace GGHub.Infrastructure.Services
                 Metacritic = g.Metacritic,
                 GghubRating = g.AverageRating,
                 GghubRatingCount = g.RatingCount,
+                IgdbRating = g.IgdbRating,
+                IgdbRatingCount = g.IgdbRatingCount,
                 Platforms = DeserializeList<PlatformDto>(g.PlatformsJson),
                 Genres = DeserializeList<GenreDto>(g.GenresJson),
             }).ToList();

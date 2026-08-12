@@ -16,6 +16,9 @@
         public string? EsrbRating { get; set; }
         public double GghubRating { get; set; }
         public int GghubRatingCount { get; set; }
+        /// <summary>IGDB toplam puani (0-100). Metacritic/RAWG/GGHub uclusunun 4. kaynagi.</summary>
+        public double? IgdbRating { get; set; }
+        public int? IgdbRatingCount { get; set; }
         public List<PlatformDto> Platforms { get; set; } = new();
         public List<GenreDto> Genres { get; set; } = new();
         public List<DeveloperDto> Developers { get; set; } = new();

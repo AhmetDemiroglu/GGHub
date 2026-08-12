@@ -107,6 +107,7 @@ export function HeroSlider({ games }: HeroSliderProps) {
                     rawg={item.rawgRating}
                     gghub={item.gghubRating > 0 ? item.gghubRating : null}
                     gghubCount={item.gghubRatingCount}
+                    igdb={item.igdbRating}
                     size="sm"
                     gap={6}
                   />

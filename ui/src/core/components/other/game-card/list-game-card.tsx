@@ -7,6 +7,7 @@ import Image from "next/image";
 import logoSrc from "@core/assets/logo.png";
 import rawgLogoSrc from "@core/assets/rawg_logo.png";
 import metacriticLogoSrc from "@core/assets/metacritic_logo.png";
+import { IgdbLogo } from "@/core/components/other/igdb-logo";
 
 interface ListGameCardProps {
     game: Game;
@@ -49,6 +50,14 @@ export const ListGameCard = memo(function ListGameCard({ game, showRemoveButton,
                             <div className="px-2 py-1 rounded-md bg-blue-500/10 text-blue-400 font-bold text-[10px] border border-blue-500/20 flex items-center gap-1.5 tabular-nums" title="RAWG Rating">
                                 <Image src={rawgLogoSrc} alt="RAWG" width={12} height={12} className="w-3 h-3 object-contain opacity-80" />
                                 {game.rating.toFixed(1)}
+                            </div>
+                        ) : null}
+
+                        {/* IGDB (Indigo) */}
+                        {game.igdbRating ? (
+                            <div className="px-2 py-1 rounded-md bg-indigo-500/10 text-indigo-300 font-bold text-[10px] border border-indigo-500/20 flex items-center gap-1.5 tabular-nums" title="IGDB">
+                                <IgdbLogo className="w-3 h-3 opacity-90" />
+                                {Math.round(game.igdbRating)}
                             </div>
                         ) : null}
 

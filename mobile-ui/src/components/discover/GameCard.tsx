@@ -74,6 +74,7 @@ export function GameCard({ game, variant = 'compact' }: GameCardProps) {
             rawg={game.rating}
             gghub={game.gghubRating}
             gghubCount={game.gghubRatingCount}
+            igdb={game.igdbRating}
             size="sm"
             gap={5}
           />
@@ -106,6 +107,7 @@ export function GameCard({ game, variant = 'compact' }: GameCardProps) {
           rawg={game.rating}
           gghub={game.gghubRating}
           gghubCount={game.gghubRatingCount}
+          igdb={game.igdbRating}
           size="sm"
           gap={5}
         />

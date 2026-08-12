@@ -16,5 +16,8 @@
         {
             get; set;
         }
+        /// <summary>IGDB toplam puani (0-100); listelerde de 4. puan kaynagi gorunur.</summary>
+        public double? IgdbRating { get; set; }
+        public int? IgdbRatingCount { get; set; }
     }
 }

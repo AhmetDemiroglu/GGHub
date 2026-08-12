@@ -12,6 +12,8 @@ export interface HomeGame {
     clipUrl: string | null;
     metacriticScore: number | null;
     rawgRating: number | null;
+    /** IGDB toplam puanı (0-100); dolu olduğunda hero rozetlerinde gösterilir. */
+    igdbRating?: number | null;
     gghubRating: number;
     gghubRatingCount: number;
     description: string | null;

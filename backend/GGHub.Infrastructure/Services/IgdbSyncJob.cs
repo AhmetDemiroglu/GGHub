@@ -44,7 +44,13 @@ namespace GGHub.Infrastructure.Services
                 {
                     using var scope = _scopeFactory.CreateScope();
                     var service = scope.ServiceProvider.GetRequiredService<IIgdbCatalogService>();
+
+                    // 1) Cikis takvimi (gundemi besler)
                     await service.SyncReleaseWindowAsync(stoppingToken);
+
+                    // 2) Mevcut katalogu zenginlestir (IGDB puani + eslesme). Kuyruk zamanla
+                    //    kurur; 30 gunde bir yeniden kontrol edilerek puanlar guncel kalir.
+                    await service.EnrichExistingGamesAsync(_settings.EnrichBatchSize, stoppingToken);
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {

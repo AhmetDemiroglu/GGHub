@@ -96,6 +96,8 @@ namespace GGHub.Infrastructure.Services
                     g.Metacritic,
                     g.AverageRating,
                     g.RatingCount,
+                    g.IgdbRating,
+                    g.IgdbRatingCount,
                     g.GenresJson,
                     g.PlatformsJson,
                 })
@@ -115,6 +117,8 @@ namespace GGHub.Infrastructure.Services
                 Metacritic = g.Metacritic,
                 GghubRating = g.AverageRating,
                 GghubRatingCount = g.RatingCount,
+                IgdbRating = g.IgdbRating,
+                IgdbRatingCount = g.IgdbRatingCount,
                 IsInWishlist = wishlistSet.Contains(g.RawgId),
                 Platforms = DeserializePlatforms(g.PlatformsJson),
                 Genres = DeserializeGenres(g.GenresJson),

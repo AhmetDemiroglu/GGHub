@@ -77,6 +77,7 @@ export function GameHero({ game, scrollY }: GameHeroProps) {
             rawg={game.rating}
             gghub={game.gghubRating}
             gghubCount={game.gghubRatingCount}
+            igdb={game.igdbRating}
             size="md"
             gap={8}
           />

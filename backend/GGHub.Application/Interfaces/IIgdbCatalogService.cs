@@ -14,5 +14,12 @@ namespace GGHub.Application.Interfaces
         /// (eklenen, guncellenen) sayilarini dondurur. Hata halinde (0,0).
         /// </summary>
         Task<(int Added, int Updated)> SyncReleaseWindowAsync(CancellationToken ct = default);
+
+        /// <summary>
+        /// Katalogdaki mevcut oyunlara IGDB puani/eslesmesi kazandirir (cikis penceresinden
+        /// bagimsiz). Isim eslesmesiyle IGDB kaydini bulur, IgdbId + IgdbRating yazar; boylece
+        /// eski oyunlarda da dorduncu puan kaynagi gorunur. Islenen oyun sayisini dondurur.
+        /// </summary>
+        Task<int> EnrichExistingGamesAsync(int batchSize, CancellationToken ct = default);
     }
 }

@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { FontSize, BorderRadius } from '@/src/constants/theme';
+import { IgdbLogo } from './IgdbLogo';
 
-export type ScoreType = 'metacritic' | 'rawg' | 'gghub';
+export type ScoreType = 'metacritic' | 'rawg' | 'gghub' | 'igdb';
 export type ScoreSize = 'sm' | 'md' | 'lg';
 
 interface ScorePillProps {
@@ -26,6 +27,7 @@ const PALETTE = {
   rawg:       { bg: 'rgba(59,130,246,0.10)', fg: '#60a5fa', border: 'rgba(59,130,246,0.20)' },
   metacritic: { bg: 'rgba(34,197,94,0.10)',  fg: '#4ade80', border: 'rgba(34,197,94,0.20)' },
   gghub:      { bg: 'rgba(168,85,247,0.10)', fg: '#c084fc', border: 'rgba(168,85,247,0.20)' },
+  igdb:       { bg: 'rgba(99,102,241,0.10)', fg: '#a5b4fc', border: 'rgba(99,102,241,0.20)' },
 } as const;
 
 const SIZE_MAP = {
@@ -36,7 +38,8 @@ const SIZE_MAP = {
 
 function formatValue(type: ScoreType, value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return DASH;
-  if (type === 'metacritic') return String(Math.round(value));
+  // IGDB de Metacritic gibi 0-100 araliginda gelir; RAWG/GGHub ondalikli.
+  if (type === 'metacritic' || type === 'igdb') return String(Math.round(value));
   return value.toFixed(1);
 }
 
@@ -61,15 +64,19 @@ export function ScorePill({ type, value, count, size = 'sm' }: ScorePillProps) {
         },
       ]}
     >
-      <Image
-        source={LOGOS[type]}
-        style={{
-          width: dims.iconSize,
-          height: dims.iconSize,
-          opacity: isEmpty ? 0.5 : 0.95,
-        }}
-        resizeMode="contain"
-      />
+      {type === 'igdb' ? (
+        <IgdbLogo size={dims.iconSize} opacity={isEmpty ? 0.5 : 0.95} />
+      ) : (
+        <Image
+          source={LOGOS[type]}
+          style={{
+            width: dims.iconSize,
+            height: dims.iconSize,
+            opacity: isEmpty ? 0.5 : 0.95,
+          }}
+          resizeMode="contain"
+        />
+      )}
       <Text style={[styles.value, { color: fg, fontSize: dims.fontSize }]}>
         {formatValue(type, value)}
       </Text>
@@ -85,6 +92,7 @@ interface ScorePillRowProps {
   rawg?: number | null;
   gghub?: number | null;
   gghubCount?: number | null;
+  igdb?: number | null;
   size?: ScoreSize;
   gap?: number;
 }
@@ -94,6 +102,7 @@ export function ScorePillRow({
   rawg,
   gghub,
   gghubCount,
+  igdb,
   size = 'sm',
   gap = 6,
 }: ScorePillRowProps) {
@@ -101,6 +110,8 @@ export function ScorePillRow({
     <View style={[styles.row, { gap }]}>
       <ScorePill type="rawg" value={rawg} size={size} />
       <ScorePill type="metacritic" value={metacritic} size={size} />
+      {/* IGDB yalnizca puani olan oyunlarda gosterilir: bos rozet satiri sisirmesin. */}
+      {igdb != null && igdb > 0 ? <ScorePill type="igdb" value={igdb} size={size} /> : null}
       <ScorePill type="gghub" value={gghub} count={gghubCount} size={size} />
     </View>
   );

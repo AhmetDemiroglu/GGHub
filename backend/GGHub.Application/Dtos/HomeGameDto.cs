@@ -11,8 +11,9 @@
         public string? ReleaseDate { get; set; }
         public int? MetacriticScore { get; set; }
         public double? RawgRating { get; set; }  
-        public double GghubRating { get; set; }   
-        public int GghubRatingCount { get; set; } 
+        public double GghubRating { get; set; }
+        public int GghubRatingCount { get; set; }
+        public double? IgdbRating { get; set; }
         public string? TrailerUrl { get; set; }
         public string? ClipUrl { get; set; }
         public string? Description { get; set; }

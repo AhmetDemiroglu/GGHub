@@ -198,7 +198,9 @@ namespace GGHub.Infrastructure.Services
                         BackgroundImage = ulg.Game.BackgroundImage,
                         Released = ulg.Game.Released,
                         GghubRating = ulg.Game.AverageRating,
-                        GghubRatingCount = ulg.Game.RatingCount
+                        GghubRatingCount = ulg.Game.RatingCount,
+                        IgdbRating = ulg.Game.IgdbRating,
+                        IgdbRatingCount = ulg.Game.IgdbRatingCount
                     }).ToList()
                 })
                 .FirstOrDefaultAsync();
@@ -284,7 +286,9 @@ namespace GGHub.Infrastructure.Services
                         Rating = ulg.Game.Rating,
                         Metacritic = ulg.Game.Metacritic,
                         GghubRating = ulg.Game.AverageRating,
-                        GghubRatingCount = ulg.Game.RatingCount
+                        GghubRatingCount = ulg.Game.RatingCount,
+                        IgdbRating = ulg.Game.IgdbRating,
+                        IgdbRatingCount = ulg.Game.IgdbRatingCount
                     }).ToList(),
                     IsFollowing = currentUserId.HasValue && listMeta.UserId != currentUserId.Value &&
                         _context.UserListFollows.Any(f => f.FollowedListId == listId && f.FollowerUserId == currentUserId.Value)
@@ -623,7 +627,9 @@ namespace GGHub.Infrastructure.Services
                         Rating = ulg.Game.Rating,
                         Metacritic = ulg.Game.Metacritic,
                         GghubRating = ulg.Game.AverageRating,
-                        GghubRatingCount = ulg.Game.RatingCount
+                        GghubRatingCount = ulg.Game.RatingCount,
+                        IgdbRating = ulg.Game.IgdbRating,
+                        IgdbRatingCount = ulg.Game.IgdbRatingCount
                     }).ToList(),
                     IsFollowing = false
                 })

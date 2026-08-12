@@ -73,6 +73,7 @@ namespace GGHub.Infrastructure.Services
                         RawgRating = g.Rating,
                         GghubRating = g.AverageRating,
                         GghubRatingCount = g.RatingCount,
+                        IgdbRating = g.IgdbRating,
                         Description = ResolveDescription(g.Description, g.DescriptionTr, preferTurkish),
                         Platforms = platforms ?? new List<PlatformDto>()
                     };
@@ -122,6 +123,7 @@ namespace GGHub.Infrastructure.Services
                     RawgRating = g.Rating,
                     GghubRating = g.AverageRating,
                     GghubRatingCount = g.RatingCount,
+                    IgdbRating = g.IgdbRating,
                     Description = ResolveDescription(g.Description, g.DescriptionTr, preferTurkish)
                 })
                 .ToListAsync();
@@ -168,6 +170,7 @@ namespace GGHub.Infrastructure.Services
                     RawgRating = g.Rating,
                     GghubRating = g.AverageRating,
                     GghubRatingCount = g.RatingCount,
+                    IgdbRating = g.IgdbRating,
                     Description = ResolveDescription(g.Description, g.DescriptionTr, preferTurkish)
                 })
                 .ToListAsync();

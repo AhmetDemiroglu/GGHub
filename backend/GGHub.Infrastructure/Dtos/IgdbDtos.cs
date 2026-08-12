@@ -67,6 +67,9 @@ namespace GGHub.Infrastructure.Dtos
         [JsonPropertyName("total_rating")]
         public double? TotalRating { get; set; }
 
+        [JsonPropertyName("total_rating_count")]
+        public int? TotalRatingCount { get; set; }
+
         [JsonPropertyName("aggregated_rating")]
         public double? AggregatedRating { get; set; }
 

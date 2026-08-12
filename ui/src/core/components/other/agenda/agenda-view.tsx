@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/core/components/ui/skeleton";
 import { Button } from "@/core/components/ui/button";
 import { PlatformIcons } from "@/core/components/other/platform-icons";
+import { IgdbLogo } from "@/core/components/other/igdb-logo";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 import { buildLocalizedPathname } from "@/i18n/config";
 import { getImageUrl } from "@/core/lib/get-image-url";
@@ -161,11 +162,19 @@ export const AgendaView = ({ initialContent, initialYear, initialMonth }: Agenda
                     loading="lazy"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-                {game.metacritic ? (
-                    <span className="absolute right-2 top-2 rounded-md bg-green-500/90 px-1.5 py-0.5 text-[11px] font-bold text-black">
-                        {game.metacritic}
-                    </span>
-                ) : null}
+                <div className="absolute right-2 top-2 flex items-center gap-1">
+                    {game.igdbRating ? (
+                        <span className="flex items-center gap-1 rounded-md bg-indigo-500/90 px-1.5 py-0.5 text-[11px] font-bold text-white" title="IGDB">
+                            <IgdbLogo className="h-2.5 w-2.5" />
+                            {Math.round(game.igdbRating)}
+                        </span>
+                    ) : null}
+                    {game.metacritic ? (
+                        <span className="rounded-md bg-green-500/90 px-1.5 py-0.5 text-[11px] font-bold text-black" title="Metacritic">
+                            {game.metacritic}
+                        </span>
+                    ) : null}
+                </div>
                 <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-3">
                     <p className="line-clamp-1 text-sm font-bold text-white drop-shadow">{game.name}</p>
                     <div className="flex items-center justify-between gap-2">

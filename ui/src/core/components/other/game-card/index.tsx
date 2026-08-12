@@ -72,9 +72,11 @@ export const GameCard = memo(function GameCard({ game }: { game: Game }) {
 
                             <h3 className="text-xl font-bold line-clamp-2 mb-4 flex-1">{game.name}</h3>
 
-                            <div className="grid grid-cols-3 gap-4 text-center mb-4">
+                            {/* IGDB puanı olan oyunlarda 4 sütun; olmayanlarda düzen bozulmasın diye 3 */}
+                            <div className={`grid gap-3 text-center mb-4 ${game.igdbRating ? "grid-cols-4" : "grid-cols-3"}`}>
                                 <ScoreBadge type="metacritic" score={game.metacritic} />
                                 <ScoreBadge type="rawg" score={game.rating} />
+                                {game.igdbRating ? <ScoreBadge type="igdb" score={game.igdbRating} /> : null}
                                 <ScoreBadge type="gghub" score={game.gghubRating || null} />
                             </div>
 

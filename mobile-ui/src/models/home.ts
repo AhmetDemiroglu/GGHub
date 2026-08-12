@@ -12,6 +12,7 @@ export interface HomeGame {
   clipUrl: string | null;
   metacriticScore: number | null;
   rawgRating: number | null;
+  igdbRating?: number | null;
   gghubRating: number;
   gghubRatingCount: number;
   description: string | null;

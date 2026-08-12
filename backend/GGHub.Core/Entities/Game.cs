@@ -42,6 +42,23 @@
         /// </summary>
         public int? IgdbId { get; set; }
 
+        /// <summary>
+        /// IGDB toplam puani (0-100). Kullanici + elestirmen ortalamasinin birlesimi.
+        /// Metacritic/RAWG/GGHub uclusunun yaninda 4. kaynak olarak gosterilir; bir oyunda
+        /// digerleri bos olsa bile burada puan bulunabiliyor.
+        /// </summary>
+        public double? IgdbRating { get; set; }
+
+        /// <summary>IGDB puanini olusturan oy sayisi (guvenilirlik gostergesi).</summary>
+        public int? IgdbRatingCount { get; set; }
+
+        /// <summary>
+        /// IGDB eslesmesi icin en son ne zaman arama yapildi. Eslesme BULUNAMASA da doldurulur;
+        /// aksi halde IGDB'de karsiligi olmayan oyunlar her kosuda yeniden sorgulanip kuyrugu
+        /// tikardi. Puanlar zamanla degistigi icin belirli araliklarla yeniden denenir.
+        /// </summary>
+        public DateTime? IgdbCheckedAt { get; set; }
+
         // RAWG Import tracking
         public string? ImportSource { get; set; }
         public DateTime? ImportedAt { get; set; }

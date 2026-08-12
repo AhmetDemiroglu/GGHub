@@ -111,6 +111,8 @@ namespace GGHub.WebAPI.Controllers
                 EsrbRating = game.EsrbRating,
                 GghubRating = ratingSummary.Average,
                 GghubRatingCount = ratingSummary.Count,
+                IgdbRating = game.IgdbRating,
+                IgdbRatingCount = game.IgdbRatingCount,
 
                 Platforms = !string.IsNullOrEmpty(game.PlatformsJson)
                     ? System.Text.Json.JsonSerializer.Deserialize<List<PlatformDto>>(game.PlatformsJson) ?? new()
