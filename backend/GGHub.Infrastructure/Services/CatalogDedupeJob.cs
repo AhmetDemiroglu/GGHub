@@ -114,6 +114,16 @@ namespace GGHub.Infrastructure.Services
         /// </summary>
         private async Task<bool> TryMergeAsync(GGHubDbContext context, int primaryId, int duplicateId, CancellationToken ct)
         {
+            // DIKKAT: Worker'in DbContext'i EnableRetryOnFailure ile kurulu. Boyle bir baglantida
+            // BeginTransactionAsync dogrudan cagrilamaz ("execution strategy does not support
+            // user-initiated transactions") ve ilk surumde TUM birlestirmeler bu yuzden sessizce
+            // basarisiz oldu. Transaction, execution strategy'nin ICINDE acilmali.
+            var strategy = context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () => await MergeCoreAsync(context, primaryId, duplicateId, ct));
+        }
+
+        private async Task<bool> MergeCoreAsync(GGHubDbContext context, int primaryId, int duplicateId, CancellationToken ct)
+        {
             await using var tx = await context.Database.BeginTransactionAsync(ct);
             try
             {
@@ -170,7 +180,9 @@ namespace GGHub.Infrastructure.Services
             {
                 await tx.RollbackAsync(ct);
                 // Bilinmeyen bir FK varsa kopya silinmez: kullanici verisi kaybetmektense
-                // katalogda kopya kalmasi yeglenir.
+                // katalogda kopya kalmasi yeglenir. Degisiklikler geri alindigi icin izleyen
+                // kayitlar temizlenmeli, yoksa sonraki birlestirme onlari tekrar yazmaya calisir.
+                context.ChangeTracker.Clear();
                 _logger.LogWarning(ex, "[Dedupe] Birlestirilemedi (primary={Primary}, duplicate={Duplicate})", primaryId, duplicateId);
                 return false;
             }

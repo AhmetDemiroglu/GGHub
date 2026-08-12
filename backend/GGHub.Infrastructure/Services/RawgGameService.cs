@@ -212,7 +212,16 @@ namespace GGHub.Infrastructure.Services
                 .Where(g => g.BackgroundImage != null);
 
             if (!string.IsNullOrWhiteSpace(queryParams.Search))
-                query = query.Where(g => EF.Functions.ILike(g.Name, $"%{queryParams.Search}%"));
+            {
+                // Kelime bazli ILIKE: tek parca desen "EA SPORTS FC™ 27" gibi adlari kaciriyor
+                // ve arama ucu ile discover ucu farkli sonuc veriyordu (SearchService zaten
+                // token bazliydi; uc uc de ayni davranmali).
+                foreach (var token in queryParams.Search.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var pattern = $"%{token}%";
+                    query = query.Where(g => EF.Functions.ILike(g.Name, pattern));
+                }
+            }
 
             if (!string.IsNullOrWhiteSpace(queryParams.Genres))
             {

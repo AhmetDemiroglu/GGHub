@@ -165,8 +165,14 @@ namespace GGHub.Infrastructure.Services
 
             if (!string.IsNullOrWhiteSpace(q.Search))
             {
-                // Büyük/küçük harf duyarsız arama (PostgreSQL ILike)
-                query = query.Where(g => EF.Functions.ILike(g.Name, $"%{q.Search}%"));
+                // Kelime bazlı ILIKE (PostgreSQL, büyük/küçük harf duyarsız). Tek parça
+                // "%fc 27%" deseni "EA SPORTS FC™ 27" gibi araya marka işareti girmiş adları
+                // kaçırıyordu ve keşfet ile arama çubuğu FARKLI sonuç veriyordu.
+                foreach (var token in q.Search.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var pattern = $"%{token}%";
+                    query = query.Where(g => EF.Functions.ILike(g.Name, pattern));
+                }
             }
 
             if (!string.IsNullOrWhiteSpace(q.Genres))
