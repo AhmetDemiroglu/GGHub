@@ -100,6 +100,22 @@ namespace GGHub.Infrastructure.Dtos
         public IgdbGameDto? ParentGame { get; set; }
     }
 
+    /// <summary>
+    /// popularity_primitives ucu: bir oyunun belirli bir kaynaktaki populerlik degeri.
+    /// Deger 0..1 arasinda normalize gelir (ornek: 0.0021).
+    /// </summary>
+    public class IgdbPopularityDto
+    {
+        [JsonPropertyName("game_id")]
+        public int GameId { get; set; }
+
+        [JsonPropertyName("value")]
+        public double Value { get; set; }
+
+        [JsonPropertyName("popularity_type")]
+        public int PopularityType { get; set; }
+    }
+
     public class IgdbCoverDto
     {
         [JsonPropertyName("image_id")]

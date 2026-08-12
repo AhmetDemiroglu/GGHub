@@ -373,6 +373,75 @@ namespace GGHub.Infrastructure.Services
             }
         }
 
+        /// <summary>
+        /// Kullanilan populerlik kaynaklari ve agirliklari. Tip kimlikleri IGDB'nin
+        /// popularity_types ucundan alindi:
+        ///   2  = Want to Play  (IGDB, PLATFORM BAGIMSIZ - beklenti; GTA VI gibi konsol
+        ///        ozel yapimlar ancak burada temsil ediliyor)
+        ///   3  = Playing       (IGDB, su an oynanan)
+        ///   1  = Visits        (IGDB, sayfa ilgisi)
+        ///   34 = 24hr Hours Watched (Twitch, gunluk konusulurluk)
+        /// Steam kaynakli tipler (5, 9, 10) BILEREK yok: Steam sinyalini zaten dogrudan
+        /// magaza listelerinden aliyoruz ve burada da kullanmak PC'yi iki kez agirliklandirip
+        /// konsol yapimlarini geriye itiyordu.
+        /// </summary>
+        private static readonly (int Type, double Weight)[] PopularityTypes =
+        {
+            (2, 1.0),
+            (3, 0.8),
+            (1, 0.5),
+            (34, 0.6),
+        };
+
+        public async Task<Dictionary<int, double>> GetPopularitySignalsAsync(int limitPerType, CancellationToken ct = default)
+        {
+            var result = new Dictionary<int, double>();
+            if (!IsConfigured) return result;
+
+            var token = await GetAccessTokenAsync(ct);
+            if (token == null) return result;
+
+            foreach (var (type, weight) in PopularityTypes)
+            {
+                ct.ThrowIfCancellationRequested();
+                try
+                {
+                    var query = $"fields game_id, value, popularity_type; where popularity_type = {type}; " +
+                                $"sort value desc; limit {Math.Min(limitPerType, 500)};";
+
+                    using var request = new HttpRequestMessage(HttpMethod.Post, $"{_settings.BaseUrl}popularity_primitives");
+                    request.Headers.Add("Client-ID", _settings.ClientId);
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                    request.Content = new StringContent(query, Encoding.UTF8, "text/plain");
+
+                    var response = await _httpClient.SendAsync(request, ct);
+                    if (!response.IsSuccessStatusCode) continue;
+
+                    var rows = await response.Content.ReadFromJsonAsync<List<IgdbPopularityDto>>(cancellationToken: ct);
+                    if (rows == null || rows.Count == 0) continue;
+
+                    // Degerler 0..1 arasinda ve kaynaklar arasi olcek farkli; her kaynagi kendi
+                    // en yuksek degerine gore 0..100'e normalize edip agirlikla topluyoruz.
+                    var max = rows.Max(r => r.Value);
+                    if (max <= 0) continue;
+
+                    foreach (var row in rows)
+                    {
+                        var normalized = row.Value / max * 100.0 * weight;
+                        result[row.GameId] = result.GetValueOrDefault(row.GameId) + normalized;
+                    }
+
+                    await Task.Delay(_settings.DelayBetweenRequestsMs, ct);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[IGDB] Populerlik sinyali alinamadi (tip {Type})", type);
+                }
+            }
+
+            return result;
+        }
+
         /// <summary>IGDB games ucuna Apicalypse sorgusu atar. Hata halinde null.</summary>
         private async Task<List<IgdbGameDto>?> QueryGamesAsync(string query, CancellationToken ct)
         {

@@ -98,13 +98,21 @@ namespace GGHub.Infrastructure.Services
                 activityByGameId[item.GameId] = activityByGameId.GetValueOrDefault(item.GameId) + item.Score;
 
             // 2) Steam en cok satanlar: sira ne kadar ustteyse o kadar guclu sinyal.
+            //    DIKKAT: yalnizca PC'yi kapsar; agirligi bilerek sinirli (bkz. 3).
             var topSellers = await steam.GetTopSellerAppIdsAsync(150, ct);
             var sellerRank = topSellers
                 .Select((appId, index) => (appId, index))
                 .ToDictionary(x => x.appId, x => x.index);
 
-            _logger.LogInformation("[Trend] Sinyaller: {Activity} oyunda GGHub hareketi, {Sellers} Steam en cok satan.",
-                activityByGameId.Count, sellerRank.Count);
+            // 3) IGDB + Twitch populerlik sinyalleri: PLATFORM BAGIMSIZ. Steam listesi tek
+            //    basina kullanildiginda PS5/Xbox ozel yapimlari (GTA VI, Wolverine) siralamada
+            //    hic gorunmuyordu; bu sinyal dengeyi kuruyor.
+            var igdb = scope.ServiceProvider.GetRequiredService<IIgdbCatalogService>();
+            var igdbPopularity = await igdb.GetPopularitySignalsAsync(500, ct);
+
+            _logger.LogInformation(
+                "[Trend] Sinyaller: {Activity} oyunda GGHub hareketi, {Sellers} Steam en cok satan, {Igdb} IGDB/Twitch populerlik.",
+                activityByGameId.Count, sellerRank.Count, igdbPopularity.Count);
 
             // Aday havuzu: skorlanmaya deger her oyun (kalite kapisi veya hareketi olanlar).
             var games = await context.Games
@@ -113,7 +121,7 @@ namespace GGHub.Infrastructure.Services
                         || g.RawgAdded != null || g.SteamAppId != null))
                 .Select(g => new
                 {
-                    g.Id, g.SteamAppId, g.Metacritic, g.Rating, g.IgdbRating, g.IgdbRatingCount,
+                    g.Id, g.SteamAppId, g.IgdbId, g.Metacritic, g.Rating, g.IgdbRating, g.IgdbRatingCount,
                     g.RawgAdded, g.Released, g.AverageRating, g.RatingCount, g.TrendScore,
                 })
                 .ToListAsync(ct);
@@ -127,9 +135,16 @@ namespace GGHub.Infrastructure.Services
                 // Kullanici hareketi en agirlikli bilesen: platformun kendi nabzi.
                 score += activityByGameId.GetValueOrDefault(game.Id);
 
-                // Steam satis sirasi (0. sira 300 puan, 149. sira ~4 puan)
+                // Steam satis sirasi. Tavan BILEREK dusuk (180): Steam yalnizca PC'yi kapsiyor
+                // ve daha yuksek bir agirlik konsol yapimlarini listeden siliyordu.
                 if (game.SteamAppId != null && sellerRank.TryGetValue(game.SteamAppId.Value, out var rank))
-                    score += Math.Max(300 - rank * 2, 4);
+                    score += Math.Max(180 - rank * 1.2, 4);
+
+                // IGDB "Want to Play/Playing/Visits" + Twitch izlenme: platform bagimsiz.
+                // Steam'in tavani kadar guclu olmasi kasitli; boylece PS5/Xbox ozel yapimlari
+                // PC oyunlariyla ayni ligde yarisiyor.
+                if (game.IgdbId != null && igdbPopularity.TryGetValue(game.IgdbId.Value, out var igdbScore))
+                    score += Math.Min(igdbScore, 200) * 0.9;
 
                 // Beklenti/populerlik sinyalleri
                 score += Math.Min(game.RawgAdded ?? 0, 2000) * 0.05;

@@ -42,5 +42,14 @@ namespace GGHub.Application.Interfaces
         /// Zaten kontrol edilmis oyunlarda hicbir sey yapmaz (tek if, sifir maliyet).
         /// </summary>
         Task EnrichGameAsync(Core.Entities.Game game, CancellationToken ct = default);
+
+        /// <summary>
+        /// IGDB populerlik sinyalleri: IgdbId -> 0..100 arasi normalize skor.
+        /// PLATFORM BAGIMSIZ olmasi kritik: Steam'in "en cok satanlar" listesi yalnizca PC'yi
+        /// kapsadigi icin tek basina kullanildiginda PS5/Xbox ozel yapimlari (GTA VI gibi)
+        /// siralamada geriye dusuyordu. IGDB'nin "Want to Play / Playing / Visits" sinyalleri
+        /// ve Twitch izlenme saati tum platformlari kapsar.
+        /// </summary>
+        Task<Dictionary<int, double>> GetPopularitySignalsAsync(int limitPerType, CancellationToken ct = default);
     }
 }
