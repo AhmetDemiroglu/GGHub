@@ -55,6 +55,7 @@ export const enUSMessages = {
     nav: {
         home: "Home",
         discover: "Discover games",
+        agenda: "Game Agenda",
         lists: "Discover lists",
         myLists: "My lists",
         messages: "Messages",
@@ -110,7 +111,19 @@ export const enUSMessages = {
             reviewDetail: "Review",
             birthday: "Your Birthday",
             notificationSettings: "Notification Settings",
+            agenda: "Game Agenda",
         },
+    },
+    agenda: {
+        upcoming: "Coming up",
+        released: "Released",
+        emptyUpcoming: "No expected releases for this month.",
+        emptyReleased: "No recorded releases for this month.",
+        loadError: "The agenda cannot be loaded right now. Please try again.",
+        month: "Month",
+        year: "Year",
+        homeCardTitle: "Game Agenda",
+        homeCardDescription: "Explore this month's releases and upcoming games.",
     },
     notificationSettings: {
         title: "Notification Settings",

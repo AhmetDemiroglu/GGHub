@@ -55,6 +55,7 @@ export const trMessages = {
     nav: {
         home: "Ana sayfa",
         discover: "Oyunları keşfet",
+        agenda: "Oyun Gündemi",
         lists: "Listeleri keşfet",
         myLists: "Listelerim",
         messages: "Mesajlar",
@@ -110,7 +111,19 @@ export const trMessages = {
             reviewDetail: "İnceleme",
             birthday: "Doğum Günün",
             notificationSettings: "Bildirim Ayarları",
+            agenda: "Oyun Gündemi",
         },
+    },
+    agenda: {
+        upcoming: "Çıkacaklar",
+        released: "Çıkanlar",
+        emptyUpcoming: "Bu ay için beklenen çıkış bulunamadı.",
+        emptyReleased: "Bu ay için kayıtlı çıkış bulunamadı.",
+        loadError: "Gündem şu anda yüklenemiyor. Lütfen tekrar deneyin.",
+        month: "Ay",
+        year: "Yıl",
+        homeCardTitle: "Oyun Gündemi",
+        homeCardDescription: "Bu ay çıkan ve çıkacak oyunları keşfet.",
     },
     notificationSettings: {
         title: "Bildirim Ayarları",

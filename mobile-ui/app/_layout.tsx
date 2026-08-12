@@ -113,6 +113,8 @@ function RootLayoutNav() {
         <Stack.Screen name="birthday" />
         <Stack.Screen name="lists/[listId]" />
         <Stack.Screen name="my-lists" />
+        {/* Oyun Gundemi: web'deki /agenda ile ayni yol, derin baglanti 1:1 calisir. */}
+        <Stack.Screen name="agenda" />
         <Stack.Screen name="wishlist" />
         <Stack.Screen name="favorites" />
         <Stack.Screen name="my-reports" />

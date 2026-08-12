@@ -421,6 +421,13 @@ export function AppSidebar({ children }: AppSidebarProps) {
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
+          {/* ── Kesif nav (herkese acik) ── */}
+          <View style={styles.navGroup}>
+            <NavRow icon="calendar-outline" label={nav.agenda} onPress={() => navigate('/agenda')} colors={colors} />
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
           {/* ── Birincil nav (sadece giriş yapınca) ── */}
           {isAuthenticated && (
             <View style={styles.navGroup}>

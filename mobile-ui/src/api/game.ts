@@ -1,8 +1,15 @@
 import { axiosInstance } from './client';
 import type { Game, GameApiPaginateParams, DiscoverParams } from '../models/game';
+import type { AgendaContent } from '../models/agenda';
 import type { PaginatedResponse } from '../models/api';
 
 export const gameApi = {
+  agenda: (year: number, month: number) => {
+    return axiosInstance
+      .get<AgendaContent>('/games/agenda', { params: { year, month } })
+      .then((res) => res.data);
+  },
+
   paginate: (params: GameApiPaginateParams) => {
     return axiosInstance
       .get<PaginatedResponse<Game>>('/games', { params })
