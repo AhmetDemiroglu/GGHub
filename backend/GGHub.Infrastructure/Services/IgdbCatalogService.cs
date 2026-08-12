@@ -676,10 +676,40 @@ namespace GGHub.Infrastructure.Services
                     .Select(g => new { Name = g.Name!, Slug = g.Slug ?? SlugifyName(g.Name!) })
                     .ToList());
 
+        /// <summary>
+        /// IGDB platform slug'i -> katalog slug'i. IGDB "win", "ps5", "series-x" derken bizim
+        /// ikonlar ve filtreler "pc", "playstation5", "xbox-series-x" bekliyor; esleme olmadan
+        /// oyun kartlarinda platformlarin cogu gorunmuyordu (olculdu: yalnizca Xbox cikiyordu).
+        /// </summary>
+        private static readonly Dictionary<string, (string Name, string Slug)> PlatformMap = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["win"] = ("PC", "pc"),
+            ["pc"] = ("PC", "pc"),
+            ["linux"] = ("Linux", "linux"),
+            ["mac"] = ("macOS", "macos"),
+            ["ps5"] = ("PlayStation 5", "playstation5"),
+            ["ps4"] = ("PlayStation 4", "playstation4"),
+            ["ps4--1"] = ("PlayStation 4", "playstation4"),
+            ["ps3"] = ("PlayStation 3", "playstation3"),
+            ["psvita"] = ("PS Vita", "ps-vita"),
+            ["series-x"] = ("Xbox Series X", "xbox-series-x"),
+            ["series-x-s"] = ("Xbox Series X", "xbox-series-x"),
+            ["xboxone"] = ("Xbox One", "xbox-one"),
+            ["xbox360"] = ("Xbox 360", "xbox360"),
+            ["switch"] = ("Nintendo Switch", "nintendo-switch"),
+            ["switch2"] = ("Nintendo Switch 2", "nintendo-switch"),
+            ["ios"] = ("iOS", "ios"),
+            ["android"] = ("Android", "android"),
+        };
+
         private static string SerializePlatforms(List<IgdbPlatformDto> platforms) =>
             System.Text.Json.JsonSerializer.Serialize(
                 platforms.Where(p => p.Name != null)
-                    .Select(p => new { Name = p.Abbreviation ?? p.Name!, Slug = p.Slug ?? SlugifyName(p.Name!) })
+                    .Select(p => PlatformMap.TryGetValue(p.Slug ?? string.Empty, out var mapped)
+                        ? new { Name = mapped.Name, Slug = mapped.Slug }
+                        : new { Name = p.Abbreviation ?? p.Name!, Slug = p.Slug ?? SlugifyName(p.Name!) })
+                    .GroupBy(p => p.Slug)
+                    .Select(g => g.First())
                     .ToList());
 
         /// <summary>Ortak baslik katlamasi (parantez/TM/surum eki temizler). Bkz. GameTitleMatcher.</summary>

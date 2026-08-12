@@ -90,6 +90,7 @@ builder.Services.AddHostedService<SteamNewReleasesSyncJob>();
 builder.Services.AddHostedService<RawgUpcomingSyncJob>();
 builder.Services.AddHostedService<IgdbSyncJob>();
 builder.Services.AddHostedService<IgdbEnrichJob>();
+builder.Services.AddHostedService<CatalogDedupeJob>();
 
 // RawgImportJob (genisleme/breadth) BILEREK kayitli degil. 4 stratejide de ~950. sayfada duruyor;
 // oradaki oyunlari RAWG'de 13 kisi eklemis, kendi MinAdded=20 esigimizin altinda. Sayfa 5000'de
