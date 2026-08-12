@@ -70,6 +70,14 @@ namespace GGHub.Infrastructure.Services
                 return gameInDb;
             }
 
+            // Anlik IGDB zenginlestirmesi: kullanicinin actigi oyunun IGDB puani hic
+            // sorulmamissa simdi sorulur (toplu job'i beklemeden). Zaten kontrol edilmisse
+            // hicbir sey yapmaz; hata halinde sessizce gecer.
+            if (gameInDb != null && gameInDb.IgdbCheckedAt == null)
+            {
+                await _igdbCatalog.EnrichGameAsync(gameInDb);
+            }
+
             // DB-first: detay verisi bir kez dolmussa yastan bagimsiz HEMEN don. Eski kural
             // (LastSyncedAt < 1 gun) neredeyse hic saglanmiyordu cunku backfill job bilerek
             // LastSyncedAt yazmiyor; sonuc olarak her detay istegi RAWG'a canli gidiyordu ve

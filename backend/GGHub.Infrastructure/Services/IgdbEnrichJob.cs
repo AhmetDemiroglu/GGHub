@@ -8,20 +8,21 @@ using Microsoft.Extensions.Options;
 namespace GGHub.Infrastructure.Services
 {
     /// <summary>
-    /// IGDB cikis takvimi senkronu. Steam yalnizca PC'yi, RAWG ise (calistiginda) genis ama
-    /// gec guncellenen bir katalogu kapsiyor; konsol ozel yapimlarin gundemde gorunmesini
-    /// saglayan kaynak budur. Kimlik bilgileri girilmemisse job kendini kapatir.
+    /// Mevcut katalogu IGDB puani/eslesmesiyle zenginlestirir. IgdbSyncJob'dan AYRI bir job:
+    /// takvim senkronu binlerce kaydi isledigi icin uzun suruyor ve zenginlestirme sirasi hic
+    /// gelmiyordu (olculdu: puanlar saatlerce bos kaldi). Ayri job'da ikisi paralel ilerler.
+    /// Kuyruk populerlige gore siralidir; ilk kosularda en cok gezilen oyunlar puan kazanir.
     /// </summary>
-    public class IgdbSyncJob : BackgroundService
+    public class IgdbEnrichJob : BackgroundService
     {
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IgdbSettings _settings;
-        private readonly ILogger<IgdbSyncJob> _logger;
+        private readonly ILogger<IgdbEnrichJob> _logger;
 
-        public IgdbSyncJob(
+        public IgdbEnrichJob(
             IServiceScopeFactory scopeFactory,
             IOptions<IgdbSettings> settings,
-            ILogger<IgdbSyncJob> logger)
+            ILogger<IgdbEnrichJob> logger)
         {
             _scopeFactory = scopeFactory;
             _settings = settings.Value;
@@ -34,7 +35,7 @@ namespace GGHub.Infrastructure.Services
                 || string.IsNullOrWhiteSpace(_settings.ClientId)
                 || string.IsNullOrWhiteSpace(_settings.ClientSecret))
             {
-                _logger.LogInformation("[IGDB] Kapali veya kimlik bilgileri yok; job calismayacak.");
+                _logger.LogInformation("[IGDB-Enrich] Kapali veya kimlik bilgileri yok; job calismayacak.");
                 return;
             }
 
@@ -44,11 +45,13 @@ namespace GGHub.Infrastructure.Services
                 {
                     using var scope = _scopeFactory.CreateScope();
                     var service = scope.ServiceProvider.GetRequiredService<IIgdbCatalogService>();
+                    var processed = await service.EnrichExistingGamesAsync(_settings.EnrichBatchSize, stoppingToken);
 
-                    // Yalnizca cikis takvimi (gundemi besler). Katalog zenginlestirmesi
-                    // AYRI job'da (IgdbEnrichJob): burada olsaydi uzun suren takvim senkronunu
-                    // beklemek zorunda kalir ve puanlar saatlerce bos kalirdi.
-                    await service.SyncReleaseWindowAsync(stoppingToken);
+                    // Kuyruk doluyken hizli devam et, bosaldiginda uzun uyu.
+                    var wait = processed >= _settings.EnrichBatchSize
+                        ? TimeSpan.FromMinutes(1)
+                        : TimeSpan.FromHours(_settings.RunIntervalHours);
+                    await Task.Delay(wait, stoppingToken);
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {
@@ -56,10 +59,9 @@ namespace GGHub.Infrastructure.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "[IGDB] Kosu beklenmedik hatayla bitti; sonraki periyotta tekrar denenecek.");
+                    _logger.LogError(ex, "[IGDB-Enrich] Kosu hatayla bitti; tekrar denenecek.");
+                    await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
                 }
-
-                await Task.Delay(TimeSpan.FromHours(_settings.RunIntervalHours), stoppingToken);
             }
         }
     }

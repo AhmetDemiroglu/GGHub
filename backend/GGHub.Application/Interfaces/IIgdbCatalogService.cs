@@ -34,5 +34,13 @@ namespace GGHub.Application.Interfaces
         /// bilinmeyen bir oyunun detay sayfasi acildiginda devreye girer. Bulunamazsa null.
         /// </summary>
         Task<Core.Entities.Game?> IngestBySlugOrNameAsync(string slugOrName, CancellationToken ct = default);
+
+        /// <summary>
+        /// ANLIK zenginlestirme: DB'de bulunan bir oyunun IGDB puani/eslesmesi eksikse
+        /// (IgdbCheckedAt null) simdi cekip yazar. Detay sayfasi acildiginda calisir, boylece
+        /// kullanicinin gezdigi oyunlar toplu job'i beklemeden puan kazanir.
+        /// Zaten kontrol edilmis oyunlarda hicbir sey yapmaz (tek if, sifir maliyet).
+        /// </summary>
+        Task EnrichGameAsync(Core.Entities.Game game, CancellationToken ct = default);
     }
 }

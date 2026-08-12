@@ -249,6 +249,49 @@ namespace GGHub.Infrastructure.Services
             return await _context.Games.FirstOrDefaultAsync(g => g.IgdbId == match.Id, ct);
         }
 
+        public async Task EnrichGameAsync(Game game, CancellationToken ct = default)
+        {
+            // Zaten kontrol edilmis veya kaynagi IGDB olan satirda is yok.
+            if (!IsConfigured || game.IgdbCheckedAt != null || game.IgdbId != null) return;
+
+            try
+            {
+                var safeName = game.Name.Replace("\"", string.Empty);
+                var matches = await QueryGamesAsync(
+                    $"fields id, name, total_rating, total_rating_count, first_release_date; where name = \"{safeName}\"; limit 5;", ct);
+
+                var match = PickBestMatch(matches, game.Name, game.Released);
+
+                var tracked = await _context.Games.FirstOrDefaultAsync(g => g.Id == game.Id, ct);
+                if (tracked == null) return;
+
+                tracked.IgdbCheckedAt = DateTime.UtcNow;
+
+                if (match != null && !await _context.Games.AnyAsync(g => g.IgdbId == match.Id && g.Id != tracked.Id, ct))
+                {
+                    tracked.IgdbId = match.Id;
+                    if (match.TotalRating > 0)
+                    {
+                        tracked.IgdbRating = Math.Round(match.TotalRating.Value, 1);
+                        tracked.IgdbRatingCount = match.TotalRatingCount;
+                    }
+                }
+
+                await _context.SaveChangesAsync(ct);
+
+                // Cagiran taraf AsNoTracking kopyayla calisiyor olabilir; alanlari ona da yaz.
+                game.IgdbId = tracked.IgdbId;
+                game.IgdbRating = tracked.IgdbRating;
+                game.IgdbRatingCount = tracked.IgdbRatingCount;
+                game.IgdbCheckedAt = tracked.IgdbCheckedAt;
+            }
+            catch (Exception ex)
+            {
+                // Detay sayfasi IGDB yuzunden ASLA dusmemeli.
+                _logger.LogWarning(ex, "[IGDB] Anlik zenginlestirme basarisiz ({Name})", game.Name);
+            }
+        }
+
         /// <summary>IGDB games ucuna Apicalypse sorgusu atar. Hata halinde null.</summary>
         private async Task<List<IgdbGameDto>?> QueryGamesAsync(string query, CancellationToken ct)
         {
