@@ -21,5 +21,18 @@ namespace GGHub.Application.Interfaces
         /// eski oyunlarda da dorduncu puan kaynagi gorunur. Islenen oyun sayisini dondurur.
         /// </summary>
         Task<int> EnrichExistingGamesAsync(int batchSize, CancellationToken ct = default);
+
+        /// <summary>
+        /// ANLIK arama: terimi IGDB'de arar, DB'de olmayan eslesmeleri katalogla. Steam yalnizca
+        /// PC'yi kapsadigi ve RAWG kesintiye acik oldugu icin konsol yapimlarinda tek yol budur.
+        /// Ingest edilen oyun sayisini dondurur; hata halinde 0 (arama akisi asla dusmez).
+        /// </summary>
+        Task<int> SearchAndIngestAsync(string term, int maxIngest, CancellationToken ct = default);
+
+        /// <summary>
+        /// ANLIK detay: slug veya isimden tek oyunu IGDB'den katalogla. RAWG erisilemezken
+        /// bilinmeyen bir oyunun detay sayfasi acildiginda devreye girer. Bulunamazsa null.
+        /// </summary>
+        Task<Core.Entities.Game?> IngestBySlugOrNameAsync(string slugOrName, CancellationToken ct = default);
     }
 }

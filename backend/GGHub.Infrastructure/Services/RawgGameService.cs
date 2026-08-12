@@ -26,8 +26,9 @@ namespace GGHub.Infrastructure.Services
         private readonly IMemoryCache _cache;
         private readonly ISteamCatalogService _steamCatalog;
         private readonly SteamCatalogSettings _steamSettings;
+        private readonly IIgdbCatalogService _igdbCatalog;
 
-        public RawgGameService(IHttpClientFactory httpClientFactory, IOptions<RawgApiSettings> apiSettings, GGHubDbContext context, IGeminiService geminiService, ILogger<RawgGameService> logger, IMemoryCache cache, ISteamCatalogService steamCatalog, IOptions<SteamCatalogSettings> steamSettings)
+        public RawgGameService(IHttpClientFactory httpClientFactory, IOptions<RawgApiSettings> apiSettings, GGHubDbContext context, IGeminiService geminiService, ILogger<RawgGameService> logger, IMemoryCache cache, ISteamCatalogService steamCatalog, IOptions<SteamCatalogSettings> steamSettings, IIgdbCatalogService igdbCatalog)
         {
             // "Rawg" adli client: kisa timeout + retry + circuit breaker (WebAPI Program.cs).
             // Worker gibi bu adi kaydetmeyen host'larda CreateClient bos varsayilan client dondurur,
@@ -40,6 +41,7 @@ namespace GGHub.Infrastructure.Services
             _cache = cache;
             _steamCatalog = steamCatalog;
             _steamSettings = steamSettings.Value;
+            _igdbCatalog = igdbCatalog;
         }
         public async Task<Game?> GetGameBySlugOrIdAsync(string idOrSlug)
         {
@@ -88,16 +90,30 @@ namespace GGHub.Infrastructure.Services
             }
             catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
-                // RAWG kesin olarak "yok" dedi: 404 semantigi korunur.
+                // RAWG kesin olarak "yok" dedi. Oyun IGDB'de olabilir (konsol yapimlari);
+                // iki katalog birbirinin bosluklarini kapatiyor.
+                if (!isId)
+                {
+                    var fromIgdb = await _igdbCatalog.IngestBySlugOrNameAsync(idOrSlug);
+                    if (fromIgdb != null) return fromIgdb;
+                }
                 return null;
             }
             catch (Exception ex)
             {
                 // Timeout, circuit breaker, 5xx, bozuk JSON... hepsi ayni anlama gelir:
-                // katalog su an erisilemez. DB'de bayat da olsa kopya varsa onu don;
-                // yoksa 404 (yalan) yerine 503'e map'lenecek tipli istisna firlat.
+                // katalog su an erisilemez. DB'de bayat da olsa kopya varsa onu don.
                 _logger.LogWarning(ex, "[RawgGameService] RAWG erisilemedi ({IdOrSlug}); DB kopyasina dusuluyor.", idOrSlug);
                 if (gameInDb != null) return gameInDb;
+
+                // RAWG coktugunde IGDB devreye girer: kullanici bilinmeyen bir oyunun sayfasini
+                // acmis olabilir ve bu tek canli kaynak.
+                if (!isId)
+                {
+                    var fromIgdb = await _igdbCatalog.IngestBySlugOrNameAsync(idOrSlug);
+                    if (fromIgdb != null) return fromIgdb;
+                }
+
                 throw new ExternalCatalogUnavailableException($"RAWG erisilemedi: {idOrSlug}", ex);
             }
 
@@ -226,10 +242,19 @@ namespace GGHub.Infrastructure.Services
             // SearchAndIngestAsync hatalari sessizce yutar; arama asla Steam yuzunden dusmez.
             if (!string.IsNullOrWhiteSpace(queryParams.Search)
                 && queryParams.Page == 1
-                && totalCount < 3
-                && _steamSettings.OnDemandEnabled)
+                && totalCount < 3)
             {
-                var ingestedCount = await _steamCatalog.SearchAndIngestAsync(queryParams.Search.Trim(), _steamSettings.OnDemandMaxIngest);
+                var term = queryParams.Search.Trim();
+                var ingestedCount = 0;
+
+                // Steam: PC oyunlari (magaza sayfasi olan her sey).
+                if (_steamSettings.OnDemandEnabled)
+                    ingestedCount += await _steamCatalog.SearchAndIngestAsync(term, _steamSettings.OnDemandMaxIngest);
+
+                // IGDB: Steam'in kapsamadigi konsol yapimlari + RAWG coktugunde yedek kaynak.
+                // Iki kaynak birbirinin bosluklarini kapatiyor.
+                ingestedCount += await _igdbCatalog.SearchAndIngestAsync(term, 3);
+
                 if (ingestedCount > 0)
                 {
                     totalCount = await query.CountAsync();

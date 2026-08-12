@@ -21,14 +21,21 @@ namespace GGHub.Infrastructure.Settings
         /// <summary>Bugunden kac ay ilerisi taransin.</summary>
         public int MonthsAhead { get; set; } = 18;
 
-        /// <summary>Gecmise donuk kac ay taransin (yeni cikanlar icin).</summary>
-        public int MonthsBehind { get; set; } = 2;
+        /// <summary>
+        /// Gecmise donuk kac ay taransin. RAWG import job'i durdurulmus oldugu icin katalogda
+        /// donemsel BOSLUKLAR var (olculdu: Temmuz 2026'da hic oyun yoktu, Haziran'da 678).
+        /// IGDB bu delikleri kapatan tek calisan kaynak; pencere genis tutuluyor.
+        /// </summary>
+        public int MonthsBehind { get; set; } = 18;
 
         /// <summary>IGDB sayfa boyutu (uc en fazla 500 kabul eder).</summary>
         public int PageSize { get; set; } = 500;
 
-        /// <summary>Tek kosuda cekilecek azami sayfa.</summary>
-        public int MaxPagesPerRun { get; set; } = 6;
+        /// <summary>
+        /// Tek kosuda cekilecek azami sayfa. Zaten islenmis kayitlar tek toplu sorguyla
+        /// atlandigi icin yuksek deger pahali degil; ilk dolum boylece hizli tamamlanir.
+        /// </summary>
+        public int MaxPagesPerRun { get; set; } = 30;
 
         /// <summary>IGDB limiti 4 istek/sn; 350 ms guvenli aralik.</summary>
         public int DelayBetweenRequestsMs { get; set; } = 350;

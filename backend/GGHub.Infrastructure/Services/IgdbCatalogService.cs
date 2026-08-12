@@ -120,6 +120,21 @@ namespace GGHub.Infrastructure.Services
 
                 if (rows == null || rows.Count == 0) break;
 
+                // Sayfa basina TEK toplu okuma: eskiden her kayit icin ayri ILIKE sorgusu
+                // atiliyordu (500 kayit x uzak Postgres = dakikalar). IgdbId'ler tek sorguda
+                // cekilip bellekte eslestiriliyor.
+                var pageIgdbIds = rows
+                    .Select(r => (r.Game?.VersionParent ?? r.Game?.ParentGame)?.Id ?? r.Game?.Id ?? 0)
+                    .Where(id => id > 0)
+                    .Distinct()
+                    .ToList();
+                var knownIgdbIds = (await _context.Games
+                    .AsNoTracking()
+                    .Where(g => g.IgdbId != null && pageIgdbIds.Contains(g.IgdbId.Value))
+                    .Select(g => new { g.IgdbId, g.Released })
+                    .ToListAsync(ct))
+                    .ToDictionary(x => x.IgdbId!.Value, x => x.Released);
+
                 foreach (var row in rows)
                 {
                     if (row.Game == null || row.Date == null || string.IsNullOrWhiteSpace(row.Game.Name)) continue;
@@ -151,6 +166,10 @@ namespace GGHub.Infrastructure.Services
                         };
                     }
 
+                    // Zaten bagli ve tarihi ayni olan kayit icin hicbir sorgu atma (en sik durum).
+                    if (knownIgdbIds.TryGetValue(game.Id, out var knownReleased) && knownReleased == released)
+                        continue;
+
                     var outcome = await UpsertAsync(game, released, ct);
                     if (outcome == UpsertOutcome.Added) added++;
                     else if (outcome == UpsertOutcome.Updated) updated++;
@@ -162,6 +181,97 @@ namespace GGHub.Infrastructure.Services
 
             _logger.LogInformation("[IGDB] Senkron bitti: {Added} yeni, {Updated} guncellendi.", added, updated);
             return (added, updated);
+        }
+
+        /// <summary>Anlik arama + ingest yolunda kullanilan ortak alan listesi.</summary>
+        private const string GameFields =
+            "fields id, name, slug, summary, first_release_date, total_rating, total_rating_count, hypes, " +
+            "cover.image_id, genres.name, genres.slug, platforms.name, platforms.abbreviation, platforms.slug, " +
+            "involved_companies.company.name, involved_companies.company.slug, involved_companies.developer, " +
+            "involved_companies.publisher, websites.url, websites.category;";
+
+        public async Task<int> SearchAndIngestAsync(string term, int maxIngest, CancellationToken ct = default)
+        {
+            if (!IsConfigured || string.IsNullOrWhiteSpace(term) || maxIngest <= 0) return 0;
+
+            var missCacheKey = $"igdb-search-miss:{term.ToLowerInvariant()}";
+            if (_cache.TryGetValue(missCacheKey, out _)) return 0;
+
+            var matches = await QueryGamesAsync($"{GameFields} search \"{term.Replace("\"", string.Empty)}\"; limit 10;", ct);
+            if (matches == null || matches.Count == 0)
+            {
+                _cache.Set(missCacheKey, true, TimeSpan.FromMinutes(15));
+                return 0;
+            }
+
+            var ingested = 0;
+            foreach (var match in matches)
+            {
+                if (ingested >= maxIngest) break;
+                if (string.IsNullOrWhiteSpace(match.Name) || match.Cover?.ImageId == null) continue;
+
+                var existing = await _context.Games.AsNoTracking().FirstOrDefaultAsync(g => g.IgdbId == match.Id, ct);
+                if (existing != null) continue;
+
+                var released = match.FirstReleaseDate != null
+                    ? DateTimeOffset.FromUnixTimeSeconds(match.FirstReleaseDate.Value).UtcDateTime.ToString("yyyy-MM-dd")
+                    : null;
+
+                var outcome = await UpsertAsync(match, released, ct);
+                if (outcome == UpsertOutcome.Added) ingested++;
+            }
+
+            if (ingested == 0) _cache.Set(missCacheKey, true, TimeSpan.FromMinutes(15));
+            return ingested;
+        }
+
+        public async Task<Game?> IngestBySlugOrNameAsync(string slugOrName, CancellationToken ct = default)
+        {
+            if (!IsConfigured || string.IsNullOrWhiteSpace(slugOrName)) return null;
+
+            var safe = slugOrName.Replace("\"", string.Empty);
+            // Once slug ile birebir dene (web/mobil linkleri slug tasiyor), sonra serbest arama.
+            var matches = await QueryGamesAsync($"{GameFields} where slug = \"{safe}\"; limit 1;", ct);
+            if (matches == null || matches.Count == 0)
+            {
+                var asName = safe.Replace('-', ' ');
+                matches = await QueryGamesAsync($"{GameFields} search \"{asName}\"; limit 5;", ct);
+            }
+
+            var match = matches?.FirstOrDefault(m => !string.IsNullOrWhiteSpace(m.Name));
+            if (match == null) return null;
+
+            var released = match.FirstReleaseDate != null
+                ? DateTimeOffset.FromUnixTimeSeconds(match.FirstReleaseDate.Value).UtcDateTime.ToString("yyyy-MM-dd")
+                : null;
+
+            await UpsertAsync(match, released, ct);
+            return await _context.Games.FirstOrDefaultAsync(g => g.IgdbId == match.Id, ct);
+        }
+
+        /// <summary>IGDB games ucuna Apicalypse sorgusu atar. Hata halinde null.</summary>
+        private async Task<List<IgdbGameDto>?> QueryGamesAsync(string query, CancellationToken ct)
+        {
+            var token = await GetAccessTokenAsync(ct);
+            if (token == null) return null;
+
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Post, $"{_settings.BaseUrl}games");
+                request.Headers.Add("Client-ID", _settings.ClientId);
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                request.Content = new StringContent(query, Encoding.UTF8, "text/plain");
+
+                var response = await _httpClient.SendAsync(request, ct);
+                if (!response.IsSuccessStatusCode) return null;
+
+                return await response.Content.ReadFromJsonAsync<List<IgdbGameDto>>(cancellationToken: ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[IGDB] Anlik sorgu hatasi");
+                return null;
+            }
         }
 
         public async Task<int> EnrichExistingGamesAsync(int batchSize, CancellationToken ct = default)
@@ -303,7 +413,7 @@ namespace GGHub.Infrastructure.Services
 
         private enum UpsertOutcome { Skipped, Added, Updated }
 
-        private async Task<UpsertOutcome> UpsertAsync(IgdbGameDto dto, string released, CancellationToken ct)
+        private async Task<UpsertOutcome> UpsertAsync(IgdbGameDto dto, string? released, CancellationToken ct)
         {
             var syntheticRawgId = -(IgdbRawgIdOffset + dto.Id);
 
@@ -352,6 +462,14 @@ namespace GGHub.Infrastructure.Services
                     dirty = true;
                 }
 
+                // Populerlik sinyali yoksa IGDB'ninkini yaz (gundem vitrini bunu kullaniyor).
+                var igdbPopularity = dto.Hypes ?? (dto.TotalRatingCount is > 0 ? dto.TotalRatingCount * 3 : null);
+                if (igdbPopularity is > 0 && (existing.RawgAdded ?? 0) < igdbPopularity)
+                {
+                    existing.RawgAdded = igdbPopularity;
+                    dirty = true;
+                }
+
                 if (!dirty) return UpsertOutcome.Skipped;
 
                 try
@@ -393,14 +511,19 @@ namespace GGHub.Infrastructure.Services
                 CoverImage = dto.Cover?.ImageId != null ? CoverUrl(dto.Cover.ImageId, "t_cover_big") : null,
                 Description = dto.Summary,
                 WebsiteUrl = officialSite,
-                // Cikmamis oyunda puan gecersizdir; cikmissa IGDB'nin elestirmen ortalamasi kullanilir.
-                Metacritic = string.CompareOrdinal(released, DateTime.UtcNow.ToString("yyyy-MM-dd")) <= 0 && dto.AggregatedRating > 0
+                // Cikmamis (veya tarihi bilinmeyen) oyunda puan gecersizdir; cikmissa IGDB'nin
+                // elestirmen ortalamasi kullanilir.
+                Metacritic = released != null
+                    && string.CompareOrdinal(released, DateTime.UtcNow.ToString("yyyy-MM-dd")) <= 0
+                    && dto.AggregatedRating > 0
                     ? (int)Math.Round(dto.AggregatedRating.Value)
                     : null,
                 Rating = dto.TotalRating > 0 ? Math.Round(dto.TotalRating.Value / 20.0, 2) : null,
                 IgdbRating = dto.TotalRating > 0 ? Math.Round(dto.TotalRating.Value, 1) : null,
                 IgdbRatingCount = dto.TotalRatingCount,
-                RawgAdded = dto.Hypes,
+                // Populerlik sinyali: hypes (bekleyen kullanici) yoksa oy sayisindan turetilir;
+                // ikisi de yoksa gundem vitrini bu oyunu one cikaramaz (dogru davranis).
+                RawgAdded = dto.Hypes ?? (dto.TotalRatingCount is > 0 ? dto.TotalRatingCount * 3 : null),
                 GenresJson = dto.Genres?.Count > 0 ? SerializeGenres(dto.Genres) : null,
                 PlatformsJson = dto.Platforms?.Count > 0 ? SerializePlatforms(dto.Platforms) : null,
                 DevelopersJson = developers.Count > 0 ? System.Text.Json.JsonSerializer.Serialize(developers) : null,
@@ -426,7 +549,7 @@ namespace GGHub.Infrastructure.Services
             }
         }
 
-        private async Task<Game?> FindByNameAndYearAsync(string name, string released, CancellationToken ct)
+        private async Task<Game?> FindByNameAndYearAsync(string name, string? released, CancellationToken ct)
         {
             var candidates = await _context.Games
                 .Where(g => EF.Functions.ILike(g.Name, name))
@@ -436,7 +559,7 @@ namespace GGHub.Infrastructure.Services
             if (candidates.Count == 0) return null;
 
             var normalized = NormalizeName(name);
-            var year = released.Length >= 4 && int.TryParse(released[..4], out var y) ? y : (int?)null;
+            var year = released != null && released.Length >= 4 && int.TryParse(released[..4], out var y) ? y : (int?)null;
 
             foreach (var candidate in candidates)
             {

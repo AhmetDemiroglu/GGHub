@@ -88,9 +88,16 @@ namespace GGHub.Infrastructure.Services
                 .Take(_settings.MaxAppDetailsPerRun)
                 .ToList();
 
+            // Katalogda ZATEN olan oyunlarin populerlik skorunu da tazele. Onceki surum yalnizca
+            // yeni oyunlara skor yaziyordu; sonuc olarak daha once eklenmis buyuk yapimlar
+            // sinyalsiz kaliyor ve gundem vitrini tarih sirasina dusuyordu. Bu yol ekstra HTTP
+            // istegi ATMAZ, sadece DB gunceller.
+            var refreshed = await RefreshPopularityAsync(context, idList, knownSet, ct);
+
             if (missing.Count == 0)
             {
-                _logger.LogInformation("[SteamSync] {Total} one cikan oyunun tamami zaten katalogda.", idList.Count);
+                _logger.LogInformation("[SteamSync] {Total} one cikan oyunun tamami zaten katalogda ({Refreshed} skor tazelendi).",
+                    idList.Count, refreshed);
                 return;
             }
 
@@ -122,8 +129,41 @@ namespace GGHub.Infrastructure.Services
             }
 
             _logger.LogInformation(
-                "[SteamSync] Kosu bitti: {Missing} aday islendi, {Ingested} yeni oyun, {Linked} mevcut satira baglandi.",
-                missing.Count, ingested, linked);
+                "[SteamSync] Kosu bitti: {Missing} aday islendi, {Ingested} yeni oyun, {Linked} mevcut satira baglandi, {Refreshed} skor tazelendi.",
+                missing.Count, ingested, linked, refreshed);
+        }
+
+        /// <summary>
+        /// Steam listesindeki siradan turetilen populerlik skorunu, katalogda zaten bulunan
+        /// satirlara yazar. Skor yalnizca YUKSELIR (baska kaynagin daha guclu sinyalini ezmez).
+        /// </summary>
+        private static async Task<int> RefreshPopularityAsync(
+            GGHubDbContext context, List<int> idList, HashSet<int> knownSet, CancellationToken ct)
+        {
+            var knownIds = idList.Where(knownSet.Contains).ToList();
+            if (knownIds.Count == 0) return 0;
+
+            var rankByAppId = idList
+                .Select((id, index) => (id, index))
+                .ToDictionary(x => x.id, x => x.index);
+
+            var games = await context.Games
+                .Where(g => g.SteamAppId != null && knownIds.Contains(g.SteamAppId.Value))
+                .ToListAsync(ct);
+
+            var changed = 0;
+            foreach (var game in games)
+            {
+                var rank = rankByAppId.TryGetValue(game.SteamAppId!.Value, out var r) ? r : idList.Count;
+                var score = Math.Max(1000 - rank * 5, 60);
+                if ((game.RawgAdded ?? 0) >= score) continue;
+
+                game.RawgAdded = score;
+                changed++;
+            }
+
+            if (changed > 0) await context.SaveChangesAsync(ct);
+            return changed;
         }
     }
 }

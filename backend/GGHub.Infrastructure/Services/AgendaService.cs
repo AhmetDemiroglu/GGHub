@@ -114,8 +114,7 @@ namespace GGHub.Infrastructure.Services
             // Vitrin: tarih sirasi DEGIL, populerlik sirasi. Once yaklasan cikislar (kullanici
             // "neler geliyor" diye bakiyor), yer kalirsa donemin en cok konusulan cikanlari.
             var highlights = upcomingGames
-                .OrderByDescending(g => g.RawgAdded ?? 0)
-                .ThenByDescending(g => g.Dto.Metacritic ?? 0)
+                .OrderByDescending(g => PopularityScore(g.RawgAdded, g.Dto))
                 .Take(3)
                 .Select(g => g.Dto)
                 .ToList();
@@ -123,8 +122,7 @@ namespace GGHub.Infrastructure.Services
             if (highlights.Count < 3)
             {
                 var fillers = releasedGames
-                    .OrderByDescending(g => g.RawgAdded ?? 0)
-                    .ThenByDescending(g => g.Dto.Metacritic ?? 0)
+                    .OrderByDescending(g => PopularityScore(g.RawgAdded, g.Dto))
                     .Select(g => g.Dto)
                     .Where(dto => highlights.All(h => h.Id != dto.Id))
                     .Take(3 - highlights.Count);
@@ -194,6 +192,26 @@ namespace GGHub.Infrastructure.Services
                 Platforms = DeserializeList<PlatformDto>(g.PlatformsJson),
                 Genres = DeserializeList<GenreDto>(g.GenresJson),
             }).ToList();
+        }
+
+        /// <summary>
+        /// Cok kaynakli populerlik skoru. Tek bir sinyale (RAWG "added") guvenmek yanlisti:
+        /// Steam ve IGDB kaynakli satirlarda o alan bos oldugu icin vitrin siralamasi sessizce
+        /// TARIH sirasina dusuyor ve en yakin tarihli rastgele indie oyunlar one cikiyordu.
+        /// Hangi kaynaktan gelirse gelsin bir oyunun "konusulurlugu" burada ortak olcege cekilir.
+        /// </summary>
+        private static double PopularityScore(int? rawgAdded, GameDto dto)
+        {
+            var scores = new[]
+            {
+                (double)(rawgAdded ?? 0),
+                (dto.IgdbRatingCount ?? 0) * 20.0,
+                (dto.Metacritic ?? 0) * 12.0,
+                (dto.IgdbRating ?? 0) * 6.0,
+                (dto.Rating ?? 0) * 120.0,
+                dto.GghubRatingCount * 50.0,
+            };
+            return scores.Max();
         }
 
         private static List<T> DeserializeList<T>(string? json)
