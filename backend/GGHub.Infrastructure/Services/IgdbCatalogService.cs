@@ -77,13 +77,19 @@ namespace GGHub.Infrastructure.Services
 
                 // Apicalypse sorgusu. category=0 => tam tarih (gun bazli); gundem sayfasi
                 // ancak tam tarihli cikislari gosterebiliyor. Hypes esigi cop kayitlari eler.
+                // date_format = 0 => gun bazli TAM tarih (gundem ancak bunlari gosterebiliyor).
+                // hypes esigi BILEREK yok: IGDB'de buyuk yapimlarda bile bu alan cogu zaman bos
+                // (Marvel's Wolverine ornegi) ve esik konunca tam da beklenen oyunlar eleniyordu.
+                // Kalite kapisi olarak kapak sarti yeterli; siralama/vitrin zaten populerlige gore.
                 var query = new StringBuilder()
-                    .Append("fields date, category, game.id, game.name, game.slug, game.summary, game.hypes, ")
+                    .Append("fields date, date_format, human, game.id, game.name, game.slug, game.summary, game.hypes, ")
                     .Append("game.total_rating, game.aggregated_rating, game.cover.image_id, game.genres.name, game.genres.slug, ")
                     .Append("game.platforms.name, game.platforms.abbreviation, game.platforms.slug, ")
                     .Append("game.involved_companies.company.name, game.involved_companies.developer, game.involved_companies.publisher, ")
-                    .Append("game.websites.url, game.websites.category; ")
-                    .Append($"where date >= {from} & date <= {to} & category = 0 & game.hypes >= {_settings.MinHypes} & game.cover != null; ")
+                    .Append("game.websites.url, game.websites.category, ")
+                    .Append("game.version_parent.id, game.version_parent.name, game.version_parent.slug, ")
+                    .Append("game.parent_game.id, game.parent_game.name, game.parent_game.slug; ")
+                    .Append($"where date >= {from} & date <= {to} & date_format = 0 & game.cover != null; ")
                     .Append("sort date asc; ")
                     .Append($"limit {_settings.PageSize}; offset {page * _settings.PageSize};")
                     .ToString();
@@ -119,7 +125,32 @@ namespace GGHub.Infrastructure.Services
                     if (row.Game == null || row.Date == null || string.IsNullOrWhiteSpace(row.Game.Name)) continue;
 
                     var released = DateTimeOffset.FromUnixTimeSeconds(row.Date.Value).UtcDateTime.ToString("yyyy-MM-dd");
-                    var outcome = await UpsertAsync(row.Game, released, ct);
+
+                    // Surum kaydi ("... Digital Deluxe Edition") ise katalogda ANA oyunu tazele:
+                    // buyuk yapimlarda tarih bazen yalnizca surum kaydinda bulunuyor.
+                    var game = row.Game;
+                    var parent = game.VersionParent ?? game.ParentGame;
+                    if (parent != null && !string.IsNullOrWhiteSpace(parent.Name))
+                    {
+                        game = new IgdbGameDto
+                        {
+                            Id = parent.Id,
+                            Name = parent.Name,
+                            Slug = parent.Slug,
+                            // Ana oyun kaydinda olmayan zengin alanlar surumden devralinir.
+                            Summary = game.Summary,
+                            Hypes = game.Hypes,
+                            TotalRating = game.TotalRating,
+                            AggregatedRating = game.AggregatedRating,
+                            Cover = game.Cover,
+                            Genres = game.Genres,
+                            Platforms = game.Platforms,
+                            InvolvedCompanies = game.InvolvedCompanies,
+                            Websites = game.Websites,
+                        };
+                    }
+
+                    var outcome = await UpsertAsync(game, released, ct);
                     if (outcome == UpsertOutcome.Added) added++;
                     else if (outcome == UpsertOutcome.Updated) updated++;
                 }

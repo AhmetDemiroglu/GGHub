@@ -26,9 +26,16 @@ namespace GGHub.Infrastructure.Dtos
         [JsonPropertyName("date")]
         public long? Date { get; set; }
 
-        /// <summary>0=YYYYMMMMDD (tam tarih), 1=YYYYMMM (ay), 2=YYYY, 3..6=ceyrek, 7=TBD.</summary>
-        [JsonPropertyName("category")]
-        public int Category { get; set; }
+        /// <summary>
+        /// 0=YYYYMMMMDD (tam tarih), 1=YYYYMMM (ay), 2=YYYY, 3..6=ceyrek, 7=TBD.
+        /// DIKKAT: eski alan adi "category" idi ve IGDB artik onu DONDURMUYOR; "category = 0"
+        /// filtresi hicbir kaydi eslestirmedigi icin senkron sessizce bos donuyordu.
+        /// </summary>
+        [JsonPropertyName("date_format")]
+        public int DateFormat { get; set; }
+
+        [JsonPropertyName("human")]
+        public string? Human { get; set; }
 
         [JsonPropertyName("game")]
         public IgdbGameDto? Game { get; set; }
@@ -77,6 +84,17 @@ namespace GGHub.Infrastructure.Dtos
 
         [JsonPropertyName("websites")]
         public List<IgdbWebsiteDto>? Websites { get; set; }
+
+        /// <summary>
+        /// "Digital Deluxe Edition" gibi SURUM kayitlarinin ana oyunu. Buyuk yapimlarda cikis
+        /// tarihi bazen yalnizca surum kaydinda bulunuyor (ornek: Marvel's Wolverine).
+        /// Boyle durumlarda katalogda ana oyunun adi kullanilir, surum adi degil.
+        /// </summary>
+        [JsonPropertyName("version_parent")]
+        public IgdbGameDto? VersionParent { get; set; }
+
+        [JsonPropertyName("parent_game")]
+        public IgdbGameDto? ParentGame { get; set; }
     }
 
     public class IgdbCoverDto
