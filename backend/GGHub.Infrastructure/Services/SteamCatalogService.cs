@@ -128,7 +128,13 @@ namespace GGHub.Infrastructure.Services
             if (steamAppId <= 0) return null;
 
             var existing = await _context.Games.FirstOrDefaultAsync(g => g.SteamAppId == steamAppId, ct);
-            if (existing != null) return existing;
+            if (existing != null)
+            {
+                // Zaten bagli satirda bile tarih tazelenmeli: ertelemeler sik ve RAWG'in
+                // "yil sonu" placeholder'lari (orn. 2026-12-31) gercek tarihi gizliyor.
+                await RefreshReleaseDateFromSteamAsync(existing, steamAppId, popularityHint, ct);
+                return existing;
+            }
 
             SteamAppDataDto? data;
             try
@@ -152,8 +158,9 @@ namespace GGHub.Infrastructure.Services
             var released = ParseReleaseDate(data.ReleaseDate);
             var releaseYear = released != null ? int.Parse(released[..4], CultureInfo.InvariantCulture) : (int?)null;
 
-            // Isim+yil ile mevcut bir RAWG satiri varsa yeni satir acma; appid'yi ona bagla.
-            var linked = await TryLinkToExistingGameAsync(data.Name, releaseYear, steamAppId, ct);
+            // Isim+yil ile mevcut bir RAWG satiri varsa yeni satir acma; appid'yi ona bagla
+            // ve tarihini Steam'in (yayinci verisi) tarihiyle tazele.
+            var linked = await TryLinkToExistingGameAsync(data.Name, releaseYear, steamAppId, released, popularityHint, ct);
             if (linked != null) return linked;
 
             var newGame = BuildGame(data, released);
@@ -253,7 +260,66 @@ namespace GGHub.Infrastructure.Services
             }
         }
 
-        private async Task<Game?> TryLinkToExistingGameAsync(string name, int? releaseYear, int steamAppId, CancellationToken ct)
+        /// <summary>
+        /// Steam'in tarihi mevcut kaydin tarihine tercih edilmeli mi? Kural: Steam tam tarih
+        /// verdiyse ve mevcut kayit ya tarihsizse ya da taraflardan biri GELECEK tarihliyse
+        /// (yani erteleme/placeholder ihtimali varsa) evet. Cikmis eski kayitlarin tarihine
+        /// dokunulmaz; oradaki fark cogunlukla bolgesel yeniden yayimdir.
+        /// </summary>
+        private static bool ShouldPreferSteamDate(string? currentReleased, string? steamReleased)
+        {
+            if (string.IsNullOrEmpty(steamReleased)) return false;
+            if (string.IsNullOrEmpty(currentReleased)) return true;
+            if (currentReleased == steamReleased) return false;
+
+            var today = DateTime.UtcNow.ToString("yyyy-MM-dd");
+            return string.CompareOrdinal(currentReleased, today) > 0
+                || string.CompareOrdinal(steamReleased, today) > 0;
+        }
+
+        /// <summary>SteamAppId'si zaten bagli satirlarda tarihi/populerligi tazeler.</summary>
+        private async Task RefreshReleaseDateFromSteamAsync(Game existing, int steamAppId, int? popularityHint, CancellationToken ct)
+        {
+            // Cikmis ve tarihi makul gorunen kayitlar icin ekstra istek atmaya gerek yok.
+            var today = DateTime.UtcNow.ToString("yyyy-MM-dd");
+            var needsCheck = string.IsNullOrEmpty(existing.Released)
+                || string.CompareOrdinal(existing.Released, today) > 0;
+            if (!needsCheck && popularityHint is not > 0) return;
+
+            string? steamReleased = null;
+            if (needsCheck)
+            {
+                try
+                {
+                    var url = $"{_settings.BaseUrl}appdetails?appids={steamAppId}&cc={_settings.Country}&l={_settings.Language}";
+                    var envelope = await _httpClient.GetFromJsonAsync<Dictionary<string, SteamAppDetailsEnvelopeDto>>(url, ct);
+                    if (envelope != null && envelope.TryGetValue(steamAppId.ToString(), out var entry) && entry.Success)
+                        steamReleased = ParseReleaseDate(entry.Data?.ReleaseDate);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[SteamCatalog] Tarih tazeleme basarisiz (appId={AppId})", steamAppId);
+                    return;
+                }
+            }
+
+            var dirty = false;
+            if (ShouldPreferSteamDate(existing.Released, steamReleased))
+            {
+                existing.Released = steamReleased;
+                dirty = true;
+                _logger.LogInformation("[SteamCatalog] Cikis tarihi Steam'den guncellendi: {Name} -> {Date}", existing.Name, steamReleased);
+            }
+            if (popularityHint is > 0 && (existing.RawgAdded ?? 0) < popularityHint)
+            {
+                existing.RawgAdded = popularityHint;
+                dirty = true;
+            }
+
+            if (dirty) await _context.SaveChangesAsync(ct);
+        }
+
+        private async Task<Game?> TryLinkToExistingGameAsync(string name, int? releaseYear, int steamAppId, string? steamReleased, int? popularityHint, CancellationToken ct)
         {
             // ILIKE ile dar bir aday kumesi cek, normalize edilmis isimle bellek icinde karsilastir.
             var candidates = await _context.Games
@@ -272,12 +338,31 @@ namespace GGHub.Infrastructure.Services
                     && int.TryParse(candidate.Released[..4], out var y) ? y : (int?)null;
                 if (releaseYear != null && candidateYear != null && releaseYear != candidateYear) continue;
 
+                var dirty = false;
                 if (candidate.SteamAppId == null)
                 {
                     candidate.SteamAppId = steamAppId;
-                    await _context.SaveChangesAsync(ct);
+                    dirty = true;
                     _logger.LogInformation("[SteamCatalog] Mevcut oyuna appid baglandi: {Name} (appId={AppId})", candidate.Name, steamAppId);
                 }
+
+                // Steam'in tarihi yayincinin kendi verisidir: RAWG'in bos veya placeholder
+                // ("2026-12-31" = yil icinde, gun belirsiz) tarihinden daha guveniliridir.
+                // CONTROL Resonant vakasi: RAWG 31 Aralik diyordu, Steam 24 Eylul.
+                if (ShouldPreferSteamDate(candidate.Released, steamReleased))
+                {
+                    candidate.Released = steamReleased;
+                    dirty = true;
+                    _logger.LogInformation("[SteamCatalog] Cikis tarihi Steam'den guncellendi: {Name} -> {Date}", candidate.Name, steamReleased);
+                }
+
+                if (popularityHint is > 0 && (candidate.RawgAdded ?? 0) < popularityHint)
+                {
+                    candidate.RawgAdded = popularityHint;
+                    dirty = true;
+                }
+
+                if (dirty) await _context.SaveChangesAsync(ct);
                 return candidate;
 
             }
