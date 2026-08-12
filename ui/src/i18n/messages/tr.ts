@@ -317,6 +317,12 @@ export const trMessages = {
         year: "Yıl",
         gamesCount: "{count} oyun",
         loadError: "Gündem şu anda yüklenemiyor. Lütfen tekrar deneyin.",
+        allYear: "Tüm Yıl",
+        filterAll: "Tümü",
+        upcomingShort: "Çıkacaklar",
+        releasedShort: "Çıkanlar",
+        statusReleased: "Çıktı",
+        highlights: "Öne çıkanlar",
     },
     notFound: {
         badge: "Aradığın sayfa bulunamadı",

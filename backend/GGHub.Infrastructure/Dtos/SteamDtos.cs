@@ -128,6 +128,14 @@ namespace GGHub.Infrastructure.Dtos
         public string? Date { get; set; }
     }
 
+    // --- search/results (magaza arama listesi, JSON zarfli HTML parcasi) ---
+
+    public class SteamSearchResultsDto
+    {
+        [JsonPropertyName("results_html")]
+        public string? ResultsHtml { get; set; }
+    }
+
     // --- featuredcategories: /api/featuredcategories?cc=us&l=en ---
 
     public class SteamFeaturedCategoriesDto

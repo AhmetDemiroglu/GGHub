@@ -117,6 +117,7 @@ export const enUSMessages = {
     agenda: {
         upcoming: "Coming up",
         released: "Released",
+        allYear: "Whole Year",
         emptyUpcoming: "No expected releases for this month.",
         emptyReleased: "No recorded releases for this month.",
         loadError: "The agenda cannot be loaded right now. Please try again.",

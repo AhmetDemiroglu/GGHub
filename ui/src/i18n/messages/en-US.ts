@@ -316,6 +316,12 @@ export const enUSMessages = {
         year: "Year",
         gamesCount: "{count} games",
         loadError: "The agenda cannot be loaded right now. Please try again.",
+        allYear: "Whole Year",
+        filterAll: "All",
+        upcomingShort: "Upcoming",
+        releasedShort: "Released",
+        statusReleased: "Out",
+        highlights: "Highlights",
     },
     notFound: {
         badge: "The page you were looking for could not be found",

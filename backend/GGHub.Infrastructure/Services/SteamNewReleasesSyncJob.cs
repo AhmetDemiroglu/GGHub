@@ -66,13 +66,17 @@ namespace GGHub.Infrastructure.Services
             var context = scope.ServiceProvider.GetRequiredService<GGHubDbContext>();
 
             var featuredIds = await steamCatalog.GetFeaturedAppIdsAsync(ct);
-            if (featuredIds.Count == 0)
+            // Genis pencere: magaza aramasinin "populer yakinda cikacaklar" listesi (~100 oyun).
+            // featuredcategories tek basina ~20-40 oyunla sinirli kaliyordu ve gundemin gelecek
+            // aylari bos gorunuyordu.
+            var comingSoonIds = await steamCatalog.GetComingSoonAppIdsAsync(100, ct);
+
+            var idList = featuredIds.Concat(comingSoonIds).Distinct().ToList();
+            if (idList.Count == 0)
             {
-                _logger.LogInformation("[SteamSync] featuredcategories bos dondu, islem yok.");
+                _logger.LogInformation("[SteamSync] featured + comingsoon bos dondu, islem yok.");
                 return;
             }
-
-            var idList = featuredIds.ToList();
             var known = await context.Games
                 .AsNoTracking()
                 .Where(g => g.SteamAppId != null && idList.Contains(g.SteamAppId.Value))

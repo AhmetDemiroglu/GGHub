@@ -25,5 +25,11 @@ namespace GGHub.Application.Interfaces
 
         /// <summary>featuredcategories ucundan new_releases + coming_soon appid'lerini dondurur.</summary>
         Task<IReadOnlyList<int>> GetFeaturedAppIdsAsync(CancellationToken ct = default);
+
+        /// <summary>
+        /// Steam magaza aramasinin "populer yakinda cikacaklar" listesinden appid'leri dondurur.
+        /// featuredcategories'ten cok daha genis bir pencere saglar (~50-100 oyun).
+        /// </summary>
+        Task<IReadOnlyList<int>> GetComingSoonAppIdsAsync(int count, CancellationToken ct = default);
     }
 }

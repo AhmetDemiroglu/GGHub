@@ -103,8 +103,10 @@ namespace GGHub.Infrastructure.Services
                     if (game != null && game.SteamAppId == candidate.Id && game.ImportSource == "steam")
                         ingested++;
 
-                    if (_settings.DelayBetweenRequestsMs > 0)
-                        await Task.Delay(_settings.DelayBetweenRequestsMs, ct);
+                    // On-demand yol KULLANICI ARAMASININ icinde kosuyor: job'in 1.5 sn'lik
+                    // pacing'i burada aramayi istemci timeout'unun (15 sn) disina itiyordu.
+                    // En fazla 4 istek atildigi icin 250 ms nezaket arasi yeterli.
+                    await Task.Delay(250, ct);
                 }
 
                 if (ingested == 0)
@@ -173,6 +175,31 @@ namespace GGHub.Infrastructure.Services
                 // Yarista baska bir istek ayni oyunu eklemis olabilir.
                 _context.Entry(newGame).State = EntityState.Detached;
                 return await _context.Games.FirstOrDefaultAsync(g => g.SteamAppId == steamAppId, ct);
+            }
+        }
+
+        public async Task<IReadOnlyList<int>> GetComingSoonAppIdsAsync(int count, CancellationToken ct = default)
+        {
+            try
+            {
+                // Resmi olmayan ama yillardir stabil uc: arama sonuc parcasini JSON zarfinda dondurur.
+                // results_html icindeki data-ds-appid attribute'lari appid listesini verir.
+                var url = $"https://store.steampowered.com/search/results/?query&start=0&count={count}&filter=popularcomingsoon&infinite=1&cc={_settings.Country}&l={_settings.Language}";
+                var response = await _httpClient.GetFromJsonAsync<SteamSearchResultsDto>(url, ct);
+                var html = response?.ResultsHtml;
+                if (string.IsNullOrEmpty(html)) return Array.Empty<int>();
+
+                var ids = System.Text.RegularExpressions.Regex.Matches(html, "data-ds-appid=\"(\\d+)\"")
+                    .Select(m => int.Parse(m.Groups[1].Value))
+                    .Where(id => id > 0)
+                    .Distinct()
+                    .ToList();
+                return ids;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[SteamCatalog] popularcomingsoon aramasi basarisiz");
+                return Array.Empty<int>();
             }
         }
 

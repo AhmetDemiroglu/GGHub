@@ -109,30 +109,37 @@ export default function AgendaScreen() {
 
   const games = tab === 'upcoming' ? (data?.upcoming ?? []) : (data?.released ?? []);
 
-  // Ayni gun cikan oyunlar tek tarih basligi altinda toplanir; API siralamasi korunur.
+  // Ayni gun (Tum Yil modunda ayni ay) cikan oyunlar tek baslik altinda toplanir;
+  // API siralamasi korunur.
+  const isYearView = month === 0;
   const rows = useMemo<Row[]>(() => {
     const out: Row[] = [];
-    let lastDate: string | null = null;
+    let lastKey: string | null = null;
     for (const game of games) {
       const date = game.released ?? '';
-      if (date !== lastDate) {
-        lastDate = date;
+      const key = isYearView ? date.slice(0, 7) : date;
+      if (key !== lastKey) {
+        lastKey = key;
         const [y, m, d] = date.split('-').map(Number);
-        out.push({
-          type: 'date',
-          key: `d-${date}`,
-          label: y && m && d ? formatCalendarDate(y, m, d, locale) : messages.common.tba,
-        });
+        const label = !y
+          ? messages.common.tba
+          : isYearView
+            ? `${calendarMonthName(m, locale)} ${y}`
+            : formatCalendarDate(y, m, d, locale);
+        out.push({ type: 'date', key: `d-${key}`, label });
       }
       out.push({ type: 'game', key: `g-${game.id}`, game });
     }
     return out;
-  }, [games, locale, messages.common.tba]);
+  }, [games, locale, messages.common.tba, isYearView]);
 
-  const monthOptions: PickerOption[] = Array.from({ length: 12 }, (_, index) => ({
-    value: index + 1,
-    label: calendarMonthName(index + 1, locale),
-  }));
+  const monthOptions: PickerOption[] = [
+    { value: 0, label: messages.agenda.allYear },
+    ...Array.from({ length: 12 }, (_, index) => ({
+      value: index + 1,
+      label: calendarMonthName(index + 1, locale),
+    })),
+  ];
   // Geriye 1 yil, ileriye 2 yil: gundemin dogal penceresi (web ile ayni).
   const yearOptions: PickerOption[] = Array.from({ length: 4 }, (_, index) => ({
     value: currentYear - 1 + index,
@@ -156,7 +163,7 @@ export default function AgendaScreen() {
         >
           <Ionicons name="calendar-outline" size={16} color={colors.primary} />
           <Text style={[styles.chipText, { color: colors.text }]}>
-            {calendarMonthName(month, locale)}
+            {isYearView ? messages.agenda.allYear : calendarMonthName(month, locale)}
           </Text>
           <Ionicons name="chevron-down" size={14} color={colors.textMuted} />
         </Pressable>

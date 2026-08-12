@@ -12,10 +12,13 @@ namespace GGHub.Infrastructure.Settings
 
         public int RunIntervalHours { get; set; } = 12;
 
-        /// <summary>Bugunden kac ay ilerisine kadar taransin.</summary>
-        public int MonthsAhead { get; set; } = 3;
+        /// <summary>
+        /// Bugunden kac ay ilerisine kadar taransin. Gundem sayfasinin "Tum Yil" gorunumu
+        /// oldugu icin pencere genis tutulur.
+        /// </summary>
+        public int MonthsAhead { get; set; } = 14;
 
-        public int MaxPagesPerRun { get; set; } = 10;
+        public int MaxPagesPerRun { get; set; } = 15;
         public int PageSize { get; set; } = 40;
         public int DelayBetweenRequestsMs { get; set; } = 1500;
 

@@ -34,7 +34,7 @@ namespace GGHub.WebAPI.Controllers
 
         /// <summary>
         /// Oyun Gundemi: secilen ayin cikmis + cikacak oyunlari. DB-only, memory-cache'li.
-        /// Literal "agenda" segmenti {idOrSlug} rotasindan once eslesir.
+        /// month=0 "Tum Yil" gorunumudur. Literal "agenda" segmenti {idOrSlug} rotasindan once eslesir.
         /// </summary>
         [HttpGet("agenda")]
         public async Task<IActionResult> GetAgenda([FromQuery] int? year, [FromQuery] int? month)
@@ -43,7 +43,7 @@ namespace GGHub.WebAPI.Controllers
             var y = year ?? now.Year;
             var m = month ?? now.Month;
 
-            if (y < 2000 || y > 2100 || m < 1 || m > 12)
+            if (y < 2000 || y > 2100 || m < 0 || m > 12)
             {
                 return BadRequest(new { message = "Geçersiz yıl veya ay." });
             }

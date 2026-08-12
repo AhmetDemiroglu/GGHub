@@ -14,7 +14,8 @@ namespace GGHub.Infrastructure.Services
     /// </summary>
     public class AgendaService : IAgendaService
     {
-        private const int SectionCap = 100;
+        private const int MonthSectionCap = 100;
+        private const int YearSectionCap = 200;
 
         private readonly GGHubDbContext _context;
         private readonly IMemoryCache _cache;
@@ -33,9 +34,21 @@ namespace GGHub.Infrastructure.Services
                 return cached;
             }
 
-            var daysInMonth = DateTime.DaysInMonth(year, month);
-            var start = $"{year:D4}-{month:D2}-01";
-            var end = $"{year:D4}-{month:D2}-{daysInMonth:D2}";
+            // month=0 = "Tum Yil" gorunumu: pencere yilin tamamidir, bolum tavanlari genisler.
+            var isYearView = month == 0;
+            string start, end;
+            if (isYearView)
+            {
+                start = $"{year:D4}-01-01";
+                end = $"{year:D4}-12-31";
+            }
+            else
+            {
+                var daysInMonth = DateTime.DaysInMonth(year, month);
+                start = $"{year:D4}-{month:D2}-01";
+                end = $"{year:D4}-{month:D2}-{daysInMonth:D2}";
+            }
+            var sectionCap = isYearView ? YearSectionCap : MonthSectionCap;
             var today = DateTime.UtcNow.ToString("yyyy-MM-dd");
 
             // Released string kolonu "yyyy-MM-dd" formatinda; aralik filtresi lexicographic
@@ -100,8 +113,8 @@ namespace GGHub.Infrastructure.Services
             {
                 Year = year,
                 Month = month,
-                Released = releasedGames.Take(SectionCap).Select(g => g.Dto).ToList(),
-                Upcoming = upcomingGames.Take(SectionCap).Select(g => g.Dto).ToList(),
+                Released = releasedGames.Take(sectionCap).Select(g => g.Dto).ToList(),
+                Upcoming = upcomingGames.Take(sectionCap).Select(g => g.Dto).ToList(),
                 Counts = new AgendaCountsDto
                 {
                     Released = releasedGames.Count,
@@ -109,7 +122,8 @@ namespace GGHub.Infrastructure.Services
                 },
             };
 
-            _cache.Set(cacheKey, result, TimeSpan.FromMinutes(30));
+            // 10 dk: sync joblari yeni oyun ekledikce sayfa yarim saat bayat kalmasin.
+            _cache.Set(cacheKey, result, TimeSpan.FromMinutes(10));
             return result;
         }
 

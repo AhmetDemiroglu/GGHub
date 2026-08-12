@@ -4,7 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, Play } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { gameApi } from "@/api/gaming/game.api";
+import { agendaApi } from "@/api/agenda/agenda.api";
+import type { Game } from "@/models/gaming/game.model";
 import { HomeGame } from "@/models/home/home.model";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 import { getImageUrl } from "@/core/lib/get-image-url";
@@ -19,8 +22,6 @@ import rawgLogoSrc from "@core/assets/rawg_logo.png";
 
 interface HeroSliderProps {
     games: HomeGame[];
-    /** Oyun Gündemi slaytında listelenecek oyunlar (home content'in newReleases alanı). */
-    agendaGames?: HomeGame[];
 }
 
 const AUTOPLAY_DELAY = 6000;
@@ -51,7 +52,7 @@ function ScoreBadge({ score, logo, logoAlt, accentClassName }: { score: string; 
     );
 }
 
-export default function HeroSlider({ games = [], agendaGames = [] }: HeroSliderProps) {
+export default function HeroSlider({ games = [] }: HeroSliderProps) {
     const locale = useCurrentLocale();
     const t = useI18n();
     const [api, setApi] = useState<CarouselApi>();
@@ -64,6 +65,35 @@ export default function HeroSlider({ games = [], agendaGames = [] }: HeroSliderP
     // 2 sabit slayt: mobil uygulama tanıtımı + Oyun Gündemi. Oyun slaytları 3. sıradan başlar.
     const FIXED_SLIDES = 2;
     const slideCount = games.length + FIXED_SLIDES;
+
+    // Gündem slaytının kolajı YIL görünümünden beslenir: içinde bulunulan ay boş olsa bile
+    // yılın öne çıkan çıkışları her zaman doludur (aksi halde slayt bomboş görünüyordu).
+    const currentYear = new Date().getFullYear();
+    const { data: agendaData } = useQuery({
+        queryKey: ["agenda-hero", currentYear],
+        queryFn: () => agendaApi.get(currentYear, 0),
+        staleTime: 30 * 60 * 1000,
+        meta: { suppressGlobalToast: true },
+    });
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const agendaHighlights: Game[] = (() => {
+        if (!agendaData) return [];
+        const withImage = (list: Game[]) => list.filter((g) => g.backgroundImage);
+        // Önce yaklaşan büyük çıkışlar (tarih sırasıyla), yer kalırsa en yeni çıkanlar.
+        const picks = withImage(agendaData.upcoming).slice(0, 5);
+        const seen = new Set(picks.map((g) => g.id));
+        for (const g of withImage(agendaData.released)) {
+            if (picks.length >= 5) break;
+            if (!seen.has(g.id)) {
+                picks.push(g);
+                seen.add(g.id);
+            }
+        }
+        return picks;
+    })();
+
+    const agendaDateFormatter = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" });
 
     useEffect(() => {
         if (!api) return;
@@ -260,32 +290,53 @@ export default function HeroSlider({ games = [], agendaGames = [] }: HeroSliderP
                                 </div>
                             </div>
 
-                            {/* Sağda bu ayın oyunlarından mini liste (mobilde gizli) */}
-                            {agendaGames.length > 0 ? (
-                                <div className="absolute right-4 top-1/2 z-10 hidden w-[300px] -translate-y-1/2 flex-col gap-2.5 md:flex lg:right-16 lg:w-[340px]">
-                                    {agendaGames.slice(0, 4).map((game) => (
-                                        <Link
-                                            key={game.id}
-                                            href={buildLocalizedPathname(`/games/${game.slug || game.rawgId}`, locale)}
-                                            className="group flex items-center gap-3 rounded-xl border border-white/10 bg-black/40 p-2 backdrop-blur-md transition-colors hover:bg-black/60"
-                                        >
-                                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                                            <img
-                                                src={getImageUrl(game.backgroundImage) || "/assets/placeholder-game.jpg"}
-                                                alt={game.name}
-                                                className="h-12 w-12 shrink-0 rounded-lg object-cover"
-                                                loading="lazy"
-                                            />
-                                            <div className="min-w-0 flex-1">
-                                                <p className="truncate text-sm font-semibold text-white/90 group-hover:text-white">{game.name}</p>
-                                                <p className="text-xs text-white/50">
-                                                    {game.releaseDate
-                                                        ? new Intl.DateTimeFormat(locale, { day: "numeric", month: "long" }).format(new Date(`${game.releaseDate}T00:00:00`))
-                                                        : t("common.tba")}
-                                                </p>
-                                            </div>
-                                        </Link>
-                                    ))}
+                            {/* Sağda yılın öne çıkanlarından yelpaze poster kolajı (mobilde gizli) */}
+                            {agendaHighlights.length > 0 ? (
+                                <div className="absolute right-6 top-1/2 z-10 hidden -translate-y-1/2 md:block lg:right-14">
+                                    <div className="flex items-center -space-x-9 lg:-space-x-11">
+                                        {agendaHighlights.map((game, index) => {
+                                            const rotation = [-9, -4, 1, 6, 11][index % 5];
+                                            const lift = [10, -14, 4, -10, 12][index % 5];
+                                            const isUpcoming = !!game.released && game.released > todayStr;
+                                            const dateLabel = game.released
+                                                ? agendaDateFormatter.format(new Date(`${game.released}T00:00:00`))
+                                                : t("common.tba");
+                                            return (
+                                                <Link
+                                                    key={game.id}
+                                                    href={buildLocalizedPathname(`/games/${game.slug || game.rawgId}`, locale)}
+                                                    className="group/poster relative block shrink-0"
+                                                    style={{ zIndex: 10 + index }}
+                                                >
+                                                    <div style={{ transform: `rotate(${rotation}deg) translateY(${lift}px)` }}>
+                                                        <div className="w-[118px] overflow-hidden rounded-xl bg-zinc-900 shadow-[0_18px_45px_-12px_rgba(0,0,0,0.9)] ring-1 ring-white/15 transition-all duration-300 group-hover/poster:-translate-y-3 group-hover/poster:shadow-[0_26px_60px_-12px_rgba(0,0,0,0.95)] group-hover/poster:ring-white/40 lg:w-[148px]">
+                                                            <div className="relative aspect-[3/4]">
+                                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                                <img
+                                                                    src={getImageUrl(game.backgroundImage) || "/assets/placeholder-game.jpg"}
+                                                                    alt={game.name}
+                                                                    className="absolute inset-0 h-full w-full object-cover"
+                                                                    loading="lazy"
+                                                                />
+                                                                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/15 to-transparent" />
+                                                                <div className="absolute inset-x-0 bottom-0 space-y-1 p-2.5">
+                                                                    <p className="line-clamp-2 text-[11px] font-bold leading-tight text-white drop-shadow lg:text-xs">{game.name}</p>
+                                                                    <span
+                                                                        className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold lg:text-[10px] ${
+                                                                            isUpcoming ? "bg-amber-400/90 text-black" : "bg-emerald-400/90 text-black"
+                                                                        }`}
+                                                                    >
+                                                                        <CalendarDays className="h-2.5 w-2.5" />
+                                                                        {dateLabel}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </Link>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             ) : null}
                         </div>

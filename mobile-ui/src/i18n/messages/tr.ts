@@ -117,6 +117,7 @@ export const trMessages = {
     agenda: {
         upcoming: "Çıkacaklar",
         released: "Çıkanlar",
+        allYear: "Tüm Yıl",
         emptyUpcoming: "Bu ay için beklenen çıkış bulunamadı.",
         emptyReleased: "Bu ay için kayıtlı çıkış bulunamadı.",
         loadError: "Gündem şu anda yüklenemiyor. Lütfen tekrar deneyin.",
