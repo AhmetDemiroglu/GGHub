@@ -145,7 +145,7 @@ namespace GGHub.Infrastructure.Services
                         && string.Compare(g.Released, monthAgo) >= 0
                         && string.Compare(g.Released, today) <= 0
                         && g.BackgroundImage != null
-                        && (g.Metacritic >= 60 || g.Rating >= 3.5 || g.RawgAdded >= 200 || g.ImportSource == "steam"))
+                        && (g.Metacritic >= 60 || g.Rating >= 3.5 || g.RawgAdded >= 50 || g.ImportSource == "steam"))
                     .OrderByDescending(g => g.Released)
                     .ThenByDescending(g => g.RawgAdded ?? 0)
                     .Take(10)
