@@ -106,6 +106,79 @@ namespace GGHub.Infrastructure.Services
 
             _logger.LogInformation("[Dedupe] {Groups} grup islendi: {Merged} kopya birlestirildi, {Skipped} atlandi.",
                 groups.Count, merged, skipped);
+
+            await FixLegacyPlatformSlugsAsync(context, ct);
+        }
+
+        /// <summary>
+        /// Iki JSON listesini Slug'a gore tekillestirerek birlestirir (platformlar, turler).
+        /// Bozuk JSON gelirse dolu olani aynen korur; veri kaybetmemek onceliklidir.
+        /// </summary>
+        private static string? MergeJsonLists(string? primaryJson, string? duplicateJson)
+        {
+            if (string.IsNullOrEmpty(duplicateJson)) return primaryJson;
+            if (string.IsNullOrEmpty(primaryJson)) return duplicateJson;
+
+            try
+            {
+                var a = System.Text.Json.JsonSerializer.Deserialize<List<NamedSlug>>(primaryJson) ?? new();
+                var b = System.Text.Json.JsonSerializer.Deserialize<List<NamedSlug>>(duplicateJson) ?? new();
+
+                var merged = a.Concat(b)
+                    .Where(x => !string.IsNullOrWhiteSpace(x.Slug))
+                    .GroupBy(x => x.Slug!, StringComparer.OrdinalIgnoreCase)
+                    .Select(g => g.First())
+                    .ToList();
+
+                return merged.Count == 0 ? primaryJson : System.Text.Json.JsonSerializer.Serialize(merged);
+            }
+            catch
+            {
+                return primaryJson;
+            }
+        }
+
+        private sealed class NamedSlug
+        {
+            public string? Name { get; set; }
+            public string? Slug { get; set; }
+        }
+
+        /// <summary>
+        /// IGDB'nin kendi platform slug'lariyla ("win", "series-x", "ps5") yazilmis eski satirlari
+        /// katalog slug'larina ("pc", "xbox-series-x", "playstation5") cevirir. Harita sonradan
+        /// eklendigi icin o satirlarda platform ikonlari hic gorunmuyordu.
+        /// </summary>
+        private async Task FixLegacyPlatformSlugsAsync(GGHubDbContext context, CancellationToken ct)
+        {
+            var legacy = await context.Games
+                .Where(g => g.PlatformsJson != null
+                    && (g.PlatformsJson.Contains("\"win\"")
+                        || g.PlatformsJson.Contains("\"series-x\"")
+                        || g.PlatformsJson.Contains("\"ps5\"")
+                        || g.PlatformsJson.Contains("\"ps4--1\"")
+                        || g.PlatformsJson.Contains("\"xboxone\"")))
+                .Take(500)
+                .ToListAsync(ct);
+
+            if (legacy.Count == 0) return;
+
+            foreach (var game in legacy)
+            {
+                game.PlatformsJson = game.PlatformsJson!
+                    .Replace("\"Slug\":\"win\"", "\"Slug\":\"pc\"")
+                    .Replace("\"Slug\":\"series-x\"", "\"Slug\":\"xbox-series-x\"")
+                    .Replace("\"Slug\":\"series-x-s\"", "\"Slug\":\"xbox-series-x\"")
+                    .Replace("\"Slug\":\"ps5\"", "\"Slug\":\"playstation5\"")
+                    .Replace("\"Slug\":\"ps4--1\"", "\"Slug\":\"playstation4\"")
+                    .Replace("\"Slug\":\"ps4\"", "\"Slug\":\"playstation4\"")
+                    .Replace("\"Slug\":\"xboxone\"", "\"Slug\":\"xbox-one\"")
+                    .Replace("\"Slug\":\"switch\"", "\"Slug\":\"nintendo-switch\"")
+                    .Replace("\"Slug\":\"mac\"", "\"Slug\":\"macos\"");
+            }
+
+            await context.SaveChangesAsync(ct);
+            _logger.LogInformation("[Dedupe] {Count} satirda platform slug'lari duzeltildi.", legacy.Count);
         }
 
         /// <summary>
@@ -161,8 +234,12 @@ namespace GGHub.Infrastructure.Services
                 }
                 if (string.IsNullOrEmpty(primary.BackgroundImage)) primary.BackgroundImage = duplicate.BackgroundImage;
                 if (string.IsNullOrEmpty(primary.Description)) primary.Description = duplicate.Description;
-                if (string.IsNullOrEmpty(primary.PlatformsJson)) primary.PlatformsJson = duplicate.PlatformsJson;
-                if (string.IsNullOrEmpty(primary.GenresJson)) primary.GenresJson = duplicate.GenresJson;
+
+                // Platform ve turler BIRLESTIRILIR, uzerine yazilmaz: Steam kaydinda yalnizca
+                // "pc", IGDB kaydinda PS5/Xbox/Switch bulunuyor. Uzerine yazma yapilsaydi
+                // kopya silinince o platformlar tamamen kaybolurdu.
+                primary.PlatformsJson = MergeJsonLists(primary.PlatformsJson, duplicate.PlatformsJson);
+                primary.GenresJson = MergeJsonLists(primary.GenresJson, duplicate.GenresJson);
                 if ((primary.RawgAdded ?? 0) < (duplicate.RawgAdded ?? 0)) primary.RawgAdded = duplicate.RawgAdded;
 
                 // Kopyanin kaynak kolonlarini bosalt: unique index'ler asila tasima sirasinda patlamasin.

@@ -163,10 +163,22 @@ export function CommandSearch({ variant = "default", collapsed = false }: Comman
                         <CommandGroup heading={locale === "tr" ? "Oyunlar" : "Games"}>
                             {games.slice(0, 5).map((result) => (
                                 <CommandItem key={`game-${result.id}`} onSelect={() => handleSelect(result.link)} className="cursor-pointer gap-3 py-2.5">
-                                    <Avatar className="h-8 w-8 rounded-md">
-                                        {result.imageUrl ? <AvatarImage src={result.imageUrl} alt={result.title} /> : null}
-                                        <AvatarFallback className="rounded-md">{result.title.charAt(0)}</AvatarFallback>
-                                    </Avatar>
+                                    {/* Oyun kapakları 16:9; Radix Avatar bunları kare kutuda
+                                        güvenilir yükleyemiyordu (baş harf fallback'te kalıyordu).
+                                        Doğrudan img: hem doğru en boy oranı hem kesin yükleme. */}
+                                    {result.imageUrl ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img
+                                            src={result.imageUrl}
+                                            alt={result.title}
+                                            className="h-8 w-12 shrink-0 rounded-md object-cover"
+                                            loading="lazy"
+                                        />
+                                    ) : (
+                                        <span className="flex h-8 w-12 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-semibold text-muted-foreground">
+                                            {result.title.charAt(0)}
+                                        </span>
+                                    )}
                                     <div className="min-w-0 flex-1">
                                         <p className="truncate text-sm font-medium">{result.title}</p>
                                         <p className="text-xs text-muted-foreground">{locale === "tr" ? "Oyun" : "Game"}</p>

@@ -511,10 +511,17 @@ namespace GGHub.Infrastructure.Services
                     existing.GenresJson = SerializeGenres(dto.Genres);
                     dirty = true;
                 }
-                if (string.IsNullOrEmpty(existing.PlatformsJson) && dto.Platforms?.Count > 0)
+                // Platformlar: bos ise doldur, DOLU ise de IGDB slug'lari katalog slug'larina
+                // eslenmemis olabilir (harita sonradan eklendi; eski satirlarda "win"/"series-x"
+                // gibi degerler kaldi ve kartlarda platform ikonlari gorunmuyordu).
+                if (dto.Platforms?.Count > 0)
                 {
-                    existing.PlatformsJson = SerializePlatforms(dto.Platforms);
-                    dirty = true;
+                    var mappedPlatforms = SerializePlatforms(dto.Platforms);
+                    if (existing.PlatformsJson != mappedPlatforms)
+                    {
+                        existing.PlatformsJson = mappedPlatforms;
+                        dirty = true;
+                    }
                 }
                 if (string.IsNullOrEmpty(existing.Description) && !string.IsNullOrWhiteSpace(dto.Summary))
                 {
