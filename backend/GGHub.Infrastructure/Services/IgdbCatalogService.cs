@@ -65,12 +65,24 @@ namespace GGHub.Infrastructure.Services
             var token = await GetAccessTokenAsync(ct);
             if (token == null) return (0, 0);
 
+            var nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             var from = DateTimeOffset.UtcNow.AddMonths(-_settings.MonthsBehind).ToUnixTimeSeconds();
             var to = DateTimeOffset.UtcNow.AddMonths(_settings.MonthsAhead).ToUnixTimeSeconds();
 
             var added = 0;
             var updated = 0;
 
+            // IKI GECIS: once BUGUNDEN ILERISI (tarih artan), sonra YAKIN GECMIS (tarih azalan).
+            // Tek gecisli "tum pencere, tarih artan" tasarimda tarama en eski aydan basliyordu ve
+            // kosu basi limit dolunca bugune hic ulasamiyordu; olculdu: Temmuz 2026 haftalarca
+            // bos kaldi. Ikiye bolununce hem gundemin gelecegi hem yakin gecmis hizla doluyor.
+            var passes = new[]
+            {
+                (Where: $"date >= {nowUnix} & date <= {to}", Sort: "date asc"),
+                (Where: $"date >= {from} & date < {nowUnix}", Sort: "date desc"),
+            };
+
+            foreach (var pass in passes)
             for (var page = 0; page < _settings.MaxPagesPerRun; page++)
             {
                 ct.ThrowIfCancellationRequested();
@@ -89,8 +101,8 @@ namespace GGHub.Infrastructure.Services
                     .Append("game.websites.url, game.websites.category, ")
                     .Append("game.version_parent.id, game.version_parent.name, game.version_parent.slug, ")
                     .Append("game.parent_game.id, game.parent_game.name, game.parent_game.slug; ")
-                    .Append($"where date >= {from} & date <= {to} & date_format = 0 & game.cover != null; ")
-                    .Append("sort date asc; ")
+                    .Append($"where {pass.Where} & date_format = 0 & game.cover != null; ")
+                    .Append($"sort {pass.Sort}; ")
                     .Append($"limit {_settings.PageSize}; offset {page * _settings.PageSize};")
                     .ToString();
 
@@ -191,9 +203,25 @@ namespace GGHub.Infrastructure.Services
                     if (knownIgdbIds.TryGetValue(game.Id, out var knownReleased) && knownReleased == released)
                         continue;
 
-                    var outcome = await UpsertAsync(game, released, ct, nameMatches);
+                    var outcome = await UpsertAsync(game, released, ct, nameMatches, deferSave: true);
                     if (outcome == UpsertOutcome.Added) added++;
                     else if (outcome == UpsertOutcome.Updated) updated++;
+                }
+
+                // Sayfa sonunda TEK yazma: biriken yeni kayitlar ve guncellemeler birlikte gider.
+                try
+                {
+                    await _context.SaveChangesAsync(ct);
+                }
+                catch (DbUpdateException ex)
+                {
+                    // Bir satir catisirsa (yaris, unique index) sayfanin tamami kaybolmasin:
+                    // izleyiciyi temizleyip sonraki sayfaya devam edilir.
+                    _logger.LogWarning(ex, "[IGDB] Sayfa yazilamadi, atlaniyor (sayfa {Page}).", page);
+                }
+                finally
+                {
+                    _context.ChangeTracker.Clear();
                 }
 
                 if (rows.Count < _settings.PageSize) break;
@@ -230,6 +258,11 @@ namespace GGHub.Infrastructure.Services
             {
                 if (ingested >= maxIngest) break;
                 if (string.IsNullOrWhiteSpace(match.Name) || match.Cover?.ImageId == null) continue;
+
+                // Surum kayitlari ("... Ultimate Edition") katalogda ana oyunun kopyasi olur.
+                // Toplu senkronda zaten eleniyordu; ANLIK arama yolunda elenmedigi icin
+                // kullanici "fc 27" arayinca kopyalar geri geliyordu.
+                if (GameTitleMatcher.IsEditionVariant(match.Name)) continue;
 
                 var existing = await _context.Games.AsNoTracking().FirstOrDefaultAsync(g => g.IgdbId == match.Id, ct);
                 if (existing != null) continue;
@@ -479,7 +512,7 @@ namespace GGHub.Infrastructure.Services
 
         private async Task<UpsertOutcome> UpsertAsync(
             IgdbGameDto dto, string? released, CancellationToken ct,
-            Dictionary<string, List<Game>>? preloadedNameMatches = null)
+            Dictionary<string, List<Game>>? preloadedNameMatches = null, bool deferSave = false)
         {
             var syntheticRawgId = -(IgdbRawgIdOffset + dto.Id);
 
@@ -548,6 +581,9 @@ namespace GGHub.Infrastructure.Services
 
                 if (!dirty) return UpsertOutcome.Skipped;
 
+                // Toplu senkronda yazma sayfa sonuna ertelenir (bkz. deferSave).
+                if (deferSave) return UpsertOutcome.Updated;
+
                 try
                 {
                     await _context.SaveChangesAsync(ct);
@@ -611,6 +647,15 @@ namespace GGHub.Infrastructure.Services
                 // icin ayrica isaretliyoruz.
                 DetailSyncedAt = DateTime.UtcNow,
             };
+
+            // Toplu senkronda kayit HEMEN yazilmaz: her oyun icin ayri SaveChanges uzak
+            // Postgres'te kosuyu saatlere cikariyordu (olculdu: takvim senkronu hic bitmedi).
+            // Sayfa sonunda tek seferde yazilir.
+            if (deferSave)
+            {
+                await _context.Games.AddAsync(newGame, ct);
+                return UpsertOutcome.Added;
+            }
 
             try
             {

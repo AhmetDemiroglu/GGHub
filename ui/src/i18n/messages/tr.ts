@@ -172,6 +172,7 @@ export const trMessages = {
             simulation: "Simülasyon",
         },
         ordering: {
+            trending: "Trend (canlı)",
             relevance: "Önerilen",
             popularity: "Popülerlik",
             metacritic: "Metacritic puanı",

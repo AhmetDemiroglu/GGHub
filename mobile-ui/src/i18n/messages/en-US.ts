@@ -294,6 +294,7 @@ export const enUSMessages = {
             simulation: "Simulation",
         },
         ordering: {
+            trending: "Trending (live)",
             relevance: "Recommended",
             popularity: "Popularity",
             metacritic: "Metacritic score",

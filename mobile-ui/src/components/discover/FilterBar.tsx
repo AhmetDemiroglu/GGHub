@@ -101,6 +101,8 @@ export function FilterBar({
 
   const orderingOptions: FilterOption[] = [
     { label: messages.common.all, value: '' },
+    // Canli trend: TrendScoreJob'in 3 saatte bir hesapladigi guncel populerlik (web ile ayni).
+    { label: messages.discover.ordering.trending, value: '-trending' },
     { label: messages.discover.orderingAz, value: 'name' },
     { label: messages.discover.orderingZa, value: '-name' },
     { label: messages.discover.ordering.metacritic, value: '-metacritic' },

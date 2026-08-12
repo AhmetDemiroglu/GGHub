@@ -65,6 +65,8 @@ function DiscoverPageContent() {
 
     const orderingOptions = [
         { value: "__default__", label: t("discover.ordering.relevance") },
+        // Canlı trend: TrendScoreJob'ın 3 saatte bir hesapladığı güncel popülerlik.
+        { value: "-trending",   label: t("discover.ordering.trending") },
         { value: "-added",      label: t("discover.ordering.popularity") },
         { value: "-metacritic", label: t("discover.ordering.metacritic") },
         { value: "-released",   label: t("discover.ordering.releaseDate") },

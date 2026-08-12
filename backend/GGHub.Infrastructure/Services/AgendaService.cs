@@ -68,7 +68,7 @@ namespace GGHub.Infrastructure.Services
                 {
                     g.Id, g.RawgId, g.Slug, g.Name, g.Released,
                     g.BackgroundImage, g.CoverImage, g.Rating, g.Metacritic,
-                    g.AverageRating, g.RatingCount, g.RawgAdded, g.IgdbRating, g.IgdbRatingCount,
+                    g.AverageRating, g.RatingCount, g.RawgAdded, g.IgdbRating, g.IgdbRatingCount, g.TrendScore,
                     g.PlatformsJson, g.GenresJson,
                 })
                 .ToListAsync();
@@ -78,6 +78,7 @@ namespace GGHub.Infrastructure.Services
                 {
                     g.Released,
                     g.RawgAdded,
+                    g.TrendScore,
                     Dto = new GameDto
                     {
                         Id = g.Id,
@@ -114,7 +115,7 @@ namespace GGHub.Infrastructure.Services
             // Vitrin: tarih sirasi DEGIL, populerlik sirasi. Once yaklasan cikislar (kullanici
             // "neler geliyor" diye bakiyor), yer kalirsa donemin en cok konusulan cikanlari.
             var highlights = upcomingGames
-                .OrderByDescending(g => PopularityScore(g.RawgAdded, g.Dto))
+                .OrderByDescending(g => g.TrendScore > 0 ? g.TrendScore * 3 : PopularityScore(g.RawgAdded, g.Dto))
                 .Take(3)
                 .Select(g => g.Dto)
                 .ToList();
@@ -122,7 +123,7 @@ namespace GGHub.Infrastructure.Services
             if (highlights.Count < 3)
             {
                 var fillers = releasedGames
-                    .OrderByDescending(g => PopularityScore(g.RawgAdded, g.Dto))
+                    .OrderByDescending(g => g.TrendScore > 0 ? g.TrendScore * 3 : PopularityScore(g.RawgAdded, g.Dto))
                     .Select(g => g.Dto)
                     .Where(dto => highlights.All(h => h.Id != dto.Id))
                     .Take(3 - highlights.Count);

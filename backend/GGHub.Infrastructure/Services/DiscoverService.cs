@@ -251,7 +251,12 @@ namespace GGHub.Infrastructure.Services
                     .OrderByDescending(g => g.Name)
                     .ThenByDescending(g => g.Rating ?? 0),
 
-                // "relevance", null, "" → default kalite + haftalık rotasyon
+                // Canlı trend sırası (TrendScoreJob hesaplar, 3 saatte bir tazelenir)
+                "-trending" => query
+                    .OrderByDescending(g => g.TrendScore)
+                    .ThenByDescending(g => g.Metacritic ?? 0),
+
+                // "relevance", null, "" → canlı trend + kalite karışımı
                 _ => ApplyDefaultOrdering(query),
             };
         }
@@ -259,6 +264,12 @@ namespace GGHub.Infrastructure.Services
         private IOrderedQueryable<GGHub.Core.Entities.Game> ApplyDefaultOrdering(
             IQueryable<GGHub.Core.Entities.Game> query)
         {
+            // ÖNEMLİ: Bu sıralamanın ilk sürümü tamamen sabit alanlara (metacritic/rating/added)
+            // dayanıyordu ve rotasyon HAFTALIK olduğu için keşfet listesi haftalarca aynı
+            // kalıyordu. Artık ana bileşen TrendScoreJob'ın 3 saatte bir hesapladığı canlı
+            // TrendScore; kalite alanları yalnızca skoru olmayan (henüz hesaplanmamış) oyunlar
+            // için yedek olarak duruyor ve rotasyon da GÜNLÜK.
+            //
             // Composite scoring: popülarite ağırlıklı bir öneri kuyruğu.
             // Ağırlıklar: Pop %40, Metacritic %25, RAWG Rating %15, Recency %15, Rotation %5.
             //
@@ -268,15 +279,20 @@ namespace GGHub.Infrastructure.Services
             // Recency: son 2 yıl = 100, 3–5 yıl = 50, daha eski = 0 (ISO 'yyyy-MM-dd' lexicographic compare).
             //
             // Rotation: aynı hafta içinde sayfalama kararlı, haftadan haftaya üst sıralama döner.
-            int weekSeed = ISOWeek.GetWeekOfYear(DateTime.UtcNow);
+            // Rotasyon tohumu GÜNLÜK: haftalık tohum listeyi 7 gün boyunca dondurup
+            // "hep aynı oyunlar" hissi veriyordu.
+            int weekSeed = DateTime.UtcNow.DayOfYear;
             string twoYearsAgoIso = DateTime.UtcNow.AddYears(-2).ToString("yyyy-MM-dd");
             string fiveYearsAgoIso = DateTime.UtcNow.AddYears(-5).ToString("yyyy-MM-dd");
             const int POP_CAP = 10000;
 
             return query
                 .OrderByDescending(g =>
+                    // Canlı trend skoru (TrendScoreJob). Bileşenlerin en ağırlıklısı: keşfet
+                    // listesinin gerçekten hareket etmesini sağlayan tek sinyal budur.
+                    Math.Min(g.TrendScore, 600) * 0.55
                     // Pop signal (capped & normalized to 0-100)
-                    (
+                    + (
                         (g.RawgAdded != null && g.RawgAdded > 0
                             ? (g.RawgAdded.Value > POP_CAP ? 100.0 : g.RawgAdded.Value / 100.0)
                             : g.RawgRatingsCount != null && g.RawgRatingsCount > 0

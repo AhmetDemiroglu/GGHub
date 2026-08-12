@@ -59,6 +59,17 @@
         /// </summary>
         public DateTime? IgdbCheckedAt { get; set; }
 
+        /// <summary>
+        /// Guncel populerlik/trend skoru. Kesfet sayfasinin varsayilan sirasini besler.
+        /// Onceki tasarimda siralama sabit kalite alanlarina + haftalik rotasyona dayaniyordu,
+        /// yani liste HAFTALARCA ayni kaliyordu. Bu skor periyodik olarak yeniden hesaplanir:
+        /// GGHub kullanici hareketi (inceleme, listeye/istek listesine ekleme) + Steam en cok
+        /// satanlar/istek listesi sirasi + IGDB ilgi sinyalleri + yenilik.
+        /// </summary>
+        public double TrendScore { get; set; }
+
+        public DateTime? TrendScoreUpdatedAt { get; set; }
+
         // RAWG Import tracking
         public string? ImportSource { get; set; }
         public DateTime? ImportedAt { get; set; }

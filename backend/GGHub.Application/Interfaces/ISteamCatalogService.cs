@@ -36,5 +36,11 @@ namespace GGHub.Application.Interfaces
         /// featuredcategories'ten cok daha genis bir pencere saglar (~50-100 oyun).
         /// </summary>
         Task<IReadOnlyList<int>> GetComingSoonAppIdsAsync(int count, CancellationToken ct = default);
+
+        /// <summary>
+        /// Steam "en cok satanlar" listesindeki appid'ler, SIRAYLA. Gunluk degisen tek gercek
+        /// populerlik sinyalimiz; kesfet sayfasinin trend skorunu besler.
+        /// </summary>
+        Task<IReadOnlyList<int>> GetTopSellerAppIdsAsync(int count, CancellationToken ct = default);
     }
 }
