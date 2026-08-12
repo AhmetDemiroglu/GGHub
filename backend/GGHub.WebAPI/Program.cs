@@ -98,6 +98,11 @@ builder.Services.AddHttpClient("Steam")
     });
 builder.Services.AddScoped<ISteamCatalogService, SteamCatalogService>();
 
+// IGDB: WebAPI'de yalnizca DI tamligi icin kayitli (job'lar Worker'da kosar).
+builder.Services.Configure<IgdbSettings>(builder.Configuration.GetSection("Igdb"));
+builder.Services.AddHttpClient("Igdb", client => client.Timeout = TimeSpan.FromSeconds(30));
+builder.Services.AddScoped<IIgdbCatalogService, IgdbCatalogService>();
+
 builder.Services.AddSingleton<IAmazonS3>(sp =>
 {
     var config = sp.GetRequiredService<IConfiguration>();

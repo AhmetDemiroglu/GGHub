@@ -48,11 +48,19 @@ namespace GGHub.Infrastructure.Services
                 ? await _context.Games.AsNoTracking().FirstOrDefaultAsync(g => g.RawgId == rawgId)
                 : await _context.Games.AsNoTracking().FirstOrDefaultAsync(g => g.Slug == idOrSlug);
 
-            // Steam kaynakli oyunlar (RawgId < 0) icin RAWG'a ASLA gidilmez: appdetails verisi
-            // ingest sirasinda tam alinmistir, RAWG bu id'yi zaten tanimaz.
+            // Sentetik negatif id'ler (Steam: -appId, IGDB: -(1e9 + igdbId)) icin RAWG'a ASLA
+            // gidilmez: veri ingest sirasinda tam alinmistir ve RAWG bu id'leri tanimaz.
+            // Satir uzlastirma sonrasi gercek RawgId'ye gecmis olabilir, o yuzden kaynak
+            // kolonlarindan da aranir (eski linkler olmemeli).
             if (isId && rawgId < 0)
             {
-                gameInDb ??= await _context.Games.AsNoTracking().FirstOrDefaultAsync(g => g.SteamAppId == -rawgId);
+                if (gameInDb == null)
+                {
+                    var positiveId = -rawgId;
+                    gameInDb = positiveId > IgdbCatalogService.IgdbRawgIdOffset
+                        ? await _context.Games.AsNoTracking().FirstOrDefaultAsync(g => g.IgdbId == positiveId - IgdbCatalogService.IgdbRawgIdOffset)
+                        : await _context.Games.AsNoTracking().FirstOrDefaultAsync(g => g.SteamAppId == positiveId);
+                }
                 return gameInDb;
             }
             if (gameInDb != null && gameInDb.RawgId < 0)
@@ -316,10 +324,20 @@ namespace GGHub.Infrastructure.Services
             // denenir (ornegin baska ortamda eklenmis bir oyunun linki paylasildiysa).
             if (rawgId < 0)
             {
-                gameInDb ??= await _context.Games.FirstOrDefaultAsync(g => g.SteamAppId == -rawgId);
+                var positiveId = -rawgId;
+
+                // IGDB araligi (1e9 offset): satir zaten ingest edilmis olmali, canli cagri yok.
+                if (positiveId > IgdbCatalogService.IgdbRawgIdOffset)
+                {
+                    gameInDb ??= await _context.Games.FirstOrDefaultAsync(g => g.IgdbId == positiveId - IgdbCatalogService.IgdbRawgIdOffset);
+                    if (gameInDb != null) return gameInDb;
+                    throw new ExternalCatalogUnavailableException($"IGDB kaynakli oyun bulunamadi: rawgId={rawgId}");
+                }
+
+                gameInDb ??= await _context.Games.FirstOrDefaultAsync(g => g.SteamAppId == positiveId);
                 if (gameInDb != null) return gameInDb;
 
-                var ingested = await _steamCatalog.IngestAppAsync(-rawgId);
+                var ingested = await _steamCatalog.IngestAppAsync(positiveId);
                 if (ingested != null) return ingested;
 
                 throw new ExternalCatalogUnavailableException($"Steam kaynakli oyun bulunamadi: rawgId={rawgId}");

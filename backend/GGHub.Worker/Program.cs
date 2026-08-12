@@ -71,6 +71,12 @@ builder.Services.AddHttpClient("Steam");
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ISteamCatalogService, SteamCatalogService>();
 
+// IGDB (Twitch): konsol ozel yapimlarin tek ucretsiz kaynagi. Kimlik bilgileri
+// ~/.gghub-bot/appsettings.json icinde, repoda DEGIL.
+builder.Services.Configure<IgdbSettings>(builder.Configuration.GetSection("Igdb"));
+builder.Services.AddHttpClient("Igdb", client => client.Timeout = TimeSpan.FromSeconds(30));
+builder.Services.AddScoped<IIgdbCatalogService, IgdbCatalogService>();
+
 // Kosulsuz kaydediyoruz; "acik mi kapali mi" sorusunun tek cevap yeri appsettings.json olsun.
 // Bunun calismasi icin her job'in Enabled bayragini KENDI ICINDE kontrol etmesi sart. Bayraklar
 // eskiden burada (WebAPI Program.cs) kontrol ediliyordu; kayit yeri degisince kontrol tamamen
@@ -82,6 +88,7 @@ builder.Services.AddHostedService<DescriptionTranslationJob>();
 builder.Services.AddHostedService<FutureMetacriticCleanupJob>();
 builder.Services.AddHostedService<SteamNewReleasesSyncJob>();
 builder.Services.AddHostedService<RawgUpcomingSyncJob>();
+builder.Services.AddHostedService<IgdbSyncJob>();
 
 // RawgImportJob (genisleme/breadth) BILEREK kayitli degil. 4 stratejide de ~950. sayfada duruyor;
 // oradaki oyunlari RAWG'de 13 kisi eklemis, kendi MinAdded=20 esigimizin altinda. Sayfa 5000'de

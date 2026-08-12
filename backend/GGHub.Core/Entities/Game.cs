@@ -34,6 +34,14 @@
         /// </summary>
         public int? SteamAppId { get; set; }
 
+        /// <summary>
+        /// IGDB oyun id'si (varsa). IGDB kaynakli satirlarda RawgId = -(1_000_000_000 + IgdbId).
+        /// Neden 1 milyar offset: Steam satirlari -SteamAppId kullaniyor (en fazla ~10 milyon),
+        /// bu aralik onlarla CAKISMAZ ve int sinirinin (2.1 milyar) altinda kalir.
+        /// IGDB, Steam'in kapsamadigi konsol ozel yapimlarinin tek ucretsiz kaynagi.
+        /// </summary>
+        public int? IgdbId { get; set; }
+
         // RAWG Import tracking
         public string? ImportSource { get; set; }
         public DateTime? ImportedAt { get; set; }

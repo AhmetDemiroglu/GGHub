@@ -1,0 +1,136 @@
+using System.Text.Json.Serialization;
+
+namespace GGHub.Infrastructure.Dtos
+{
+    // IGDB v4 yanit sekilleri (Apicalypse sorgusu ile istenen alanlar).
+
+    public class IgdbTokenResponseDto
+    {
+        [JsonPropertyName("access_token")]
+        public string? AccessToken { get; set; }
+
+        [JsonPropertyName("expires_in")]
+        public long ExpiresIn { get; set; }
+    }
+
+    /// <summary>
+    /// release_dates ucu: bir oyunun BELIRLI bir platformdaki cikis tarihi. Oyun basina
+    /// birden fazla satir olabilir (PS5, PC, Xbox ayri ayri); en erken tam tarih kullanilir.
+    /// </summary>
+    public class IgdbReleaseDateDto
+    {
+        [JsonPropertyName("id")]
+        public long Id { get; set; }
+
+        /// <summary>Unix saniye. category=0 (tam tarih) disinda hassasiyet dusuktur.</summary>
+        [JsonPropertyName("date")]
+        public long? Date { get; set; }
+
+        /// <summary>0=YYYYMMMMDD (tam tarih), 1=YYYYMMM (ay), 2=YYYY, 3..6=ceyrek, 7=TBD.</summary>
+        [JsonPropertyName("category")]
+        public int Category { get; set; }
+
+        [JsonPropertyName("game")]
+        public IgdbGameDto? Game { get; set; }
+    }
+
+    public class IgdbGameDto
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
+        [JsonPropertyName("name")]
+        public string? Name { get; set; }
+
+        [JsonPropertyName("slug")]
+        public string? Slug { get; set; }
+
+        [JsonPropertyName("summary")]
+        public string? Summary { get; set; }
+
+        [JsonPropertyName("first_release_date")]
+        public long? FirstReleaseDate { get; set; }
+
+        [JsonPropertyName("hypes")]
+        public int? Hypes { get; set; }
+
+        [JsonPropertyName("follows")]
+        public int? Follows { get; set; }
+
+        [JsonPropertyName("total_rating")]
+        public double? TotalRating { get; set; }
+
+        [JsonPropertyName("aggregated_rating")]
+        public double? AggregatedRating { get; set; }
+
+        [JsonPropertyName("cover")]
+        public IgdbCoverDto? Cover { get; set; }
+
+        [JsonPropertyName("genres")]
+        public List<IgdbNamedDto>? Genres { get; set; }
+
+        [JsonPropertyName("platforms")]
+        public List<IgdbPlatformDto>? Platforms { get; set; }
+
+        [JsonPropertyName("involved_companies")]
+        public List<IgdbInvolvedCompanyDto>? InvolvedCompanies { get; set; }
+
+        [JsonPropertyName("websites")]
+        public List<IgdbWebsiteDto>? Websites { get; set; }
+    }
+
+    public class IgdbCoverDto
+    {
+        [JsonPropertyName("image_id")]
+        public string? ImageId { get; set; }
+    }
+
+    public class IgdbNamedDto
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
+        [JsonPropertyName("name")]
+        public string? Name { get; set; }
+
+        [JsonPropertyName("slug")]
+        public string? Slug { get; set; }
+    }
+
+    public class IgdbPlatformDto
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
+        [JsonPropertyName("name")]
+        public string? Name { get; set; }
+
+        [JsonPropertyName("abbreviation")]
+        public string? Abbreviation { get; set; }
+
+        [JsonPropertyName("slug")]
+        public string? Slug { get; set; }
+    }
+
+    public class IgdbInvolvedCompanyDto
+    {
+        [JsonPropertyName("company")]
+        public IgdbNamedDto? Company { get; set; }
+
+        [JsonPropertyName("developer")]
+        public bool Developer { get; set; }
+
+        [JsonPropertyName("publisher")]
+        public bool Publisher { get; set; }
+    }
+
+    public class IgdbWebsiteDto
+    {
+        [JsonPropertyName("url")]
+        public string? Url { get; set; }
+
+        /// <summary>1=official, 13=steam (IGDB website kategorileri).</summary>
+        [JsonPropertyName("category")]
+        public int Category { get; set; }
+    }
+}

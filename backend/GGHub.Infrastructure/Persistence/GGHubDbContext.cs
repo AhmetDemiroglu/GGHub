@@ -256,6 +256,13 @@ namespace GGHub.Infrastructure.Persistence
                 .HasFilter("\"SteamAppId\" IS NOT NULL")
                 .HasDatabaseName("IX_Games_SteamAppId");
 
+            // Game: IGDB baglantisi (konsol ozel yapimlarin kaynagi). Partial unique.
+            modelBuilder.Entity<Game>()
+                .HasIndex(g => g.IgdbId)
+                .IsUnique()
+                .HasFilter("\"IgdbId\" IS NOT NULL")
+                .HasDatabaseName("IX_Games_IgdbId");
+
             // Game: index for import queries
             modelBuilder.Entity<Game>()
                 .HasIndex(g => g.ImportSource)
