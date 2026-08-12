@@ -21,7 +21,12 @@ namespace GGHub.Application.Interfaces
         /// Isim+yil eslesmesiyle mevcut bir RAWG satiri bulunursa yeni satir ACILMAZ;
         /// o satira SteamAppId baglanir. Ingest edilemezse null doner.
         /// </summary>
-        Task<Game?> IngestAppAsync(int steamAppId, CancellationToken ct = default);
+        /// <param name="popularityHint">
+        /// Steam listesindeki siradan turetilen populerlik skoru (RawgAdded alanina yazilir).
+        /// Steam oyunlarinda RAWG'in "added" sinyali yoktur; bu olmadan vitrin siralamasi
+        /// tarih sirasina dusuyor ve buyuk yapimlar arada kayboluyordu.
+        /// </param>
+        Task<Game?> IngestAppAsync(int steamAppId, CancellationToken ct = default, int? popularityHint = null);
 
         /// <summary>featuredcategories ucundan new_releases + coming_soon appid'lerini dondurur.</summary>
         Task<IReadOnlyList<int>> GetFeaturedAppIdsAsync(CancellationToken ct = default);

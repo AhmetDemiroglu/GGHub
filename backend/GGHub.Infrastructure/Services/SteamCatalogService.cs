@@ -123,7 +123,7 @@ namespace GGHub.Infrastructure.Services
             }
         }
 
-        public async Task<Game?> IngestAppAsync(int steamAppId, CancellationToken ct = default)
+        public async Task<Game?> IngestAppAsync(int steamAppId, CancellationToken ct = default, int? popularityHint = null)
         {
             if (steamAppId <= 0) return null;
 
@@ -157,6 +157,7 @@ namespace GGHub.Infrastructure.Services
             if (linked != null) return linked;
 
             var newGame = BuildGame(data, released);
+            if (popularityHint is > 0) newGame.RawgAdded = popularityHint;
 
             // Slug carpismasina karsi deterministik son ek (Slug'da unique index yok ama
             // lookup dogrulugu icin tekil kalmali).
@@ -278,6 +279,7 @@ namespace GGHub.Infrastructure.Services
                     _logger.LogInformation("[SteamCatalog] Mevcut oyuna appid baglandi: {Name} (appId={AppId})", candidate.Name, steamAppId);
                 }
                 return candidate;
+
             }
 
             return null;

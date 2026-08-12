@@ -94,13 +94,23 @@ namespace GGHub.Infrastructure.Services
                 return;
             }
 
+            // Populerlik skoru listedeki siradan turetilir: GetComingSoonAppIdsAsync once
+            // "en cok istek listesine eklenenler" filtresini tariyor, yani basta buyuk yapimlar
+            // var. Bu skor RawgAdded'a yazilir ve gundem vitrini ile discover siralamasini besler.
+            var rankByAppId = idList
+                .Select((id, index) => (id, index))
+                .ToDictionary(x => x.id, x => x.index);
+
             var ingested = 0;
             var linked = 0;
             foreach (var appId in missing)
             {
                 ct.ThrowIfCancellationRequested();
 
-                var game = await steamCatalog.IngestAppAsync(appId, ct);
+                var rank = rankByAppId.TryGetValue(appId, out var r) ? r : idList.Count;
+                var popularityHint = Math.Max(1000 - rank * 5, 60);
+
+                var game = await steamCatalog.IngestAppAsync(appId, ct, popularityHint);
                 if (game != null)
                 {
                     if (game.ImportSource == "steam" && game.RawgId == -appId) ingested++;
