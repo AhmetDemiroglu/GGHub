@@ -4,6 +4,7 @@ using GGHub.Infrastructure.Persistence;
 using GGHub.Infrastructure.Persistence.Seeders;
 using GGHub.Infrastructure.Services;
 using GGHub.Infrastructure.Settings;
+using GGHub.WebAPI.Filters;
 using GGHub.WebAPI.Hubs;
 using GGHub.WebAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -66,6 +67,24 @@ builder.Services.AddCors(options =>
 });
 builder.Services.Configure<RawgApiSettings>(builder.Configuration.GetSection("RawgApiSettings"));
 builder.Services.AddHttpClient();
+
+// RAWG icin adlandirilmis client. Varsayilan HttpClient.Timeout 100 sn'dir; RAWG'in coktugu
+// gunlerde (orn. Cloudflare 522) her oyun detay istegi bu sureyi bekliyor, istemciler ise
+// 15 sn'de vazgectigi icin DB fallback'ine hic ulasilamiyordu. Kisa deneme suresi + tek
+// retry + circuit breaker: RAWG oluyken istekler milisaniyeler icinde duser ve DB kopyasi
+// aninda servis edilir. Toplam but 10 sn: 15 sn'lik istemci timeout'unun icinde DB
+// fallback'ine ~5 sn pay birakir.
+builder.Services.AddHttpClient("Rawg")
+    .AddStandardResilienceHandler(options =>
+    {
+        options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(4);
+        options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(10);
+        options.Retry.MaxRetryAttempts = 1;
+        options.CircuitBreaker.FailureRatio = 0.5;
+        options.CircuitBreaker.MinimumThroughput = 4;
+        options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(30);
+        options.CircuitBreaker.BreakDuration = TimeSpan.FromSeconds(60);
+    });
 
 builder.Services.AddSingleton<IAmazonS3>(sp =>
 {
@@ -306,7 +325,11 @@ builder.Services.Configure<GzipCompressionProviderOptions>(options =>
 
 builder.Services.AddMemoryCache();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    // ExternalCatalogUnavailableException -> 503 + code=catalog_unavailable (tum controller'lar).
+    options.Filters.Add<ExternalCatalogUnavailableExceptionFilter>();
+});
 builder.Services.AddLocalization();
 
 builder.Services.AddEndpointsApiExplorer();

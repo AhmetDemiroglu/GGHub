@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import Animated, {
   useSharedValue,
   useAnimatedScrollHandler,
@@ -58,6 +59,7 @@ export default function GameDetailScreen() {
     data: game,
     isLoading,
     isError,
+    error,
     refetch,
     isRefetching,
   } = useQuery({
@@ -108,12 +110,36 @@ export default function GameDetailScreen() {
   }
 
   if (isError || !game) {
+    // 404 = oyun gercekten yok; diger her sey (timeout, 503, ag hatasi) gecici kabul edilir
+    // ve kullaniciya tekrar deneme sansi verilir.
+    const status = isAxiosError(error) ? error.response?.status : undefined;
+    const isTransient = isError && status !== 404;
+
     return (
       <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
-        <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
-        <Text style={[styles.errorText, { color: colors.error }]}>
-          {messages.common.genericError}
+        <Ionicons
+          name={isTransient ? 'cloud-offline-outline' : 'alert-circle-outline'}
+          size={48}
+          color={colors.error}
+        />
+        <Text style={[styles.errorText, { color: colors.text }]}>
+          {isTransient ? messages.gameDetail.unavailableTitle : messages.gameDetail.notFoundTitle}
         </Text>
+        <Text style={[styles.errorDescription, { color: colors.textSecondary }]}>
+          {isTransient
+            ? messages.gameDetail.unavailableDescription
+            : messages.gameDetail.notFoundDescription}
+        </Text>
+        {isTransient ? (
+          <Pressable
+            onPress={() => {
+              haptics.impactLight();
+              refetch();
+            }}
+          >
+            <Text style={[styles.backText, { color: colors.primary }]}>{messages.common.retry}</Text>
+          </Pressable>
+        ) : null}
         <Pressable onPress={() => router.back()}>
           <Text style={[styles.backText, { color: colors.primary }]}>{messages.common.back}</Text>
         </Pressable>
@@ -302,6 +328,11 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: FontSize.lg,
     fontWeight: '600',
+  },
+  errorDescription: {
+    fontSize: FontSize.md,
+    textAlign: 'center',
+    paddingHorizontal: Spacing.xl,
   },
   backText: {
     fontSize: FontSize.md,

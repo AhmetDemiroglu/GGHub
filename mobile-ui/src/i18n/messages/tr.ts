@@ -462,6 +462,10 @@ export const trMessages = {
         translationCompleteDescription: "Oyun açıklaması Türkçeye çevrildi.",
         languageEnglish: "English (US)",
         languageTurkish: "Türkçe",
+        notFoundTitle: "Oyun Bulunamadı",
+        notFoundDescription: "Aradığınız oyun sistemde mevcut değil veya kaldırılmış.",
+        unavailableTitle: "Oyun bilgisi şu anda getirilemiyor",
+        unavailableDescription: "Oyun kataloğu sağlayıcısına şu anda ulaşılamıyor. Lütfen birazdan tekrar deneyin.",
     },
     notFound: {
         badge: "Aradığın sayfa bulunamadı",

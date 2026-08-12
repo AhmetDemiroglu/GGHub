@@ -462,6 +462,10 @@ export const enUSMessages = {
         translationCompleteDescription: "The game description was translated into Turkish.",
         languageEnglish: "English (US)",
         languageTurkish: "Türkçe",
+        notFoundTitle: "Game Not Found",
+        notFoundDescription: "The game you are looking for does not exist or has been removed.",
+        unavailableTitle: "Game details are temporarily unavailable",
+        unavailableDescription: "The game catalog provider cannot be reached right now. Please try again shortly.",
     },
     notFound: {
         badge: "The page you were looking for could not be found",

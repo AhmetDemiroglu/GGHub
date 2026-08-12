@@ -1,5 +1,6 @@
 ﻿using GGHub.Application.Dtos;
 using GGHub.Application.DTOs.Common;
+using GGHub.Application.Exceptions;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
 using GGHub.Core.Enums;
@@ -7,7 +8,8 @@ using GGHub.Infrastructure.Dtos;
 using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence; 
 using GGHub.Infrastructure.Settings;
-using Microsoft.EntityFrameworkCore; 
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using System.Net.Http.Json;
 using Microsoft.Extensions.Logging;
@@ -21,14 +23,19 @@ namespace GGHub.Infrastructure.Services
         private readonly GGHubDbContext _context;
         private readonly IGeminiService _geminiService;
         private readonly ILogger<RawgGameService> _logger;
+        private readonly IMemoryCache _cache;
 
-        public RawgGameService(IHttpClientFactory httpClientFactory, IOptions<RawgApiSettings> apiSettings, GGHubDbContext context, IGeminiService geminiService, ILogger<RawgGameService> logger)
+        public RawgGameService(IHttpClientFactory httpClientFactory, IOptions<RawgApiSettings> apiSettings, GGHubDbContext context, IGeminiService geminiService, ILogger<RawgGameService> logger, IMemoryCache cache)
         {
-            _httpClient = httpClientFactory.CreateClient();
+            // "Rawg" adli client: kisa timeout + retry + circuit breaker (WebAPI Program.cs).
+            // Worker gibi bu adi kaydetmeyen host'larda CreateClient bos varsayilan client dondurur,
+            // davranis eskisi gibi kalir.
+            _httpClient = httpClientFactory.CreateClient("Rawg");
             _apiSettings = apiSettings.Value;
-            _context = context; 
+            _context = context;
             _geminiService = geminiService;
             _logger = logger;
+            _cache = cache;
         }
         public async Task<Game?> GetGameBySlugOrIdAsync(string idOrSlug)
         {
@@ -37,19 +44,42 @@ namespace GGHub.Infrastructure.Services
                 ? await _context.Games.AsNoTracking().FirstOrDefaultAsync(g => g.RawgId == rawgId)
                 : await _context.Games.AsNoTracking().FirstOrDefaultAsync(g => g.Slug == idOrSlug);
 
+            // DB-first: detay verisi bir kez dolmussa yastan bagimsiz HEMEN don. Eski kural
+            // (LastSyncedAt < 1 gun) neredeyse hic saglanmiyordu cunku backfill job bilerek
+            // LastSyncedAt yazmiyor; sonuc olarak her detay istegi RAWG'a canli gidiyordu ve
+            // RAWG'in coktugu gun DB'de kayitli oyunlarin sayfalari da dusuyordu.
+            // Tazelik sorumlulugu Worker'in (Metacritic/backfill joblari); istek yolu degil.
             if (gameInDb != null
-                && (DateTime.UtcNow - gameInDb.LastSyncedAt).TotalDays < 1
-                && !string.IsNullOrEmpty(gameInDb.DevelopersJson))
+                && (gameInDb.DetailSyncedAt != null || !string.IsNullOrEmpty(gameInDb.DevelopersJson)))
             {
                 return gameInDb;
             }
 
             var requestUrl = $"{_apiSettings.BaseUrl}games/{idOrSlug}?key={_apiSettings.ApiKey}";
 
+            RawgGameSingleDto? dto;
             try
             {
-                var dto = await _httpClient.GetFromJsonAsync<RawgGameSingleDto>(requestUrl);
-                if (dto == null) return null;
+                dto = await _httpClient.GetFromJsonAsync<RawgGameSingleDto>(requestUrl);
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                // RAWG kesin olarak "yok" dedi: 404 semantigi korunur.
+                return null;
+            }
+            catch (Exception ex)
+            {
+                // Timeout, circuit breaker, 5xx, bozuk JSON... hepsi ayni anlama gelir:
+                // katalog su an erisilemez. DB'de bayat da olsa kopya varsa onu don;
+                // yoksa 404 (yalan) yerine 503'e map'lenecek tipli istisna firlat.
+                _logger.LogWarning(ex, "[RawgGameService] RAWG erisilemedi ({IdOrSlug}); DB kopyasina dusuluyor.", idOrSlug);
+                if (gameInDb != null) return gameInDb;
+                throw new ExternalCatalogUnavailableException($"RAWG erisilemedi: {idOrSlug}", ex);
+            }
+
+            if (dto == null) return null;
+
+            {
 
                 var descriptionRaw = dto.Description ?? string.Empty;
                 var descriptionParts = descriptionRaw.Split(new[] { "\n\n" }, StringSplitOptions.None);
@@ -118,20 +148,6 @@ namespace GGHub.Infrastructure.Services
                 }
 
                 await _context.SaveChangesAsync();
-                return gameInDb;
-            }
-            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
-            {
-                return null;
-            }
-            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
-            {
-                // Öncesinde yalnızca RAWG'ın 404'ü yakalanıyordu; 401 (anahtar), 429 (kota),
-                // 5xx, timeout ve bozuk JSON dışarı sızıp 500'e dönüşüyordu. Sonuç: var olmayan
-                // her /api/games/{slug} 404 yerine 500 veriyordu (crawler'lar için kötü) ve
-                // RAWG'da geçici bir aksaklık, DB'de kaydı olan oyunun sayfasını da düşürüyordu.
-                //
-                // DB'de bayat da olsa bir kopya varsa onu döndür, yoksa null (=> 404).
                 return gameInDb;
             }
         }
@@ -264,10 +280,10 @@ namespace GGHub.Infrastructure.Services
             var rawgDto = rawgDtoObj as RawgGameDto;
             var gameInDb = await _context.Games.FirstOrDefaultAsync(g => g.RawgId == rawgId);
 
-            if (gameInDb != null
-                && (DateTime.UtcNow - gameInDb.LastSyncedAt).TotalDays < 1
-                && !string.IsNullOrEmpty(gameInDb.GenresJson)
-                && !string.IsNullOrEmpty(gameInDb.DevelopersJson))
+            // Review/wishlist/liste ekleme icin oyunun DB'de temel verisiyle var olmasi yeter.
+            // Eski 24 saatlik tazelik sarti, RAWG'in coktugu gunlerde bu akislari da
+            // gereksiz yere RAWG'a bagimli kiliyordu; kayit varsa hemen don.
+            if (gameInDb != null && !string.IsNullOrEmpty(gameInDb.GenresJson))
             {
                 return gameInDb;
             }
@@ -276,8 +292,7 @@ namespace GGHub.Infrastructure.Services
 
             bool needsApiCall =
                 gameInDb == null
-                || string.IsNullOrEmpty(gameInDb.DevelopersJson)
-                || (DateTime.UtcNow - gameInDb.LastSyncedAt).TotalDays >= 1;
+                || string.IsNullOrEmpty(gameInDb.GenresJson);
 
             if (needsApiCall)
             {
@@ -290,6 +305,15 @@ namespace GGHub.Infrastructure.Services
                 {
                     if (gameInDb != null) return gameInDb;
                     if (rawgDto == null) throw new Exception(AppText.Get("rawg.gameNotFoundById", new Dictionary<string, object?> { ["rawgId"] = rawgId }));
+                }
+                catch (Exception ex)
+                {
+                    // RAWG erisilemez (timeout, breaker, 5xx...). DB kaydi varsa onunla devam;
+                    // liste ozetinden (rawgDto) oyun kurulabiliyorsa fullDto olmadan devam;
+                    // ikisi de yoksa 503'e map'lenecek tipli istisna.
+                    _logger.LogWarning(ex, "[RawgGameService] RAWG erisilemedi (EnsureGameExists rawgId={RawgId}).", rawgId);
+                    if (gameInDb != null) return gameInDb;
+                    if (rawgDto == null) throw new ExternalCatalogUnavailableException($"RAWG erisilemedi: rawgId={rawgId}", ex);
                 }
             }
 
@@ -438,101 +462,79 @@ namespace GGHub.Infrastructure.Services
             return translatedText;
         }
 
+        /// <summary>
+        /// Benzer oyunlar, tamamen yerel DB'den. Eski surum RAWG'in tur listesine canli
+        /// gidiyordu ve DB fallback'i olmadigi icin RAWG coktugunde bu uc da dusuyordu.
+        /// DB'deki kalite-filtreli katalog ayni isi gorur: kaynak oyunun ilk turune gore
+        /// en yuksek puanli 10 oyun. Sonuc 6 saat cache'lenir.
+        /// </summary>
         public async Task<List<GameDto>> GetSimilarGamesAsync(int rawgGameId)
         {
-            var sourceGame = await _context.Games
-                .AsNoTracking()
-                .Select(g => new { g.RawgId, g.GenresJson })
-                .FirstOrDefaultAsync(g => g.RawgId == rawgGameId);
-
-            string requestUrl;
-            List<GenreDto>? genres = null;
-
-            if (sourceGame != null && !string.IsNullOrEmpty(sourceGame.GenresJson))
+            var cacheKey = $"similar-games:{rawgGameId}";
+            if (_cache.TryGetValue(cacheKey, out List<GameDto>? cached) && cached != null)
             {
-                try
-                {
-                    genres = System.Text.Json.JsonSerializer.Deserialize<List<GenreDto>>(sourceGame.GenresJson);
-                }
-                catch { }
+                return cached;
             }
 
-            if (genres != null && genres.Any())
+            var sourceGame = await _context.Games
+                .AsNoTracking()
+                .Where(g => g.RawgId == rawgGameId)
+                .Select(g => new { g.RawgId, g.GenresJson })
+                .FirstOrDefaultAsync();
+
+            if (sourceGame == null)
             {
-                var genreSlugs = string.Join(",", genres.Select(g => g.Slug).Take(2));
-                requestUrl = $"{_apiSettings.BaseUrl}games?key={_apiSettings.ApiKey}&genres={genreSlugs}&ordering=-metacritic&page_size=12";
+                return new List<GameDto>();
+            }
+
+            var genres = DeserializeGenres(sourceGame.GenresJson);
+            var firstGenreSlug = genres.FirstOrDefault()?.Slug;
+
+            var query = _context.Games
+                .AsNoTracking()
+                .Where(g => g.RawgId != rawgGameId
+                    && g.BackgroundImage != null
+                    && (g.Metacritic >= 60 || g.Rating >= 3.5));
+
+            if (!string.IsNullOrEmpty(firstGenreSlug))
+            {
+                query = query.Where(g => g.GenresJson != null && EF.Functions.Like(g.GenresJson, $"%\"Slug\":\"{firstGenreSlug}\"%"));
             }
             else
             {
-                var startDate = DateTime.Now.AddYears(-2).ToString("yyyy-MM-dd");
-                var endDate = DateTime.Now.ToString("yyyy-MM-dd");
-                requestUrl = $"{_apiSettings.BaseUrl}games?key={_apiSettings.ApiKey}&dates={startDate},{endDate}&ordering=-rating&page_size=12";
+                // Kaynak oyunun turu bilinmiyorsa son 2 yilin populer oyunlarina dus.
+                var startDate = DateTime.UtcNow.AddYears(-2).ToString("yyyy-MM-dd");
+                query = query.Where(g => g.Released != null && string.Compare(g.Released, startDate) >= 0);
             }
 
-            try
+            var similar = await query
+                .OrderByDescending(g => g.Metacritic ?? 0)
+                .ThenByDescending(g => g.Rating ?? 0)
+                .Take(10)
+                .Select(g => new
+                {
+                    g.Id, g.RawgId, g.Name, g.Slug, g.Released,
+                    g.BackgroundImage, g.Rating, g.Metacritic,
+                    g.AverageRating, g.RatingCount,
+                })
+                .ToListAsync();
+
+            var result = similar.Select(g => new GameDto
             {
-                var response = await _httpClient.GetFromJsonAsync<PaginatedResponseDto<RawgGameDto>>(requestUrl);
+                Id = g.Id,
+                RawgId = g.RawgId,
+                Name = g.Name,
+                Slug = g.Slug,
+                Released = g.Released,
+                BackgroundImage = g.BackgroundImage,
+                Rating = g.Rating,
+                Metacritic = g.Metacritic,
+                GghubRating = g.AverageRating,
+                GghubRatingCount = g.RatingCount
+            }).ToList();
 
-                if (response?.Results == null || !response.Results.Any())
-                {
-                    return new List<GameDto>();
-                }
-
-                var rawgIds = response.Results
-                    .Where(r => r.Id != rawgGameId)
-                    .Select(r => r.Id)
-                    .Distinct()
-                    .Take(10)
-                    .ToList();
-
-                var rawgResults = response.Results
-                    .Where(r => rawgIds.Contains(r.Id))
-                    .GroupBy(r => r.Id)
-                    .Select(g => g.First())
-                    .ToList();
-
-                foreach (var dto in rawgResults)
-                {
-                    try
-                    {
-                        await EnsureGameExistsAsync(dto.Id, dto);
-                    }
-                    catch { }
-                }
-
-                var updatedRatings = await _context.Games
-                .AsNoTracking()
-                .Where(g => rawgIds.Contains(g.RawgId))
-                .GroupBy(g => g.RawgId)
-                .Select(g => g.First())
-                .ToDictionaryAsync(
-                    k => k.RawgId,
-                    v => new { v.Id, v.AverageRating, v.RatingCount }
-                );
-
-                return rawgResults.Select(dto =>
-                {
-                    updatedRatings.TryGetValue(dto.Id, out var stats);
-                    return new GameDto
-                    {
-                        Id = stats?.Id ?? 0,
-                        RawgId = dto.Id,
-                        Name = dto.Name,
-                        Slug = dto.Slug,
-                        Released = dto.Released,
-                        BackgroundImage = dto.BackgroundImage,
-                        Rating = dto.Rating,
-                        Metacritic = SanitizeMetacritic(dto.Metacritic, dto.Released),
-                        GghubRating = stats?.AverageRating ?? 0,
-                        GghubRatingCount = stats?.RatingCount ?? 0
-                    };
-                }).ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "[GetSimilarGames] EXCEPTION for RawgId: {RawgId}", rawgGameId);
-                throw;
-            }
+            _cache.Set(cacheKey, result, TimeSpan.FromHours(6));
+            return result;
         }
 
         /// <summary>

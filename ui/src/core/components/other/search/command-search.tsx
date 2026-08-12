@@ -6,6 +6,7 @@ import { Search } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { searchAll } from "@/api/search/search.api";
 import { useCurrentLocale } from "@/core/contexts/locale-context";
+import { useDebounce } from "@/core/hooks/use-debounce";
 import { useLocalizedHref } from "@/core/hooks/use-localized-href";
 import { getImageUrl } from "@/core/lib/get-image-url";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
@@ -42,12 +43,19 @@ export function CommandSearch({ variant = "default", collapsed = false }: Comman
         return () => document.removeEventListener("keydown", down);
     }, []);
 
-    const { data: results, isLoading } = useQuery({
-        queryKey: ["search", query, locale],
-        queryFn: () => searchAll(query),
-        enabled: query.length >= 3,
+    // Debounce: her tuş vuruşunda istek atılmasın; kullanıcı duraksayınca tek istek gitsin.
+    const debouncedQuery = useDebounce(query, 300);
+
+    const { data: results, isLoading, isError } = useQuery({
+        queryKey: ["search", debouncedQuery, locale],
+        queryFn: () => searchAll(debouncedQuery),
+        enabled: debouncedQuery.length >= 3,
         staleTime: 30000,
+        meta: { suppressGlobalToast: true },
     });
+
+    // Debounce beklerken veya istek uçarken "Sonuç bulunamadı." göstermemek için tek bayrak.
+    const isSearching = query.length >= 3 && (isLoading || debouncedQuery !== query);
 
     const handleSelect = (link: string) => {
         setOpen(false);
@@ -110,7 +118,13 @@ export function CommandSearch({ variant = "default", collapsed = false }: Comman
             >
                 <CommandInput placeholder={placeholder} value={query} onValueChange={setQuery} />
                 <CommandList>
-                    {query.length >= 3 && !isLoading && users.length === 0 && games.length === 0 ? (
+                    {query.length >= 3 && !isSearching && isError ? (
+                        <CommandEmpty>
+                            {locale === "tr" ? "Arama şu anda kullanılamıyor. Lütfen tekrar deneyin." : "Search is temporarily unavailable. Please try again."}
+                        </CommandEmpty>
+                    ) : null}
+
+                    {query.length >= 3 && !isSearching && !isError && users.length === 0 && games.length === 0 ? (
                         <CommandEmpty>{noResults}</CommandEmpty>
                     ) : null}
 
@@ -120,7 +134,7 @@ export function CommandSearch({ variant = "default", collapsed = false }: Comman
                         </div>
                     ) : null}
 
-                    {isLoading && query.length >= 3 ? (
+                    {isSearching ? (
                         <div className="px-4 py-8 text-center text-sm text-muted-foreground">
                             {locale === "tr" ? "Aranıyor..." : "Searching..."}
                         </div>

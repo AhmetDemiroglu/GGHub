@@ -80,10 +80,18 @@ export function Providers({ children, locale, messages }: { children: React.Reac
     const tRef = React.useRef((key: string) => translate(messages, key));
     tRef.current = (key: string) => translate(messages, key);
 
-    // Cache error handler'ları sadece bir kere ayarla, tRef üzerinden güncel t'ye eriş
+    // Cache error handler'ları sadece bir kere ayarla, tRef üzerinden güncel t'ye eriş.
+    // meta.suppressGlobalToast: hatayı kendi ekranında gösteren sorgular (örn. oyun detay)
+    // global toast'ı kapatabilir; yoksa aynı hata iki kez bildiriliyor.
     useEffect(() => {
-        client.getQueryCache().config.onError = (error) => handleGlobalError(error, tRef.current);
-        client.getMutationCache().config.onError = (error) => handleGlobalError(error, tRef.current);
+        client.getQueryCache().config.onError = (error, query) => {
+            if (query.meta?.suppressGlobalToast) return;
+            handleGlobalError(error, tRef.current);
+        };
+        client.getMutationCache().config.onError = (error, _variables, _context, mutation) => {
+            if (mutation.meta?.suppressGlobalToast) return;
+            handleGlobalError(error, tRef.current);
+        };
     }, [client]);
 
     // GoogleOAuthProvider buradan kaldırıldı: GSI script'i (97 KB) her sayfada iniyordu.

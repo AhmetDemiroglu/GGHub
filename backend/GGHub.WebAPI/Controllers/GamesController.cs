@@ -159,12 +159,10 @@ namespace GGHub.WebAPI.Controllers
             }
             catch (Exception ex)
             {
-                return Ok(new
-                {
-                    Error = ex.Message,
-                    InnerError = ex.InnerException?.Message,
-                    StackTrace = ex.StackTrace?.Substring(0, Math.Min(500, ex.StackTrace?.Length ?? 0))
-                });
+                // Benzer oyunlar detay sayfasinin yan bilesenidir; hata sayfayi dusurmemeli.
+                // Eski surum burada stack trace'i 200 govdesiyle disari sizdiriyordu.
+                _logger.LogError(ex, "[Games] Benzer oyunlar getirilemedi (rawgId={RawgId})", id);
+                return Ok(new List<GameDto>());
             }
         }
     }
