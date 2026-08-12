@@ -79,16 +79,14 @@ export default function HeroSlider({ games = [] }: HeroSliderProps) {
     const todayStr = new Date().toISOString().slice(0, 10);
     const agendaHighlights: Game[] = (() => {
         if (!agendaData) return [];
-        const withImage = (list: Game[]) => list.filter((g) => g.backgroundImage);
-        // Önce yaklaşan büyük çıkışlar (tarih sırasıyla), yer kalırsa en yeni çıkanlar.
-        const picks = withImage(agendaData.upcoming).slice(0, 5);
-        const seen = new Set(picks.map((g) => g.id));
-        for (const g of withImage(agendaData.released)) {
+        const seen = new Set<number>();
+        const picks: Game[] = [];
+        // Backend'in popülerliğe göre seçtiği vitrin önce; kalanı yaklaşan çıkışlardan tamamla.
+        for (const game of [...agendaData.highlights, ...agendaData.upcoming, ...agendaData.tba]) {
             if (picks.length >= 5) break;
-            if (!seen.has(g.id)) {
-                picks.push(g);
-                seen.add(g.id);
-            }
+            if (!game.backgroundImage || seen.has(game.id)) continue;
+            picks.push(game);
+            seen.add(game.id);
         }
         return picks;
     })();

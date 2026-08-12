@@ -15,6 +15,20 @@ namespace GGHub.Application.Dtos
         /// <summary>Ay icinde cikacak oyunlar, tarih artan.</summary>
         public List<GameDto> Upcoming { get; set; } = new();
 
+        /// <summary>
+        /// Vitrin icin POPULERLIGE gore secilmis oyunlar (tarih sirasina gore DEGIL).
+        /// Tarih sirasi vitrini rastgele indie oyunlarla dolduruyordu; kullanici buyuk
+        /// cikislari gormek istiyor.
+        /// </summary>
+        public List<GameDto> Highlights { get; set; } = new();
+
+        /// <summary>
+        /// Cikis tarihi henuz aciklanmamis ama beklenen buyuk oyunlar (Released = null).
+        /// Yalnizca yil gorunumunde (month=0) doldurulur; aksi halde hicbir aya dusemedikleri
+        /// icin katalogda olmalarina ragmen gundemde hic gorunmuyorlardi.
+        /// </summary>
+        public List<GameDto> Tba { get; set; } = new();
+
         public AgendaCountsDto Counts { get; set; } = new();
     }
 

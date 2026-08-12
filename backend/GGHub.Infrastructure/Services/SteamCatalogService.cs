@@ -180,27 +180,54 @@ namespace GGHub.Infrastructure.Services
 
         public async Task<IReadOnlyList<int>> GetComingSoonAppIdsAsync(int count, CancellationToken ct = default)
         {
-            try
-            {
-                // Resmi olmayan ama yillardir stabil uc: arama sonuc parcasini JSON zarfinda dondurur.
-                // results_html icindeki data-ds-appid attribute'lari appid listesini verir.
-                var url = $"https://store.steampowered.com/search/results/?query&start=0&count={count}&filter=popularcomingsoon&infinite=1&cc={_settings.Country}&l={_settings.Language}";
-                var response = await _httpClient.GetFromJsonAsync<SteamSearchResultsDto>(url, ct);
-                var html = response?.ResultsHtml;
-                if (string.IsNullOrEmpty(html)) return Array.Empty<int>();
+            // Kaynak SIRASI onemli: popularwishlist en cok istek listesine eklenen CIKMAMIS
+            // oyunlari verir, yani buyuk yapimlari (Deadlock, Fable, CONTROL Resonant, Total War...).
+            // popularcomingsoon tek basina kullanildiginda liste indie spam'iyle doluyordu ve
+            // kullanicinin bekledigi AAA cikislari katalogda hic gorunmuyordu.
+            var filters = new[] { "popularwishlist", "popularcomingsoon" };
+            const int pageSize = 50;
 
-                var ids = System.Text.RegularExpressions.Regex.Matches(html, "data-ds-appid=\"(\\d+)\"")
-                    .Select(m => int.Parse(m.Groups[1].Value))
-                    .Where(id => id > 0)
-                    .Distinct()
-                    .ToList();
-                return ids;
-            }
-            catch (Exception ex)
+            var ids = new List<int>();
+            var seen = new HashSet<int>();
+
+            foreach (var filter in filters)
             {
-                _logger.LogWarning(ex, "[SteamCatalog] popularcomingsoon aramasi basarisiz");
-                return Array.Empty<int>();
+                for (var start = 0; start < count && ids.Count < count * filters.Length; start += pageSize)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    try
+                    {
+                        // Resmi olmayan ama yillardir stabil uc: arama sonuc parcasini JSON zarfinda
+                        // dondurur; results_html icindeki data-ds-appid attribute'lari appid listesidir.
+                        var url = $"https://store.steampowered.com/search/results/?query&start={start}&count={pageSize}" +
+                                  $"&filter={filter}&infinite=1&cc={_settings.Country}&l={_settings.Language}";
+                        var response = await _httpClient.GetFromJsonAsync<SteamSearchResultsDto>(url, ct);
+                        var html = response?.ResultsHtml;
+                        if (string.IsNullOrEmpty(html)) break;
+
+                        var pageIds = System.Text.RegularExpressions.Regex.Matches(html, "data-ds-appid=\"(\\d+)\"")
+                            .Select(m => int.TryParse(m.Groups[1].Value, out var id) ? id : 0)
+                            .Where(id => id > 0)
+                            .ToList();
+
+                        if (pageIds.Count == 0) break;
+
+                        foreach (var id in pageIds)
+                        {
+                            if (seen.Add(id)) ids.Add(id);
+                        }
+
+                        await Task.Delay(500, ct);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "[SteamCatalog] {Filter} aramasi basarisiz (start={Start})", filter, start);
+                        break;
+                    }
+                }
             }
+
+            return ids;
         }
 
         public async Task<IReadOnlyList<int>> GetFeaturedAppIdsAsync(CancellationToken ct = default)

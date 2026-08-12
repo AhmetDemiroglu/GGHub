@@ -109,12 +109,34 @@ namespace GGHub.Infrastructure.Services
                 .ThenByDescending(g => g.RawgAdded ?? 0)
                 .ToList();
 
+            // Vitrin: tarih sirasi DEGIL, populerlik sirasi. Once yaklasan cikislar (kullanici
+            // "neler geliyor" diye bakiyor), yer kalirsa donemin en cok konusulan cikanlari.
+            var highlights = upcomingGames
+                .OrderByDescending(g => g.RawgAdded ?? 0)
+                .ThenByDescending(g => g.Dto.Metacritic ?? 0)
+                .Take(3)
+                .Select(g => g.Dto)
+                .ToList();
+
+            if (highlights.Count < 3)
+            {
+                var fillers = releasedGames
+                    .OrderByDescending(g => g.RawgAdded ?? 0)
+                    .ThenByDescending(g => g.Dto.Metacritic ?? 0)
+                    .Select(g => g.Dto)
+                    .Where(dto => highlights.All(h => h.Id != dto.Id))
+                    .Take(3 - highlights.Count);
+                highlights.AddRange(fillers);
+            }
+
             var result = new AgendaViewModel
             {
                 Year = year,
                 Month = month,
                 Released = releasedGames.Take(sectionCap).Select(g => g.Dto).ToList(),
                 Upcoming = upcomingGames.Take(sectionCap).Select(g => g.Dto).ToList(),
+                Highlights = highlights,
+                Tba = isYearView ? await GetTbaGamesAsync() : new List<GameDto>(),
                 Counts = new AgendaCountsDto
                 {
                     Released = releasedGames.Count,
@@ -125,6 +147,49 @@ namespace GGHub.Infrastructure.Services
             // 10 dk: sync joblari yeni oyun ekledikce sayfa yarim saat bayat kalmasin.
             _cache.Set(cacheKey, result, TimeSpan.FromMinutes(10));
             return result;
+        }
+
+        /// <summary>
+        /// Cikis tarihi belli olmayan (Released = null) ama cok beklenen oyunlar. Ornek:
+        /// "Marvel's Wolverine" katalogda var ama RAWG tarih vermiyor; tarihi olmadigi icin
+        /// hicbir aya dusemiyor ve gundemde hic gorunmuyordu. Populerlik esigi yuksek tutuluyor,
+        /// yoksa liste tarihsiz binlerce cop kayitla dolar.
+        /// </summary>
+        private async Task<List<GameDto>> GetTbaGamesAsync()
+        {
+            var rows = await _context.Games
+                .AsNoTracking()
+                .Where(g => g.Released == null
+                    && g.BackgroundImage != null
+                    && g.GenresJson != null
+                    && g.RawgAdded >= 100)
+                .OrderByDescending(g => g.RawgAdded ?? 0)
+                .Take(12)
+                .Select(g => new
+                {
+                    g.Id, g.RawgId, g.Slug, g.Name,
+                    g.BackgroundImage, g.CoverImage, g.Rating, g.Metacritic,
+                    g.AverageRating, g.RatingCount,
+                    g.PlatformsJson, g.GenresJson,
+                })
+                .ToListAsync();
+
+            return rows.Select(g => new GameDto
+            {
+                Id = g.Id,
+                RawgId = g.RawgId,
+                Slug = g.Slug,
+                Name = g.Name,
+                Released = null,
+                BackgroundImage = g.BackgroundImage,
+                CoverImage = g.CoverImage,
+                Rating = g.Rating,
+                Metacritic = g.Metacritic,
+                GghubRating = g.AverageRating,
+                GghubRatingCount = g.RatingCount,
+                Platforms = DeserializeList<PlatformDto>(g.PlatformsJson),
+                Genres = DeserializeList<GenreDto>(g.GenresJson),
+            }).ToList();
         }
 
         private static List<T> DeserializeList<T>(string? json)

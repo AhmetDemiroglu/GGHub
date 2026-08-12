@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays, Flame, Sparkles } from "lucide-react";
+import { CalendarDays, Flame, Hourglass, Sparkles } from "lucide-react";
 import { agendaApi } from "@/api/agenda/agenda.api";
 import type { AgendaContent } from "@/models/agenda/agenda.model";
 import type { Game } from "@/models/gaming/game.model";
@@ -86,17 +86,15 @@ export const AgendaView = ({ initialContent, initialYear, initialMonth }: Agenda
 
     const mixed = useMemo(() => (data ? mixGames(data) : []), [data]);
 
-    // Vitrin: en yakın 3 çıkacak; ay/yıl sakinse en taze çıkanlarla tamamla.
-    const highlights = useMemo(() => {
-        const upcoming = mixed.filter((g) => g.isUpcoming && g.backgroundImage);
-        const released = mixed.filter((g) => !g.isUpcoming && g.backgroundImage).reverse();
-        const picks = upcoming.slice(0, 3);
-        for (const game of released) {
-            if (picks.length >= 3) break;
-            picks.push(game);
-        }
-        return picks;
-    }, [mixed]);
+    // Vitrin backend'den popülerlik sırasıyla gelir (tarih sırası vitrini rastgele
+    // indie oyunlarla dolduruyordu).
+    const highlights = useMemo<AgendaGame[]>(() => {
+        const today = todayStr();
+        return (data?.highlights ?? []).map((game) => ({
+            ...game,
+            isUpcoming: !!game.released && game.released > today,
+        }));
+    }, [data]);
 
     const highlightIds = useMemo(() => new Set(highlights.map((g) => g.id)), [highlights]);
 
@@ -122,17 +120,31 @@ export const AgendaView = ({ initialContent, initialYear, initialMonth }: Agenda
 
     const totalCount = data ? data.counts.released + data.counts.upcoming : 0;
 
-    const statusChip = (game: AgendaGame, size: "sm" | "md" = "sm") => (
-        <span
-            className={`inline-flex items-center gap-1 rounded-full font-semibold ${
-                size === "md" ? "px-2.5 py-1 text-xs" : "px-2 py-0.5 text-[10px]"
-            } ${game.isUpcoming ? "bg-amber-400/95 text-black" : "bg-emerald-400/95 text-black"}`}
-        >
-            <CalendarDays className={size === "md" ? "h-3.5 w-3.5" : "h-3 w-3"} />
-            {game.released ? formatDay(game.released) : t("common.tba")}
-            {!game.isUpcoming ? <span className="opacity-70">· {t("agenda.statusReleased")}</span> : null}
-        </span>
+    const tbaGames = useMemo<AgendaGame[]>(
+        () => (data?.tba ?? []).map((game) => ({ ...game, isUpcoming: true })),
+        [data],
     );
+
+    const statusChip = (game: AgendaGame, size: "sm" | "md" = "sm") => {
+        // Vitrin kartında tam tarih (gün + ay + gün adı), küçük kartta kısa tarih sığar.
+        const label = !game.released
+            ? t("common.tba")
+            : size === "md"
+              ? fullDayFormatter.format(new Date(`${game.released}T00:00:00`))
+              : formatDay(game.released);
+
+        return (
+            <span
+                className={`inline-flex items-center gap-1 rounded-full font-semibold ${
+                    size === "md" ? "px-2.5 py-1 text-xs" : "px-2 py-0.5 text-[10px]"
+                } ${game.isUpcoming ? "bg-amber-400/95 text-black" : "bg-emerald-400/95 text-black"}`}
+            >
+                <CalendarDays className={size === "md" ? "h-3.5 w-3.5" : "h-3 w-3"} />
+                {label}
+                {!game.isUpcoming && game.released ? <span className="opacity-70">· {t("agenda.statusReleased")}</span> : null}
+            </span>
+        );
+    };
 
     const gameCard = (game: AgendaGame) => (
         <Link
@@ -183,14 +195,7 @@ export const AgendaView = ({ initialContent, initialYear, initialMonth }: Agenda
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-black/10" />
             <div className="absolute inset-x-0 bottom-0 space-y-2 p-4">
-                <div className="flex items-center gap-2">
-                    {statusChip(game, "md")}
-                    {game.released ? (
-                        <span className="hidden text-xs font-medium text-white/60 md:inline">
-                            {fullDayFormatter.format(new Date(`${game.released}T00:00:00`))}
-                        </span>
-                    ) : null}
-                </div>
+                <div className="flex items-center gap-2">{statusChip(game, "md")}</div>
                 <h3 className="line-clamp-2 text-xl font-black tracking-tight text-white drop-shadow-lg md:text-2xl">
                     {game.name}
                 </h3>
@@ -363,6 +368,22 @@ export const AgendaView = ({ initialContent, initialYear, initialMonth }: Agenda
                             </div>
                         )}
                     </section>
+
+                    {/* Tarihi açıklanmamış büyük beklenenler (yalnızca yıl görünümünde) */}
+                    {tbaGames.length > 0 ? (
+                        <section className="space-y-5">
+                            <div className="flex items-center gap-2">
+                                <Hourglass className="h-5 w-5 text-violet-400" />
+                                <h2 className="text-xl font-bold text-foreground">{t("agenda.tbaTitle")}</h2>
+                                <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
+                                    {t("agenda.tbaHint")}
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
+                                {tbaGames.map(gameCard)}
+                            </div>
+                        </section>
+                    ) : null}
                 </div>
             )}
         </div>

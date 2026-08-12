@@ -69,7 +69,7 @@ namespace GGHub.Infrastructure.Services
             // Genis pencere: magaza aramasinin "populer yakinda cikacaklar" listesi (~100 oyun).
             // featuredcategories tek basina ~20-40 oyunla sinirli kaliyordu ve gundemin gelecek
             // aylari bos gorunuyordu.
-            var comingSoonIds = await steamCatalog.GetComingSoonAppIdsAsync(100, ct);
+            var comingSoonIds = await steamCatalog.GetComingSoonAppIdsAsync(200, ct);
 
             var idList = featuredIds.Concat(comingSoonIds).Distinct().ToList();
             if (idList.Count == 0)

@@ -323,6 +323,8 @@ export const trMessages = {
         releasedShort: "Çıkanlar",
         statusReleased: "Çıktı",
         highlights: "Öne çıkanlar",
+        tbaTitle: "Tarihi belli olmayanlar",
+        tbaHint: "Beklenen büyük çıkışlar",
     },
     notFound: {
         badge: "Aradığın sayfa bulunamadı",

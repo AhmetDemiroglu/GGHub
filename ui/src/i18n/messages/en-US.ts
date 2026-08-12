@@ -322,6 +322,8 @@ export const enUSMessages = {
         releasedShort: "Released",
         statusReleased: "Out",
         highlights: "Highlights",
+        tbaTitle: "Date not announced",
+        tbaHint: "Highly anticipated",
     },
     notFound: {
         badge: "The page you were looking for could not be found",

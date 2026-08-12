@@ -25,8 +25,11 @@ namespace GGHub.Infrastructure.Settings
 
         public int DelayBetweenRequestsMs { get; set; } = 1500;
 
-        /// <summary>Sync job'in tek kosuda atacagi azami appdetails istegi.</summary>
-        public int MaxAppDetailsPerRun { get; set; } = 100;
+        /// <summary>
+        /// Sync job'in tek kosuda atacagi azami appdetails istegi. 250 x 1.5 sn ~ 6 dk;
+        /// job 6 saatte bir kostugu icin sorun degil, karsiliginda katalog hizli doluyor.
+        /// </summary>
+        public int MaxAppDetailsPerRun { get; set; } = 250;
 
         public int RunIntervalMinutes { get; set; } = 360;
 
