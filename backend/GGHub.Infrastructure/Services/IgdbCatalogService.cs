@@ -163,6 +163,20 @@ namespace GGHub.Infrastructure.Services
                     .GroupBy(g => NormalizeName(g.Name))
                     .ToDictionary(g => g.Key, g => g.ToList());
 
+                // Slug cakisma kontrolu icin de tek toplu okuma (bkz. UpsertAsync/takenSlugs).
+                var pageSlugCandidates = rows
+                    .Select(r => (r.Game?.VersionParent ?? r.Game?.ParentGame)?.Slug ?? r.Game?.Slug)
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .Select(s => s!)
+                    .Distinct()
+                    .ToList();
+                var pageSlugs = (await _context.Games
+                    .AsNoTracking()
+                    .Where(g => pageSlugCandidates.Contains(g.Slug))
+                    .Select(g => g.Slug)
+                    .ToListAsync(ct))
+                    .ToHashSet();
+
                 foreach (var row in rows)
                 {
                     if (row.Game == null || row.Date == null || string.IsNullOrWhiteSpace(row.Game.Name)) continue;
@@ -203,7 +217,7 @@ namespace GGHub.Infrastructure.Services
                     if (knownIgdbIds.TryGetValue(game.Id, out var knownReleased) && knownReleased == released)
                         continue;
 
-                    var outcome = await UpsertAsync(game, released, ct, nameMatches, deferSave: true);
+                    var outcome = await UpsertAsync(game, released, ct, nameMatches, deferSave: true, takenSlugs: pageSlugs);
                     if (outcome == UpsertOutcome.Added) added++;
                     else if (outcome == UpsertOutcome.Updated) updated++;
                 }
@@ -222,6 +236,16 @@ namespace GGHub.Infrastructure.Services
                 finally
                 {
                     _context.ChangeTracker.Clear();
+                }
+
+                // Ilerleme logu: eskiden yalnizca kosu BITINCE log basiliyordu ve senkron
+                // saatlerce sessiz kaldigi icin "takildi mi ilerliyor mu" anlasilamiyordu.
+                if (page % 5 == 0 || rows.Count < _settings.PageSize)
+                {
+                    var firstDate = rows.First().Human ?? "?";
+                    var lastDate = rows.Last().Human ?? "?";
+                    _logger.LogInformation("[IGDB] {Sort} sayfa {Page}: {Count} kayit ({First} -> {Last}), toplam +{Added}/~{Updated}",
+                        pass.Sort, page, rows.Count, firstDate, lastDate, added, updated);
                 }
 
                 if (rows.Count < _settings.PageSize) break;
@@ -512,7 +536,8 @@ namespace GGHub.Infrastructure.Services
 
         private async Task<UpsertOutcome> UpsertAsync(
             IgdbGameDto dto, string? released, CancellationToken ct,
-            Dictionary<string, List<Game>>? preloadedNameMatches = null, bool deferSave = false)
+            Dictionary<string, List<Game>>? preloadedNameMatches = null, bool deferSave = false,
+            HashSet<string>? takenSlugs = null)
         {
             var syntheticRawgId = -(IgdbRawgIdOffset + dto.Id);
 
@@ -598,8 +623,15 @@ namespace GGHub.Infrastructure.Services
             }
 
             var slug = !string.IsNullOrWhiteSpace(dto.Slug) ? dto.Slug! : SlugifyName(dto.Name!);
-            if (await _context.Games.AnyAsync(g => g.Slug == slug, ct))
-                slug = $"{slug}-igdb-{dto.Id}";
+
+            // Slug cakismasi: toplu senkronda sayfa basinda cekilen kume kullanilir. Her yeni
+            // kayit icin ayri AnyAsync atmak sayfa basina 500 sorgu demekti ve senkronun hic
+            // bitmemesinin ana sebeplerinden biriydi.
+            var slugTaken = takenSlugs != null
+                ? takenSlugs.Contains(slug)
+                : await _context.Games.AnyAsync(g => g.Slug == slug, ct);
+            if (slugTaken) slug = $"{slug}-igdb-{dto.Id}";
+            takenSlugs?.Add(slug);
 
             var developers = (dto.InvolvedCompanies ?? new List<IgdbInvolvedCompanyDto>())
                 .Where(c => c.Developer && c.Company?.Name != null)
