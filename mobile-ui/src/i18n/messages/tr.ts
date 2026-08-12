@@ -117,6 +117,8 @@ export const trMessages = {
     agenda: {
         upcoming: "Çıkacaklar",
         released: "Çıkanlar",
+        highlights: "Öne çıkanlar",
+        tbaTitle: "Tarihi belli olmayanlar",
         allYear: "Tüm Yıl",
         emptyUpcoming: "Bu ay için beklenen çıkış bulunamadı.",
         emptyReleased: "Bu ay için kayıtlı çıkış bulunamadı.",

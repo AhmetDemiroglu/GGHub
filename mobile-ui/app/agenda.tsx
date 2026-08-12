@@ -29,7 +29,9 @@ type AgendaTab = 'upcoming' | 'released';
 
 type Row =
   | { type: 'date'; key: string; label: string }
-  | { type: 'game'; key: string; game: Game };
+  | { type: 'game'; key: string; game: Game }
+  | { type: 'highlights'; key: string; games: Game[] }
+  | { type: 'sectionTitle'; key: string; label: string; icon: keyof typeof Ionicons.glyphMap };
 
 interface PickerOption {
   label: string;
@@ -114,6 +116,13 @@ export default function AgendaScreen() {
   const isYearView = month === 0;
   const rows = useMemo<Row[]>(() => {
     const out: Row[] = [];
+
+    // Vitrin: backend populerlige gore seciyor (tarih sirasi degil), web ile ayni veri.
+    const highlights = data?.highlights ?? [];
+    if (highlights.length > 0) {
+      out.push({ type: 'highlights', key: 'highlights', games: highlights });
+    }
+
     let lastKey: string | null = null;
     for (const game of games) {
       const date = game.released ?? '';
@@ -130,8 +139,23 @@ export default function AgendaScreen() {
       }
       out.push({ type: 'game', key: `g-${game.id}`, game });
     }
+
+    // Tarihi aciklanmamis buyuk beklenenler (yalnizca Tum Yil gorunumunde dolu gelir).
+    const tba = data?.tba ?? [];
+    if (isYearView && tba.length > 0) {
+      out.push({
+        type: 'sectionTitle',
+        key: 'tba-title',
+        label: messages.agenda.tbaTitle,
+        icon: 'hourglass-outline',
+      });
+      for (const game of tba) {
+        out.push({ type: 'game', key: `tba-${game.id}`, game });
+      }
+    }
+
     return out;
-  }, [games, locale, messages.common.tba, isYearView]);
+  }, [games, locale, messages.common.tba, messages.agenda.tbaTitle, isYearView, data]);
 
   const monthOptions: PickerOption[] = [
     { value: 0, label: messages.agenda.allYear },
@@ -215,13 +239,44 @@ export default function AgendaScreen() {
           }
           data={rows}
           keyExtractor={(item) => item.key}
-          renderItem={({ item }) =>
-            item.type === 'date' ? (
-              <Text style={[styles.dateHeader, { color: colors.textSecondary }]}>{item.label}</Text>
-            ) : (
-              <GameCard game={item.game} variant="list" />
-            )
-          }
+          renderItem={({ item }) => {
+            if (item.type === 'date') {
+              return <Text style={[styles.dateHeader, { color: colors.textSecondary }]}>{item.label}</Text>;
+            }
+            if (item.type === 'sectionTitle') {
+              return (
+                <View style={styles.sectionTitleRow}>
+                  <Ionicons name={item.icon} size={18} color={colors.primary} />
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>{item.label}</Text>
+                </View>
+              );
+            }
+            if (item.type === 'highlights') {
+              return (
+                <View style={styles.highlightsWrap}>
+                  <View style={styles.sectionTitleRow}>
+                    <Ionicons name="flame" size={18} color={colors.warning ?? colors.primary} />
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                      {messages.agenda.highlights}
+                    </Text>
+                  </View>
+                  <FlatList
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    data={item.games}
+                    keyExtractor={(g) => `hl-${g.id}`}
+                    contentContainerStyle={styles.highlightsList}
+                    renderItem={({ item: game }) => (
+                      <View style={styles.highlightCard}>
+                        <GameCard game={game} variant="compact" />
+                      </View>
+                    )}
+                  />
+                </View>
+              );
+            }
+            return <GameCard game={item.game} variant="list" />;
+          }}
           contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + Spacing.md }]}
           ListEmptyComponent={
             <EmptyState
@@ -289,6 +344,27 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
     marginTop: Spacing.md,
     marginBottom: Spacing.sm,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.sm,
+  },
+  sectionTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: '700',
+  },
+  highlightsWrap: {
+    marginBottom: Spacing.md,
+  },
+  highlightsList: {
+    gap: Spacing.md,
+    paddingRight: Spacing.lg,
+  },
+  highlightCard: {
+    width: 230,
   },
   retryText: {
     fontSize: FontSize.md,

@@ -117,6 +117,8 @@ export const enUSMessages = {
     agenda: {
         upcoming: "Coming up",
         released: "Released",
+        highlights: "Highlights",
+        tbaTitle: "Date not announced",
         allYear: "Whole Year",
         emptyUpcoming: "No expected releases for this month.",
         emptyReleased: "No recorded releases for this month.",
