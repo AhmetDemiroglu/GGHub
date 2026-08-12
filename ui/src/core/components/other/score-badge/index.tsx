@@ -8,6 +8,13 @@ interface ScoreBadgeProps {
   score: number | string | null | undefined;
 }
 
+const SCORE_LABELS: Record<ScoreType, string> = {
+  metacritic: "Metacritic",
+  rawg: "RAWG",
+  gghub: "GGHub",
+  igdb: "IGDB",
+};
+
 const getScoreStyling = (type: ScoreType, score: number | null | undefined) => {
   if (type === 'gghub') {
     return "bg-purple-500/10 text-purple-400 border-purple-500/20";
@@ -37,7 +44,8 @@ export function ScoreBadge({ type, score }: ScoreBadgeProps) {
 
   return (
     <div>
-      <p className="text-xs text-muted-foreground capitalize mb-2">{type}</p>
+      {/* Marka adlari kendi yazimiyla: "capitalize" sinifi IGDB'yi "Igdb" yapiyordu. */}
+      <p className="text-xs text-muted-foreground mb-2">{SCORE_LABELS[type]}</p>
       <Badge variant="outline" className={cn("text-lg font-bold", getScoreStyling(type, typeof score === 'number' ? score : null))}>
         {scoreValue ?? '-'}
       </Badge>
