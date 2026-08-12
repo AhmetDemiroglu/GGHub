@@ -86,11 +86,14 @@ namespace GGHub.Infrastructure.Services
             {
                 ct.ThrowIfCancellationRequested();
 
-                // Asil kayit: en cok kaynak baglantisi + en zengin veri.
+                // Asil kayit: en cok kaynak baglantisi + en zengin veri. Esitlikte ADI TEMIZ
+                // olan kazanir: "EA Sports FC 27" kullaniciya "EA SPORTS FC(tm) 27"den iyi
+                // gorunur ve arama sonuclarinda daha okunakli.
                 var ordered = group
                     .OrderByDescending(g => (g.RawgId > 0 ? 4 : 0) + (g.SteamAppId != null ? 2 : 0) + (g.IgdbId != null ? 2 : 0))
                     .ThenByDescending(g => g.DescriptionTr != null ? 1 : 0)
                     .ThenByDescending(g => g.BackgroundImage != null ? 1 : 0)
+                    .ThenBy(g => g.Name.Any(c => c == '™' || c == '®') ? 1 : 0)
                     .ThenByDescending(g => g.Metacritic ?? 0)
                     .ThenByDescending(g => g.IgdbRating ?? 0)
                     .ThenByDescending(g => g.RawgAdded ?? 0)
@@ -108,6 +111,35 @@ namespace GGHub.Infrastructure.Services
                 groups.Count, merged, skipped);
 
             await FixLegacyPlatformSlugsAsync(context, ct);
+            await CleanTrademarkSymbolsAsync(context, ct);
+        }
+
+        /// <summary>
+        /// Adlardaki (tm)/(R)/(C) isaretlerini temizler. Steam bu isaretleri adin parcasi olarak
+        /// veriyor ("EA SPORTS FC(tm) 27"); arama sonuclarinda ve kartlarda okunaksiz duruyor.
+        /// Slug DEGISMEZ, yani mevcut linkler bozulmaz.
+        /// </summary>
+        private async Task CleanTrademarkSymbolsAsync(GGHubDbContext context, CancellationToken ct)
+        {
+            var dirty = await context.Games
+                .Where(g => g.Name.Contains("™") || g.Name.Contains("®") || g.Name.Contains("©"))
+                .Take(500)
+                .ToListAsync(ct);
+
+            if (dirty.Count == 0) return;
+
+            foreach (var game in dirty)
+            {
+                game.Name = game.Name
+                    .Replace("™", string.Empty)
+                    .Replace("®", string.Empty)
+                    .Replace("©", string.Empty)
+                    .Replace("  ", " ")
+                    .Trim();
+            }
+
+            await context.SaveChangesAsync(ct);
+            _logger.LogInformation("[Dedupe] {Count} oyun adindan marka isareti temizlendi.", dirty.Count);
         }
 
         /// <summary>
