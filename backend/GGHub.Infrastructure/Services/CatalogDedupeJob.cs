@@ -67,21 +67,44 @@ namespace GGHub.Infrastructure.Services
             // baglantisi olcutleri kopyanin bir yarisini disarida birakabiliyordu (olculdu:
             // Palworld'un dogru 2024 kaydi ne pencereye ne de baglanti kumesine giriyordu,
             // dolayisiyla es bulunamiyor ve kopya hic birlesmiyordu).
+            // Tek sorguda OR'lamak yerine IKI AYRI sorgu: yuzlerce adlik bir IN listesini
+            // digerlerine OR'layan surum uzak Postgres'te bitmiyordu (dedupe kosusu hic log
+            // basmadi). Once tam isim tekrari olanlar (asil kopya kaynagi), sonra normalize
+            // farkliliklarini yakalayan pencere.
             var duplicateNames = await context.Games
                 .GroupBy(g => g.Name.ToLower())
                 .Where(grp => grp.Count() > 1)
                 .Select(grp => grp.Key)
+                .Take(400)
                 .ToListAsync(ct);
 
+            var byDuplicateName = duplicateNames.Count == 0
+                ? new List<CandidateRow>()
+                : await context.Games
+                    .Where(g => duplicateNames.Contains(g.Name.ToLower()))
+                    .Select(g => new CandidateRow { Id = g.Id, Name = g.Name, Released = g.Released, RawgId = g.RawgId,
+                        SteamAppId = g.SteamAppId, IgdbId = g.IgdbId, BackgroundImage = g.BackgroundImage,
+                        Metacritic = g.Metacritic, IgdbRating = g.IgdbRating, RawgAdded = g.RawgAdded, DescriptionTr = g.DescriptionTr })
+                    .ToListAsync(ct);
+
             var since = DateTime.UtcNow.AddMonths(-14).ToString("yyyy-MM-dd");
-            var candidates = await context.Games
+            var byWindow = await context.Games
                 .Where(g => (g.Released != null && string.Compare(g.Released, since) >= 0)
                     || g.SteamAppId != null
-                    || g.IgdbId != null
-                    || duplicateNames.Contains(g.Name.ToLower()))
-                .Select(g => new { g.Id, g.Name, g.Released, g.RawgId, g.SteamAppId, g.IgdbId,
-                                   g.BackgroundImage, g.Metacritic, g.IgdbRating, g.RawgAdded, g.DescriptionTr })
+                    || g.IgdbId != null)
+                .Select(g => new CandidateRow { Id = g.Id, Name = g.Name, Released = g.Released, RawgId = g.RawgId,
+                    SteamAppId = g.SteamAppId, IgdbId = g.IgdbId, BackgroundImage = g.BackgroundImage,
+                    Metacritic = g.Metacritic, IgdbRating = g.IgdbRating, RawgAdded = g.RawgAdded, DescriptionTr = g.DescriptionTr })
                 .ToListAsync(ct);
+
+            var candidates = byDuplicateName
+                .Concat(byWindow)
+                .GroupBy(g => g.Id)
+                .Select(g => g.First())
+                .ToList();
+
+            _logger.LogInformation("[Dedupe] Aday havuzu: {Total} kayit ({Dup} tam isim tekrari, {Win} pencere).",
+                candidates.Count, byDuplicateName.Count, byWindow.Count);
 
             // Gruplama ADA gore; yil ayrimi BILEREK kaldirildi. Yil anahtara dahilken bozuk
             // tarihli kopyalar ayri gruplara dusuyor ve hic birlesmiyordu (olculdu: Palworld
@@ -229,6 +252,22 @@ namespace GGHub.Infrastructure.Services
             }
         }
 
+        /// <summary>Dedupe aday satiri (iki sorgunun ortak sekli).</summary>
+        private sealed class CandidateRow
+        {
+            public int Id { get; init; }
+            public string Name { get; init; } = string.Empty;
+            public string? Released { get; init; }
+            public int RawgId { get; init; }
+            public int? SteamAppId { get; init; }
+            public int? IgdbId { get; init; }
+            public string? BackgroundImage { get; init; }
+            public int? Metacritic { get; init; }
+            public double? IgdbRating { get; init; }
+            public int? RawgAdded { get; init; }
+            public string? DescriptionTr { get; init; }
+        }
+
         private sealed class NamedSlug
         {
             public string? Name { get; set; }
@@ -280,7 +319,7 @@ namespace GGHub.Infrastructure.Services
         /// id dolu) VE cikis yillari 4'ten fazla ayrik. Bozuk tarihten dogan kopyalarda taraflardan
         /// biri genelde tek kaynakli oldugu icin bu koruma devreye girmez.
         /// </summary>
-        private static bool IsLikelyDifferentGame(dynamic a, dynamic b)
+        private static bool IsLikelyDifferentGame(CandidateRow a, CandidateRow b)
         {
             int? YearOf(string? released) =>
                 released != null && released.Length >= 4 && int.TryParse(released[..4], out var y) ? y : null;
@@ -290,7 +329,7 @@ namespace GGHub.Infrastructure.Services
             if (ya == null || yb == null) return false;
             if (Math.Abs(ya.Value - yb.Value) <= 4) return false;
 
-            bool Linked(dynamic g) => g.RawgId > 0 && (g.SteamAppId != null || g.IgdbId != null);
+            bool Linked(CandidateRow g) => g.RawgId > 0 && (g.SteamAppId != null || g.IgdbId != null);
             return Linked(a) && Linked(b);
         }
 
