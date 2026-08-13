@@ -14,8 +14,11 @@ namespace GGHub.Infrastructure.Services
     /// </summary>
     public class AgendaService : IAgendaService
     {
-        private const int MonthSectionCap = 100;
-        private const int YearSectionCap = 200;
+        // Cap gun basina dagitildigi icin (bkz. BalanceByDay) 100 sayisi 31 gunluk bir ayda
+        // gunde yalnizca 3 oyun demekti; 180 ile gun basina 5-6 oyun dusuyor ve ayin tamami
+        // makul yogunlukta temsil ediliyor.
+        private const int MonthSectionCap = 180;
+        private const int YearSectionCap = 300;
 
         private readonly GGHubDbContext _context;
         private readonly IMemoryCache _cache;
@@ -117,6 +120,37 @@ namespace GGHub.Infrastructure.Services
                 .ThenByDescending(g => g.RawgAdded ?? 0)
                 .ToList();
 
+            // Cap TARIHE gore degil GUNE DENGELI uygulanir.
+            //
+            // Onceki surum "tarih sirala, ilk 100'u al" diyordu; ayda 568 cikis olunca liste
+            // yalnizca son bir kac gunu kapsiyor, ayin ilk yarisi TAMAMEN dusuyordu (olculdu:
+            // Agustos 2026 sayfasi 12 Agustos'ta basliyor, 3 Agustos'ta cikan Anomaly President
+            // hic gorunmuyordu). Artik her GUN icin o gunun en iyileri alinir; boylece ayin
+            // tamami temsil edilir ve kesilen sey gun icindeki cop oyunlar olur.
+            static List<T> BalanceByDay<T>(List<T> games, Func<T, string?> dayOf, Func<T, double> rankOf, int cap)
+            {
+                if (games.Count <= cap) return games;
+
+                var days = games.GroupBy(g => dayOf(g) ?? string.Empty).ToList();
+                var perDay = Math.Max(2, cap / Math.Max(days.Count, 1));
+
+                var picked = days
+                    .SelectMany(day => day.OrderByDescending(rankOf).Take(perDay))
+                    .ToHashSet();
+
+                // Gun basina kota dolmayan gunlerden arta kalan yeri en iyi adaylarla doldur.
+                if (picked.Count < cap)
+                {
+                    foreach (var game in games.Where(g => !picked.Contains(g)).OrderByDescending(rankOf))
+                    {
+                        if (picked.Count >= cap) break;
+                        picked.Add(game);
+                    }
+                }
+
+                return games.Where(picked.Contains).ToList();
+            }
+
             // Vitrin: tarih sirasi DEGIL, populerlik sirasi. Once yaklasan cikislar (kullanici
             // "neler geliyor" diye bakiyor), yer kalirsa donemin en cok konusulan cikanlari.
             // 6 adet: sayfa vitrini ilk 3'unu, ana sayfa hero kolaji 5'ini kullaniyor. Daha az
@@ -144,8 +178,12 @@ namespace GGHub.Infrastructure.Services
             {
                 Year = year,
                 Month = month,
-                Released = releasedGames.Take(sectionCap).Select(g => g.Dto).ToList(),
-                Upcoming = upcomingGames.Take(sectionCap).Select(g => g.Dto).ToList(),
+                Released = BalanceByDay(releasedGames, g => g.Released,
+                        g => g.TrendScore > 0 ? g.TrendScore : PopularityScore(g.RawgAdded, g.Dto), sectionCap)
+                    .Select(g => g.Dto).ToList(),
+                Upcoming = BalanceByDay(upcomingGames, g => g.Released,
+                        g => g.TrendScore > 0 ? g.TrendScore : PopularityScore(g.RawgAdded, g.Dto), sectionCap)
+                    .Select(g => g.Dto).ToList(),
                 Highlights = highlights,
                 Tba = isYearView ? await GetTbaGamesAsync() : new List<GameDto>(),
                 Counts = new AgendaCountsDto
