@@ -118,7 +118,13 @@ namespace GGHub.Infrastructure.Services
             var games = await context.Games
                 .Where(g => g.BackgroundImage != null
                     && (g.Metacritic != null || g.Rating != null || g.IgdbRating != null
-                        || g.RawgAdded != null || g.SteamAppId != null))
+                        || g.RawgAdded != null || g.SteamAppId != null
+                        // IgdbId SART: henuz CIKMAMIS konsol ozel yapimlarinda bu alanlarin
+                        // hicbiri dolu degil (puan yok, RAWG indekslememis, Steam'de yok), yani
+                        // havuza hic girmiyor ve trend skoru hesaplanmiyorlardi. Sonuc: Marvel's
+                        // Wolverine katalogda ve gundemde vardi ama "one cikanlar"a asla giremedi.
+                        // IGDB populerlik sinyali (Want to Play / Twitch) tam da bu oyunlar icin var.
+                        || g.IgdbId != null))
                 .Select(g => new
                 {
                     g.Id, g.SteamAppId, g.IgdbId, g.Metacritic, g.Rating, g.IgdbRating, g.IgdbRatingCount,
