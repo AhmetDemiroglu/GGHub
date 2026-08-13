@@ -163,9 +163,9 @@ export const AgendaView = ({ initialContent, initialYear, initialMonth }: Agenda
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
                 <div className="absolute right-2 top-2 flex items-center gap-1">
+                    {/* IGDB rozetinin zemini KOYU olmali: marka logosu mor ve dolu indigo
+                        rozet uzerinde neredeyse kayboluyordu (canlida olculdu). */}
                     {game.igdbRating ? (
-                        {/* Zemin KOYU olmali: IGDB'nin marka logosu mor ve dolu indigo rozet
-                            uzerinde neredeyse kayboluyordu (canlida olculdu). */}
                         <span className="flex items-center gap-1 rounded-md bg-black/75 px-1.5 py-0.5 text-[11px] font-bold text-indigo-200 ring-1 ring-indigo-400/40 backdrop-blur-sm" title="IGDB">
                             <IgdbLogo className="h-2.5" />
                             {Math.round(game.igdbRating)}
