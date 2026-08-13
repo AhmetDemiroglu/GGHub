@@ -442,6 +442,48 @@ namespace GGHub.Infrastructure.Services
             return result;
         }
 
+        public async Task<int> RepairShiftedReleaseDatesAsync(int batchSize, CancellationToken ct = default)
+        {
+            if (!IsConfigured) return 0;
+
+            var todayIso = DateTime.UtcNow.ToString("yyyy-MM-dd");
+
+            // Suphe kriteri: oyunun puani var (yani cikmis ve degerlendirilmis) ama tarihi
+            // gelecege bakiyor. Cikmamis oyunun Metacritic'i / IGDB oy sayisi olmaz.
+            var suspects = await _context.Games
+                .Where(g => g.IgdbId != null
+                    && g.Released != null
+                    && string.Compare(g.Released, todayIso) > 0
+                    && (g.Metacritic != null || g.IgdbRatingCount > 20 || g.RatingCount > 0))
+                .OrderByDescending(g => g.RawgAdded ?? 0)
+                .Take(batchSize)
+                .ToListAsync(ct);
+
+            if (suspects.Count == 0) return 0;
+
+            var idList = string.Join(",", suspects.Select(s => s.IgdbId!.Value));
+            var truth = await QueryGamesAsync($"fields id, first_release_date; where id = ({idList}); limit {suspects.Count};", ct);
+            if (truth == null || truth.Count == 0) return 0;
+
+            var firstReleaseById = truth
+                .Where(t => t.FirstReleaseDate != null)
+                .ToDictionary(t => t.Id, t => DateTimeOffset.FromUnixTimeSeconds(t.FirstReleaseDate!.Value).UtcDateTime.ToString("yyyy-MM-dd"));
+
+            var fixedCount = 0;
+            foreach (var game in suspects)
+            {
+                if (!firstReleaseById.TryGetValue(game.IgdbId!.Value, out var correct)) continue;
+                if (correct == game.Released) continue;
+
+                _logger.LogInformation("[IGDB] Tarih onarildi: {Name} {Wrong} -> {Correct}", game.Name, game.Released, correct);
+                game.Released = correct;
+                fixedCount++;
+            }
+
+            if (fixedCount > 0) await _context.SaveChangesAsync(ct);
+            return fixedCount;
+        }
+
         /// <summary>IGDB games ucuna Apicalypse sorgusu atar. Hata halinde null.</summary>
         private async Task<List<IgdbGameDto>?> QueryGamesAsync(string query, CancellationToken ct)
         {
@@ -638,9 +680,30 @@ namespace GGHub.Infrastructure.Services
                 var dirty = false;
                 if (existing.IgdbId == null) { existing.IgdbId = dto.Id; dirty = true; }
 
-                // Tarih: IGDB'nin tam tarihi, tarihi olmayan veya farkli olan kayda yazilir.
-                // Buyuk yapimlarda erteleme sik oldugu icin guncel tarih onceliklidir.
-                if (existing.Released != released) { existing.Released = released; dirty = true; }
+                // TARIH KURALI (agir bir veri kaybindan sonra yazildi):
+                // IGDB release_dates ucu bir oyunun HER PLATFORM/SURUM cikisi icin ayri satir
+                // dondurur. Onceki surum "farkliysa yaz" diyordu ve Elden Ring'in Switch 2
+                // surumunun tarihi (28 Agu 2026) ana kayda yazilip 2022 cikisli oyun "gelecekte
+                // cikacak" gorunuyordu (ayni sekilde S.T.A.L.K.E.R. 2 vb.).
+                // Dogru kural: CIKMIS bir oyunun tarihine ASLA dokunma; yalnizca tarihi hic
+                // olmayan veya henuz cikmamis kayitlarda guncelle (erteleme senaryosu).
+                var todayIso = DateTime.UtcNow.ToString("yyyy-MM-dd");
+                var existingAlreadyOut = existing.Released != null
+                    && string.CompareOrdinal(existing.Released, todayIso) <= 0;
+
+                if (existing.Released == null && released != null)
+                {
+                    existing.Released = released;
+                    dirty = true;
+                }
+                else if (!existingAlreadyOut && released != null
+                    && string.CompareOrdinal(released, todayIso) > 0
+                    && existing.Released != released)
+                {
+                    // Henuz cikmamis oyun + yeni tarih de gelecekte => gercek erteleme/one cekme.
+                    existing.Released = released;
+                    dirty = true;
+                }
 
                 if (string.IsNullOrEmpty(existing.BackgroundImage) && dto.Cover?.ImageId != null)
                 {
@@ -866,7 +929,10 @@ namespace GGHub.Infrastructure.Services
             ["xboxone"] = ("Xbox One", "xbox-one"),
             ["xbox360"] = ("Xbox 360", "xbox360"),
             ["switch"] = ("Nintendo Switch", "nintendo-switch"),
+            // IGDB iki yazimi da kullaniyor; tireli varyant haritalanmadigi icin katalogda
+            // ham "switch-2" slug'i kaliyordu ve platform ikonu hic gorunmuyordu.
             ["switch2"] = ("Nintendo Switch 2", "nintendo-switch"),
+            ["switch-2"] = ("Nintendo Switch 2", "nintendo-switch"),
             ["ios"] = ("iOS", "ios"),
             ["android"] = ("Android", "android"),
         };

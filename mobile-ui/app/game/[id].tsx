@@ -260,8 +260,9 @@ export default function GameDetailScreen() {
           <SimilarGames games={similarGames} />
         )}
 
-        {/* Admin: Sync Metacritic */}
-        {user?.role === 'Admin' && (
+        {/* Admin: Metacritic getir. Yalnizca puani OLMAYAN oyunlarda gorunur; puani zaten
+            olan oyunda buton islevsizdi ve her sayfada duruyordu (web'deki davranisla ayni). */}
+        {user?.role === 'Admin' && game.metacritic == null && (
           <View style={styles.adminSection}>
             <Pressable
               style={[styles.syncButton, { borderColor: colors.warning }]}

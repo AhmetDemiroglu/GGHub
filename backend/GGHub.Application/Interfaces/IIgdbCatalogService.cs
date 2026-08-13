@@ -51,5 +51,14 @@ namespace GGHub.Application.Interfaces
         /// ve Twitch izlenme saati tum platformlari kapsar.
         /// </summary>
         Task<Dictionary<int, double>> GetPopularitySignalsAsync(int limitPerType, CancellationToken ct = default);
+
+        /// <summary>
+        /// ONARIM: cikmis oldugu belli (puani olan) ama tarihi GELECEGE kaymis kayitlari
+        /// IGDB'nin first_release_date degeriyle duzeltir. Bu bozulma, release_dates ucundaki
+        /// platform/surum satirlarinin ana oyunun tarihi sanilarak yazilmasindan olustu
+        /// (ornek: Elden Ring 2022 yerine 28 Agu 2026 gorunuyordu).
+        /// Duzeltilen kayit sayisini dondurur.
+        /// </summary>
+        Task<int> RepairShiftedReleaseDatesAsync(int batchSize, CancellationToken ct = default);
     }
 }

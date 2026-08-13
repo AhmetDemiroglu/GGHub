@@ -45,6 +45,14 @@ namespace GGHub.Infrastructure.Services
                 {
                     using var scope = _scopeFactory.CreateScope();
                     var service = scope.ServiceProvider.GetRequiredService<IIgdbCatalogService>();
+
+                    // Once ONARIM: tarihi gelecege kaymis kayitlari duzelt (bkz.
+                    // RepairShiftedReleaseDatesAsync). Bozuk tarih hem gundemi hem kesfeti
+                    // yaniltiyor, o yuzden zenginlestirmeden once kosuyor.
+                    var repaired = await service.RepairShiftedReleaseDatesAsync(200, stoppingToken);
+                    if (repaired > 0)
+                        _logger.LogInformation("[IGDB-Enrich] {Count} oyunun cikis tarihi onarildi.", repaired);
+
                     var processed = await service.EnrichExistingGamesAsync(_settings.EnrichBatchSize, stoppingToken);
 
                     // Kuyruk doluyken hizli devam et, bosaldiginda uzun uyu.
