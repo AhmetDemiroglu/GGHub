@@ -63,11 +63,22 @@ namespace GGHub.Infrastructure.Services
             // pencere disinda kaldiginda esi bulamiyordu (olculdu: Palworld'un 2024-01-19 kaydi
             // taranmiyor, yalnizca bozuk 2026 kaydi goruluyordu). Kopyalar zaten Steam/IGDB
             // ingest'inden dogdugu icin bu kume dogru olan.
+            // Ek kume: adi BIRDEN FAZLA kayitta gecen oyunlar. Tarih penceresi + kaynak
+            // baglantisi olcutleri kopyanin bir yarisini disarida birakabiliyordu (olculdu:
+            // Palworld'un dogru 2024 kaydi ne pencereye ne de baglanti kumesine giriyordu,
+            // dolayisiyla es bulunamiyor ve kopya hic birlesmiyordu).
+            var duplicateNames = await context.Games
+                .GroupBy(g => g.Name.ToLower())
+                .Where(grp => grp.Count() > 1)
+                .Select(grp => grp.Key)
+                .ToListAsync(ct);
+
             var since = DateTime.UtcNow.AddMonths(-14).ToString("yyyy-MM-dd");
             var candidates = await context.Games
                 .Where(g => (g.Released != null && string.Compare(g.Released, since) >= 0)
                     || g.SteamAppId != null
-                    || g.IgdbId != null)
+                    || g.IgdbId != null
+                    || duplicateNames.Contains(g.Name.ToLower()))
                 .Select(g => new { g.Id, g.Name, g.Released, g.RawgId, g.SteamAppId, g.IgdbId,
                                    g.BackgroundImage, g.Metacritic, g.IgdbRating, g.RawgAdded, g.DescriptionTr })
                 .ToListAsync(ct);
