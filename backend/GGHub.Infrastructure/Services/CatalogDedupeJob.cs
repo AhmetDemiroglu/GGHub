@@ -58,11 +58,16 @@ namespace GGHub.Infrastructure.Services
             using var scope = _scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<GGHubDbContext>();
 
-            // Yalnizca son bir yilin cikislari taranir: eski katalog zaten RAWG'dan tek kaynakli
-            // geldi ve orada kopya sorunu yok; tarama maliyeti boylece kucuk kaliyor.
+            // Tarama kapsami: son 14 ayin cikislari VE kaynak baglantisi olan (Steam/IGDB) tum
+            // kayitlar. Yalnizca tarih penceresine bakan ilk surum, kopyanin DOGRU tarihli yarisi
+            // pencere disinda kaldiginda esi bulamiyordu (olculdu: Palworld'un 2024-01-19 kaydi
+            // taranmiyor, yalnizca bozuk 2026 kaydi goruluyordu). Kopyalar zaten Steam/IGDB
+            // ingest'inden dogdugu icin bu kume dogru olan.
             var since = DateTime.UtcNow.AddMonths(-14).ToString("yyyy-MM-dd");
             var candidates = await context.Games
-                .Where(g => g.Released != null && string.Compare(g.Released, since) >= 0)
+                .Where(g => (g.Released != null && string.Compare(g.Released, since) >= 0)
+                    || g.SteamAppId != null
+                    || g.IgdbId != null)
                 .Select(g => new { g.Id, g.Name, g.Released, g.RawgId, g.SteamAppId, g.IgdbId,
                                    g.BackgroundImage, g.Metacritic, g.IgdbRating, g.RawgAdded, g.DescriptionTr })
                 .ToListAsync(ct);
