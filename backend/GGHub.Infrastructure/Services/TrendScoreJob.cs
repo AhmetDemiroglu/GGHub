@@ -190,8 +190,22 @@ namespace GGHub.Infrastructure.Services
                     entity.TrendScore = scoreById[entity.Id];
                     entity.TrendScoreUpdatedAt = now;
                 }
-                await context.SaveChangesAsync(ct);
-                context.ChangeTracker.Clear();
+                try
+                {
+                    await context.SaveChangesAsync(ct);
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    // CatalogDedupeJob paralel kosuyor ve kopya kayitlari SILIYOR. Skorlar
+                    // okunduktan sonra silinen bir satir "0 satir etkilendi" hatasi veriyor ve
+                    // TUM trend kosusunu dusuruyordu (olculdu: "[Trend] Kosu hatayla bitti").
+                    // Silinen satirin skoru zaten anlamsiz; parcayi atlayip devam etmek dogru.
+                    _logger.LogInformation("[Trend] {Count} kayitlik parca silinmis satir yuzunden atlandi.", chunk.Count);
+                }
+                finally
+                {
+                    context.ChangeTracker.Clear();
+                }
             }
 
             _logger.LogInformation("[Trend] {Count} oyunun trend skoru guncellendi.", updates.Count);
