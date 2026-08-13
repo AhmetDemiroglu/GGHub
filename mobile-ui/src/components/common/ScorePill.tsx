@@ -65,7 +65,9 @@ export function ScorePill({ type, value, count, size = 'sm' }: ScorePillProps) {
       ]}
     >
       {type === 'igdb' ? (
-        <IgdbLogo size={dims.iconSize} opacity={isEmpty ? 0.5 : 0.95} />
+        // Yatay logo, kare logolarla ayni yukseklikte olunca hapi belirgin sekilde
+        // genisletiyor; 0.85 katsayisi gorsel agirligi digerleriyle esitliyor.
+        <IgdbLogo size={dims.iconSize * 0.85} opacity={isEmpty ? 0.5 : 0.95} />
       ) : (
         <Image
           source={LOGOS[type]}

@@ -165,7 +165,7 @@ export const AgendaView = ({ initialContent, initialYear, initialMonth }: Agenda
                 <div className="absolute right-2 top-2 flex items-center gap-1">
                     {game.igdbRating ? (
                         <span className="flex items-center gap-1 rounded-md bg-indigo-500/90 px-1.5 py-0.5 text-[11px] font-bold text-white" title="IGDB">
-                            <IgdbLogo className="h-2.5 w-2.5" />
+                            <IgdbLogo className="h-2.5" />
                             {Math.round(game.igdbRating)}
                         </span>
                     ) : null}

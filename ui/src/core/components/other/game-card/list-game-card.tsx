@@ -56,7 +56,7 @@ export const ListGameCard = memo(function ListGameCard({ game, showRemoveButton,
                         {/* IGDB (Indigo) */}
                         {game.igdbRating ? (
                             <div className="px-2 py-1 rounded-md bg-indigo-500/10 text-indigo-300 font-bold text-[10px] border border-indigo-500/20 flex items-center gap-1.5 tabular-nums" title="IGDB">
-                                <IgdbLogo className="w-3 h-3 opacity-90" />
+                                <IgdbLogo className="h-3 opacity-90" />
                                 {Math.round(game.igdbRating)}
                             </div>
                         ) : null}

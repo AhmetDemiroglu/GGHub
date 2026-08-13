@@ -45,12 +45,17 @@ function ScoreBadge({ score, logo, logoAlt, accentClassName }: { score: string; 
             className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/45 py-1 pl-1.5 pr-2.5 backdrop-blur-md"
             title={logoAlt}
         >
-            <span className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-black/60 ring-1 ring-white/10">
-                {/* IGDB'nin PNG asset'i yok; SVG rozetiyle çizilir (bkz. igdb-logo). */}
+            {/* IGDB logosu YATAY (~2.08:1); kare logoların yuvarlak kutusuna sığmıyor,
+                bu yüzden o dalda kutu genişleyen bir hap oluyor. */}
+            <span
+                className={`flex h-5 items-center justify-center overflow-hidden bg-black/60 ring-1 ring-white/10 ${
+                    logo ? "w-5 rounded-full" : "w-auto rounded-md px-1.5"
+                }`}
+            >
                 {logo ? (
                     <Image src={logo} alt={logoAlt} width={12} height={12} className="object-contain" />
                 ) : (
-                    <IgdbLogo className="h-3 w-3" />
+                    <IgdbLogo className="h-2.5" />
                 )}
             </span>
             <span className={`text-sm font-bold leading-none ${accentClassName}`}>{score}</span>
