@@ -149,8 +149,13 @@ namespace GGHub.Infrastructure.Services
                 // IGDB "Want to Play/Playing/Visits" + Twitch izlenme: platform bagimsiz.
                 // Steam'in tavani kadar guclu olmasi kasitli; boylece PS5/Xbox ozel yapimlari
                 // PC oyunlariyla ayni ligde yarisiyor.
+                // DIKKAT: igdbScore 0..100 araliginda normalize gelir, yani "Min(.,200) * 0.9"
+                // fiilen EN FAZLA 90 puan veriyordu; Steam sirasinin tavani ise 180. Denge
+                // bozuktu: PC oyunlari konsol ozel yapimlarin iki kati agirlik aliyordu ve
+                // Marvel's Wolverine gibi PS5 ozel yapimlari "one cikanlar"a hic giremiyordu.
+                // Carpan 2.0 ile tavan 200 olur ve iki kaynak ayni ligde yarisir.
                 if (game.IgdbId != null && igdbPopularity.TryGetValue(game.IgdbId.Value, out var igdbScore))
-                    score += Math.Min(igdbScore, 200) * 0.9;
+                    score += Math.Min(igdbScore, 100) * 2.0;
 
                 // Beklenti/populerlik sinyalleri
                 score += Math.Min(game.RawgAdded ?? 0, 2000) * 0.05;
