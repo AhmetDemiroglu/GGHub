@@ -194,13 +194,23 @@ namespace GGHub.Infrastructure.Services
                 {
                     await context.SaveChangesAsync(ct);
                 }
-                catch (DbUpdateConcurrencyException)
+                catch (DbUpdateConcurrencyException ex)
                 {
                     // CatalogDedupeJob paralel kosuyor ve kopya kayitlari SILIYOR. Skorlar
                     // okunduktan sonra silinen bir satir "0 satir etkilendi" hatasi veriyor ve
                     // TUM trend kosusunu dusuruyordu (olculdu: "[Trend] Kosu hatayla bitti").
-                    // Silinen satirin skoru zaten anlamsiz; parcayi atlayip devam etmek dogru.
-                    _logger.LogInformation("[Trend] {Count} kayitlik parca silinmis satir yuzunden atlandi.", chunk.Count);
+                    // Yalnizca SILINEN satirlar birakilir, parcanin geri kalani yazilir: parcayi
+                    // toptan atlamak tek silinmis kayit yuzunden 500 skoru kaybettiriyordu.
+                    foreach (var entry in ex.Entries) entry.State = EntityState.Detached;
+
+                    try
+                    {
+                        await context.SaveChangesAsync(ct);
+                    }
+                    catch (DbUpdateConcurrencyException)
+                    {
+                        _logger.LogInformation("[Trend] {Count} kayitlik parca yazilamadi, atlandi.", chunk.Count);
+                    }
                 }
                 finally
                 {
