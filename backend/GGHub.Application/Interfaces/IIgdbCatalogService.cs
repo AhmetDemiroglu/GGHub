@@ -53,6 +53,18 @@ namespace GGHub.Application.Interfaces
         Task<Dictionary<int, double>> GetPopularitySignalsAsync(int limitPerType, CancellationToken ct = default);
 
         /// <summary>
+        /// IGDB'nin populerlik listelerindeki (en cok beklenen / oynanan / izlenen) oyunlardan
+        /// katalogda OLMAYANLARI ceker.
+        ///
+        /// Takvim taramasi tek basina yetmiyor: pencere yuz binlerce release_dates satiri
+        /// icerdigi icin buyuk yapimlara gunler sonra ulasiyor ve arada bir sayfa dusunce o
+        /// oyunlar bir daha hic toplanmiyordu (olculdu: Marvel's Wolverine, GTA VI ve Fable
+        /// IGDB'de tam tarihli dururken katalogda yoktu). Bu adim onlari once alir.
+        /// Eklenen kayit sayisini dondurur.
+        /// </summary>
+        Task<int> SyncPopularAsync(int limitPerType, CancellationToken ct = default);
+
+        /// <summary>
         /// ONARIM: cikmis oldugu belli (puani olan) ama tarihi GELECEGE kaymis kayitlari
         /// IGDB'nin first_release_date degeriyle duzeltir. Bu bozulma, release_dates ucundaki
         /// platform/surum satirlarinin ana oyunun tarihi sanilarak yazilmasindan olustu

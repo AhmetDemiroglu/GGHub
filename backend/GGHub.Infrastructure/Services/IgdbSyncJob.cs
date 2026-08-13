@@ -48,6 +48,11 @@ namespace GGHub.Infrastructure.Services
                     // Yalnizca cikis takvimi (gundemi besler). Katalog zenginlestirmesi
                     // AYRI job'da (IgdbEnrichJob): burada olsaydi uzun suren takvim senkronunu
                     // beklemek zorunda kalir ve puanlar saatlerce bos kalirdi.
+                    // ONCE populer olanlar: takvim taramasi yuz binlerce satirlik pencereyi
+                    // gezdigi icin buyuk yapimlara gunlerce ulasamiyordu. Bu adim ucuz (birkac
+                    // sorgu) ve kullanicinin gundemde gormeyi bekledigi oyunlari once getirir.
+                    await service.SyncPopularAsync(100, stoppingToken);
+
                     await service.SyncReleaseWindowAsync(stoppingToken);
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)

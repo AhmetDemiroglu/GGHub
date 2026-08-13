@@ -346,6 +346,58 @@ namespace GGHub.Infrastructure.Services
             return ingested;
         }
 
+        public async Task<int> SyncPopularAsync(int limitPerType, CancellationToken ct = default)
+        {
+            if (!IsConfigured) return 0;
+
+            var signals = await GetPopularitySignalsAsync(limitPerType, ct);
+            if (signals.Count == 0) return 0;
+
+            var ids = signals.Keys.ToList();
+            var known = await _context.Games.AsNoTracking()
+                .Where(g => g.IgdbId != null && ids.Contains(g.IgdbId.Value))
+                .Select(g => g.IgdbId!.Value)
+                .ToListAsync(ct);
+
+            var missing = ids.Except(known).ToList();
+            if (missing.Count == 0) return 0;
+
+            var added = 0;
+            foreach (var chunk in missing.Chunk(40))
+            {
+                ct.ThrowIfCancellationRequested();
+
+                var idList = string.Join(",", chunk);
+                var games = await QueryGamesAsync($"{GameFields} where id = ({idList}); limit 40;", ct);
+                if (games == null) continue;
+
+                foreach (var dto in games)
+                {
+                    if (string.IsNullOrWhiteSpace(dto.Name) || dto.Cover?.ImageId == null) continue;
+                    if (GameTitleMatcher.IsEditionVariant(dto.Name)) continue;
+
+                    var released = dto.FirstReleaseDate != null
+                        ? DateTimeOffset.FromUnixTimeSeconds(dto.FirstReleaseDate.Value).UtcDateTime.ToString("yyyy-MM-dd")
+                        : null;
+
+                    try
+                    {
+                        if (await UpsertAsync(dto, released, ct) == UpsertOutcome.Added) added++;
+                    }
+                    catch (DbUpdateException ex)
+                    {
+                        _logger.LogWarning("[IGDB-Populer] '{Name}' yazilamadi: {Error}", dto.Name, ex.InnerException?.Message ?? ex.Message);
+                        _context.ChangeTracker.Clear();
+                    }
+                }
+            }
+
+            if (added > 0)
+                _logger.LogInformation("[IGDB-Populer] Katalogda olmayan {Added} populer oyun eklendi.", added);
+
+            return added;
+        }
+
         public async Task<Game?> IngestBySlugOrNameAsync(string slugOrName, CancellationToken ct = default)
         {
             if (!IsConfigured || string.IsNullOrWhiteSpace(slugOrName)) return null;
