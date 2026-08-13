@@ -21,6 +21,17 @@ namespace GGHub.Infrastructure.Services
     /// </summary>
     public class DescriptionTranslationJob : BackgroundService
     {
+        /// <summary>
+        /// Ceviri uretilemeyen kayitlar. Kuyruk "DescriptionTr bos olanlar" diye turetildigi icin
+        /// basarisiz kayit kuyrukta KALIYOR ve RawgAdded DESC siralamasi onu her batch'in basina
+        /// koyuyordu: ayni oyunlar tur tur tekrar denenip hem cagri yakiyor hem batch'i dolduruyordu
+        /// (olculdu: her turda "Control Ultimate Edition" + "Get Even"). Sayilari arttikca batch
+        /// tumuyle bunlarla dolar ve ceviri fiilen durur. Bellekte tutuluyor: bot yeniden basladiginda
+        /// temizlenir, yani gecici bir Gemini arizasi kalici kara listeye donusmez.
+        /// </summary>
+        private readonly HashSet<int> _untranslatable = new();
+        private const int MaxUntranslatableTracked = 2000;
+
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<DescriptionTranslationJob> _logger;
         private readonly DescriptionTranslationSettings _settings;
@@ -121,10 +132,12 @@ namespace GGHub.Infrastructure.Services
 
                 // "?? 0" SART: Postgres'te ORDER BY x DESC NULL'lari BASA koyuyor (NULLS FIRST).
                 // Bu olmadan butce, RawgAdded'i NULL olan degersiz oyunlarda yanardi.
+                var skipIds = _untranslatable.ToList();
                 var batch = await context.Games
                     .Where(g => g.Description != null
                                 && g.Description != ""
-                                && (g.DescriptionTr == null || g.DescriptionTr == g.Description))
+                                && (g.DescriptionTr == null || g.DescriptionTr == g.Description)
+                                && !skipIds.Contains(g.Id))
                     .OrderByDescending(g => g.RawgAdded ?? 0)
                     .Take(_settings.BatchSize)
                     .Select(g => new { g.Id, g.Name })
@@ -133,8 +146,12 @@ namespace GGHub.Infrastructure.Services
                 if (batch.Count == 0)
                 {
                     _logger.LogInformation(
-                        "[Translation] Kuyruk bos. Bu ay: {Spent:F4}/{Limit:F2} USD, {Calls} cagri.",
-                        status.SpentUsd, status.LimitUsd, status.CallCount);
+                        "[Translation] Kuyruk bos ({Skipped} cevrilemeyen atlandi). Bu ay: {Spent:F4}/{Limit:F2} USD, {Calls} cagri.",
+                        _untranslatable.Count, status.SpentUsd, status.LimitUsd, status.CallCount);
+
+                    // Kuyruk bittiginde atlananlar tekrar denensin: bir sonraki tur saatler sonra
+                    // kosacagi icin bu, tikanma degil normal yeniden deneme.
+                    _untranslatable.Clear();
                     return true;
                 }
 
@@ -172,6 +189,10 @@ namespace GGHub.Infrastructure.Services
                     {
                         consecutiveErrors++;
                         _logger.LogWarning(ex, "[Translation] Hata '{Name}'", item.Name);
+                        if (_untranslatable.Count < MaxUntranslatableTracked)
+                        {
+                            _untranslatable.Add(item.Id);
+                        }
 
                         if (consecutiveErrors >= _settings.MaxConsecutiveErrors)
                         {
@@ -189,6 +210,10 @@ namespace GGHub.Infrastructure.Services
                         string.Equals(result, description, StringComparison.OrdinalIgnoreCase))
                     {
                         _logger.LogInformation("[Translation] Ceviri uretilemedi, atlandi: '{Name}'", item.Name);
+                        if (_untranslatable.Count < MaxUntranslatableTracked)
+                        {
+                            _untranslatable.Add(item.Id);
+                        }
                         consecutiveErrors++;
 
                         if (consecutiveErrors >= _settings.MaxConsecutiveErrors)
