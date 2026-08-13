@@ -451,14 +451,17 @@ namespace GGHub.Infrastructure.Services
 
             var todayIso = DateTime.UtcNow.ToString("yyyy-MM-dd");
 
-            // GELECEK tarihli ve IGDB'ye bagli TUM kayitlar dogrulanir. Ilk surum "puani olanlar"
-            // ile sinirliydi ve puansiz eski oyunlar (Rayman Origins, Star Conflict) 2026'da
-            // cikacak gorunmeye devam ediyordu. Gercekten gelecekte cikacak oyunlarda sorgu
-            // yalnizca tarihi teyit eder (zararsiz) ve kayit degismez.
+            // IGDB senkronunun DOKUNDUGU tum pencere dogrulanir: yalnizca gelecek tarihlileri
+            // kontrol etmek yetmedi, cunku release_dates'in GECMIS gecisi de eski oyunlara
+            // yanlis tarih yazmisti (Path of Exile 2013 -> Tem 2026, CoD: Black Ops 2010 -> Tem 2026:
+            // bunlar o oyunlarin yeni platform surumlerinin tarihleriydi).
+            // Pencere = son 18 ay + gelecek. Disindaki eski katalog RAWG'dan tek kaynakli geldi,
+            // orada bozulma yok.
+            var windowStart = DateTime.UtcNow.AddMonths(-18).ToString("yyyy-MM-dd");
             var suspects = await _context.Games
                 .Where(g => g.IgdbId != null
                     && g.Released != null
-                    && string.Compare(g.Released, todayIso) > 0
+                    && string.Compare(g.Released, windowStart) >= 0
                     && (g.ReleaseDateVerifiedAt == null || g.ReleaseDateVerifiedAt < _verifyBefore))
                 .OrderByDescending(g => g.RawgAdded ?? 0)
                 .Take(batchSize)

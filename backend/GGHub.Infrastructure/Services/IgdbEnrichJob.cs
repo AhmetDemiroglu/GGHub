@@ -49,7 +49,7 @@ namespace GGHub.Infrastructure.Services
                     // Once ONARIM: tarihi gelecege kaymis kayitlari duzelt (bkz.
                     // RepairShiftedReleaseDatesAsync). Bozuk tarih hem gundemi hem kesfeti
                     // yaniltiyor, o yuzden zenginlestirmeden once kosuyor.
-                    var repaired = await service.RepairShiftedReleaseDatesAsync(200, stoppingToken);
+                    var repaired = await service.RepairShiftedReleaseDatesAsync(400, stoppingToken);
                     if (repaired > 0)
                         _logger.LogInformation("[IGDB-Enrich] {Count} oyunun cikis tarihi onarildi.", repaired);
 
