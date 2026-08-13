@@ -29,6 +29,9 @@ namespace GGHub.Infrastructure.Services
 
         private const string TokenCacheKey = "igdb-access-token";
 
+        /// <summary>Gelecek tarihli cikislar bu araliktan eski dogrulandiysa yeniden sorulur.</summary>
+        private static DateTime _verifyBefore => DateTime.UtcNow.AddDays(-7);
+
         private readonly HttpClient _httpClient;
         private readonly IgdbSettings _settings;
         private readonly GGHubDbContext _context;
@@ -448,13 +451,15 @@ namespace GGHub.Infrastructure.Services
 
             var todayIso = DateTime.UtcNow.ToString("yyyy-MM-dd");
 
-            // Suphe kriteri: oyunun puani var (yani cikmis ve degerlendirilmis) ama tarihi
-            // gelecege bakiyor. Cikmamis oyunun Metacritic'i / IGDB oy sayisi olmaz.
+            // GELECEK tarihli ve IGDB'ye bagli TUM kayitlar dogrulanir. Ilk surum "puani olanlar"
+            // ile sinirliydi ve puansiz eski oyunlar (Rayman Origins, Star Conflict) 2026'da
+            // cikacak gorunmeye devam ediyordu. Gercekten gelecekte cikacak oyunlarda sorgu
+            // yalnizca tarihi teyit eder (zararsiz) ve kayit degismez.
             var suspects = await _context.Games
                 .Where(g => g.IgdbId != null
                     && g.Released != null
                     && string.Compare(g.Released, todayIso) > 0
-                    && (g.Metacritic != null || g.IgdbRatingCount > 20 || g.RatingCount > 0))
+                    && (g.ReleaseDateVerifiedAt == null || g.ReleaseDateVerifiedAt < _verifyBefore))
                 .OrderByDescending(g => g.RawgAdded ?? 0)
                 .Take(batchSize)
                 .ToListAsync(ct);
@@ -470,8 +475,13 @@ namespace GGHub.Infrastructure.Services
                 .ToDictionary(t => t.Id, t => DateTimeOffset.FromUnixTimeSeconds(t.FirstReleaseDate!.Value).UtcDateTime.ToString("yyyy-MM-dd"));
 
             var fixedCount = 0;
+            var now = DateTime.UtcNow;
             foreach (var game in suspects)
             {
+                // Dogrulandi olarak isaretle: kuyruk boylece kuruyor, aksi halde ayni kayitlar
+                // her kosuda yeniden sorgulanip yeni oyunlara sira gelmiyor.
+                game.ReleaseDateVerifiedAt = now;
+
                 if (!firstReleaseById.TryGetValue(game.IgdbId!.Value, out var correct)) continue;
                 if (correct == game.Released) continue;
 
@@ -480,7 +490,7 @@ namespace GGHub.Infrastructure.Services
                 fixedCount++;
             }
 
-            if (fixedCount > 0) await _context.SaveChangesAsync(ct);
+            await _context.SaveChangesAsync(ct);
             return fixedCount;
         }
 

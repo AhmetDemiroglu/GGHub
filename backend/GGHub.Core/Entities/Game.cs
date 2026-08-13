@@ -70,6 +70,15 @@
 
         public DateTime? TrendScoreUpdatedAt { get; set; }
 
+        /// <summary>
+        /// Gelecek tarihli bir cikisin IGDB'ye karsi en son ne zaman DOGRULANDIGI.
+        /// release_dates ucundaki platform/surum satirlari ana oyunun tarihi sanilarak yazilinca
+        /// eski oyunlar "gelecekte cikacak" gorunmustu (Elden Ring 2022 -> 2026). Bu alan hem
+        /// onarim kuyrugunu kurutuyor hem de gercek ertelemeler icin periyodik yeniden kontrolu
+        /// mumkun kiliyor.
+        /// </summary>
+        public DateTime? ReleaseDateVerifiedAt { get; set; }
+
         // RAWG Import tracking
         public string? ImportSource { get; set; }
         public DateTime? ImportedAt { get; set; }
