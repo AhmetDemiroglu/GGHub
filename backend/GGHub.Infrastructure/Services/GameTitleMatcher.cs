@@ -57,8 +57,23 @@ namespace GGHub.Infrastructure.Services
                 }
             }
 
+            // "Phantom Blade Zero" ile "Phantom Blade 0" ayri katalog satirlariydi. Yayincilar
+            // ayni oyunu iki turlu yaziyor; AYRI KELIME olarak duran sayi adlari rakama cevrilir.
+            // Kelime siniri sart: "Zero Escape" gibi adlarda yalnizca tam kelime eslesir, yani
+            // "0 escape" olur ve kendi icinde tutarli kalir.
+            cleaned = NumberWordPattern.Replace(cleaned, m => NumberWords[m.Value.ToLowerInvariant()]);
+
             return UsernameNormalizer.Normalize(cleaned);
         }
+
+        private static readonly Dictionary<string, string> NumberWords = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["zero"] = "0",
+        };
+
+        private static readonly System.Text.RegularExpressions.Regex NumberWordPattern =
+            new(@"\b(zero)\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase
+                | System.Text.RegularExpressions.RegexOptions.Compiled);
 
         /// <summary>
         /// Ad bir SURUM kaydi mi ("... Ultimate Edition", "... Digital Deluxe")? Bu kayitlar
