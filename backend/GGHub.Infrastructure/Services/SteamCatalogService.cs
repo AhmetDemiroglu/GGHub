@@ -349,16 +349,32 @@ namespace GGHub.Infrastructure.Services
                 .ToListAsync(ct);
 
             var normalized = NormalizeName(name);
-            foreach (var candidate in candidates)
+            var matches = candidates.Where(c => NormalizeName(c.Name) == normalized).ToList();
+            if (matches.Count == 0) return null;
+
+            // Yil ESITLIGI sart KOSULMAZ. Steam'in tarihi cogu zaman oyunun ilk cikisi degil,
+            // son surumun/1.0'in tarihidir: Palworld RAWG'da 2024-01-19, Steam'de 2026-07-09
+            // gorunuyordu. "Yillar uyusmuyorsa yeni satir ac" kurali bu yuzden her kosuda ayni
+            // oyunu yeniden yaratiyordu; dedupe birlestiriyor, Steam tekrar aciyordu (olculdu:
+            // Palworld ve Hollow Knight kopyalari birlestikten sonra geri geldi).
+            // Yerine: ayni isimli adaylar arasindan Steam tarihine EN YAKIN yildaki secilir.
+            // Bu, remake ayrimini da dogru yapar (Resident Evil 2: 1998 vs 2019 kayitlarindan
+            // Steam 2019 appid'si 2019 kaydina baglanir).
+            int? YearOf(string? released) => released != null && released.Length >= 4
+                && int.TryParse(released[..4], out var y) ? y : null;
+
+            // Zaten bu appid'ye sahip kayit varsa dogrudan o.
+            var chosen = matches.FirstOrDefault(c => c.SteamAppId == steamAppId)
+                ?? matches
+                    .OrderBy(c => releaseYear != null && YearOf(c.Released) != null
+                        ? Math.Abs(YearOf(c.Released)!.Value - releaseYear.Value)
+                        : 100)
+                    .ThenByDescending(c => c.RawgId > 0 ? 1 : 0)
+                    .ThenByDescending(c => c.RawgAdded ?? 0)
+                    .First();
+
             {
-                if (NormalizeName(candidate.Name) != normalized) continue;
-
-                // Yil bilgisi iki tarafta da varsa uyusmali; yoksa isim eslesmesi yeterli sayilir
-                // (ayni isimli farkli oyunlar cogunlukla farkli yillardadir).
-                var candidateYear = candidate.Released != null && candidate.Released.Length >= 4
-                    && int.TryParse(candidate.Released[..4], out var y) ? y : (int?)null;
-                if (releaseYear != null && candidateYear != null && releaseYear != candidateYear) continue;
-
+                var candidate = chosen;
                 var dirty = false;
                 if (candidate.SteamAppId == null)
                 {
@@ -385,10 +401,7 @@ namespace GGHub.Infrastructure.Services
 
                 if (dirty) await _context.SaveChangesAsync(ct);
                 return candidate;
-
             }
-
-            return null;
         }
 
         private Game BuildGame(SteamAppDataDto data, string? released)

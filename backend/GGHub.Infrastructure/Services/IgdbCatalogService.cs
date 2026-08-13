@@ -241,9 +241,40 @@ namespace GGHub.Infrastructure.Services
                 }
                 catch (DbUpdateException ex)
                 {
-                    // Bir satir catisirsa (yaris, unique index) sayfanin tamami kaybolmasin:
-                    // izleyiciyi temizleyip sonraki sayfaya devam edilir.
-                    _logger.LogWarning("[IGDB] Sayfa yazilamadi, atlaniyor (sayfa {Page}): {Error}", page, ex.InnerException?.Message ?? ex.Message);
+                    // TEK satirin catismasi TUM sayfayi dusuruyordu: 500 kayit birden kayboluyor
+                    // ve senkron o pencereyi bir daha hic toplamiyordu (olculdu: "Sayfa yazilamadi
+                    // ... IX_Games_IgdbId"). Catisma gercek bir yaris: IgdbEnrichJob ayni anda
+                    // baska bir satira ayni IgdbId'yi baglayabiliyor. Toplu yazma basarisiz olursa
+                    // satir satir yazmaya dusuluyor; yalnizca gercekten catisan satir atlanir.
+                    var pending = _context.ChangeTracker.Entries<Game>()
+                        .Where(e => e.State is EntityState.Added or EntityState.Modified)
+                        .Select(e => (Entity: e.Entity, WasNew: e.State == EntityState.Added))
+                        .ToList();
+                    _context.ChangeTracker.Clear();
+
+                    var recovered = 0;
+                    foreach (var (entity, wasNew) in pending)
+                    {
+                        try
+                        {
+                            if (wasNew) _context.Games.Add(entity);
+                            else _context.Games.Update(entity);
+                            await _context.SaveChangesAsync(ct);
+                            recovered++;
+                        }
+                        catch (DbUpdateException)
+                        {
+                            // Bu satir gercekten catisiyor (ayni IgdbId baska kayitta); atla.
+                        }
+                        finally
+                        {
+                            _context.ChangeTracker.Clear();
+                        }
+                    }
+
+                    _logger.LogWarning(
+                        "[IGDB] Sayfa {Page} toplu yazilamadi ({Error}); satir satir yazildi: {Recovered}/{Total}.",
+                        page, ex.InnerException?.Message ?? ex.Message, recovered, pending.Count);
                 }
                 finally
                 {
@@ -875,18 +906,32 @@ namespace GGHub.Infrastructure.Services
             if (!byNormalizedName.TryGetValue(NormalizeName(name), out var candidates)) return null;
 
             var year = released != null && released.Length >= 4 && int.TryParse(released[..4], out var y) ? y : (int?)null;
+            return PickClosestByYear(candidates, year);
+        }
 
-            foreach (var candidate in candidates)
-            {
-                var candidateYear = candidate.Released != null && candidate.Released.Length >= 4
-                    && int.TryParse(candidate.Released[..4], out var cy) ? cy : (int?)null;
+        /// <summary>
+        /// Ayni isimli adaylar arasindan yila EN YAKIN olani secer.
+        ///
+        /// Onceki kural "yillar farkliysa eslesme yok" idi ve her farkli tarih yeni bir katalog
+        /// satiri aciyordu. Kaynaklarin tarihleri sistematik olarak kayiyor (RAWG erken erisimi,
+        /// IGDB ilk cikisi, Steam 1.0'i yaziyor), yani bu kural kopya URETIYORDU: dedupe
+        /// birlestiriyor, bir sonraki senkron ayni kopyayi geri aciyordu. Yila en yakini secmek
+        /// remake ayrimini da korur (Resident Evil 2: 1998 kaydi 1998'e, 2019 kaydi 2019'a gider).
+        /// </summary>
+        private static Game? PickClosestByYear(List<Game> candidates, int? year)
+        {
+            if (candidates.Count == 0) return null;
 
-                // Tarihi olmayan kayit IGDB'nin tarihiyle tamamlanmali; null yil eslesmeyi engellemez.
-                if (year != null && candidateYear != null && year != candidateYear) continue;
-                return candidate;
-            }
+            int? YearOf(string? released) => released != null && released.Length >= 4
+                && int.TryParse(released[..4], out var cy) ? cy : null;
 
-            return null;
+            return candidates
+                .OrderBy(c => year != null && YearOf(c.Released) != null
+                    ? Math.Abs(YearOf(c.Released)!.Value - year.Value)
+                    : 100)
+                .ThenByDescending(c => c.RawgId > 0 ? 1 : 0)
+                .ThenByDescending(c => c.RawgAdded ?? 0)
+                .First();
         }
 
         private async Task<Game?> FindByNameAndYearAsync(string name, string? released, CancellationToken ct)
@@ -901,21 +946,10 @@ namespace GGHub.Infrastructure.Services
             var normalized = NormalizeName(name);
             var year = released != null && released.Length >= 4 && int.TryParse(released[..4], out var y) ? y : (int?)null;
 
-            foreach (var candidate in candidates)
-            {
-                if (NormalizeName(candidate.Name) != normalized) continue;
-
-                var candidateYear = candidate.Released != null && candidate.Released.Length >= 4
-                    && int.TryParse(candidate.Released[..4], out var cy) ? cy : (int?)null;
-
-                // Tarihi olmayan kayit (ornek: RAWG'dan tarihsiz gelmis "Marvel's Wolverine")
-                // IGDB'nin tarihiyle tamamlanmali; bu yuzden null yil eslesmeyi engellemez.
-                if (year != null && candidateYear != null && year != candidateYear) continue;
-
-                return candidate;
-            }
-
-            return null;
+            // Tarihi olmayan kayit (ornek: RAWG'dan tarihsiz gelmis "Marvel's Wolverine") IGDB'nin
+            // tarihiyle tamamlanmali; yil esitligi ARANMAZ, bkz. PickClosestByYear.
+            var matches = candidates.Where(c => NormalizeName(c.Name) == normalized).ToList();
+            return PickClosestByYear(matches, year);
         }
 
         /// <summary>
