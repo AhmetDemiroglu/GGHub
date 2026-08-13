@@ -393,7 +393,28 @@ namespace GGHub.Infrastructure.Services
             }
 
             if (added > 0)
+            {
+                // Yeni kayda populerlik skoru HEMEN yazilmali: TrendScoreJob 3 saatte bir kosuyor
+                // ve o ana kadar oyun hicbir populerlik sinyali tasimadigi icin gundem/kesfet
+                // filtrelerine takiliyor (olculdu: Wolverine katalogda vardi ama gundemde yoktu).
+                var fresh = await _context.Games
+                    .Where(g => g.IgdbId != null && missing.Contains(g.IgdbId.Value) && g.TrendScore <= 0)
+                    .ToListAsync(ct);
+
+                foreach (var game in fresh)
+                {
+                    if (signals.TryGetValue(game.IgdbId!.Value, out var score) && score > 0)
+                    {
+                        game.TrendScore = score;
+                        game.TrendScoreUpdatedAt = DateTime.UtcNow;
+                    }
+                }
+
+                if (fresh.Count > 0) await _context.SaveChangesAsync(ct);
+                _context.ChangeTracker.Clear();
+
                 _logger.LogInformation("[IGDB-Populer] Katalogda olmayan {Added} populer oyun eklendi.", added);
+            }
 
             return added;
         }

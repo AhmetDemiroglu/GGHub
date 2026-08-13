@@ -63,7 +63,12 @@ namespace GGHub.Infrastructure.Services
                     && (g.RawgAdded >= 50
                         || g.ImportSource == "steam"
                         || g.Metacritic != null
-                        || (g.Rating ?? 0) > 0))
+                        || (g.Rating ?? 0) > 0
+                        // IGDB kaynakli CIKMAMIS buyuk yapimlarda bu sinyallerin HICBIRI yok:
+                        // RAWG onlari indekslememis, Steam'de yoklar (konsol ozel), puanlari
+                        // dogal olarak bos. Filtre bu yuzden Marvel's Wolverine ve GTA VI'yi
+                        // gundemden eliyordu. TrendScore populerlik kanitidir ve bosluğu kapatir.
+                        || g.TrendScore > 0))
                 .Select(g => new
                 {
                     g.Id, g.RawgId, g.Slug, g.Name, g.Released,

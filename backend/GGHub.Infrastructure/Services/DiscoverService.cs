@@ -160,7 +160,10 @@ namespace GGHub.Infrastructure.Services
                     (g.Metacritic != null && g.Metacritic >= DEFAULT_MIN_METACRITIC)
                     || (g.Rating != null && g.Rating >= DEFAULT_MIN_RATING)
                     || (g.RawgAdded != null && g.RawgAdded >= DEFAULT_MIN_ADDED)
-                    || g.ImportSource == "steam");
+                    || g.ImportSource == "steam"
+                    // IGDB kaynakli buyuk yapimlarin (konsol ozel, henuz cikmamis) RAWG/Steam
+                    // sinyali hic yok; populerlik kaniti TrendScore'dur.
+                    || g.TrendScore > 0);
             }
 
             if (!string.IsNullOrWhiteSpace(q.Search))
