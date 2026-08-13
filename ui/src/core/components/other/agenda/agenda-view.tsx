@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays, Flame, Hourglass, Sparkles } from "lucide-react";
+import { ArrowDown, CalendarDays, Flame, Hourglass, Sparkles } from "lucide-react";
 import { agendaApi } from "@/api/agenda/agenda.api";
 import type { AgendaContent } from "@/models/agenda/agenda.model";
 import type { Game } from "@/models/gaming/game.model";
@@ -27,6 +27,9 @@ type StatusFilter = "all" | "upcoming" | "released";
 interface AgendaGame extends Game {
     isUpcoming: boolean;
 }
+
+/** Grid'de bir seferde gosterilen kart sayisi (2-5 sutun x ~6 satir). */
+const GRID_PAGE_SIZE = 30;
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
@@ -107,17 +110,28 @@ export const AgendaView = ({ initialContent, initialYear, initialMonth }: Agenda
     }, [mixed, highlightIds, statusFilter]);
 
     // Yıl görünümünde grid ay başlıklarıyla gruplanır.
+    // Gundem bir ayda 180'e kadar oyun donuyor; hepsini birden basmak sayfayi bogar.
+    // Diger sayfalardaki desen: once bir kac satir, altta "daha fazla goster" oku.
+    const [visibleCount, setVisibleCount] = useState(GRID_PAGE_SIZE);
+    const visibleGames = useMemo(() => gridGames.slice(0, visibleCount), [gridGames, visibleCount]);
+    const hasMoreGames = gridGames.length > visibleCount;
+
+    // Ay/yil/filtre degisince liste basa donmeli, yoksa yeni ay eski sayida aciliyor.
+    useEffect(() => {
+        setVisibleCount(GRID_PAGE_SIZE);
+    }, [year, month, statusFilter]);
+
     const gridByMonth = useMemo(() => {
         if (month !== 0) return null;
         const groups = new Map<string, AgendaGame[]>();
-        for (const game of gridGames) {
+        for (const game of visibleGames) {
             const key = game.released?.slice(0, 7) ?? "";
             const list = groups.get(key);
             if (list) list.push(game);
             else groups.set(key, [game]);
         }
         return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
-    }, [gridGames, month]);
+    }, [visibleGames, month]);
 
     const totalCount = data ? data.counts.released + data.counts.upcoming : 0;
 
@@ -375,9 +389,27 @@ export const AgendaView = ({ initialContent, initialYear, initialMonth }: Agenda
                             </div>
                         ) : (
                             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                                {gridGames.map(gameCard)}
+                                {visibleGames.map(gameCard)}
                             </div>
                         )}
+
+                        {hasMoreGames ? (
+                            <div className="relative flex flex-col items-center gap-3 pt-2">
+                                <span className="text-sm font-medium text-muted-foreground">
+                                    {t("agenda.showMore", { count: gridGames.length - visibleCount })}
+                                </span>
+                                <button
+                                    onClick={() => setVisibleCount((prev) => prev + GRID_PAGE_SIZE)}
+                                    className="group relative cursor-pointer"
+                                    aria-label={t("agenda.showMoreAria")}
+                                >
+                                    <div className="absolute inset-0 animate-pulse rounded-full bg-primary/20 blur-xl" />
+                                    <div className="relative flex h-5 w-5 animate-bounce items-center justify-center rounded-full border-2 border-primary/40 bg-background/50 backdrop-blur-sm transition-all duration-300 hover:animate-none hover:border-primary group-hover:shadow-lg group-hover:shadow-primary/25">
+                                        <ArrowDown className="h-3 w-3 text-primary" />
+                                    </div>
+                                </button>
+                            </div>
+                        ) : null}
                     </section>
 
                     {/* Tarihi açıklanmamış büyük beklenenler (yalnızca yıl görünümünde) */}

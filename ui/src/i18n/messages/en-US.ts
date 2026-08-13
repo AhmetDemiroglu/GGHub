@@ -313,6 +313,8 @@ export const enUSMessages = {
         upcoming: "Coming up",
         emptyReleased: "No recorded releases for this month.",
         emptyUpcoming: "No expected releases for this month.",
+        showMore: "Show More Games ({count} left)",
+        showMoreAria: "Show more games",
         month: "Month",
         year: "Year",
         gamesCount: "{count} games",

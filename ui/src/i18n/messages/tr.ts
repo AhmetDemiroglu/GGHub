@@ -314,6 +314,8 @@ export const trMessages = {
         upcoming: "Çıkacaklar",
         emptyReleased: "Bu ay için kayıtlı çıkış bulunamadı.",
         emptyUpcoming: "Bu ay için beklenen çıkış bulunamadı.",
+        showMore: "Daha Fazla Oyun Göster ({count} adet)",
+        showMoreAria: "Daha fazla oyun göster",
         month: "Ay",
         year: "Yıl",
         gamesCount: "{count} oyun",
