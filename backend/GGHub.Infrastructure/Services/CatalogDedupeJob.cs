@@ -237,6 +237,8 @@ namespace GGHub.Infrastructure.Services
                     .Replace("\"Slug\":\"ps4--1\"", "\"Slug\":\"playstation4\"")
                     .Replace("\"Slug\":\"ps4\"", "\"Slug\":\"playstation4\"")
                     .Replace("\"Slug\":\"xboxone\"", "\"Slug\":\"xbox-one\"")
+                    .Replace("\"Slug\":\"switch-2\"", "\"Slug\":\"nintendo-switch\"")
+                    .Replace("\"Slug\":\"switch2\"", "\"Slug\":\"nintendo-switch\"")
                     .Replace("\"Slug\":\"switch\"", "\"Slug\":\"nintendo-switch\"")
                     .Replace("\"Slug\":\"mac\"", "\"Slug\":\"macos\"");
             }
