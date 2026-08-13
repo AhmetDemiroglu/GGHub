@@ -99,7 +99,7 @@ namespace GGHub.Infrastructure.Services
                 var query = new StringBuilder()
                     .Append("fields date, date_format, human, game.id, game.name, game.slug, game.summary, game.hypes, ")
                     .Append("game.total_rating, game.total_rating_count, game.aggregated_rating, game.cover.image_id, game.genres.name, game.genres.slug, ")
-                    .Append("game.platforms.name, game.platforms.abbreviation, game.platforms.slug, ")
+                    .Append("game.platforms.name, game.platforms.abbreviation, game.platforms.slug, game.screenshots.image_id, ")
                     .Append("game.involved_companies.company.name, game.involved_companies.developer, game.involved_companies.publisher, ")
                     .Append("game.websites.url, game.websites.category, ")
                     .Append("game.version_parent.id, game.version_parent.name, game.version_parent.slug, ")
@@ -265,7 +265,7 @@ namespace GGHub.Infrastructure.Services
         /// <summary>Anlik arama + ingest yolunda kullanilan ortak alan listesi.</summary>
         private const string GameFields =
             "fields id, name, slug, summary, first_release_date, total_rating, total_rating_count, hypes, " +
-            "cover.image_id, genres.name, genres.slug, platforms.name, platforms.abbreviation, platforms.slug, " +
+            "cover.image_id, screenshots.image_id, genres.name, genres.slug, platforms.name, platforms.abbreviation, platforms.slug, " +
             "involved_companies.company.name, involved_companies.company.slug, involved_companies.developer, " +
             "involved_companies.publisher, websites.url, websites.category;";
 
@@ -717,7 +717,7 @@ namespace GGHub.Infrastructure.Services
 
                 if (string.IsNullOrEmpty(existing.BackgroundImage) && dto.Cover?.ImageId != null)
                 {
-                    existing.BackgroundImage = CoverUrl(dto.Cover.ImageId, "t_screenshot_big");
+                    existing.BackgroundImage = BackgroundUrl(dto);
                     dirty = true;
                 }
                 if (string.IsNullOrEmpty(existing.GenresJson) && dto.Genres?.Count > 0)
@@ -808,7 +808,7 @@ namespace GGHub.Infrastructure.Services
                 Slug = slug,
                 Name = dto.Name!,
                 Released = released,
-                BackgroundImage = dto.Cover?.ImageId != null ? CoverUrl(dto.Cover.ImageId, "t_screenshot_big") : null,
+                BackgroundImage = BackgroundUrl(dto),
                 CoverImage = dto.Cover?.ImageId != null ? CoverUrl(dto.Cover.ImageId, "t_cover_big") : null,
                 Description = dto.Summary,
                 WebsiteUrl = officialSite,
@@ -907,6 +907,18 @@ namespace GGHub.Infrastructure.Services
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Kart/hero arka plani icin GENIS gorsel. IGDB'nin kapagi dikeydir (264x374); onu
+        /// "t_screenshot_big" ile istemek 16:9 alanlarda kirpik ve bos gorunmesine yol aciyordu.
+        /// Oyunun ekran goruntusu varsa o kullanilir, yoksa kapaga dusulur.
+        /// </summary>
+        private static string? BackgroundUrl(IgdbGameDto dto)
+        {
+            var shot = dto.Screenshots?.FirstOrDefault(s => !string.IsNullOrWhiteSpace(s.ImageId))?.ImageId;
+            if (shot != null) return CoverUrl(shot, "t_screenshot_big");
+            return dto.Cover?.ImageId != null ? CoverUrl(dto.Cover.ImageId, "t_cover_big") : null;
         }
 
         private static string CoverUrl(string imageId, string size) =>

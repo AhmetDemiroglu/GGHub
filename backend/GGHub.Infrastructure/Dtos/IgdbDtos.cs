@@ -76,6 +76,10 @@ namespace GGHub.Infrastructure.Dtos
         [JsonPropertyName("cover")]
         public IgdbCoverDto? Cover { get; set; }
 
+        /// <summary>Genis (16:9) ekran goruntuleri; kart/hero arka plani icin kapaktan iyidir.</summary>
+        [JsonPropertyName("screenshots")]
+        public List<IgdbScreenshotRefDto>? Screenshots { get; set; }
+
         [JsonPropertyName("genres")]
         public List<IgdbNamedDto>? Genres { get; set; }
 
@@ -117,6 +121,12 @@ namespace GGHub.Infrastructure.Dtos
     }
 
     public class IgdbCoverDto
+    {
+        [JsonPropertyName("image_id")]
+        public string? ImageId { get; set; }
+    }
+
+    public class IgdbScreenshotRefDto
     {
         [JsonPropertyName("image_id")]
         public string? ImageId { get; set; }
