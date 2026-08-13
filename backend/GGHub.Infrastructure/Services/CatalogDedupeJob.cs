@@ -67,8 +67,13 @@ namespace GGHub.Infrastructure.Services
                                    g.BackgroundImage, g.Metacritic, g.IgdbRating, g.RawgAdded, g.DescriptionTr })
                 .ToListAsync(ct);
 
+            // Gruplama ADA gore; yil ayrimi BILEREK kaldirildi. Yil anahtara dahilken bozuk
+            // tarihli kopyalar ayri gruplara dusuyor ve hic birlesmiyordu (olculdu: Palworld
+            // hem 2024-01-19 hem 2026-07-10 satiriyla katalogda duruyordu). Ayni isimli farkli
+            // oyunlar (remake'ler) icin koruma asagida: yil farki 4'ten buyukse ve HER IKI kayit
+            // da kaynak baglantisi tasiyorsa birlestirilmez.
             var groups = candidates
-                .GroupBy(g => (GameTitleMatcher.Normalize(g.Name), g.Released?[..4] ?? "?"))
+                .GroupBy(g => GameTitleMatcher.Normalize(g.Name))
                 .Where(grp => grp.Count() > 1)
                 .Take(BatchSize)
                 .ToList();
@@ -102,6 +107,12 @@ namespace GGHub.Infrastructure.Services
                 var primary = ordered[0];
                 foreach (var duplicate in ordered.Skip(1))
                 {
+                    // Remake koruması: "Resident Evil 2" (1998) ile remake'i (2019) ayni isimde
+                    // ama FARKLI oyunlardir. Ikisi de kendi kaynak baglantisini tasiyor ve arada
+                    // 4 yildan fazla varsa birlestirme; bozuk tarihli kopyalarda ise taraflardan
+                    // biri genelde baglantisizdir ve birlestirme dogru olur.
+                    if (IsLikelyDifferentGame(primary, duplicate)) { skipped++; continue; }
+
                     if (await TryMergeAsync(context, primary.Id, duplicate.Id, ct)) merged++;
                     else skipped++;
                 }
@@ -245,6 +256,26 @@ namespace GGHub.Infrastructure.Services
 
             await context.SaveChangesAsync(ct);
             _logger.LogInformation("[Dedupe] {Count} satirda platform slug'lari duzeltildi.", legacy.Count);
+        }
+
+        /// <summary>
+        /// Ayni isimli iki kaydin GERCEKTEN farkli oyunlar olma ihtimali (remake/yeniden yapim).
+        /// Olcut: her ikisinde de gercek bir kaynak baglantisi var (RAWG id pozitif ya da Steam/IGDB
+        /// id dolu) VE cikis yillari 4'ten fazla ayrik. Bozuk tarihten dogan kopyalarda taraflardan
+        /// biri genelde tek kaynakli oldugu icin bu koruma devreye girmez.
+        /// </summary>
+        private static bool IsLikelyDifferentGame(dynamic a, dynamic b)
+        {
+            int? YearOf(string? released) =>
+                released != null && released.Length >= 4 && int.TryParse(released[..4], out var y) ? y : null;
+
+            var ya = YearOf(a.Released);
+            var yb = YearOf(b.Released);
+            if (ya == null || yb == null) return false;
+            if (Math.Abs(ya.Value - yb.Value) <= 4) return false;
+
+            bool Linked(dynamic g) => g.RawgId > 0 && (g.SteamAppId != null || g.IgdbId != null);
+            return Linked(a) && Linked(b);
         }
 
         /// <summary>

@@ -97,7 +97,7 @@ namespace GGHub.Infrastructure.Services
                 // (Marvel's Wolverine ornegi) ve esik konunca tam da beklenen oyunlar eleniyordu.
                 // Kalite kapisi olarak kapak sarti yeterli; siralama/vitrin zaten populerlige gore.
                 var query = new StringBuilder()
-                    .Append("fields date, date_format, human, game.id, game.name, game.slug, game.summary, game.hypes, ")
+                    .Append("fields date, date_format, human, game.id, game.name, game.slug, game.summary, game.hypes, game.first_release_date, ")
                     .Append("game.total_rating, game.total_rating_count, game.aggregated_rating, game.cover.image_id, game.genres.name, game.genres.slug, ")
                     .Append("game.platforms.name, game.platforms.abbreviation, game.platforms.slug, game.screenshots.image_id, ")
                     .Append("game.involved_companies.company.name, game.involved_companies.developer, game.involved_companies.publisher, ")
@@ -192,7 +192,12 @@ namespace GGHub.Infrastructure.Services
                     var hasParent = row.Game.VersionParent != null || row.Game.ParentGame != null;
                     if (!hasParent && GameTitleMatcher.IsEditionVariant(row.Game.Name)) continue;
 
-                    var released = DateTimeOffset.FromUnixTimeSeconds(row.Date.Value).UtcDateTime.ToString("yyyy-MM-dd");
+                    // TARIH KAYNAGI: satirin degil, OYUNUN ilk cikis tarihi. release_dates satiri
+                    // o platform/surumun tarihidir; onu yazmak Elden Ring'i 2026'ya, Palworld'u
+                    // 2026'ya tasidi ve Palworld ayrica IKINCI kayit olarak acildi (yil eslesmedi).
+                    var released = row.Game.FirstReleaseDate != null
+                        ? DateTimeOffset.FromUnixTimeSeconds(row.Game.FirstReleaseDate.Value).UtcDateTime.ToString("yyyy-MM-dd")
+                        : DateTimeOffset.FromUnixTimeSeconds(row.Date.Value).UtcDateTime.ToString("yyyy-MM-dd");
 
                     // Surum kaydi ("... Digital Deluxe Edition") ise katalogda ANA oyunu tazele:
                     // buyuk yapimlarda tarih bazen yalnizca surum kaydinda bulunuyor.
@@ -207,6 +212,7 @@ namespace GGHub.Infrastructure.Services
                             Slug = parent.Slug,
                             // Ana oyun kaydinda olmayan zengin alanlar surumden devralinir.
                             Summary = game.Summary,
+                            FirstReleaseDate = parent.FirstReleaseDate ?? game.FirstReleaseDate,
                             Hypes = game.Hypes,
                             TotalRating = game.TotalRating,
                             TotalRatingCount = game.TotalRatingCount,
