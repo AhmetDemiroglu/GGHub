@@ -70,6 +70,31 @@ public static class WorkerStatus
         Console.WriteLine($"  Gemini ({status.PeriodKey}) : {spentTry:F2} TL / {limitTry:F0} TL  (%{pct:F1})  {status.CallCount:N0} cagri");
         Console.WriteLine($"                  {status.SpentUsd:F4} USD / {status.LimitUsd:F2} USD   [1 USD = {rate:F1} TL varsayimi]");
 
+        // GUNLUK DOKUM: Google Cloud konsolu maliyeti GUN GUN gosteriyor ve verisi 24 saate
+        // kadar gecikiyor. Aylik tek rakami karsilastirmak bu yuzden yaniltici: bizim sayacimiz
+        // bugunu de sayarken Google'in ekraninda bugun HENUZ YOK. Gun gun bakinca fatura ile
+        // sayacin gercekten tutup tutmadigi anlasilir.
+        var monthPrefix = status.PeriodKey.Length >= 7 ? status.PeriodKey[..7] : status.PeriodKey;
+        var daily = await context.GeminiUsages
+            .AsNoTracking()
+            .Where(u => u.PeriodKey.StartsWith(monthPrefix))
+            .OrderByDescending(u => u.PeriodKey)
+            .Take(8)
+            .Select(u => new { u.PeriodKey, u.SpentUsd, u.InputTokens, u.OutputTokens, u.CallCount })
+            .ToListAsync();
+
+        if (daily.Count > 0)
+        {
+            Console.WriteLine();
+            Console.WriteLine("  Gun bazinda (Google konsoluyla karsilastirmak icin; Google bugunu ~24 saat gec gosterir)");
+            Console.WriteLine("    gun          cagri      girdi tk     cikti tk    bizim TL");
+            foreach (var d in daily.OrderBy(x => x.PeriodKey))
+            {
+                Console.WriteLine(
+                    $"    {d.PeriodKey}  {d.CallCount,7:N0}  {d.InputTokens,12:N0}  {d.OutputTokens,11:N0}  {d.SpentUsd * rate,9:F2}");
+            }
+        }
+
         if (status.IsExhausted)
         {
             Console.WriteLine("                  BUTCE DOLDU: ceviri duruyor, ay basinda kendiliginden acilir.");
