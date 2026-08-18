@@ -110,6 +110,55 @@ if (args.Contains("--status"))
     return 0;
 }
 
+// "--purge-usage <baslangic> <bitis>": Gemini harcama sayacindan belirtilen GUN ARALIGINI siler.
+//
+// Neden gerekli: sayac her API cagrisini ucretli sayar, ama hesap UCRETSIZ katmandayken Google
+// hicbir sey faturalandirmiyor. 2026-08 ayinda hesap 13 Agustos'ta odemeli katmana gecti;
+// 1-12 Agustos arasindaki ~395 TL sayacta duruyor, Google faturasinda YOK. Bu hayali harcama
+// aylik tavani erken doldurup ceviriyi durdurdu (olculdu: sayac 989/989 TL derken Google 594/1000).
+//
+// Salt bu tabloyu ve yalnizca verilen araligi etkiler; once ne silinecegini yazar.
+if (args.Contains("--purge-usage"))
+{
+    var idx = Array.IndexOf(args, "--purge-usage");
+    if (idx + 2 >= args.Length)
+    {
+        Console.WriteLine("Kullanim: --purge-usage <baslangic yyyy-MM-dd> <bitis yyyy-MM-dd>  (iki ucu da DAHIL)");
+        return 1;
+    }
+
+    var from = args[idx + 1];
+    var to = args[idx + 2];
+
+    using var purgeScope = host.Services.CreateScope();
+    var purgeContext = purgeScope.ServiceProvider.GetRequiredService<GGHubDbContext>();
+
+    var doomed = await purgeContext.GeminiUsages
+        .Where(u => string.Compare(u.PeriodKey, from) >= 0 && string.Compare(u.PeriodKey, to) <= 0)
+        .OrderBy(u => u.PeriodKey)
+        .ToListAsync();
+
+    if (doomed.Count == 0)
+    {
+        Console.WriteLine($"Bu aralikta kayit yok: {from} .. {to}");
+        return 0;
+    }
+
+    Console.WriteLine($"Silinecek {doomed.Count} gun ({from} .. {to}):");
+    decimal totalUsd = 0;
+    foreach (var row in doomed)
+    {
+        Console.WriteLine($"  {row.PeriodKey}  {row.CallCount,7:N0} cagri  {row.SpentUsd,10:F4} USD");
+        totalUsd += row.SpentUsd;
+    }
+
+    purgeContext.GeminiUsages.RemoveRange(doomed);
+    var affected = await purgeContext.SaveChangesAsync();
+
+    Console.WriteLine($"Silindi: {affected} satir, toplam {totalUsd:F4} USD sayactan dusuldu.");
+    return 0;
+}
+
 var logger = host.Services.GetRequiredService<ILogger<Program>>();
 
 // Worker BILEREK migration UYGULAMAZ: semanin sahibi WebAPI (Railway'de Production'da
