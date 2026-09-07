@@ -1,4 +1,5 @@
 import { Game } from "@/models/gaming/game.model";
+import { trackAction } from "@/core/lib/site-analytics";
 import React, { useState } from "react";
 import { PlatformIcons } from "@/core/components/other/platform-icons";
 import { Calendar, Plus, Gift, Share2, Loader2, Trash2 } from "lucide-react";
@@ -35,6 +36,7 @@ export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
     const { mutate: mutateWishlist, isPending: isWishlistLoading } = useMutation({
         mutationFn: () => toggleWishlist(game.rawgId),
         onSuccess: (data) => {
+            trackAction(data.isAdded ? "wishlist_add" : "wishlist_remove");
             queryClient.setQueryData(["wishlist-status", game.id], { isInWishlist: data.isAdded });
 
             toast.success(data.message, {

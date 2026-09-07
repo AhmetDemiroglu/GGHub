@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { trackAction } from "@/core/lib/site-analytics";
 import { Suspense, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -65,6 +66,7 @@ function LoginPageContent() {
     const { mutate, isPending } = useMutation({
         mutationFn: (data: UserForLogin) => loginApi(data),
         onSuccess: (response) => {
+            trackAction("login");
             toast.success(t("auth.loginSuccess"));
             authLogin(response.data);
             router.push(returnUrl.current);

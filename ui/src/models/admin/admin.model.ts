@@ -6,6 +6,9 @@ export interface DashboardStats {
     pendingReports: number;
     totalLists: number;
     totalReviews: number;
+    /** Sahte (seed) hesaplar; totalUsers ve totalReviews bunlari ICERMEZ. */
+    seededUsers: number;
+    seededReviews: number;
 }
 export interface UserFilterParams {
     page?: number;

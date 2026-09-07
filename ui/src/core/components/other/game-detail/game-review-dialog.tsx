@@ -1,4 +1,5 @@
 import { createReview, updateReview } from "@/api/review/review.api";
+import { trackAction } from "@/core/lib/site-analytics";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, Loader2 } from "lucide-react";
 import React, { useState } from "react";
@@ -35,6 +36,7 @@ export const GameReviewDialog = ({ isOpen, onClose, gameId, gameSlug, gameName, 
             return createReview({ gameId, rating, content });
         },
         onSuccess: () => {
+            trackAction("review_create");
             toast.success(existingReview ? "İnceleme Güncellendi" : "İnceleme Kaydedildi");
 
             queryClient.invalidateQueries({ queryKey: ["game", gameSlug] });

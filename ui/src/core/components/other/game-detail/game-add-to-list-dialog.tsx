@@ -1,4 +1,5 @@
 import { getMyLists, addGameToList } from "@/api/list/list.api";
+import { trackAction } from "@/core/lib/site-analytics";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { X, Plus, Loader2, Lock, Globe, Users } from "lucide-react";
 import React, { useState } from "react";
@@ -28,6 +29,7 @@ export const GameAddToListDialog = ({ isOpen, onClose, gameId }: GameAddToListDi
     const { mutate: addGame, isPending: isAdding } = useMutation({
         mutationFn: (listId: number) => addGameToList(listId, gameId),
         onSuccess: (_data, variables) => {
+            trackAction("list_add");
             const targetListId = variables;
             queryClient.setQueryData<UserList[]>(["my-lists", gameId], (oldData) => {
                 if (!oldData) return [];
@@ -62,6 +64,7 @@ export const GameAddToListDialog = ({ isOpen, onClose, gameId }: GameAddToListDi
     const { mutateAsync: createNewListAsync, isPending: isCreating } = useMutation({
         mutationFn: (newList: UserListForCreation) => createList(newList),
         onSuccess: (createdList) => {
+            trackAction("list_create");
             queryClient.invalidateQueries({ queryKey: ["my-lists"] });
             toast.success(`'${createdList.name}' oluşturuldu.`);
             setIsCreateModalOpen(false);

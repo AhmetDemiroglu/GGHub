@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { trackAction } from "@/core/lib/site-analytics";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -45,6 +46,11 @@ export function CommandSearch({ variant = "default", collapsed = false }: Comman
 
     // Debounce: her tuş vuruşunda istek atılmasın; kullanıcı duraksayınca tek istek gitsin.
     const debouncedQuery = useDebounce(query, 300);
+
+    // Her tus vurusu degil, kullanicinin durakladigi (istek atilan) arama sayilir.
+    useEffect(() => {
+        if (debouncedQuery.length >= 3) trackAction("search");
+    }, [debouncedQuery]);
 
     const { data: results, isLoading, isError } = useQuery({
         queryKey: ["search", debouncedQuery, locale],

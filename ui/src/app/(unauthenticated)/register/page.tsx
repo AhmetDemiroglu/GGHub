@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { trackAction } from "@/core/lib/site-analytics";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -46,6 +47,7 @@ function RegisterPageContent() {
     const { mutate, isPending } = useMutation({
         mutationFn: registerApi,
         onSuccess: () => {
+            trackAction("register");
             router.push(`/login?registered=true&returnUrl=${encodeURIComponent(returnUrl)}`);
         },
         onError: (error: unknown) => {

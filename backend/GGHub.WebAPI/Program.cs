@@ -140,6 +140,7 @@ builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddScoped<IDownloadAnalyticsService, DownloadAnalyticsService>();
+builder.Services.AddScoped<ISiteAnalyticsService, SiteAnalyticsService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<INotificationPreferenceService, NotificationPreferenceService>();
 builder.Services.AddScoped<IMentionService, MentionService>();
@@ -286,6 +287,20 @@ builder.Services.AddRateLimiter(options =>
     // yorumda anlatildigi gibi Railway arkasinda RemoteIpAddress herkes icin ayni
     // cikar ve IP basina limit tek kovaya coker. Gercek bir ziyaret en fazla 3 olay
     // gonderir; 60 limiti paylasimli NAT'a bol pay birakir.
+    // Site geneli telemetri: bir gezinti sayfa basina 2 olay (goruntuleme + ayrilma) + etkilesimler
+    // uretir; 5 dakikada 240, hizli gezen gercek bir kullaniciya bol pay birakir.
+    options.AddPolicy("SiteTrackPolicy", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Request.Headers["X-Visitor-Hash"].ToString() is { Length: > 0 } siteVisitorHash
+                ? siteVisitorHash
+                : "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 240,
+                Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0
+            }));
+
     options.AddPolicy("DownloadTrackPolicy", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: httpContext.Request.Headers["X-Visitor-Hash"].ToString() is { Length: > 0 } visitorHash

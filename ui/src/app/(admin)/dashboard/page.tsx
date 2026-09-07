@@ -7,7 +7,11 @@ import type { DashboardStats, AdminReport, AdminUserSummary, RecentReview } from
 import type { PaginatedResponse } from "@/models/system/api.model";
 import type { TopUser, TopList, TopGame } from "@/models/analytics/analytics.model";
 import { ReportStatus } from "@/models/report/report.model";
-import { Users, ShieldAlert, Library, Star } from "lucide-react";
+import Link from "next/link";
+import { Activity, Clock, LogIn, Users, ShieldAlert, Library, Star } from "lucide-react";
+import { siteAnalyticsApi } from "@/api/site-analytics/site-analytics.api";
+import { fmtDuration, fmtInt } from "@/core/components/admin/metric-bar-table";
+import { buildLocalizedPathname } from "@/i18n/config";
 import { StatsCard } from "@/core/components/admin/stats-card";
 import { RecentReports } from "@/core/components/admin/recent-reports";
 import { AdminQuickSearch } from "@/core/components/admin/admin-quick-search";
@@ -16,10 +20,20 @@ import { RecentReviewsList } from "@/core/components/admin/recent-reviews-list";
 import { TopUsersCard } from "@/core/components/admin/top-users-card";
 import { TopListsCard } from "@/core/components/admin/top-lists-card";
 import { TopGamesCard } from "@/core/components/admin/top-games-card";
-import { useI18n } from "@/core/contexts/locale-context";
+import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 
 export default function DashboardPage() {
     const t = useI18n();
+    const locale = useCurrentLocale();
+
+    // Bugunun trafigi: dashboard'un "site su an nasil" satiri. 60 sn'de bir tazelenir,
+    // yuklenmesi diger kartlari BEKLETMEZ (isLoading zincirine dahil degil).
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: trafficToday } = useQuery({
+        queryKey: ["site-analytics", "summary", "dashboard", today],
+        queryFn: async () => (await siteAnalyticsApi.summary({ startDate: today, endDate: today })).data,
+        refetchInterval: 60_000,
+    });
 
     const { data: statsData, isLoading: isLoadingStats } = useQuery<DashboardStats>({
         queryKey: ["adminDashboardStats"],
@@ -95,10 +109,35 @@ export default function DashboardPage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <StatsCard title={t("admin.totalUsers")} value={statsData?.totalUsers ?? 0} icon={Users} />
+                <StatsCard
+                    title={t("admin.totalUsers")}
+                    value={statsData?.totalUsers ?? 0}
+                    icon={Users}
+                    description={t("admin.excludingSeeded").replace("{count}", fmtInt(statsData?.seededUsers))}
+                />
                 <StatsCard title={t("admin.bannedUsers")} value={statsData?.bannedUsers ?? 0} icon={ShieldAlert} />
                 <StatsCard title={t("admin.pendingReports")} value={statsData?.pendingReports ?? 0} icon={Library} />
-                <StatsCard title={t("admin.totalReviews")} value={statsData?.totalReviews ?? 0} icon={Star} />
+                <StatsCard
+                    title={t("admin.totalReviews")}
+                    value={statsData?.totalReviews ?? 0}
+                    icon={Star}
+                    description={t("admin.excludingSeededReviews").replace("{count}", fmtInt(statsData?.seededReviews))}
+                />
+            </div>
+
+            <div>
+                <div className="mb-3 flex items-center justify-between">
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t("admin.todayTraffic")}</h3>
+                    <Link href={buildLocalizedPathname("/traffic", locale)} className="text-xs text-mention hover:underline">
+                        {t("admin.viewAll")}
+                    </Link>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <StatsCard title={t("admin.siteAnalytics.activeNow")} value={fmtInt(trafficToday?.activeNow)} icon={Activity} description={t("admin.siteAnalytics.activeNowNote")} />
+                    <StatsCard title={t("admin.siteAnalytics.sessions")} value={fmtInt(trafficToday?.sessions)} icon={LogIn} description={t("admin.siteAnalytics.pageViewsNote").replace("{count}", fmtInt(trafficToday?.pageViews))} />
+                    <StatsCard title={t("admin.siteAnalytics.uniqueVisitors")} value={fmtInt(trafficToday?.uniqueVisitors)} icon={Users} description={t("admin.siteAnalytics.registeredUsersNote").replace("{count}", fmtInt(trafficToday?.registeredUsers))} />
+                    <StatsCard title={t("admin.siteAnalytics.avgDuration")} value={fmtDuration(trafficToday?.avgSessionSeconds)} icon={Clock} description={t("admin.siteAnalytics.avgPagesNoteShort").replace("{count}", (trafficToday?.avgPagesPerSession ?? 0).toLocaleString())} />
+                </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

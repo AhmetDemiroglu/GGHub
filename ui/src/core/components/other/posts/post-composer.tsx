@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { trackAction } from "@/core/lib/site-analytics";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { BarChart3, Image as ImageIcon, Loader2, X } from "lucide-react";
@@ -187,6 +188,7 @@ export function PostComposer({
                 parentPostId: parentPostId ?? null,
             }),
         onSuccess: (post) => {
+            trackAction("post_create");
             setValue("");
             setPicked([]);
             setImages([]);

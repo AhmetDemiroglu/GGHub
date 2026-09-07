@@ -41,6 +41,7 @@ namespace GGHub.Infrastructure.Persistence
         public DbSet<UserNotificationPreference> UserNotificationPreferences { get; set; }
         public DbSet<GeminiUsage> GeminiUsages { get; set; }
         public DbSet<DownloadPageEvent> DownloadPageEvents { get; set; }
+        public DbSet<SiteEvent> SiteEvents { get; set; }
         public DbSet<Post> Posts { get; set; }
         public DbSet<PostLike> PostLikes { get; set; }
         public DbSet<PostImage> PostImages { get; set; }
@@ -345,6 +346,38 @@ namespace GGHub.Infrastructure.Persistence
                     .WithMany(u => u.NotificationPreferences)
                     .HasForeignKey(p => p.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // SiteEvent: site geneli davranis telemetrisi. Yazma-agirlikli; index sayisi bilerek az.
+            modelBuilder.Entity<SiteEvent>(entity =>
+            {
+                entity.Property(e => e.EventType).IsRequired().HasMaxLength(16);
+                entity.Property(e => e.Route).IsRequired().HasMaxLength(64);
+                entity.Property(e => e.PathKey).HasMaxLength(96);
+                entity.Property(e => e.ActionName).HasMaxLength(48);
+                entity.Property(e => e.Locale).HasMaxLength(8);
+                entity.Property(e => e.Platform).HasMaxLength(16);
+                entity.Property(e => e.DeviceType).HasMaxLength(16);
+                entity.Property(e => e.Browser).HasMaxLength(32);
+                entity.Property(e => e.UtmSource).HasMaxLength(64);
+                entity.Property(e => e.UtmMedium).HasMaxLength(64);
+                entity.Property(e => e.UtmCampaign).HasMaxLength(96);
+                entity.Property(e => e.ClickIdSource).HasMaxLength(16);
+                entity.Property(e => e.ReferrerHost).HasMaxLength(128);
+                entity.Property(e => e.CountryCode).HasMaxLength(2);
+                entity.Property(e => e.Language).HasMaxLength(16);
+                entity.Property(e => e.VisitorHash).HasMaxLength(32);
+
+                // Tum raporlar tarih araligiyla baslar; olay tipi hemen ardindan ayrisir.
+                entity.HasIndex(e => new { e.OccurredAt, e.EventType })
+                    .HasDatabaseName("IX_SiteEvents_OccurredAt_EventType");
+                // Oturum toplama (GROUP BY SessionId) ve oturum yolculugu.
+                entity.HasIndex(e => e.SessionId)
+                    .HasDatabaseName("IX_SiteEvents_SessionId");
+                // Kayitli kullanici bazli sorgular; anonim satirlar indexe girmez.
+                entity.HasIndex(e => new { e.UserId, e.OccurredAt })
+                    .HasDatabaseName("IX_SiteEvents_UserId_OccurredAt")
+                    .HasFilter("\"UserId\" IS NOT NULL");
             });
 
             // DownloadPageEvent: /download-app kampanya telemetrisi.

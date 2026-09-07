@@ -62,6 +62,15 @@ namespace GGHub.Infrastructure.Services
 
                     if (deleted > 0)
                         _logger.LogInformation("download-analytics retention: {Deleted} satir silindi ({Days} gun oncesi)", deleted, retentionDays);
+
+                    // Site geneli telemetri ayni saklama kuraliyla budanir; ayri ayar istenirse
+                    // SiteAnalytics:RetentionDays oncelikli.
+                    var siteRetentionDays = _configuration.GetValue<int?>("SiteAnalytics:RetentionDays") ?? retentionDays;
+                    var siteCutoff = DateTime.UtcNow.AddDays(-siteRetentionDays);
+                    var siteService = scope.ServiceProvider.GetRequiredService<ISiteAnalyticsService>();
+                    var siteDeleted = await siteService.PurgeOlderThanAsync(siteCutoff, BatchSize, stoppingToken);
+                    if (siteDeleted > 0)
+                        _logger.LogInformation("site-analytics retention: {Deleted} satir silindi ({Days} gun oncesi)", siteDeleted, siteRetentionDays);
                 }
                 catch (OperationCanceledException)
                 {

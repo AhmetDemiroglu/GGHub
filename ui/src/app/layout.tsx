@@ -10,6 +10,7 @@ import { Toaster } from "@/core/components/ui/sonner";
 import { getMessages } from "@/i18n";
 import { resolveLocaleFromCookies } from "@/i18n/server";
 import GAListener from "./ga-listener";
+import SiteAnalyticsListener from "./site-analytics-listener";
 import "./globals.css";
 
 // latin-ext olmadan Türkçe ğ/ş/İ glifleri fallback font'tan çiziliyordu.
@@ -167,6 +168,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
                     <LocaleProvider locale={locale} messages={messages}>
                         <Providers locale={locale} messages={messages}>
+                            {/* AuthProvider'in icinde olmali: kayitli kullanicinin gezintisi kimligiyle baglanir. */}
+                            <SiteAnalyticsListener />
                             {children}
                         </Providers>
                     </LocaleProvider>

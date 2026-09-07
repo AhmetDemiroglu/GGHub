@@ -1,6 +1,7 @@
 "use client";
 
 import { Crown, Loader2 } from "lucide-react";
+import { trackAction } from "@/core/lib/site-analytics";
 import { toast } from "sonner";
 import { useAuth } from "@/core/hooks/use-auth";
 import { axiosInstance } from "@core/lib/axios";
@@ -33,6 +34,7 @@ export function FavoriteButton({ gameId, className }: FavoriteButtonProps) {
             return res.data;
         },
         onSuccess: (data) => {
+            trackAction(data.isAdded ? "favorite_add" : "favorite_remove");
             queryClient.setQueryData(["favorite-status", gameId], { isFavorite: data.isAdded });
             toast.success(data.message);
             queryClient.invalidateQueries({ queryKey: ["profile-lists"] });

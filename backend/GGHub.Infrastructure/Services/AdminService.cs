@@ -356,11 +356,14 @@ namespace GGHub.Infrastructure.Services
 
         public async Task<DashboardStatsDto> GetDashboardStatisticsAsync()
         {
-            var totalUsers = await _context.Users.CountAsync();
-            var bannedUsers = await _context.Users.CountAsync(u => u.IsBanned);
+            // Sahte (seed) ve silinmis hesaplar GERCEK sayilara girmez; ayri alanda raporlanir.
+            var totalUsers = await _context.Users.CountAsync(u => !u.IsSeeded && !u.IsDeleted);
+            var seededUsers = await _context.Users.CountAsync(u => u.IsSeeded);
+            var bannedUsers = await _context.Users.CountAsync(u => u.IsBanned && !u.IsSeeded);
             var pendingReports = await _context.ContentReports.CountAsync(r => r.Status == Core.Enums.ReportStatus.Open);
             var totalLists = await _context.UserLists.CountAsync();
-            var totalReviews = await _context.Reviews.CountAsync();
+            var totalReviews = await _context.Reviews.CountAsync(r => !_context.Users.Any(u => u.Id == r.UserId && u.IsSeeded));
+            var seededReviews = await _context.Reviews.CountAsync(r => _context.Users.Any(u => u.Id == r.UserId && u.IsSeeded));
 
             var stats = new DashboardStatsDto
             {
@@ -368,7 +371,9 @@ namespace GGHub.Infrastructure.Services
                 BannedUsers = bannedUsers,
                 PendingReports = pendingReports,
                 TotalLists = totalLists,
-                TotalReviews = totalReviews
+                TotalReviews = totalReviews,
+                SeededUsers = seededUsers,
+                SeededReviews = seededReviews,
             };
 
             return stats;
