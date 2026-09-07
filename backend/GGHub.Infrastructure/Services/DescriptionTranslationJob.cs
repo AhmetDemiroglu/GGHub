@@ -65,12 +65,20 @@ namespace GGHub.Infrastructure.Services
                 {
                     if (!await RunOnceAsync(stoppingToken))
                     {
-                        // Kota/butce doldu. Bir sonraki UTC gun basina kadar uyu: Google'in gunluk
-                        // kotasi orada sifirlaniyor. Sabit bir sure beklemek ya erken uyanip 429
-                        // uretir ya da bosuna saatler kaybettirir. Aylik butce doldu ise gunde bir
-                        // uyanip tekrar uyur, o da ucuz.
-                        sleep = NextUtcMidnight() - DateTime.UtcNow + TimeSpan.FromMinutes(2);
-                        _logger.LogInformation("[Translation] {Hours:F1} saat sonra (UTC gun basi) tekrar denenecek.",
+                        // NOT: asagidaki "UTC gun basina kadar uyu" davranisi yalnizca GUNLUK kota
+                        // icin dogruydu. Bakiye bittiginde de ayni sekilde uyunuyordu ve bot, kredi
+                        // yuklendikten sonra bile bir sonraki gun basina kadar hicbir sey yapmiyordu
+                        // (olculdu: 3-6 Eylul 2026, dort gun boyunca gunde tek istek). Artik en fazla
+                        // bir saat uyunuyor: gunluk kota senaryosunda bu saatte bir bosa istek demek
+                        // (onemsiz), bakiye senaryosunda ise kredi yuklenince bot bir saat icinde
+                        // kendi kendine toparliyor.
+                        const int maxSleepHours = 1;
+
+                        var untilMidnight = NextUtcMidnight() - DateTime.UtcNow + TimeSpan.FromMinutes(2);
+                        sleep = untilMidnight < TimeSpan.FromHours(maxSleepHours)
+                            ? untilMidnight
+                            : TimeSpan.FromHours(maxSleepHours);
+                        _logger.LogInformation("[Translation] {Hours:F1} saat sonra tekrar denenecek.",
                             sleep.TotalHours);
                     }
                 }

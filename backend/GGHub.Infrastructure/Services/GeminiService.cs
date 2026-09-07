@@ -77,11 +77,35 @@ namespace GGHub.Infrastructure.Services
                 await _budget.RecordRejectedCallAsync(cancellationToken);
 
                 var quotaBody = await response.Content.ReadAsStringAsync(cancellationToken);
-                _logger.LogWarning(
-                    "[Gemini] 429 kota doldu. Anahtar ucretsiz katmandaysa limit model basina gunde 500 istek. {Body}",
-                    quotaBody.Length > 200 ? quotaBody[..200] : quotaBody);
 
-                throw new GeminiQuotaExceededException("Gemini kotasi doldu (HTTP 429).");
+                // 429'un IKI ayri sebebi var ve karistirilmasi pahaliya mal oluyor:
+                //   a) hiz/kota limiti  -> bir sure sonra kendiliginden acilir
+                //   b) BAKIYE bitmesi   -> Google'a kredi yuklenene kadar ACILMAZ
+                // Eski mesaj her 429'u "ucretsiz katman gunluk 500 istek" diye yaziyordu; 3-6 Eylul
+                // 2026'da bot dort gun bosta durdu ve log yanlis yeri isaret ettigi icin sebep
+                // ancak yanit govdesi okununca anlasildi ("Your prepayment credits are depleted").
+                var isBilling = quotaBody.Contains("prepayment", StringComparison.OrdinalIgnoreCase)
+                    || quotaBody.Contains("credits are depleted", StringComparison.OrdinalIgnoreCase)
+                    || quotaBody.Contains("billing", StringComparison.OrdinalIgnoreCase);
+
+                if (isBilling)
+                {
+                    _logger.LogWarning(
+                        "[Gemini] 429: GOOGLE HESABININ BAKIYESI BITMIS (kota degil). Ceviri, hesaba kredi "
+                        + "yuklenene kadar duracak. https://ai.studio/projects {Body}",
+                        quotaBody.Length > 300 ? quotaBody[..300] : quotaBody);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "[Gemini] 429 kota/hiz limiti. Ucretsiz katmanda limit model basina gunde 500 istek. {Body}",
+                        quotaBody.Length > 300 ? quotaBody[..300] : quotaBody);
+                }
+
+                throw new GeminiQuotaExceededException(
+                    isBilling
+                        ? "Google hesabinin bakiyesi bitmis (HTTP 429); kredi yuklenmeli."
+                        : "Gemini kotasi doldu (HTTP 429).");
             }
 
             if (!response.IsSuccessStatusCode)
