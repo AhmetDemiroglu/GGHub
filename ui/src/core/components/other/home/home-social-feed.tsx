@@ -77,6 +77,8 @@ interface FeedMemory {
     activeTab: TabKey;
     /** "Sadece insanlar" filtresi: AI bot kartlari sunucuda suzulur. */
     humansOnly?: boolean;
+    /** Akisin cekildigi arayuz dili: baska dilde cekilmis akis geri donuste kullanilmaz. */
+    locale?: string;
     /**
      * SEKME BASINA kaydirma konumu.
      *
@@ -110,9 +112,11 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
     // efekti de !loaded sartina takiliyordu. Besleyen cagri hatayi yutunca
     // ("catch(() => [])") sekme kalici olarak bos kaliyordu: kullanici tikliyor,
     // hicbir sey olmuyordu. Tohumlama tamamen kaldirildi.
+    // Hafizadaki akis baska dilde cekildiyse (dil baska sayfada degistirildi) sifirdan baslanir.
+    const rememberedFeeds = feedMemory?.locale === locale ? feedMemory?.feeds : undefined;
     const [feeds, setFeeds] = useState<Record<TabKey, TabState>>(
         () =>
-            feedMemory?.feeds ?? {
+            rememberedFeeds ?? {
                 discover: emptyTab(),
                 posts: emptyTab(),
                 reviews: emptyTab(),
@@ -207,8 +211,8 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
     // Her degisimde hafizayi tazele; unmount'ta yazmak yeterli degil, cunku
     // Next.js gezinmesinde cleanup her zaman guvenilir sirada calismiyor.
     useEffect(() => {
-        feedMemory = { feeds, activeTab, humansOnly, scrollTopByTab: feedMemory?.scrollTopByTab ?? {} };
-    }, [feeds, activeTab, humansOnly]);
+        feedMemory = { feeds, activeTab, humansOnly, locale, scrollTopByTab: feedMemory?.scrollTopByTab ?? {} };
+    }, [feeds, activeTab, humansOnly, locale]);
 
     /**
      * "Sadece insanlar" degisince yuklu sekmeler gecersiz: hepsi bosaltilir, aktif sekme bastan
@@ -225,6 +229,18 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
         },
         [activeTab, loadTab],
     );
+
+    // Dil degisince sunucu icerigi de degisir (bot dolgusu izleyicinin dilinde): "Sadece insanlar"
+    // ile ayni yol, tum sekmeler bosaltilir ve aktif sekme yeni dille bastan cekilir.
+    const localeRef = useRef(locale);
+    useEffect(() => {
+        if (localeRef.current === locale) return;
+        localeRef.current = locale;
+        const reset = { discover: emptyTab(), posts: emptyTab(), reviews: emptyTab() };
+        feedsRef.current = reset;
+        setFeeds(reset);
+        void loadTab(activeTab, true);
+    }, [locale, activeTab, loadTab]);
 
     // Kaydirma konumu: kabin kendisi <main>, window degil. Kaydedilen konum
     // AKTIF SEKMEYE yazilir; boylece hem detaydan geri donuste hem de

@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Messages, getMessages, translate } from "@/i18n";
 import { AppLocale, getLocaleLabel, isLocale, localeStorageKey } from "@/i18n/config";
+import { setActiveClientLocale } from "@/core/lib/client-locale";
 
 type LocaleContextValue = {
     locale: AppLocale;
@@ -23,11 +24,13 @@ export function LocaleProvider({ children, locale, messages }: { children: React
     useEffect(() => {
         const localeFromPath = pathname?.split("/").filter(Boolean)[0];
         if (localeFromPath && isLocale(localeFromPath)) {
+            setActiveClientLocale(localeFromPath);
             setActiveLocale(localeFromPath);
             setActiveMessages(getMessages(localeFromPath));
             return;
         }
 
+        setActiveClientLocale(locale);
         setActiveLocale(locale);
         setActiveMessages(messages);
     }, [pathname, locale, messages]);
@@ -42,6 +45,7 @@ export function LocaleProvider({ children, locale, messages }: { children: React
                 document.cookie = `gghub-locale=${nextLocale}; path=/; max-age=31536000; samesite=lax`;
                 document.cookie = `gghub-locale-manual=1; path=/; max-age=31536000; samesite=lax`;
                 localStorage.setItem(localeStorageKey, nextLocale);
+                setActiveClientLocale(nextLocale);
                 setActiveLocale(nextLocale);
                 setActiveMessages(getMessages(nextLocale));
             },

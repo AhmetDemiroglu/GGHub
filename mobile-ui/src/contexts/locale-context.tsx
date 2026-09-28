@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useEffect, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
+import { useQueryClient } from '@tanstack/react-query';
 import { getLocales } from 'expo-localization';
 import { setLocaleGetter } from '@/src/api/client';
 import { APP_CONFIG } from '@/src/constants/config';
@@ -28,16 +29,22 @@ export const LocaleContext = createContext<LocaleContextType>({
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocale] = useState<AppLocale>(defaultLocale);
   const [messages, setMessages] = useState<Messages>(getMessages(defaultLocale));
+  const queryClient = useQueryClient();
 
   const switchLocale = useCallback(async (newLocale: AppLocale) => {
+    // Istekler hemen yeni dille gitsin: asagidaki efekt render sonrasi calisir, cocuk efektler
+    // (akis yenileme) ondan once atilir. Accept-Language'e bagli sunucu verisi (bot kulubu,
+    // oneriler, bildirim metinleri) de yeniden cekilir.
+    setLocaleGetter(() => newLocale);
     setLocale(newLocale);
     setMessages(getMessages(newLocale));
+    void queryClient.invalidateQueries();
     try {
       await SecureStore.setItemAsync(LOCALE_STORAGE_KEY, newLocale);
     } catch {
       // Storage write failed
     }
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
     const loadLocale = async () => {

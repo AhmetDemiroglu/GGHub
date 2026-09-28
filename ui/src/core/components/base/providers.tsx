@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { AxiosError } from "axios";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { LocaleQuerySync } from "@/core/components/base/locale-query-sync";
 import { toast } from "sonner";
 import { AuthProvider } from "@core/contexts/auth-context";
 import { SignalRProvider } from "@core/contexts/signalr-context";
@@ -101,6 +102,7 @@ export function Providers({ children, locale, messages }: { children: React.Reac
     // temizlemek için useQueryClient() kullanıyor, dolayısıyla altında olmak zorunda.
     return (
         <QueryClientProvider client={client}>
+            <LocaleQuerySync />
             <AuthProvider locale={locale}>
                 <SignalRProvider>
                     {/* AI etkilesimi onay penceresi: axios interceptor bota yazma reddinde bunu acar. */}

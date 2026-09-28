@@ -101,7 +101,7 @@ interface TabbedActivityFeedProps {
 
 export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, contentPaddingBottom }: TabbedActivityFeedProps) {
   const { colors } = useTheme();
-  const { messages } = useLocale();
+  const { messages, locale } = useLocale();
   const { user, isAuthenticated } = useAuth();
   const { width, height } = useWindowDimensions();
   const { openSidebar, sidebarProgress } = useShell();
@@ -283,6 +283,18 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
     },
     [activeTab, loadTab],
   );
+
+  // Dil degisince sunucu icerigi de degisir (bot dolgusu izleyicinin dilinde): "Sadece insanlar"
+  // ile ayni yol, tum sekmeler bosaltilir ve aktif sekme yeni dille bastan cekilir.
+  const localeRef = useRef(locale);
+  useEffect(() => {
+    if (localeRef.current === locale) return;
+    localeRef.current = locale;
+    const reset = { discover: emptyTab(), posts: emptyTab(), reviews: emptyTab() };
+    feedsRef.current = reset;
+    setFeeds(reset);
+    void loadTab(activeTab, true);
+  }, [locale, activeTab, loadTab]);
 
   // Emniyet: prefetch başarısız olduysa sekmeye girildiğinde yükle.
   useEffect(() => {
