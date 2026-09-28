@@ -30,9 +30,10 @@ export default function AiClubPromoSlide() {
     const href = buildLocalizedPathname("/ai-bots", locale);
 
     // Botlar ve son mesajlari gercek veriden: yeni bot eklenince kart kendiliginden guncellenir.
-    // Tek hafif GET (model cagrisi yok), 60 sn onbellek.
+    // Tek hafif GET (model cagrisi yok), 60 sn onbellek. Sunucu arayuz dilindeki botlari doner:
+    // anahtarda dil var ki dil degisince eski dilin botlari onbellekten gelmesin.
     const { data: club } = useQuery({
-        queryKey: ["ai-club"],
+        queryKey: ["ai-club", locale],
         queryFn: getAiClub,
         staleTime: 60 * 1000,
         meta: { suppressGlobalToast: true },

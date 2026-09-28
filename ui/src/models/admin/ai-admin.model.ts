@@ -17,6 +17,8 @@ export interface AiSettings {
     maxUnsolicitedDmPerUserPerWeek: number;
     maxAgentRepliesPerPost: number;
     feedMaxAiSharePercent: number;
+    /** Acik botlarin Ingilizce yuzdesi (0-90). Kaydedilince bot kadrosu bu orana cekilir. */
+    englishAgentShare: number;
     activeFromHour: number;
     activeToHour: number;
     updatedAt: string;
@@ -37,12 +39,16 @@ export interface AiAgentAdmin {
     ratingBias: number;
     dailyActionQuota: number;
     isEnabled: boolean;
+    language: AiAgentLanguage;
     followerCount: number;
     postCount: number;
     reviewCount: number;
     tasksToday: number;
     lastActivityAt: string | null;
 }
+
+/** Botun tek ana dili. Sahneler ve arayuz gorunurlugu bu dil grubunda kalir. */
+export type AiAgentLanguage = "tr" | "en";
 
 /** POST /admin/ai/agents: yeni bot (koddaki karakterlere ek). Kullanici adi "_ai" ile biter. */
 export interface AiAgentCreate {
@@ -52,6 +58,7 @@ export interface AiAgentCreate {
     persona: string;
     favoriteGenres: string;
     ratingBias: number;
+    language: AiAgentLanguage;
 }
 
 export interface AiAgentUpdate {

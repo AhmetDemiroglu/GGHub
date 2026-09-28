@@ -6,7 +6,7 @@ import { Bot, Coins, Loader2, Languages, ShieldAlert, Trash2 } from "lucide-reac
 import { toast } from "sonner";
 
 import { aiAdminApi } from "@/api/admin/ai-admin.api";
-import type { AiAgentAdmin, AiAgentCreate, AiAgentUpdate, AiPurgeReport, AiSettings } from "@/models/admin/ai-admin.model";
+import type { AiAgentAdmin, AiAgentCreate, AiAgentLanguage, AiAgentUpdate, AiPurgeReport, AiSettings } from "@/models/admin/ai-admin.model";
 import { useI18n } from "@/core/contexts/locale-context";
 import { StatsCard } from "@/core/components/admin/stats-card";
 import { AiBadge } from "@/core/components/base/ai-badge";
@@ -63,6 +63,8 @@ export default function AiAgentsPage() {
         onSuccess: (data) => {
             toast.success(t("aiAdmin.saved"));
             queryClient.setQueryData(["ai-admin", "settings"], data);
+            // Kayit Ingilizce bot kadrosunu orana ceker: liste degisebilir.
+            queryClient.invalidateQueries({ queryKey: ["ai-admin", "agents"] });
             queryClient.invalidateQueries({ queryKey: ["ai-admin", "usage"] });
         },
         onError: (error: Error) => toast.error(t("aiAdmin.saveError"), { description: error.message }),
@@ -77,7 +79,7 @@ export default function AiAgentsPage() {
         onError: (error: Error) => toast.error(error.message),
     });
 
-    const emptyNewAgent: AiAgentCreate = { username: "", displayName: "", bio: "", persona: "", favoriteGenres: "", ratingBias: 0 };
+    const emptyNewAgent: AiAgentCreate = { username: "", displayName: "", bio: "", persona: "", favoriteGenres: "", ratingBias: 0, language: "tr" };
     const [newAgent, setNewAgent] = useState<AiAgentCreate | null>(null);
     const createAgent = useMutation({
         mutationFn: (data: AiAgentCreate) => aiAdminApi.createAgent(data),
@@ -258,9 +260,11 @@ export default function AiAgentsPage() {
                         {numberField("maxUnsolicitedDmPerUserPerWeek", t("aiAdmin.maxWelcome"))}
                         {numberField("maxAgentRepliesPerPost", t("aiAdmin.maxReplies"))}
                         {numberField("feedMaxAiSharePercent", t("aiAdmin.feedShare"))}
+                        {numberField("englishAgentShare", t("aiAdmin.englishShare"))}
                         {numberField("activeFromHour", t("aiAdmin.activeFrom"))}
                         {numberField("activeToHour", t("aiAdmin.activeTo"))}
                     </div>
+                    <p className="text-xs text-muted-foreground">{t("aiAdmin.englishShareHint")}</p>
                     <Button onClick={() => saveSettings.mutate(draft)} disabled={saveSettings.isPending} className="cursor-pointer">
                         {saveSettings.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                         {t("aiAdmin.save")}
@@ -328,6 +332,7 @@ export default function AiAgentsPage() {
                                                     <div className="min-w-0">
                                                         <p className="flex items-center gap-1 text-sm font-medium">
                                                             {agent.displayName} <AiBadge />
+                                                            <Badge variant="outline" className="px-1.5 py-0 text-[10px] uppercase">{agent.language}</Badge>
                                                         </p>
                                                         <p className="text-xs text-muted-foreground">@{agent.username} · {agent.favoriteGenres}</p>
                                                     </div>
@@ -576,6 +581,16 @@ export default function AiAgentsPage() {
                                     <Label htmlFor="new-agent-name" className="text-xs">{t("aiAdmin.newAgentDisplayName")}</Label>
                                     <Input id="new-agent-name" maxLength={40} value={newAgent.displayName} onChange={(e) => setNewAgent({ ...newAgent, displayName: e.target.value })} />
                                 </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-xs">{t("aiAdmin.language")}</Label>
+                                <Select value={newAgent.language} onValueChange={(v) => setNewAgent({ ...newAgent, language: v as AiAgentLanguage })}>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="tr">{t("aiAdmin.languageTr")}</SelectItem>
+                                        <SelectItem value="en">{t("aiAdmin.languageEn")}</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div className="space-y-1.5">
                                 <Label htmlFor="new-agent-bio" className="text-xs">{t("aiAdmin.newAgentBio")}</Label>

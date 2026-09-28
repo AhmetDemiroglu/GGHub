@@ -13,9 +13,9 @@ using Outcome = GGHub.Infrastructure.Services.AiAgentTaskProcessor.Outcome;
 
 namespace GGHub.Infrastructure.Services
 {
-    /// <summary>Acik bir botun ozeti: sahne ve iliski kurgusu icin.</summary>
+    /// <summary>Acik bir botun ozeti: sahne ve iliski kurgusu icin. Language botun ana dili ("tr" | "en").</summary>
     public sealed record AiAgentInfo(
-        int UserId, string Username, string DisplayName, string PersonaKey, string Genres, int RatingBias);
+        int UserId, string Username, string DisplayName, string PersonaKey, string Genres, int RatingBias, string Language);
 
     /// <summary>
     /// Botlarin kendi aralarindaki ACIK sohbetleri ("sahne"). Ev sahibi bot, diger botlari etiketleyen
@@ -32,6 +32,9 @@ namespace GGHub.Infrastructure.Services
     ///
     /// Gizlilik: tur baglamina yalnizca botlarin ve AI etkilesimine riza vermis insanlarin metni girer;
     /// rizasiz kullanicinin yaniti ve adi modele gitmez (bkz. RenderForModelAsync).
+    ///
+    /// Dil: sahne ev sahibinin dil grubunda kurulur (katilimcilar ve etiketler o gruptan). Araya giren
+    /// rizali bir insana cevap onun yazdigi dilde verilir.
     /// </summary>
     public class AiConversationService
     {
@@ -77,13 +80,17 @@ namespace GGHub.Infrastructure.Services
             => await _context.AiAgentProfiles.AsNoTracking()
                 .Where(p => p.IsEnabled && !p.User.IsDeleted && !p.User.IsBanned)
                 .Select(p => new AiAgentInfo(p.UserId, p.User.Username, p.User.FirstName ?? p.User.Username,
-                    p.PersonaKey, p.FavoriteGenres, p.RatingBias))
+                    p.PersonaKey, p.FavoriteGenres, p.RatingBias, p.Language))
                 .ToListAsync(ct);
+
+        /// <summary>Tek dil grubunun acik botlari (sahne, etiket ve hedef secimi bu grupta kalir).</summary>
+        public async Task<List<AiAgentInfo>> LoadRosterAsync(string lang, CancellationToken ct)
+            => (await LoadRosterAsync(ct)).Where(a => a.Language == lang).ToList();
 
         /// <summary>"other" botunu "self" botuna anlatan kisa not: ilgi alani + aralarindaki iliski.</summary>
         public static string PeerNote(AiAgentInfo self, AiAgentInfo other)
         {
-            var interest = Interest(other.PersonaKey);
+            var interest = AiAgentPersonas.Interest(other.PersonaKey);
             var who = string.IsNullOrWhiteSpace(interest) ? other.DisplayName : $"{other.DisplayName} ({interest})";
             var rel = AiAgentPersonas.Between(self.PersonaKey, other.PersonaKey);
             if (rel is null) return $"{who}. Aranız iyi, ara sıra takılırsınız.";
@@ -92,25 +99,12 @@ namespace GGHub.Infrastructure.Services
                 : $"{who}. Yakın arkadaşın, ortak noktanız: {rel.Value.Axis}.";
         }
 
-        private static string Interest(string personaKey)
-        {
-            var bio = AiAgentPersonas.ByKey(personaKey)?.Bio;
-            if (bio is null) return string.Empty;
-            // Ilk anlamli cumle: "GGHub'in AI oyun arkadasi" girisi ve "Yapay zekayim" notu atlanir
-            // (admin'den eklenen botlarin bio'su dogrudan ilgi alaniyla baslar).
-            return bio.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .FirstOrDefault(part => !part.StartsWith("GGHub", StringComparison.OrdinalIgnoreCase) &&
-                                        !part.Contains("Yapay zeka", StringComparison.OrdinalIgnoreCase) &&
-                                        !part.Contains("gerçek bir kişi", StringComparison.OrdinalIgnoreCase))
-                ?? string.Empty;
-        }
-
         /// <summary>
-        /// Gonderi metnindeki etiket token'larini okunur adlara cevirir (model baglami icin). Bot ve
-        /// riza vermis kullanicilar adiyla, digerleri "@bir kullanici" olarak gider: rizasiz kullanicinin
-        /// adi modele sizmaz.
+        /// Gonderi metnindeki etiket token'larini okunur adlara cevirir (model baglami ve AI Kulubu'ndeki
+        /// canli satirlar icin). Bot ve riza vermis kullanicilar adiyla, digerleri "@bir kullanici" /
+        /// "@a user" olarak gider: rizasiz kullanicinin adi modele sizmaz. lang yer tutucularin dili.
         /// </summary>
-        public async Task<string> RenderForModelAsync(string content, CancellationToken ct)
+        public async Task<string> RenderForModelAsync(string content, string lang, CancellationToken ct)
         {
             var matches = MentionToken.Matches(content);
             if (matches.Count == 0) return content;
@@ -119,6 +113,8 @@ namespace GGHub.Infrastructure.Services
             var gameIds = matches.Where(m => m.Groups[1].Value == "g").Select(m => int.Parse(m.Groups[2].Value)).Distinct().ToList();
             var listIds = matches.Where(m => m.Groups[1].Value == "l").Select(m => int.Parse(m.Groups[2].Value)).Distinct().ToList();
 
+            var en = AiLanguage.Normalize(lang) == AiLanguage.En;
+            var someone = en ? "@a user" : "@bir kullanıcı";
             var today = BirthdayCalendar.TodayInIstanbul();
             var users = (await _context.Users.AsNoTracking()
                     .Where(u => userIds.Contains(u.Id))
@@ -127,7 +123,7 @@ namespace GGHub.Infrastructure.Services
                 .ToDictionary(u => u.Id, u => u.IsAiAgent ||
                     AiInteractionRules.IsEligible(false, u.IsDeleted, u.IsBanned, u.AllowAiInteraction, u.DateOfBirth, today)
                         ? "@" + u.Username
-                        : "@bir kullanıcı");
+                        : someone);
             var games = await _context.Games.AsNoTracking().Where(g => gameIds.Contains(g.Id)).ToDictionaryAsync(g => g.Id, g => g.Name, ct);
             var lists = await _context.UserLists.AsNoTracking().Where(l => listIds.Contains(l.Id)).ToDictionaryAsync(l => l.Id, l => l.Name, ct);
 
@@ -136,9 +132,9 @@ namespace GGHub.Infrastructure.Services
                 var id = int.Parse(m.Groups[2].Value);
                 return m.Groups[1].Value switch
                 {
-                    "u" => users.GetValueOrDefault(id, "@bir kullanıcı"),
-                    "g" => games.GetValueOrDefault(id, "bir oyun"),
-                    _ => lists.GetValueOrDefault(id, "bir liste")
+                    "u" => users.GetValueOrDefault(id, someone),
+                    "g" => games.GetValueOrDefault(id, en ? "a game" : "bir oyun"),
+                    _ => lists.GetValueOrDefault(id, en ? "a list" : "bir liste")
                 };
             });
         }
@@ -170,9 +166,10 @@ namespace GGHub.Infrastructure.Services
             if (await _context.AiConversations.AnyAsync(c => c.Status == AiConversationStatus.Active && c.HostAgentId == task.AgentUserId, ct))
                 return Outcome.Skip("Bu botun zaten acik bir sahnesi var.");
 
-            var roster = await LoadRosterAsync(ct);
+            // Sahne ev sahibinin dil grubunda kurulur: Plan*/PickThird/Friends bu kadrodan secer.
+            var roster = await LoadRosterAsync(identity.Language, ct);
             var host = roster.FirstOrDefault(a => a.UserId == task.AgentUserId);
-            if (host is null || roster.Count < 2) return Outcome.Skip("Sahne icin yeterli bot yok.");
+            if (host is null || roster.Count < 2) return Outcome.Skip("Sahne icin dil grubunda yeterli bot yok.");
 
             var maxTurns = Math.Clamp(settings.MaxConversationTurns, 2, 12);
             var recentGameIds = await _context.AiConversations.AsNoTracking()
@@ -201,7 +198,7 @@ namespace GGHub.Infrastructure.Services
                 plan.Brief,
                 plan.Stances.GetValueOrDefault(host.UserId.ToString()),
                 addressees.Select(a => new AiPeer(a.Username, PeerNote(host, a))).ToList(),
-                plan.Game is null ? null : AiAgentTaskProcessor.Facts(plan.Game),
+                plan.Game is null ? null : AiAgentTaskProcessor.Facts(plan.Game, host.Language),
                 isPoll,
                 ct);
             if (text is null) return Outcome.Skip("Metin uretilemedi.");
@@ -514,7 +511,7 @@ namespace GGHub.Infrastructure.Services
             var conversation = await _context.AiConversations.FirstOrDefaultAsync(c => c.Id == conversationId, ct);
             if (conversation is null || conversation.Status != AiConversationStatus.Active) return Outcome.Skip("Sahne kapanmis.");
 
-            var roster = await LoadRosterAsync(ct);
+            var roster = await LoadRosterAsync(identity.Language, ct);
             var me = roster.FirstOrDefault(a => a.UserId == task.AgentUserId);
             if (me is null) return Outcome.Skip("Bot kapali.");
 
@@ -550,9 +547,9 @@ namespace GGHub.Infrastructure.Services
             var lines = new List<AiThreadLine>();
             foreach (var r in replies)
             {
-                lines.Add(new AiThreadLine(r.UserId == me.UserId, r.Username, r.IsAiAgent, await RenderForModelAsync(r.Content!, ct)));
+                lines.Add(new AiThreadLine(r.UserId == me.UserId, r.Username, r.IsAiAgent, await RenderForModelAsync(r.Content!, me.Language, ct)));
             }
-            var rootLine = new AiThreadLine(root.UserId == me.UserId, root.Username, root.IsAiAgent, await RenderForModelAsync(root.Content ?? string.Empty, ct));
+            var rootLine = new AiThreadLine(root.UserId == me.UserId, root.Username, root.IsAiAgent, await RenderForModelAsync(root.Content ?? string.Empty, me.Language, ct));
 
             // Muhatap: bu bot disinda son konusan (bot ya da rizali insan); kimse yoksa ev sahibi.
             var lastOther = replies.LastOrDefault(r => r.UserId != me.UserId);
@@ -578,8 +575,13 @@ namespace GGHub.Infrastructure.Services
                 relationNote = $"Cevap verdiğin: {PeerNote(me, addresseeBot)}";
             }
 
+            // Muhatap araya giren rizali bir insansa ona onun yazdigi dilde cevap verilir.
+            // (Insanin etiketiyle sahneye karismis baska dilden bir bot insan sayilmaz: bot-bota botun dili.)
+            var addresseeIsHuman = lastOther is not null ? !lastOther.IsAiAgent : addresseeId.HasValue && !root.IsAiAgent;
+            var lang = addresseeIsHuman ? AiLanguage.Detect(lastOther?.Content ?? root.Content) ?? me.Language : me.Language;
+
             var text = await _writer.WriteConversationTurnAsync(
-                identity, conversation.Brief, stance, relationNote, rootLine, lines, addresseeName, isFinal, ct);
+                identity, conversation.Brief, stance, relationNote, rootLine, lines, addresseeName, isFinal, lang, ct);
             if (text is null) return Outcome.Skip("Metin uretilemedi.");
 
             var allowed = roster.ToDictionary(a => a.Username.ToLowerInvariant(), a => a.UserId);

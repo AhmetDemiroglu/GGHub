@@ -20,6 +20,9 @@ namespace GGHub.Infrastructure.Services
     ///
     /// Sonuc: Done (yazildi), Skipped (uygun hedef yok, kural engelledi) ya da istisna (motor
     /// gorevi Failed yapar ya da yeniden dener).
+    ///
+    /// Dil (bkz. AiLanguage): planli hedefler botun dil grubundan secilir; insana cevap onun son
+    /// metninin dilinde, bot-bota ve kendiliginden yazilanlar botun dilinde.
     /// </summary>
     public class AiAgentTaskProcessor
     {
@@ -79,7 +82,8 @@ namespace GGHub.Infrastructure.Services
             var profile = await _context.AiAgentProfiles.AsNoTracking().FirstOrDefaultAsync(p => p.UserId == task.AgentUserId, ct);
             if (agent is null || profile is null || !profile.IsEnabled) return Outcome.Skip("Bot kapali ya da yok.");
 
-            var identity = new AiAgentIdentity(agent.FirstName ?? agent.Username, agent.Username, profile.Persona);
+            var identity = new AiAgentIdentity(agent.FirstName ?? agent.Username, agent.Username, profile.Persona,
+                AiLanguage.Normalize(profile.Language));
 
             return task.Type switch
             {
@@ -89,8 +93,8 @@ namespace GGHub.Infrastructure.Services
                 AiAgentTaskType.CreatePost => await CreatePostAsync(task, identity, profile, ct),
                 AiAgentTaskType.ReviewGame => await ReviewGameAsync(task, identity, profile, ct),
                 AiAgentTaskType.CommentOnReview => await CommentOnReviewAsync(task, identity, profile, ct),
-                AiAgentTaskType.LikePost => await LikePostAsync(task, ct),
-                AiAgentTaskType.FollowUser => await FollowUserAsync(task, ct),
+                AiAgentTaskType.LikePost => await LikePostAsync(task, identity, ct),
+                AiAgentTaskType.FollowUser => await FollowHumanAsync(task, identity, ct),
                 AiAgentTaskType.StartConversation => await _conversations.StartAsync(task, identity, ct),
                 AiAgentTaskType.ConversationTurn => await _conversations.TurnAsync(task, identity, ct),
                 _ => Outcome.Skip("Bilinmeyen gorev tipi.")
@@ -121,7 +125,8 @@ namespace GGHub.Infrastructure.Services
                 .ToList();
             if (thread.Count == 0 || thread[^1].FromAgent) return Outcome.Skip("Yanitlanacak yeni mesaj yok.");
 
-            var text = await _writer.WriteDirectMessageReplyAsync(agent, partner, thread, ct);
+            var lang = AiLanguage.OfLatest(thread.Where(l => !l.FromAgent).Reverse().Select(l => l.Text), agent.Language);
+            var text = await _writer.WriteDirectMessageReplyAsync(agent, partner, thread, lang, ct);
             if (text is null) return Outcome.Skip("Metin uretilemedi.");
 
             var sent = await _social.SendMessageAsync(task.AgentUserId, new MessageForCreationDto { RecipientUsername = partner, Content = text.Text });
@@ -137,11 +142,16 @@ namespace GGHub.Infrastructure.Services
             var weekAgo = DateTime.UtcNow.AddDays(-7);
 
             // Uygun yeni kullanici: son 14 gunde katilmis, 18+, AI etkilesimi acik, mesajlari herkese
-            // acik, hicbir bottan mesaj almamis ve bu hafta hos geldin gorevi acilmamis.
+            // acik, hicbir bottan mesaj almamis ve bu hafta hos geldin gorevi acilmamis. Bot ilk yazdigi
+            // icin kullanicinin dil tercihi (PreferredLocale, yoksa "tr") botun diliyle ayni olmali.
+            var wantsTr = agent.Language == AiLanguage.Tr;
             var candidates = await _context.Users.AsNoTracking()
                 .Where(u => !u.IsAiAgent && !u.IsSeeded && !u.IsDeleted && !u.IsBanned &&
                             u.AllowAiInteraction && u.DateOfBirth != null && u.DateOfBirth <= cutoff &&
                             u.CreatedAt >= since &&
+                            (wantsTr
+                                ? u.PreferredLocale == null || u.PreferredLocale.StartsWith("tr")
+                                : u.PreferredLocale != null && !u.PreferredLocale.StartsWith("tr")) &&
                             u.MessageSetting == MessagePrivacySetting.Everyone &&
                             !_context.Messages.Any(m => m.RecipientId == u.Id && agentIds.Contains(m.SenderId)) &&
                             !_context.UserBlocks.Any(b => (b.BlockerId == u.Id && agentIds.Contains(b.BlockedId))))
@@ -166,7 +176,7 @@ namespace GGHub.Infrastructure.Services
                 .Take(3)
                 .ToListAsync(ct);
 
-            var text = await _writer.WriteWelcomeMessageAsync(agent, target.Username, recentGames, ct);
+            var text = await _writer.WriteWelcomeMessageAsync(agent, target.Username, recentGames, agent.Language, ct);
             if (text is null) return Outcome.Skip("Metin uretilemedi.");
 
             var sent = await _social.SendMessageAsync(task.AgentUserId, new MessageForCreationDto { RecipientUsername = target.Username, Content = text.Text });
@@ -188,7 +198,8 @@ namespace GGHub.Infrastructure.Services
             else
             {
                 // Planli yanit: son 48 saatin herkese acik kok gonderileri; uygun insanlarin ya da
-                // diger botlarin. Bot tavanini doldurmus ve bu botun zaten yanitladigi gonderiler elenir.
+                // ayni dildeki botlarin. Bot tavanini doldurmus ve bu botun zaten yanitladigi gonderiler elenir.
+                var sameLanguageBots = await SameLanguageBotIdsAsync(agent.Language, ct);
                 var since = DateTime.UtcNow - RecentWindow;
                 var cutoff = AiInteractionRules.AdultBirthCutoffUtc(BirthdayCalendar.TodayInIstanbul());
                 var candidates = await _context.Posts.AsNoTracking()
@@ -204,11 +215,12 @@ namespace GGHub.Infrastructure.Services
                                 !_context.AiConversations.Any(c => c.RootPostId == p.Id) &&
                                 _context.Posts.Count(r => r.ParentPostId == p.Id && agentIds.Contains(r.UserId)) < settings.MaxAgentRepliesPerPost)
                     .OrderByDescending(p => p.CreatedAt)
-                    .Select(p => p.Id)
-                    .Take(15)
+                    .Select(p => new LangCandidate(p.Id, p.UserId, p.User.IsAiAgent, p.Content))
+                    .Take(30)
                     .ToListAsync(ct);
-                if (candidates.Count == 0) return Outcome.Skip("Yanitlanacak uygun gonderi yok.");
-                rootId = candidates[Random.Shared.Next(candidates.Count)];
+                if (PickInLanguage(candidates, sameLanguageBots, agent.Language) is not int picked)
+                    return Outcome.Skip("Yanitlanacak uygun gonderi yok.");
+                rootId = picked;
                 task.TargetPostId = rootId;
             }
 
@@ -256,18 +268,24 @@ namespace GGHub.Infrastructure.Services
                 return Outcome.Skip("Son yanit zaten bu botun.");
             }
 
-            var rootLine = new AiThreadLine(false, root.Username, root.IsAiAgent, await _conversations.RenderForModelAsync(root.Content, ct));
+            var rootLine = new AiThreadLine(false, root.Username, root.IsAiAgent, await _conversations.RenderForModelAsync(root.Content, agent.Language, ct));
             var replyLines = new List<AiThreadLine>();
             foreach (var r in replies)
             {
-                replyLines.Add(new AiThreadLine(r.UserId == task.AgentUserId, r.Username, r.IsAiAgent, await _conversations.RenderForModelAsync(r.Content!, ct)));
+                replyLines.Add(new AiThreadLine(r.UserId == task.AgentUserId, r.Username, r.IsAiAgent, await _conversations.RenderForModelAsync(r.Content!, agent.Language, ct)));
             }
 
-            var text = await _writer.WritePostReplyAsync(agent, rootLine, replyLines, ct);
+            // Insana onun son metninin dilinde cevap: en yeni rizali insan yaniti, yoksa insan kok gonderisi.
+            // Konusmada insan yoksa (bot-bot) botun dili.
+            var humanTexts = replies.Where(r => !r.IsAiAgent).Reverse().Select(r => r.Content);
+            if (!root.IsAiAgent) humanTexts = humanTexts.Append(root.Content);
+            var lang = AiLanguage.OfLatest(humanTexts, agent.Language);
+
+            var text = await _writer.WritePostReplyAsync(agent, rootLine, replyLines, lang, ct);
             if (text is null) return Outcome.Skip("Metin uretilemedi.");
 
-            // Etiket yalnizca botlara ve riza vermis katilimcilara (gonderi sahibi dahil) donusur.
-            var allowed = await AgentHandlesAsync(ct);
+            // Etiket yalnizca ayni dildeki botlara ve riza vermis katilimcilara (gonderi sahibi dahil) donusur.
+            var allowed = await AgentHandlesAsync(agent.Language, ct);
             foreach (var (id, name) in eligibleHumans) allowed[name.ToLowerInvariant()] = id;
             if (root.IsAiAgent || await _policy.CanInteractAsync(root.UserId, ct)) allowed[root.Username.ToLowerInvariant()] = root.UserId;
             var content = AiMentionLinker.Link(text.Text, allowed);
@@ -288,7 +306,7 @@ namespace GGHub.Infrastructure.Services
 
             // Gonderilerin bir kismi bir dosta ya da tatli rakibe soruyla biter; o bot birkac dakika
             // sonra cevap verir. Botlarin birbirini etiketlemesi akista gorunur sohbet demek.
-            var roster = await _conversations.LoadRosterAsync(ct);
+            var roster = await _conversations.LoadRosterAsync(agent.Language, ct);
             var me = roster.FirstOrDefault(a => a.UserId == task.AgentUserId);
             AiAgentInfo? peer = null;
             if (me is not null && Random.Shared.NextDouble() < 0.4)
@@ -301,7 +319,7 @@ namespace GGHub.Infrastructure.Services
                 if (pool.Count > 0) peer = pool[Random.Shared.Next(pool.Count)];
             }
 
-            var text = await _writer.WriteGamePostAsync(agent, Facts(game), angle, ct,
+            var text = await _writer.WriteGamePostAsync(agent, Facts(game, agent.Language), angle, ct,
                 peer is null || me is null ? null : new AiPeer(peer.Username, AiConversationService.PeerNote(me, peer)));
             if (text is null) return Outcome.Skip("Metin uretilemedi.");
 
@@ -344,7 +362,7 @@ namespace GGHub.Infrastructure.Services
             var rating = (int)Math.Round(baseScore + profile.RatingBias + (Random.Shared.NextDouble() * 2 - 1));
             rating = Math.Clamp(rating, 1, 10);
 
-            var text = await _writer.WriteReviewAsync(agent, Facts(game), rating, ct);
+            var text = await _writer.WriteReviewAsync(agent, Facts(game, agent.Language), rating, ct);
             if (text is null) return Outcome.Skip("Metin uretilemedi.");
 
             task.TargetGameId = game.Id;
@@ -364,7 +382,8 @@ namespace GGHub.Infrastructure.Services
         {
             if (task.TargetCommentId is int commentId) return await ReplyToReviewCommentAsync(task, agent, commentId, ct);
 
-            var roster = await _conversations.LoadRosterAsync(ct);
+            // Planli yolda yalniz ayni dildeki botlarin incelemeleri aday.
+            var roster = await _conversations.LoadRosterAsync(agent.Language, ct);
             var me = roster.FirstOrDefault(a => a.UserId == task.AgentUserId);
 
             int reviewId;
@@ -418,7 +437,9 @@ namespace GGHub.Infrastructure.Services
                 .Select(r => (int?)r.Rating)
                 .FirstOrDefaultAsync(ct);
 
-            var text = await _writer.WriteReviewCommentAsync(agent, review.Username, Facts(game), review.Rating, review.Content, ct, peerNote, myRating);
+            // Insan incelemesine onun yazdigi dilde, bot incelemesine botun dilinde yorum.
+            var lang = review.IsAiAgent ? agent.Language : AiLanguage.Detect(review.Content) ?? agent.Language;
+            var text = await _writer.WriteReviewCommentAsync(agent, review.Username, Facts(game, lang), review.Rating, review.Content, lang, ct, peerNote, myRating);
             if (text is null) return Outcome.Skip("Metin uretilemedi.");
 
             var comment = await _reviewComments.CreateCommentAsync(reviewId, task.AgentUserId, new ReviewCommentForCreationDto { Content = text.Text });
@@ -459,7 +480,7 @@ namespace GGHub.Infrastructure.Services
             if (await _context.ReviewComments.AnyAsync(c => c.ParentCommentId == commentId && c.UserId == task.AgentUserId, ct))
                 return Outcome.Skip("Bu yoruma zaten cevap verildi.");
 
-            var roster = await _conversations.LoadRosterAsync(ct);
+            var roster = await _conversations.LoadRosterAsync(agent.Language, ct);
             var me = roster.FirstOrDefault(a => a.UserId == task.AgentUserId);
             var commenter = roster.FirstOrDefault(a => a.UserId == comment.UserId);
             var peerNote = me is not null && commenter is not null
@@ -467,8 +488,9 @@ namespace GGHub.Infrastructure.Services
                 : null;
 
             var game = await _context.Games.AsNoTracking().FirstAsync(g => g.Id == comment.GameId, ct);
-            var text = await _writer.WriteReviewCommentReplyAsync(agent, comment.Username, comment.Content, Facts(game),
-                comment.Rating, comment.ReviewContent, peerNote, ct);
+            var lang = comment.IsAiAgent ? agent.Language : AiLanguage.Detect(comment.Content) ?? agent.Language;
+            var text = await _writer.WriteReviewCommentReplyAsync(agent, comment.Username, comment.Content, Facts(game, lang),
+                comment.Rating, comment.ReviewContent, peerNote, lang, ct);
             if (text is null) return Outcome.Skip("Metin uretilemedi.");
 
             var reply = await _reviewComments.CreateCommentAsync(comment.ReviewId, task.AgentUserId,
@@ -478,8 +500,9 @@ namespace GGHub.Infrastructure.Services
 
         // ------------------------------------------------------------------ LLM'siz
 
-        private async Task<Outcome> LikePostAsync(AiAgentTask task, CancellationToken ct)
+        private async Task<Outcome> LikePostAsync(AiAgentTask task, AiAgentIdentity agent, CancellationToken ct)
         {
+            var sameLanguageBots = await SameLanguageBotIdsAsync(agent.Language, ct);
             var since = DateTime.UtcNow - RecentWindow;
             var cutoff = AiInteractionRules.AdultBirthCutoffUtc(BirthdayCalendar.TodayInIstanbul());
             var candidates = await _context.Posts.AsNoTracking()
@@ -491,50 +514,23 @@ namespace GGHub.Infrastructure.Services
                              (p.User.AllowAiInteraction && p.User.DateOfBirth != null && p.User.DateOfBirth <= cutoff)) &&
                             !_context.PostLikes.Any(l => l.PostId == p.Id && l.UserId == task.AgentUserId))
                 .OrderByDescending(p => p.CreatedAt)
-                .Select(p => p.Id)
-                .Take(20)
+                .Select(p => new LangCandidate(p.Id, p.UserId, p.User.IsAiAgent, p.Content))
+                .Take(30)
                 .ToListAsync(ct);
-            if (candidates.Count == 0) return Outcome.Skip("Begenilecek gonderi yok.");
+            if (PickInLanguage(candidates, sameLanguageBots, agent.Language) is not int postId)
+                return Outcome.Skip("Begenilecek gonderi yok.");
 
-            var postId = candidates[Random.Shared.Next(candidates.Count)];
             task.TargetPostId = postId;
             await _posts.SetLikeAsync(postId, task.AgentUserId, true);
             return new Outcome(AiAgentTaskStatus.Done, $"Gonderi {postId} begenildi.", postId);
         }
 
         /// <summary>
-        /// Takip: yarim ihtimalle once bir bot, degilse riza vermis aktif bir insan. Secilen grupta aday
-        /// yoksa digerine duser (bot cemiyeti insan azken de buyusun, insan varken botlar kendi
-        /// aralarinda kapanmasin).
+        /// Takip gorevi yalniz INSANA: riza vermis aktif bir kullanici, tercihen botun dilini kullanan.
+        /// Bot agi (tum acik botlar birbirini takip eder) admin tarafinda kurulur
+        /// (AiAdminService.EnsureBotFollowNetworkAsync).
         /// </summary>
-        private async Task<Outcome> FollowUserAsync(AiAgentTask task, CancellationToken ct)
-        {
-            var botFirst = Random.Shared.NextDouble() < 0.5;
-            var first = botFirst ? await FollowBotAsync(task, ct) : await FollowHumanAsync(task, ct);
-            if (first is not null) return first;
-            var second = botFirst ? await FollowHumanAsync(task, ct) : await FollowBotAsync(task, ct);
-            return second ?? Outcome.Skip("Takip edilecek uygun hesap yok.");
-        }
-
-        private async Task<Outcome?> FollowBotAsync(AiAgentTask task, CancellationToken ct)
-        {
-            var roster = await _conversations.LoadRosterAsync(ct);
-            var followedIds = await _context.Follows.AsNoTracking()
-                .Where(f => f.FollowerId == task.AgentUserId)
-                .Select(f => f.FolloweeId)
-                .ToListAsync(ct);
-            var notFollowed = roster
-                .Where(a => a.UserId != task.AgentUserId && !followedIds.Contains(a.UserId))
-                .ToList();
-            if (notFollowed.Count == 0) return null;
-
-            var bot = notFollowed[Random.Shared.Next(notFollowed.Count)];
-            task.TargetUserId = bot.UserId;
-            var followed = await _social.FollowUserAsync(task.AgentUserId, bot.Username);
-            return followed ? new Outcome(AiAgentTaskStatus.Done, $"@{bot.Username} takip edildi.", bot.UserId) : null;
-        }
-
-        private async Task<Outcome?> FollowHumanAsync(AiAgentTask task, CancellationToken ct)
+        private async Task<Outcome> FollowHumanAsync(AiAgentTask task, AiAgentIdentity agent, CancellationToken ct)
         {
             var agentIds = (await _directory.GetAgentIdsAsync(ct)).ToList();
             var cutoff = AiInteractionRules.AdultBirthCutoffUtc(BirthdayCalendar.TodayInIstanbul());
@@ -548,15 +544,19 @@ namespace GGHub.Infrastructure.Services
                             _context.Follows.Count(f => f.FolloweeId == u.Id && agentIds.Contains(f.FollowerId)) < MaxAgentFollowersPerUser &&
                             (_context.Posts.Any(p => p.UserId == u.Id && p.CreatedAt >= activeSince) ||
                              _context.Reviews.Any(r => r.UserId == u.Id && r.CreatedAt >= activeSince)))
-                .Select(u => new { u.Id, u.Username })
+                .Select(u => new { u.Id, u.Username, u.PreferredLocale })
                 .Take(20)
                 .ToListAsync(ct);
-            if (candidates.Count == 0) return null;
+            if (candidates.Count == 0) return Outcome.Skip("Takip edilecek uygun kullanici yok.");
 
-            var target = candidates[Random.Shared.Next(candidates.Count)];
+            var sameLanguage = candidates.Where(c => AiLanguage.FromLocale(c.PreferredLocale) == agent.Language).ToList();
+            var pool = sameLanguage.Count > 0 ? sameLanguage : candidates;
+            var target = pool[Random.Shared.Next(pool.Count)];
             task.TargetUserId = target.Id;
             var ok = await _social.FollowUserAsync(task.AgentUserId, target.Username);
-            return ok ? new Outcome(AiAgentTaskStatus.Done, $"@{target.Username} takip edildi.", target.Id) : null;
+            return ok
+                ? new Outcome(AiAgentTaskStatus.Done, $"@{target.Username} takip edildi.", target.Id)
+                : Outcome.Skip("Takip yazilamadi.");
         }
 
         // ------------------------------------------------------------------ yardimcilar
@@ -618,14 +618,18 @@ namespace GGHub.Infrastructure.Services
             return source[Random.Shared.Next(source.Count)];
         }
 
-        internal static AiGameFacts Facts(Game g) => new(
+        /// <summary>
+        /// Modele verilen oyun bilgisi. Aciklama cikti dilinde: Ingilizcede RAWG aciklamasi (Turkce
+        /// ceviri Ingilizce metne dil sizdirirdi), Turkcede ceviri varsa o.
+        /// </summary>
+        internal static AiGameFacts Facts(Game g, string lang) => new(
             g.Name,
             g.Released,
             JoinNames(g.GenresJson),
             JoinNames(g.PlatformsJson),
             g.Metacritic,
             g.IgdbRating,
-            StripHtml(g.DescriptionTr ?? g.Description));
+            StripHtml(AiLanguage.Normalize(lang) == AiLanguage.En ? g.Description : g.DescriptionTr ?? g.Description));
 
         private static string? JoinNames(string? json)
         {
@@ -668,9 +672,27 @@ namespace GGHub.Infrastructure.Services
             return Regex.Replace(text, @"\s+", " ").Trim();
         }
 
-        /// <summary>Tum acik botlarin kucuk harf kullanici adi -> kimlik sozlugu (etiket cevirici icin).</summary>
-        private async Task<Dictionary<string, int>> AgentHandlesAsync(CancellationToken ct)
-            => (await _conversations.LoadRosterAsync(ct)).ToDictionary(a => a.Username.ToLowerInvariant(), a => a.UserId);
+        /// <summary>Bir dil grubundaki acik botlarin kucuk harf kullanici adi -> kimlik sozlugu (etiket cevirici icin).</summary>
+        private async Task<Dictionary<string, int>> AgentHandlesAsync(string lang, CancellationToken ct)
+            => (await _conversations.LoadRosterAsync(lang, ct)).ToDictionary(a => a.Username.ToLowerInvariant(), a => a.UserId);
+
+        private async Task<IReadOnlySet<int>> SameLanguageBotIdsAsync(string lang, CancellationToken ct)
+            => (await _conversations.LoadRosterAsync(lang, ct)).Select(a => a.UserId).ToHashSet();
+
+        private sealed record LangCandidate(int Id, int UserId, bool IsAiAgent, string? Content);
+
+        /// <summary>
+        /// Planli hedef dil grubunda kalir: yalniz ayni dildeki botlarin icerigi aday. Insan iceriginde
+        /// metni botun dilinde olan (ya da dili belirsiz kisa metin) tercih edilir; yoksa digerleri
+        /// (o zaman cevap yine insanin dilinde yazilir).
+        /// </summary>
+        private static int? PickInLanguage(IReadOnlyList<LangCandidate> candidates, IReadOnlySet<int> sameLanguageBots, string lang)
+        {
+            var pool = candidates.Where(c => !c.IsAiAgent || sameLanguageBots.Contains(c.UserId)).ToList();
+            var preferred = pool.Where(c => c.IsAiAgent || AiLanguage.Matches(c.Content ?? string.Empty, lang)).ToList();
+            var source = preferred.Count > 0 ? preferred : pool;
+            return source.Count == 0 ? null : source[Random.Shared.Next(source.Count)].Id;
+        }
 
         private static string ReplaceFirst(string text, string search, string replacement)
         {

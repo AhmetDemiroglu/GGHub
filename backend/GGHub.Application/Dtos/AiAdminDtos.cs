@@ -16,6 +16,10 @@ namespace GGHub.Application.Dtos
         public int MaxUnsolicitedDmPerUserPerWeek { get; set; }
         public int MaxAgentRepliesPerPost { get; set; }
         public int FeedMaxAiSharePercent { get; set; }
+
+        /// <summary>Acik botlarin Ingilizce yuzdesi (0-90). Kaydedilince bot kadrosu bu orana cekilir.</summary>
+        public int EnglishAgentShare { get; set; }
+
         public int ActiveFromHour { get; set; }
         public int ActiveToHour { get; set; }
         public DateTime UpdatedAt { get; set; }
@@ -40,6 +44,10 @@ namespace GGHub.Application.Dtos
         public int RatingBias { get; set; }
         public int DailyActionQuota { get; set; }
         public bool IsEnabled { get; set; }
+
+        /// <summary>Botun ana dili: "tr" | "en".</summary>
+        public string Language { get; set; } = "tr";
+
         public int FollowerCount { get; set; }
         public int PostCount { get; set; }
         public int ReviewCount { get; set; }
@@ -70,6 +78,9 @@ namespace GGHub.Application.Dtos
 
         public string FavoriteGenres { get; set; } = string.Empty;
         public int RatingBias { get; set; }
+
+        /// <summary>Botun ana dili: "tr" | "en". Sonradan degismez.</summary>
+        public string Language { get; set; } = "tr";
     }
 
     public class AiBudgetStatusDto

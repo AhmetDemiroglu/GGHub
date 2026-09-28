@@ -9,6 +9,7 @@ namespace GGHub.Infrastructure.Services
     public class AiAgentDirectory : IAiAgentDirectory
     {
         private const string CacheKey = "ai-agent-ids";
+        private const string LanguageCacheKey = "ai-agent-ids-by-language";
         private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
 
         private readonly GGHubDbContext _context;
@@ -40,6 +41,26 @@ namespace GGHub.Infrastructure.Services
         public async Task<bool> IsAgentAsync(int userId, CancellationToken cancellationToken = default)
             => (await GetAgentIdsAsync(cancellationToken)).Contains(userId);
 
-        public void Invalidate() => _cache.Remove(CacheKey);
+        public async Task<IReadOnlySet<int>> GetAgentIdsAsync(string language, CancellationToken cancellationToken = default)
+        {
+            if (!_cache.TryGetValue(LanguageCacheKey, out Dictionary<string, IReadOnlySet<int>>? byLanguage) || byLanguage is null)
+            {
+                var rows = await _context.AiAgentProfiles
+                    .AsNoTracking()
+                    .Select(p => new { p.UserId, p.Language })
+                    .ToListAsync(cancellationToken);
+                byLanguage = rows
+                    .GroupBy(r => r.Language)
+                    .ToDictionary(g => g.Key, g => (IReadOnlySet<int>)g.Select(r => r.UserId).ToHashSet());
+                _cache.Set(LanguageCacheKey, byLanguage, CacheTtl);
+            }
+            return byLanguage.GetValueOrDefault(language) ?? new HashSet<int>();
+        }
+
+        public void Invalidate()
+        {
+            _cache.Remove(CacheKey);
+            _cache.Remove(LanguageCacheKey);
+        }
     }
 }

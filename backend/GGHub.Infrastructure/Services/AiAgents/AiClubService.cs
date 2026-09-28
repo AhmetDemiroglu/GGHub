@@ -1,5 +1,6 @@
 using GGHub.Application.Dtos;
 using GGHub.Application.Interfaces;
+using GGHub.Core.Entities;
 using GGHub.Core.Enums;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +11,9 @@ namespace GGHub.Infrastructure.Services
     /// Herkese acik "AI Kulubu" sayfasinin verisi: botlar, iliskileri ve kendi aralarindaki sohbetler.
     /// Girissiz de calisir; gorunurluk kurallari (engel, gizli profil) PostService ile ayni
     /// (WhereVisibleTo). Botlar zaten herkese acik oldugu icin pratikte her sey gorunur.
+    ///
+    /// Dil: kulup, sohbetler ve bot onerileri IZLEYICININ arayuz dilindeki botlardan gelir
+    /// (AiLanguage.Viewer, istegin Accept-Language'i). Bot profilleri yine herkese acik.
     /// </summary>
     public class AiClubService
     {
@@ -30,8 +34,9 @@ namespace GGHub.Infrastructure.Services
 
         public async Task<AiClubDto> GetClubAsync(int? viewerId, CancellationToken ct)
         {
+            var viewerLang = AiLanguage.Viewer();
             var rows = await _context.AiAgentProfiles.AsNoTracking()
-                .Where(p => p.IsEnabled && !p.User.IsDeleted && !p.User.IsBanned)
+                .Where(p => p.IsEnabled && p.Language == viewerLang && !p.User.IsDeleted && !p.User.IsBanned)
                 .OrderBy(p => p.User.Username)
                 .Select(p => new
                 {
@@ -62,7 +67,7 @@ namespace GGHub.Infrastructure.Services
                 },
                 DisplayName = r.FirstName ?? r.Username,
                 Bio = r.Bio,
-                Interest = Interest(r.PersonaKey, r.Bio),
+                Interest = AiAgentPersonas.Interest(r.PersonaKey, r.Bio),
                 PostCount = r.PostCount,
                 ReviewCount = r.ReviewCount,
                 FollowerCount = r.FollowerCount,
@@ -94,7 +99,7 @@ namespace GGHub.Infrastructure.Services
             var lines = new List<AiClubLineDto>();
             foreach (var p in recent.OrderBy(p => p.CreatedAt))
             {
-                var text = (await _conversations.RenderForModelAsync(p.Content!, ct)).Trim();
+                var text = (await _conversations.RenderForModelAsync(p.Content!, viewerLang, ct)).Trim();
                 if (text.Length > 140) text = text[..137].TrimEnd() + "...";
                 lines.Add(new AiClubLineDto
                 {
@@ -111,8 +116,8 @@ namespace GGHub.Infrastructure.Services
             {
                 RecentLines = lines,
                 Agents = agents,
-                ActiveConversations = await _context.AiConversations.CountAsync(c => c.Status == AiConversationStatus.Active, ct),
-                ConversationsToday = await _context.AiConversations.CountAsync(c => c.CreatedAt >= dayAgo, ct),
+                ActiveConversations = await InLanguage(viewerLang).CountAsync(c => c.Status == AiConversationStatus.Active, ct),
+                ConversationsToday = await InLanguage(viewerLang).CountAsync(c => c.CreatedAt >= dayAgo, ct),
                 PostsToday = await _context.Posts.CountAsync(p => agentIds.Contains(p.UserId) && p.CreatedAt >= dayAgo, ct),
                 ReviewsTotal = await _context.Reviews.CountAsync(r => agentIds.Contains(r.UserId), ct)
             };
@@ -133,8 +138,9 @@ namespace GGHub.Infrastructure.Services
                 .Where(b => b.BlockerId == viewerId || b.BlockedId == viewerId)
                 .Select(b => b.BlockerId == viewerId ? b.BlockedId : b.BlockerId);
 
+            var viewerLang = AiLanguage.Viewer();
             var rows = await _context.AiAgentProfiles.AsNoTracking()
-                .Where(p => p.IsEnabled && !p.User.IsDeleted && !p.User.IsBanned && p.UserId != viewerId &&
+                .Where(p => p.IsEnabled && p.Language == viewerLang && !p.User.IsDeleted && !p.User.IsBanned && p.UserId != viewerId &&
                             !followingIds.Contains(p.UserId) && !blockedIds.Contains(p.UserId))
                 .Select(p => new
                 {
@@ -197,7 +203,7 @@ namespace GGHub.Infrastructure.Services
                     FollowsYou = x.FollowsYou,
                     FollowerCount = x.Row.FollowerCount,
                     Reason = x.FollowsYou ? "follows_you" : x.Shared > 0 ? "taste" : "ai",
-                    Tagline = Interest(x.Row.PersonaKey, x.Row.Bio)
+                    Tagline = AiAgentPersonas.Interest(x.Row.PersonaKey, x.Row.Bio)
                 })
                 .ToList();
         }
@@ -210,8 +216,9 @@ namespace GGHub.Infrastructure.Services
         {
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize, 1, 20);
+            var viewerLang = AiLanguage.Viewer();
 
-            var conversations = await _context.AiConversations.AsNoTracking()
+            var conversations = await InLanguage(viewerLang).AsNoTracking()
                 .Where(c => c.Status != AiConversationStatus.Abandoned || c.TurnsDone > 0)
                 .OrderByDescending(c => c.LastActivityAt)
                 .Skip((page - 1) * pageSize)
@@ -226,7 +233,7 @@ namespace GGHub.Infrastructure.Services
 
             if (page == 1 && items.Count < pageSize)
             {
-                var agentIds = await _context.Users.AsNoTracking().Where(u => u.IsAiAgent).Select(u => u.Id).ToListAsync(ct);
+                var agentIds = await _context.AiAgentProfiles.AsNoTracking().Where(p => p.Language == viewerLang).Select(p => p.UserId).ToListAsync(ct);
                 var taken = items.Select(i => i.RootId).ToList();
                 var extra = await _context.Posts.AsNoTracking()
                     .Where(p => agentIds.Contains(p.UserId) && p.ParentPostId == null && p.RepostOfPostId == null &&
@@ -279,6 +286,10 @@ namespace GGHub.Infrastructure.Services
                 .ToList();
         }
 
+        /// <summary>Ev sahibi bu dildeki bir bot olan sahneler (sahne tek dil grubunda kurulur).</summary>
+        private IQueryable<AiConversation> InLanguage(string lang)
+            => _context.AiConversations.Where(c => _context.AiAgentProfiles.Any(p => p.UserId == c.HostAgentId && p.Language == lang));
+
         private static string KindName(AiConversationKind kind) => kind switch
         {
             AiConversationKind.Debate => "debate",
@@ -287,18 +298,5 @@ namespace GGHub.Infrastructure.Services
             AiConversationKind.NewRelease => "newRelease",
             _ => "post"
         };
-
-        private static string Interest(string personaKey, string? dbBio)
-        {
-            var bio = AiAgentPersonas.ByKey(personaKey)?.Bio ?? dbBio;
-            if (bio is null) return string.Empty;
-            // Ilk anlamli cumle: "GGHub'in AI oyun arkadasi" girisi ve "Yapay zekayim" notu atlanir
-            // (admin'den eklenen botlarin bio'su dogrudan ilgi alaniyla baslar).
-            return bio.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .FirstOrDefault(part => !part.StartsWith("GGHub", StringComparison.OrdinalIgnoreCase) &&
-                                        !part.Contains("Yapay zeka", StringComparison.OrdinalIgnoreCase) &&
-                                        !part.Contains("gerçek bir kişi", StringComparison.OrdinalIgnoreCase))
-                ?? string.Empty;
-        }
     }
 }

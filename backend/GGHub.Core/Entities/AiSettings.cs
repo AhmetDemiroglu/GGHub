@@ -49,6 +49,12 @@ namespace GGHub.Core.Entities
         /// <summary>Akis sayfasinda bot kartlarinin azami yuzdesi.</summary>
         public int FeedMaxAiSharePercent { get; set; } = 30;
 
+        /// <summary>
+        /// Acik botlarin yuzde kaci Ingilizce olsun (0-90). Ayar kaydedilince ve "Botlari olustur"da
+        /// koddaki Ingilizce karakterler bu orana gore acilir/kapatilir (AiAdminService.BalanceLanguagesAsync).
+        /// </summary>
+        public int EnglishAgentShare { get; set; } = 30;
+
         /// <summary>Botlarin kendiliginden hareket ettigi saat araligi (Istanbul). Bitis baslangictan kucukse gece yarisini asar.</summary>
         public int ActiveFromHour { get; set; } = 9;
         public int ActiveToHour { get; set; } = 1;

@@ -81,11 +81,13 @@ namespace GGHub.Infrastructure.Services
                 s.MaxUnsolicitedDmPerUserPerWeek = Math.Clamp(dto.MaxUnsolicitedDmPerUserPerWeek, 0, 7);
                 s.MaxAgentRepliesPerPost = Math.Clamp(dto.MaxAgentRepliesPerPost, 0, 10);
                 s.FeedMaxAiSharePercent = Math.Clamp(dto.FeedMaxAiSharePercent, 0, 100);
+                s.EnglishAgentShare = Math.Clamp(dto.EnglishAgentShare, 0, 90);
                 s.ActiveFromHour = dto.ActiveFromHour;
                 s.ActiveToHour = dto.ActiveToHour;
             }, ct);
 
             _logger.LogInformation("[AiAgents] Ayarlar guncellendi. Motor: {Enabled}", updated.AgentsEnabled);
+            await BalanceLanguagesAsync(ct);
             return ToDto(updated);
         }
 
@@ -105,6 +107,7 @@ namespace GGHub.Infrastructure.Services
             MaxUnsolicitedDmPerUserPerWeek = s.MaxUnsolicitedDmPerUserPerWeek,
             MaxAgentRepliesPerPost = s.MaxAgentRepliesPerPost,
             FeedMaxAiSharePercent = s.FeedMaxAiSharePercent,
+            EnglishAgentShare = s.EnglishAgentShare,
             ActiveFromHour = s.ActiveFromHour,
             ActiveToHour = s.ActiveToHour,
             UpdatedAt = s.UpdatedAt,
@@ -132,6 +135,7 @@ namespace GGHub.Infrastructure.Services
                     RatingBias = p.RatingBias,
                     DailyActionQuota = p.DailyActionQuota,
                     IsEnabled = p.IsEnabled,
+                    Language = p.Language,
                     FollowerCount = _context.Follows.Count(f => f.FolloweeId == p.UserId),
                     PostCount = _context.Posts.Count(x => x.UserId == p.UserId),
                     ReviewCount = _context.Reviews.Count(r => r.UserId == p.UserId),
@@ -144,66 +148,172 @@ namespace GGHub.Infrastructure.Services
         }
 
         /// <summary>
-        /// AiAgentPersonas listesindeki eksik botlari acar. Var olan (PersonaKey'i kayitli) atlanir.
-        /// Bot hesaplarinin sifresi ve OAuth kimligi YOK; AuthService ayrica girisi reddeder.
+        /// Koddaki eksik TURKCE botlari acar (PersonaKey'i kayitli olan atlanir), sonra Ingilizce kadroyu
+        /// orana ceker (BalanceLanguagesAsync). Bot hesaplarinin sifresi ve OAuth kimligi YOK; AuthService
+        /// ayrica girisi reddeder.
         /// </summary>
         public async Task<int> ProvisionAgentsAsync(CancellationToken ct)
         {
             var existingKeys = await _context.AiAgentProfiles.Select(p => p.PersonaKey).ToListAsync(ct);
             var created = 0;
-
-            foreach (var persona in AiAgentPersonas.All.Where(p => !existingKeys.Contains(p.Key)))
+            foreach (var persona in AiAgentPersonas.All.Where(p => p.Language == AiLanguage.Tr && !existingKeys.Contains(p.Key)))
             {
-                var username = persona.Username;
-                for (var i = 2; await _context.Users.AnyAsync(u => u.UsernameNormalized == UsernameNormalizer.Normalize(username), ct); i++)
-                {
-                    username = persona.Username.Replace("_ai", $"{i}_ai");
-                }
-
-                var user = new User
-                {
-                    Username = username,
-                    UsernameNormalized = UsernameNormalizer.Normalize(username),
-                    Email = $"{username.ToLowerInvariant()}{BotEmailDomain}",
-                    FirstName = persona.DisplayName,
-                    Bio = persona.Bio,
-                    ProfileImageUrl = AiAgentPersonas.AvatarUrl(username),
-                    IsEmailVerified = true,
-                    IsAiAgent = true,
-                    AllowAiInteraction = false,
-                    MessageSetting = MessagePrivacySetting.Everyone,
-                    ProfileVisibility = ProfileVisibilitySetting.Public,
-                    PostVisibility = PostVisibilitySetting.Everyone,
-                    PostReplyPermission = PostReplyPermissionSetting.Everyone,
-                    PreferredLocale = "tr",
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-                _context.Users.Add(user);
-                await _context.SaveChangesAsync(ct);
-
-                _context.AiAgentProfiles.Add(new AiAgentProfile
-                {
-                    UserId = user.Id,
-                    PersonaKey = persona.Key,
-                    Persona = persona.Character,
-                    FavoriteGenres = persona.Genres,
-                    RatingBias = persona.RatingBias,
-                    DailyActionQuota = 0,
-                    IsEnabled = true
-                });
-                _context.UserStats.Add(new UserStats { UserId = user.Id });
-                await _context.SaveChangesAsync(ct);
+                await CreatePersonaBotAsync(persona, ct);
                 created++;
             }
+            if (created > 0) _logger.LogInformation("[AiAgents] {Count} Turkce bot olusturuldu.", created);
 
-            if (created > 0)
+            return created + await BalanceLanguagesAsync(ct);
+        }
+
+        /// <summary>
+        /// Ingilizce bot sayisini orana ceker: hedef = round(acik TR bot * oran / (100 - oran)), koddaki
+        /// Ingilizce kadroyla sinirli. Eksikler kadro sirasiyla acilir (yoksa olusturulur), fazlasi sondan
+        /// kapatilir. Admin'in elle ekledigi botlar (custom_*) acilip kapatilmaz ama Ingilizce olanlar
+        /// hedefe sayilir. Sonda bot takip agi tamamlanir. Donen deger: olusturulan bot sayisi.
+        /// </summary>
+        public async Task<int> BalanceLanguagesAsync(CancellationToken ct)
+        {
+            var share = Math.Clamp((await _settings.GetAsync(ct)).EnglishAgentShare, 0, 90);
+            var profiles = await _context.AiAgentProfiles.Include(p => p.User).ToListAsync(ct);
+            var usable = profiles.Where(p => !p.User.IsDeleted && !p.User.IsBanned).ToList();
+
+            var trOn = usable.Count(p => p.IsEnabled && p.Language == AiLanguage.Tr);
+            var customEnOn = usable.Count(p => p.IsEnabled && p.Language == AiLanguage.En && AiAgentPersonas.ByKey(p.PersonaKey) is null);
+            var roster = AiAgentPersonas.All.Where(p => p.Language == AiLanguage.En).ToList();
+            var target = Math.Clamp((int)Math.Round(trOn * share / (double)(100 - share)) - customEnOn, 0, roster.Count);
+
+            var byKey = profiles.ToDictionary(p => p.PersonaKey);
+            bool IsOn(AiAgentPersonas.Persona persona) => byKey.TryGetValue(persona.Key, out var x) && x.IsEnabled && usable.Contains(x);
+            var on = roster.Count(IsOn);
+            var created = 0;
+            var disabled = new List<int>();
+
+            foreach (var persona in roster)
             {
-                _directory.Invalidate();
-                _logger.LogInformation("[AiAgents] {Count} bot olusturuldu.", created);
+                if (on >= target) break;
+                if (IsOn(persona)) continue;
+                if (byKey.TryGetValue(persona.Key, out var existing))
+                {
+                    if (!usable.Contains(existing)) continue; // silinmis/banli hesap yeniden acilmaz
+                    existing.IsEnabled = true;
+                    existing.UpdatedAt = DateTime.UtcNow;
+                }
+                else
+                {
+                    await CreatePersonaBotAsync(persona, ct);
+                    created++;
+                }
+                on++;
             }
+            foreach (var persona in Enumerable.Reverse(roster))
+            {
+                if (on <= target) break;
+                if (!IsOn(persona)) continue;
+                var existing = byKey[persona.Key];
+                existing.IsEnabled = false;
+                existing.UpdatedAt = DateTime.UtcNow;
+                disabled.Add(existing.UserId);
+                on--;
+            }
+            await _context.SaveChangesAsync(ct);
+            foreach (var id in disabled) await SkipPendingTasksAsync(id, ct);
+
+            _directory.Invalidate();
+            await EnsureBotFollowNetworkAsync(ct);
+            _logger.LogInformation("[AiAgents] Dil dengesi: TR {Tr}, EN hedef {Target} (oran %{Share}), {Created} yeni, {Disabled} kapatildi.",
+                trOn, target, share, created, disabled.Count);
             return created;
         }
+
+        /// <summary>
+        /// Acik botlarin hepsi birbirini takip eder (iki dil grubu dahil). Eksik bot->bot takipleri
+        /// dogrudan yazilir: bildirim, XP, oneri onbellegi yok (botlar arasi ic duzen).
+        /// </summary>
+        public async Task<int> EnsureBotFollowNetworkAsync(CancellationToken ct)
+        {
+            var ids = await _context.AiAgentProfiles.AsNoTracking()
+                .Where(p => p.IsEnabled && !p.User.IsDeleted && !p.User.IsBanned)
+                .Select(p => p.UserId)
+                .ToListAsync(ct);
+            var existing = (await _context.Follows.AsNoTracking()
+                    .Where(f => ids.Contains(f.FollowerId) && ids.Contains(f.FolloweeId))
+                    .Select(f => new { f.FollowerId, f.FolloweeId })
+                    .ToListAsync(ct))
+                .Select(f => (f.FollowerId, f.FolloweeId))
+                .ToHashSet();
+
+            var added = 0;
+            foreach (var follower in ids)
+            {
+                foreach (var followee in ids.Where(id => id != follower && !existing.Contains((follower, id))))
+                {
+                    _context.Follows.Add(new Follow { FollowerId = follower, FolloweeId = followee, CreatedAt = DateTime.UtcNow });
+                    added++;
+                }
+            }
+            if (added > 0)
+            {
+                await _context.SaveChangesAsync(ct);
+                _logger.LogInformation("[AiAgents] Bot takip agi: {Count} eksik takip eklendi.", added);
+            }
+            return added;
+        }
+
+        private async Task CreatePersonaBotAsync(AiAgentPersonas.Persona persona, CancellationToken ct)
+        {
+            var username = persona.Username;
+            for (var i = 2; await _context.Users.AnyAsync(u => u.UsernameNormalized == UsernameNormalizer.Normalize(username), ct); i++)
+            {
+                username = persona.Username.Replace("_ai", $"{i}_ai");
+            }
+
+            var user = NewBotUser(username, persona.DisplayName, persona.Bio, persona.Language);
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync(ct);
+
+            _context.AiAgentProfiles.Add(new AiAgentProfile
+            {
+                UserId = user.Id,
+                PersonaKey = persona.Key,
+                Persona = persona.Character,
+                FavoriteGenres = persona.Genres,
+                RatingBias = persona.RatingBias,
+                DailyActionQuota = 0,
+                IsEnabled = true,
+                Language = persona.Language
+            });
+            _context.UserStats.Add(new UserStats { UserId = user.Id });
+            await _context.SaveChangesAsync(ct);
+        }
+
+        /// <summary>Bot hesabi: herkese acik, sifresiz, e-postasi dogrulanmis, arayuz dili botun diliyle ayni.</summary>
+        private static User NewBotUser(string username, string displayName, string bio, string language) => new()
+        {
+            Username = username,
+            UsernameNormalized = UsernameNormalizer.Normalize(username),
+            Email = $"{username.ToLowerInvariant()}{BotEmailDomain}",
+            FirstName = displayName,
+            Bio = bio,
+            ProfileImageUrl = AiAgentPersonas.AvatarUrl(username),
+            IsEmailVerified = true,
+            IsAiAgent = true,
+            AllowAiInteraction = false,
+            MessageSetting = MessagePrivacySetting.Everyone,
+            ProfileVisibility = ProfileVisibilitySetting.Public,
+            PostVisibility = PostVisibilitySetting.Everyone,
+            PostReplyPermission = PostReplyPermissionSetting.Everyone,
+            PreferredLocale = AiLanguage.ToLocale(language),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        private Task SkipPendingTasksAsync(int agentUserId, CancellationToken ct)
+            => _context.AiAgentTasks
+                .Where(t => t.AgentUserId == agentUserId && t.Status == AiAgentTaskStatus.Pending)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(t => t.Status, AiAgentTaskStatus.Skipped)
+                    .SetProperty(t => t.Error, "Bot kapatildi."), ct);
 
         /// <summary>
         /// Koddaki karakterleri (AiAgentPersonas) mevcut botlara yazar: ad, bio, avatar, persona metni,
@@ -222,6 +332,7 @@ namespace GGHub.Infrastructure.Services
                 profile.Persona = persona.Character;
                 profile.FavoriteGenres = persona.Genres;
                 profile.RatingBias = persona.RatingBias;
+                profile.Language = persona.Language;
                 profile.UpdatedAt = DateTime.UtcNow;
 
                 var user = profile.User;
@@ -232,6 +343,7 @@ namespace GGHub.Infrastructure.Services
                 user.ProfileVisibility = ProfileVisibilitySetting.Public;
                 user.PostVisibility = PostVisibilitySetting.Everyone;
                 user.PostReplyPermission = PostReplyPermissionSetting.Everyone;
+                user.PreferredLocale = AiLanguage.ToLocale(persona.Language);
                 user.UpdatedAt = DateTime.UtcNow;
                 updated++;
             }
@@ -261,32 +373,19 @@ namespace GGHub.Infrastructure.Services
             if (await _context.Users.AnyAsync(u => u.UsernameNormalized == normalized, ct))
                 throw new ArgumentException("Bu kullanıcı adı alınmış.");
 
+            // Bio, botun kendi dilinde AI oldugunu soyler; admin yazmadiysa sona eklenir.
+            var language = AiLanguage.Normalize(dto.Language);
             var bio = (dto.Bio ?? string.Empty).Trim();
-            const string aiNote = "Yapay zekayım, gerçek bir kişi değilim.";
-            if (!bio.Contains("Yapay zeka", StringComparison.OrdinalIgnoreCase)) bio = $"{bio} {aiNote}".Trim();
+            var (aiNote, marker) = language == AiLanguage.En
+                ? ("I'm an AI, not a real person.", "real person")
+                : ("Yapay zekayım, gerçek bir kişi değilim.", "Yapay zeka");
+            if (!bio.Contains(marker, StringComparison.OrdinalIgnoreCase)) bio = $"{bio} {aiNote}".Trim();
             if (bio.Length > 300) bio = bio[..300];
             var persona = dto.Persona.Trim();
             if (persona.Length > 2000) persona = persona[..2000];
+            var displayName = dto.DisplayName.Trim().Length > 40 ? dto.DisplayName.Trim()[..40] : dto.DisplayName.Trim();
 
-            var user = new User
-            {
-                Username = username,
-                UsernameNormalized = normalized,
-                Email = $"{username}{BotEmailDomain}",
-                FirstName = dto.DisplayName.Trim().Length > 40 ? dto.DisplayName.Trim()[..40] : dto.DisplayName.Trim(),
-                Bio = bio,
-                ProfileImageUrl = AiAgentPersonas.AvatarUrl(username),
-                IsEmailVerified = true,
-                IsAiAgent = true,
-                AllowAiInteraction = false,
-                MessageSetting = MessagePrivacySetting.Everyone,
-                ProfileVisibility = ProfileVisibilitySetting.Public,
-                PostVisibility = PostVisibilitySetting.Everyone,
-                PostReplyPermission = PostReplyPermissionSetting.Everyone,
-                PreferredLocale = "tr",
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
+            var user = NewBotUser(username, displayName, bio, language);
             _context.Users.Add(user);
             await _context.SaveChangesAsync(ct);
 
@@ -298,13 +397,15 @@ namespace GGHub.Infrastructure.Services
                 FavoriteGenres = (dto.FavoriteGenres ?? string.Empty).Trim(),
                 RatingBias = Math.Clamp(dto.RatingBias, -2, 2),
                 DailyActionQuota = 0,
-                IsEnabled = true
+                IsEnabled = true,
+                Language = language
             });
             _context.UserStats.Add(new UserStats { UserId = user.Id });
             await _context.SaveChangesAsync(ct);
 
             _directory.Invalidate();
-            _logger.LogInformation("[AiAgents] Admin yeni bot acti: @{Username}", username);
+            await EnsureBotFollowNetworkAsync(ct);
+            _logger.LogInformation("[AiAgents] Admin yeni bot acti: @{Username} ({Language})", username, language);
             return user.Id;
         }
 
@@ -322,14 +423,8 @@ namespace GGHub.Infrastructure.Services
             profile.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync(ct);
 
-            if (!dto.IsEnabled)
-            {
-                await _context.AiAgentTasks
-                    .Where(t => t.AgentUserId == userId && t.Status == AiAgentTaskStatus.Pending)
-                    .ExecuteUpdateAsync(s => s
-                        .SetProperty(t => t.Status, AiAgentTaskStatus.Skipped)
-                        .SetProperty(t => t.Error, "Bot kapatildi."), ct);
-            }
+            if (dto.IsEnabled) await EnsureBotFollowNetworkAsync(ct);
+            else await SkipPendingTasksAsync(userId, ct);
             return true;
         }
 

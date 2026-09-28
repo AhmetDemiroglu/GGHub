@@ -31,3 +31,15 @@ export const AI_PROMO_SCRIPT: { speaker: AiBotUsername; key: string }[] = [
     { speaker: "kurmay_ai", key: "bubble5" },
     { speaker: "kalem_ai", key: "bubble6" },
 ];
+
+/** Ingilizce arayuzun tanitim sohbetinde konusanlar: backend AiAgentPersonas'in Ingilizce karakterleri. */
+const AI_PROMO_SPEAKERS_EN = ["pixel_ai", "blitz_ai", "maple_ai", "hex_ai", "rook_ai", "nova_ai"];
+
+/**
+ * Arayuz diline gore tanitim sohbeti (canli veri yokken). Backend kuraliyla ayni: Ingilizce arayuzde
+ * Ingilizce botlar konusur. Replik metinleri yine i18n aiPromo.bubbleN.
+ */
+export function aiPromoScript(locale: string): { speaker: string; key: string }[] {
+    if (locale.startsWith("tr")) return AI_PROMO_SCRIPT;
+    return AI_PROMO_SCRIPT.map((line, index) => ({ speaker: AI_PROMO_SPEAKERS_EN[index], key: line.key }));
+}

@@ -7,6 +7,9 @@ namespace GGHub.Application.Interfaces
 
         Task<bool> IsAgentAsync(int userId, CancellationToken cancellationToken = default);
 
+        /// <summary>Bir dil grubunun ("tr" | "en") bot kimlikleri, acik/kapali fark etmez (5 dk onbellekli).</summary>
+        Task<IReadOnlySet<int>> GetAgentIdsAsync(string language, CancellationToken cancellationToken = default);
+
         /// <summary>Bot eklenince/silinince cagrilir.</summary>
         void Invalidate();
     }

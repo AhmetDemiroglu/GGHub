@@ -125,10 +125,11 @@ namespace GGHub.Infrastructure.Services
                 })
                 .ToListAsync();
 
-            // 3. FOLLOWS  
+            // 3. FOLLOWS (bot->bot takipleri botlarin ic agi, kart olmaz; bkz. BuildFollowCandidatesAsync)
             var follows = await _context.Follows
                 .AsNoTracking()
-                .Where(f => f.FollowerId == user.Id && !f.Followee.IsDeleted)
+                .Where(f => f.FollowerId == user.Id && !f.Followee.IsDeleted &&
+                            !(f.Follower.IsAiAgent && f.Followee.IsAiAgent))
                 .Include(f => f.Followee)
                 .OrderByDescending(f => f.CreatedAt) 
                 .Take(limit)
@@ -278,14 +279,24 @@ namespace GGHub.Infrastructure.Services
 
         /// <summary>
         /// Takip edilmeyen AI botlarinin herkese acik kok gonderileri. Botlar herkese acik yasar;
-        /// kimse onlari takip etmese de akista gorunmeleri gerekir (29 Eyl 2026, Ahmet).
+        /// kimse onlari takip etmese de akista gorunmeleri gerekir (29 Eyl 2026, Ahmet). Dolgu yalniz
+        /// izleyicinin arayuz dilindeki botlardan gelir (Ingilizce arayuze Turkce bot sohbeti dusmez).
+        /// Takip edilen botlar bu kuralin disinda: onlar normal takip akisindan gelir.
         /// </summary>
         private async Task<List<(ActivityDto Dto, int Engagement)>> BuildAgentPostCandidatesAsync(
             int currentUserId, ICollection<int> exclude, int limit, DateTime? cursor)
         {
-            var agentIds = (await _aiDirectory.GetAgentIdsAsync()).Where(id => !exclude.Contains(id)).ToList();
+            var agentIds = (await _aiDirectory.GetAgentIdsAsync(AiLanguage.Viewer())).Where(id => !exclude.Contains(id)).ToList();
             if (agentIds.Count == 0) return new List<(ActivityDto, int)>();
             return await BuildPostCandidatesAsync(currentUserId, agentIds, limit, cursor);
+        }
+
+        /// <summary>Izleyicinin arayuz dili disindaki botlar (AiLanguage.Viewer).</summary>
+        private async Task<HashSet<int>> OtherLanguageAgentIdsAsync()
+        {
+            var all = await _aiDirectory.GetAgentIdsAsync();
+            var mine = await _aiDirectory.GetAgentIdsAsync(AiLanguage.Viewer());
+            return all.Where(id => !mine.Contains(id)).ToHashSet();
         }
 
         /// <summary>
@@ -490,6 +501,12 @@ namespace GGHub.Infrastructure.Services
             // herkese acik gonderi kaldigi surece Kesfet sayfalanmaya devam eder.
             if (candidates.Count < limit)
                 Add(await BuildPostCandidatesAsync(currentUserId, null, limit * 2, cursor), DiscoverSource.Trending);
+
+            // Ag disi kaynaklar (zevk, ortak takip, trend, taban) yazar suzgecsiz calisabiliyor: izleyicinin
+            // arayuz dilinde olmayan botlarin kartlari burada elenir. Takip edilen botlar ag icinde, kalir.
+            var otherLanguageBots = await OtherLanguageAgentIdsAsync();
+            candidates.RemoveAll(c => sourceOf[c.Dto] != DiscoverSource.InNetwork &&
+                                      c.Dto.Actor?.Id is int actorId && otherLanguageBots.Contains(actorId));
 
             return await FinalizeAsync(candidates, currentUserId, limit, mutualIds, new DiscoverContext(taste, sourceOf, followingIds.ToHashSet()));
         }
@@ -862,11 +879,15 @@ namespace GGHub.Infrastructure.Services
         private async Task<List<(ActivityDto Dto, int Engagement)>> BuildFollowCandidatesAsync(
             List<int> actorIds, HashSet<int> blockedSet, int limit, DateTime? cursor)
         {
+            // Bot->bot takipleri kart olmaz: tum acik botlar birbirini toplu takip eder (AiAdminService
+            // .EnsureBotFollowNetworkAsync). Kart olsaydi bir botu takip eden kisinin akisi "X botu Y'yi
+            // takip etti" kartlariyla dolar, oteki dilin botlari da buradan sizardi.
             var query = _context.Follows
                 .AsNoTracking()
                 .Where(f => actorIds.Contains(f.FollowerId) &&
                             !f.Follower.IsDeleted && !f.Follower.IsBanned &&
-                            !f.Followee.IsDeleted && !f.Followee.IsBanned);
+                            !f.Followee.IsDeleted && !f.Followee.IsBanned &&
+                            !(f.Follower.IsAiAgent && f.Followee.IsAiAgent));
 
             if (cursor.HasValue) query = query.Where(f => f.CreatedAt < cursor.Value);
 

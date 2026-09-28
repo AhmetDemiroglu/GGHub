@@ -340,6 +340,7 @@ namespace GGHub.Infrastructure.Persistence
                 entity.HasIndex(p => p.PersonaKey).IsUnique().HasDatabaseName("IX_AiAgentProfiles_PersonaKey");
                 entity.Property(p => p.Persona).HasMaxLength(2000).IsRequired();
                 entity.Property(p => p.FavoriteGenres).HasMaxLength(200);
+                entity.Property(p => p.Language).HasMaxLength(8).IsRequired();
             });
 
             modelBuilder.Entity<AiAgentTask>(entity =>

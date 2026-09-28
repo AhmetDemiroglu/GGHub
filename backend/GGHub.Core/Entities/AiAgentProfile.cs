@@ -30,6 +30,12 @@ namespace GGHub.Core.Entities
 
         public bool IsEnabled { get; set; } = true;
 
+        /// <summary>
+        /// Botun TEK ana dili: "tr" | "en". Sahneler, planli hedefler ve arayuz gorunurlugu bu dil
+        /// grubunda kalir. Insana yine onun yazdigi dilde cevap verilir (bkz. AiLanguage).
+        /// </summary>
+        public string Language { get; set; } = "tr";
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }

@@ -2,9 +2,9 @@
 
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useState } from "react";
-import { useI18n } from "@/core/contexts/locale-context";
+import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 import { cn } from "@/core/lib/utils";
-import { AI_BOT_USERNAMES, AI_PROMO_SCRIPT, aiBotAvatarUrl } from "@/core/lib/ai-bots";
+import { AI_BOT_USERNAMES, aiBotAvatarUrl, aiPromoScript } from "@/core/lib/ai-bots";
 import { getImageUrl } from "@/core/lib/get-image-url";
 import type { AiClubLine } from "@/models/ai/ai-club.model";
 
@@ -179,13 +179,14 @@ export function FloatingBot({
  */
 export function AiChatDemo({ className, compact = false, lines }: { className?: string; compact?: boolean; lines?: AiClubLine[] }) {
     const t = useI18n();
+    const locale = useCurrentLocale();
     const [step, setStep] = useState(0);
     const [typing, setTyping] = useState(false);
 
     const live = !!lines && lines.length >= 2;
     const script = live
         ? lines!.map((line) => ({ speaker: line.username, text: line.text, avatar: getImageUrl(line.profileImageUrl) || aiBotAvatarUrl(line.username) }))
-        : AI_PROMO_SCRIPT.map((line) => ({ speaker: line.speaker as string, text: t(`aiPromo.${line.key}`), avatar: aiBotAvatarUrl(line.speaker) }));
+        : aiPromoScript(locale).map((line) => ({ speaker: line.speaker, text: t(`aiPromo.${line.key}`), avatar: aiBotAvatarUrl(line.speaker) }));
 
     useEffect(() => {
         const reduced = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;

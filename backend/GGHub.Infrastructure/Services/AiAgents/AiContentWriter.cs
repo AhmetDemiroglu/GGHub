@@ -4,7 +4,8 @@ using GGHub.Application.Interfaces;
 
 namespace GGHub.Infrastructure.Services
 {
-    public sealed record AiAgentIdentity(string DisplayName, string Username, string Persona);
+    /// <summary>Metni yazan bot. Language botun ana dili; insana cevapta cikti dili ayrica verilir.</summary>
+    public sealed record AiAgentIdentity(string DisplayName, string Username, string Persona, string Language);
 
     public sealed record AiGameFacts(
         string Name,
@@ -29,6 +30,10 @@ namespace GGHub.Infrastructure.Services
     /// Model yalnizca VERILEN baglami kesin bilgi olarak kullanir; puani, tarihi, platformu
     /// uydurmaz. Oyun etiketi (@[g:id]) modele yazdirilmaz: model yer tutucu yazar, motor
     /// dogru token'i yerlestirir.
+    ///
+    /// Dil: her metodun "lang" parametresi CIKTI dilidir. Talimatlar Turkce kalir (tek bakim
+    /// noktasi), cikti dili BaseRules'ta acikca verilir ve RunAsync sonucu dogrular: tutmazsa bir
+    /// kez daha dener, yine tutmazsa metin uretilmemis sayilir (gorev atlanir).
     /// </summary>
     public class AiContentWriter
     {
@@ -41,7 +46,7 @@ namespace GGHub.Infrastructure.Services
             _llm = llm;
         }
 
-        private static string BaseRules(AiAgentIdentity agent) => $"""
+        private static string BaseRules(AiAgentIdentity agent, string lang) => $"""
             Sen GGHub adlı oyun sosyal ağında yaşayan bir yapay zeka karakterisin. Adın "{agent.DisplayName}", kullanıcı adın @{agent.Username}.
             Karakterin: {agent.Persona}
 
@@ -52,19 +57,19 @@ namespace GGHub.Infrastructure.Services
             - Link, e-posta, telefon numarası paylaşma. Kimseden kişisel bilgi (yaş, adres, telefon, okul, fotoğraf) isteme. Buluşma önerme.
             - Siyaset, din, cinsellik, nefret söylemi, şiddet teşviki ve yasa dışı konulara girme; kibarca oyun konusuna dön.
             - Biri kendine zarar vermekten ya da ciddi bir sıkıntıdan bahsederse: nazik ol, yalnız olmadığını söyle ve bir yakınından ya da profesyonel destekten (acil durumda 112) yardım almasını öner. Oyun sohbetine zorlama.
-            - Karşındaki kişi hangi dilde yazdıysa o dilde cevap ver; aksi halde Türkçe yaz.
+            - Çıktı dili: {AiLanguage.ModelName(lang)}. Yazdığın metnin tamamı bu dilde olsun; bu talimatların Türkçe olması çıktı dilini değiştirmez. (Output language: {AiLanguage.ModelName(lang)}.)
             - Kısa ve doğal yaz, gerçek bir sohbet gibi. Cümle uzunluğunu değiştir. Emoji en fazla iki tane. Hashtag, madde işareti, başlık ve markdown kullanma. Uzun tire (— ya da –) kullanma.
             - GGHub'da seninle birlikte başka AI karakterler de yaşıyor. Onlarla şakalaşabilir, hafifçe takılabilir, fikir ayrılığına düşebilirsin. Hakaret, küçümseme ve kaba dil yok; takılman her zaman sevimli kalsın.
-            - Birine seslenirken @kullaniciadi yaz (örnek: @retro_ai). Sana verilmeyen kullanıcı adlarını uydurma.
+            - Birine seslenirken @kullaniciadi yaz (örnek: @{(AiLanguage.Normalize(lang) == AiLanguage.En ? "pixel_ai" : "retro_ai")}). Sana verilmeyen kullanıcı adlarını uydurma.
             - Yalnızca yazacağın metni ver. Açıklama, tırnak, "İşte cevabım" gibi giriş ekleme.
             """;
 
         public async Task<AiText?> WriteDirectMessageReplyAsync(
-            AiAgentIdentity agent, string partnerName, IReadOnlyList<AiThreadLine> thread, CancellationToken ct)
+            AiAgentIdentity agent, string partnerName, IReadOnlyList<AiThreadLine> thread, string lang, CancellationToken ct)
         {
             if (thread.Count == 0 || thread[^1].FromAgent) return null;
 
-            var system = BaseRules(agent) + $"""
+            var system = BaseRules(agent, lang) + $"""
 
                 Şu an @{partnerName} ile özel mesajdasın. Samimi ama saygılı bir oyun sohbeti yap. Cevabın en fazla 3 kısa cümle olsun.
                 Sohbet oyun dışına kayarsa kısa cevap verip oyunlara dön.
@@ -89,11 +94,11 @@ namespace GGHub.Infrastructure.Services
                 turns.Insert(0, new GeminiTurn("user", "(Sohbet önceki mesajlarla devam ediyor.)"));
             }
 
-            return await RunAsync(system, turns, maxTokens: 300, maxChars: 500, temperature: 0.9, ct);
+            return await RunAsync(system, turns, lang, maxTokens: 300, maxChars: 500, temperature: 0.9, ct);
         }
 
         public Task<AiText?> WriteWelcomeMessageAsync(
-            AiAgentIdentity agent, string partnerName, IReadOnlyList<string> recentGames, CancellationToken ct)
+            AiAgentIdentity agent, string partnerName, IReadOnlyList<string> recentGames, string lang, CancellationToken ct)
         {
             var games = recentGames.Count > 0
                 ? $"Kullanıcının GGHub'da son ilgilendiği oyunlar: {string.Join(", ", recentGames)}."
@@ -104,13 +109,14 @@ namespace GGHub.Infrastructure.Services
                 {games}
                 Kendini GGHub'ın AI oyun arkadaşı olarak tanıt, ona hangi oyunları sevdiğini sor. En fazla 2 kısa cümle.
                 """;
-            return RunAsync(BaseRules(agent), new[] { new GeminiTurn("user", prompt) }, 200, 300, 0.9, ct);
+            return RunAsync(BaseRules(agent, lang), new[] { new GeminiTurn("user", prompt) }, lang, 200, 300, 0.9, ct);
         }
 
         public Task<AiText?> WritePostReplyAsync(
             AiAgentIdentity agent,
             AiThreadLine root,
             IReadOnlyList<AiThreadLine> replies,
+            string lang,
             CancellationToken ct)
         {
             var sb = new StringBuilder();
@@ -127,7 +133,7 @@ namespace GGHub.Infrastructure.Services
             sb.AppendLine();
             sb.AppendLine("Bu gönderiye tek bir yanıt yaz. Gönderinin sahibine hitap et, konuya bir şey kat. En fazla 160 karakter.");
 
-            return RunAsync(BaseRules(agent), new[] { new GeminiTurn("user", sb.ToString()) }, 200, 180, 0.9, ct);
+            return RunAsync(BaseRules(agent, lang), new[] { new GeminiTurn("user", sb.ToString()) }, lang, 200, 180, 0.9, ct);
         }
 
         public Task<AiText?> WriteGamePostAsync(
@@ -145,7 +151,7 @@ namespace GGHub.Infrastructure.Services
                 Oyunun adını yazma; adının geçeceği yere tam olarak {GamePlaceholder} yaz (bir kez).
                 {ending} En fazla 150 karakter.
                 """;
-            return RunAsync(BaseRules(agent), new[] { new GeminiTurn("user", prompt) }, 200, 170, 1.0, ct, requirePlaceholder: true);
+            return RunAsync(BaseRules(agent, agent.Language), new[] { new GeminiTurn("user", prompt) }, agent.Language, 200, 170, 1.0, ct, requirePlaceholder: true);
         }
 
         /// <summary>
@@ -175,7 +181,7 @@ namespace GGHub.Infrastructure.Services
                 : "Seslendiğin karakterleri @ ile anarak sohbeti başlat. Merak uyandıran, cevap vermeye davet eden bir cümle kur.");
             sb.AppendLine("En fazla 140 karakter.");
 
-            return RunAsync(BaseRules(agent), new[] { new GeminiTurn("user", sb.ToString()) }, 220, 150, 1.0, ct,
+            return RunAsync(BaseRules(agent, agent.Language), new[] { new GeminiTurn("user", sb.ToString()) }, agent.Language, 220, 150, 1.0, ct,
                 requirePlaceholder: game is not null && !isPoll);
         }
 
@@ -186,7 +192,7 @@ namespace GGHub.Infrastructure.Services
         public Task<AiText?> WriteConversationTurnAsync(
             AiAgentIdentity agent, string brief, string? stance, string relationNote,
             AiThreadLine root, IReadOnlyList<AiThreadLine> replies, string? addresseeUsername,
-            bool isFinal, CancellationToken ct)
+            bool isFinal, string lang, CancellationToken ct)
         {
             var sb = new StringBuilder();
             sb.AppendLine("GGHub'da AI karakterlerin herkese açık sohbetindesin.");
@@ -214,7 +220,7 @@ namespace GGHub.Infrastructure.Services
                 : "Kendini tekrar etme, yeni bir argüman, espri ya da soru ekle. Gerekirse itiraz et, ikna olursan bunu söyle.");
             sb.AppendLine("En fazla 170 karakter.");
 
-            return RunAsync(BaseRules(agent), new[] { new GeminiTurn("user", sb.ToString()) }, 220, 175, 1.0, ct);
+            return RunAsync(BaseRules(agent, lang), new[] { new GeminiTurn("user", sb.ToString()) }, lang, 220, 175, 1.0, ct);
         }
 
         public Task<AiText?> WriteReviewAsync(AiAgentIdentity agent, AiGameFacts game, int rating, CancellationToken ct)
@@ -228,11 +234,11 @@ namespace GGHub.Infrastructure.Services
                 Oyunu oynamadığını unutma: kişisel oyun deneyimi uydurma. Oyunun türü, tasarım yaklaşımı ve bilinen özellikleri üzerinden kimlere hitap ettiğini değerlendir.
                 3 ile 5 cümle, en fazla 600 karakter. Puanı metinde rakamla tekrar etme.
                 """;
-            return RunAsync(BaseRules(agent), new[] { new GeminiTurn("user", prompt) }, 500, 650, 0.8, ct);
+            return RunAsync(BaseRules(agent, agent.Language), new[] { new GeminiTurn("user", prompt) }, agent.Language, 500, 650, 0.8, ct);
         }
 
         public Task<AiText?> WriteReviewCommentAsync(
-            AiAgentIdentity agent, string reviewAuthor, AiGameFacts game, int rating, string reviewText, CancellationToken ct,
+            AiAgentIdentity agent, string reviewAuthor, AiGameFacts game, int rating, string reviewText, string lang, CancellationToken ct,
             string? peerNote = null, int? myRating = null)
         {
             var extra = new StringBuilder();
@@ -248,13 +254,13 @@ namespace GGHub.Infrastructure.Services
                 {extra}
                 İncelemeye kısa bir yorum yaz: katıldığın ya da farklı düşündüğün bir noktayı belirt. En fazla 2 cümle.
                 """;
-            return RunAsync(BaseRules(agent), new[] { new GeminiTurn("user", prompt) }, 250, 300, 0.9, ct);
+            return RunAsync(BaseRules(agent, lang), new[] { new GeminiTurn("user", prompt) }, lang, 250, 300, 0.9, ct);
         }
 
         /// <summary>Botun kendi incelemesine gelen yoruma cevabi (yorum zincirinde tek seviye).</summary>
         public Task<AiText?> WriteReviewCommentReplyAsync(
             AiAgentIdentity agent, string commenter, string commentText, AiGameFacts game, int myRating,
-            string myReviewText, string? peerNote, CancellationToken ct)
+            string myReviewText, string? peerNote, string lang, CancellationToken ct)
         {
             var prompt = $"""
                 {game.Name} için 10 üzerinden {myRating} verip şu incelemeyi yazmıştın:
@@ -266,21 +272,44 @@ namespace GGHub.Infrastructure.Services
 
                 Bu yoruma kısa bir cevap yaz. Katılabilir, itiraz edebilir ya da esprili bir karşılık verebilirsin. En fazla 2 cümle.
                 """;
-            return RunAsync(BaseRules(agent), new[] { new GeminiTurn("user", prompt) }, 250, 300, 0.9, ct);
+            return RunAsync(BaseRules(agent, lang), new[] { new GeminiTurn("user", prompt) }, lang, 250, 300, 0.9, ct);
         }
 
         // ------------------------------------------------------------------
 
         private async Task<AiText?> RunAsync(
-            string system, IReadOnlyList<GeminiTurn> turns, int maxTokens, int maxChars, double temperature,
+            string system, IReadOnlyList<GeminiTurn> turns, string lang, int maxTokens, int maxChars, double temperature,
             CancellationToken ct, bool requirePlaceholder = false)
         {
-            var result = await _llm.GenerateAsync(system, turns, maxTokens, temperature, ct);
+            var first = await _llm.GenerateAsync(system, turns, maxTokens, temperature, ct);
+            var text = Clean(first, lang, maxChars, requirePlaceholder, out var wrongLanguage);
+            if (text is not null || !wrongLanguage) return text;
+
+            // Yanlis dil: dili sertce hatirlatip bir kez daha. Yine tutmazsa null (gorev atlanir).
+            var reminder = $"\n\nIMPORTANT: your previous answer was in the wrong language. Write ONLY in {AiLanguage.ModelName(lang)}.";
+            var second = await _llm.GenerateAsync(system + reminder, turns, maxTokens, temperature, ct);
+            text = Clean(second, lang, maxChars, requirePlaceholder, out _);
+            return text is null ? null : text with
+            {
+                InputTokens = text.InputTokens + first.InputTokens,
+                OutputTokens = text.OutputTokens + first.OutputTokens
+            };
+        }
+
+        /// <summary>Model ciktisini temizler ve dogrular; gecmezse null. Dil tutmadiysa wrongLanguage = true.</summary>
+        private static AiText? Clean(GeminiGenerateResult result, string lang, int maxChars, bool requirePlaceholder, out bool wrongLanguage)
+        {
+            wrongLanguage = false;
             if (result.Text is null) return null;
 
-            var clean = Sanitize(result.Text, maxChars, keepPlaceholder: requirePlaceholder);
+            var clean = Sanitize(result.Text, maxChars, lang, keepPlaceholder: requirePlaceholder);
             if (string.IsNullOrWhiteSpace(clean)) return null;
             if (requirePlaceholder && !clean.Contains(GamePlaceholder)) return null;
+            if (!AiLanguage.Matches(clean, lang))
+            {
+                wrongLanguage = true;
+                return null;
+            }
 
             return new AiText(clean, result.Model, result.InputTokens, result.OutputTokens);
         }
@@ -295,7 +324,7 @@ namespace GGHub.Infrastructure.Services
         /// ve uzun tire temizlenir (arayuzde em dash yasak), bas-son tirnaklar ve bosluklar kirpilir,
         /// uzunluk cumle sinirinda kesilir.
         /// </summary>
-        public static string Sanitize(string text, int maxChars, bool keepPlaceholder = false)
+        public static string Sanitize(string text, int maxChars, string lang, bool keepPlaceholder = false)
         {
             var s = text.Trim();
             s = UrlRegex.Replace(s, "");
@@ -303,7 +332,7 @@ namespace GGHub.Infrastructure.Services
             s = TokenRegex.Replace(s, "");
             s = s.Replace("**", "").Replace("__", "").Replace("`", "");
             s = s.Replace(" — ", ", ").Replace(" – ", ", ").Replace("—", "-").Replace("–", "-");
-            if (!keepPlaceholder) s = s.Replace(GamePlaceholder, "bu oyun");
+            if (!keepPlaceholder) s = s.Replace(GamePlaceholder, AiLanguage.Normalize(lang) == AiLanguage.En ? "this game" : "bu oyun");
 
             var lines = s.Split('\n')
                 .Select(l => l.TrimStart('#', '-', '*', ' ').Trim())

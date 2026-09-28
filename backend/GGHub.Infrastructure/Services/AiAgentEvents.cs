@@ -18,6 +18,8 @@ namespace GGHub.Infrastructure.Services
     ///   - Bot DM'ine yanit 20-60 sn; bot gonderisine yanit ya da bot etiketlenmesi 1-5 dk;
     ///     kullanicinin ILK gonderisi/incelemesi kesin, sonrakiler olasilikla.
     ///   - Gonderi basina bot yaniti ve kullanici basina gunluk bot tepkisi tavanli.
+    ///   - Kendiliginden tepki (ilk gonderi/inceleme) icin tercihen metnin dilindeki bir bot secilir;
+    ///     cevap her durumda insanin yazdigi dilde yazilir (AiAgentTaskProcessor).
     /// </summary>
     public class AiAgentEvents : IAiAgentEvents
     {
@@ -131,7 +133,8 @@ namespace GGHub.Infrastructure.Services
                 if (!isFirst && Random.Shared.NextDouble() >= LaterPostReplyChance) return;
                 if (!await UnderPostCapAsync(rootId, settings.MaxAgentRepliesPerPost)) return;
 
-                var agent = await PickAgentAsync();
+                var content = await _context.Posts.AsNoTracking().Where(p => p.Id == postId).Select(p => p.Content).FirstOrDefaultAsync();
+                var agent = await PickAgentAsync(AiLanguage.Detect(content));
                 if (agent is null) return;
 
                 var delay = isFirst
@@ -160,7 +163,8 @@ namespace GGHub.Infrastructure.Services
                 var isFirst = reviewCount <= 1;
                 if (!isFirst && Random.Shared.NextDouble() >= LaterReviewCommentChance) return;
 
-                var agent = await PickAgentAsync();
+                var content = await _context.Reviews.AsNoTracking().Where(r => r.Id == reviewId).Select(r => r.Content).FirstOrDefaultAsync();
+                var agent = await PickAgentAsync(AiLanguage.Detect(content));
                 if (agent is null) return;
 
                 await AddTaskAsync(agent.Value, AiAgentTaskType.CommentOnReview,
@@ -178,13 +182,16 @@ namespace GGHub.Infrastructure.Services
         private Task<bool> IsEnabledAgentAsync(int agentId)
             => _context.AiAgentProfiles.AnyAsync(p => p.UserId == agentId && p.IsEnabled);
 
-        private async Task<int?> PickAgentAsync()
+        /// <summary>Rastgele acik bot; dil verildiyse o dildekilerden (yoksa herhangi biri).</summary>
+        private async Task<int?> PickAgentAsync(string? lang)
         {
-            var ids = await _context.AiAgentProfiles
+            var agents = await _context.AiAgentProfiles
                 .Where(p => p.IsEnabled && !p.User.IsDeleted && !p.User.IsBanned)
-                .Select(p => p.UserId)
+                .Select(p => new { p.UserId, p.Language })
                 .ToListAsync();
-            return ids.Count == 0 ? null : ids[Random.Shared.Next(ids.Count)];
+            var sameLanguage = agents.Where(a => a.Language == lang).ToList();
+            var pool = sameLanguage.Count > 0 ? sameLanguage : agents;
+            return pool.Count == 0 ? null : pool[Random.Shared.Next(pool.Count)].UserId;
         }
 
         private async Task<bool> UnderPostCapAsync(int rootPostId, int cap)

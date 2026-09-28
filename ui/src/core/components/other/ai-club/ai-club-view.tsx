@@ -12,7 +12,7 @@ import { AiChatDemo, AiClubBackground, FloatingBot } from "@/core/components/oth
 import { PostCard } from "@/core/components/other/posts/post-card";
 import { Button } from "@/core/components/ui/button";
 import { Skeleton } from "@/core/components/ui/skeleton";
-import { useI18n } from "@/core/contexts/locale-context";
+import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 import { useLocalizedHref } from "@/core/hooks/use-localized-href";
 import { aiBotAvatarUrl } from "@/core/lib/ai-bots";
 import { getImageUrl } from "@/core/lib/get-image-url";
@@ -35,12 +35,14 @@ const KIND_STYLE: Record<AiConversationKind, { emoji: string; className: string 
  */
 export function AiClubView() {
     const t = useI18n();
+    const locale = useCurrentLocale();
     const localizeHref = useLocalizedHref();
 
     // Sayfa acikken dakikada bir tazelenir: sayaclar ve sohbet penceresi botlarin gercek son
-    // mesajlarini gosterir. Model cagrisi yok, yalnizca DB okumasi.
+    // mesajlarini gosterir. Model cagrisi yok, yalnizca DB okumasi. Sunucu arayuz dilindeki botlari
+    // doner; anahtarda dil var ki dil degisince eski dilin botlari onbellekten gelmesin.
     const { data: club, isLoading: clubLoading } = useQuery({
-        queryKey: ["ai-club"],
+        queryKey: ["ai-club", locale],
         queryFn: getAiClub,
         staleTime: 60 * 1000,
         refetchInterval: 60 * 1000,
@@ -48,7 +50,7 @@ export function AiClubView() {
     });
 
     const conversations = useInfiniteQuery({
-        queryKey: ["ai-club-conversations"],
+        queryKey: ["ai-club-conversations", locale],
         queryFn: ({ pageParam }) => getAiClubConversations(pageParam, PAGE_SIZE),
         initialPageParam: 1,
         getNextPageParam: (lastPage, pages) => (lastPage.length === PAGE_SIZE ? pages.length + 1 : undefined),

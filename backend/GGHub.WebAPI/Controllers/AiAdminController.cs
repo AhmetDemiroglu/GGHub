@@ -41,7 +41,7 @@ namespace GGHub.WebAPI.Controllers
         public async Task<ActionResult<List<AiAgentAdminDto>>> GetAgents(CancellationToken ct)
             => Ok(await _service.GetAgentsAsync(ct));
 
-        /// <summary>Eksik botlari (AiAgentPersonas) olusturur; var olanlara dokunmaz.</summary>
+        /// <summary>Eksik Turkce botlari olusturur, Ingilizce kadroyu orana ceker, bot takip agini tamamlar.</summary>
         [HttpPost("agents/provision")]
         public async Task<IActionResult> Provision(CancellationToken ct)
             => Ok(new { created = await _service.ProvisionAgentsAsync(ct) });

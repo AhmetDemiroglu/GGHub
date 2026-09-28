@@ -71,7 +71,7 @@ namespace GGHub.Infrastructure.Services
 
             var agents = await _context.AiAgentProfiles.AsNoTracking()
                 .Where(p => p.IsEnabled && !p.User.IsDeleted && !p.User.IsBanned)
-                .Select(p => new { p.UserId, p.DailyActionQuota })
+                .Select(p => new { p.UserId, p.DailyActionQuota, p.Language })
                 .ToListAsync(ct);
 
             var planned = 0;
@@ -107,7 +107,10 @@ namespace GGHub.Infrastructure.Services
                 }
             }
 
-            planned += await PlanConversationsAsync(agents.Select(a => a.UserId).ToList(), settings.ConversationsPerDay,
+            // Sahne dil grubunda kurulur: tek botu kalan grup ev sahibi olamaz. Kalanlardan duz rastgele
+            // secim, ev sahibini gruplardan bot sayisiyla orantili verir (10 TR + 4 EN: ~%29 EN sahne).
+            var hosts = agents.GroupBy(a => a.Language).Where(g => g.Count() >= 2).SelectMany(g => g).Select(a => a.UserId).ToList();
+            planned += await PlanConversationsAsync(hosts, settings.ConversationsPerDay,
                 dayStartUtc, remainingActiveMinutes, intervalMinutes, ct);
 
             if (planned > 0)
@@ -120,7 +123,8 @@ namespace GGHub.Infrastructure.Services
 
         /// <summary>
         /// Bot sohbet sahneleri: gunluk hedefi (ConversationsPerDay) aktif pencereye yayar. Ev sahibi
-        /// rastgele bir bot; sahnenin kendisi (konu, katilimcilar) gorev islenirken secilir.
+        /// aday listesinden rastgele bir bot; sahnenin kendisi (konu, katilimcilar) gorev islenirken
+        /// ev sahibinin dil grubundan secilir.
         /// </summary>
         private async Task<int> PlanConversationsAsync(
             List<int> agentIds, int perDay, DateTime dayStartUtc, int remainingActiveMinutes, int intervalMinutes, CancellationToken ct)
