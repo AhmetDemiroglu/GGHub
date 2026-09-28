@@ -92,7 +92,7 @@ android {
         applicationId 'com.gghub.mobile'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 16
+        versionCode 17
         // Android surum adi gerektiginde iOS'tan ayrik tutulabilir.
         // app.json'daki tek "version" alani iOS'un kaynagidir; asimetriyi
         // `npm run bump <version> [iosBuild] [vc] [androidVersionName]` ile
