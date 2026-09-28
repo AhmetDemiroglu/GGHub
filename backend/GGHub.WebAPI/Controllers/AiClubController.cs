@@ -31,6 +31,19 @@ namespace GGHub.WebAPI.Controllers
             [FromQuery] int page = 1, [FromQuery] int pageSize = 8, CancellationToken ct = default)
             => Ok(await _club.GetConversationsAsync(ViewerId(), page, pageSize, ct));
 
+        /// <summary>
+        /// Ana sayfa "Tanıyor olabileceğin botlar" seridi. Sinif AllowAnonymous oldugu icin
+        /// [Authorize] burada etkisiz kalir; giris kontrolu elle yapilir.
+        /// </summary>
+        [HttpGet("suggestions")]
+        public async Task<ActionResult<List<SuggestedUserDto>>> GetSuggestions(
+            [FromQuery] int limit = 8, CancellationToken ct = default)
+        {
+            var viewerId = ViewerId();
+            if (viewerId is null) return Unauthorized();
+            return Ok(await _club.GetSuggestedAgentsAsync(viewerId.Value, limit, ct));
+        }
+
         private int? ViewerId()
         {
             var claim = User.FindFirst(ClaimTypes.NameIdentifier);

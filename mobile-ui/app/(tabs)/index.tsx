@@ -16,6 +16,7 @@ import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
 import { getHomeContent } from '@/src/api/home';
 import { getSuggestedUsers } from '@/src/api/social';
+import { getSuggestedAgents } from '@/src/api/ai-club';
 import { getMyProfile } from '@/src/api/profile';
 import { displayName } from '@/src/utils/display-name';
 import { HeroSlider } from '@/src/components/home/HeroSlider';
@@ -69,6 +70,13 @@ export default function HomeScreen() {
     enabled: isAuthenticated,
   });
 
+  // Bot onerileri ayri uctan: takipleri AI rizasi istedigi icin kisilerle ayni havuzda degil.
+  const { data: agentSuggestions } = useQuery({
+    queryKey: ['suggestedAgents'],
+    queryFn: () => getSuggestedAgents(8),
+    enabled: isAuthenticated,
+  });
+
   const { data: myProfile } = useQuery({
     queryKey: ['myProfile'],
     queryFn: getMyProfile,
@@ -82,6 +90,7 @@ export default function HomeScreen() {
   const handleRefreshHome = React.useCallback(() => {
     refetch();
     queryClient.invalidateQueries({ queryKey: ['suggestedUsers'] });
+    queryClient.invalidateQueries({ queryKey: ['suggestedAgents'] });
   }, [refetch, queryClient]);
 
   if (isLoading) {
@@ -142,8 +151,8 @@ export default function HomeScreen() {
         showJoinCta={!isAuthenticated}
       />
 
-      {isAuthenticated && suggestions && suggestions.length > 0 ? (
-        <PeopleYouMayKnow suggestions={suggestions} />
+      {isAuthenticated && ((suggestions?.length ?? 0) > 0 || (agentSuggestions?.length ?? 0) > 0) ? (
+        <PeopleYouMayKnow suggestions={suggestions ?? []} agents={agentSuggestions ?? []} />
       ) : null}
     </>
   );

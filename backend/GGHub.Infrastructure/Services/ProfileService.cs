@@ -258,9 +258,11 @@ namespace GGHub.Infrastructure.Services
             }
             await _context.SaveChangesAsync();
 
-            // Takip de bir etkilesim: "istemiyorum" dedikten sonra bot takipcisi gormemeli.
+            // Takip de bir etkilesim, iki yonde de: "istemiyorum" dedikten sonra bot takipcisi
+            // gormemeli, bot takibi de riza istedigi icin kullanicinin bot takipleri de kalkar.
             await _context.Follows
-                .Where(f => f.FolloweeId == user.Id && f.Follower.IsAiAgent)
+                .Where(f => (f.FolloweeId == user.Id && f.Follower.IsAiAgent) ||
+                            (f.FollowerId == user.Id && f.Followee.IsAiAgent))
                 .ExecuteDeleteAsync();
 
             // Bekleyen bot gorevleri (DM yaniti, gonderi yaniti) iptal.

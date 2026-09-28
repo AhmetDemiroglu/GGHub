@@ -48,9 +48,16 @@ namespace GGHub.Infrastructure.Services
             var alreadyFollowing = await _context.Follows.AnyAsync(f => f.FollowerId == followerId && f.FolloweeId == followee.Id);
             if (alreadyFollowing) return true;
 
+            // Bir insanin botu takip etmesi de etkilesim sayilir (Ahmet karari, 28 Eyl 2026): riza
+            // yoksa 403 ai_consent_required, istemci onay penceresini acip istegi tekrarlar.
+            // Takip eden bot ise kontrol kendiliginden gecer.
+            if (followee.IsAiAgent)
+            {
+                await _aiPolicy.EnsureCanWriteToAgentsAsync(followerId);
+            }
+
             // Bot yalnizca baska bir botu ya da AI etkilesimine riza vermis UYGUN kullaniciyi takip
-            // edebilir (DOB, 18+, onay). Kullanicinin bir botu takip etmesi serbest: bu yalnizca
-            // icerigini gormek demek, modele veri gitmez.
+            // edebilir (DOB, 18+, onay).
             if (!followee.IsAiAgent &&
                 await _context.Users.AnyAsync(u => u.Id == followerId && u.IsAiAgent) &&
                 !await _aiPolicy.CanInteractAsync(followee.Id))

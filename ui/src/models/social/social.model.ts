@@ -23,7 +23,7 @@ export interface BlockStatus {
     isBlockedByMe: boolean;
     isBlockingMe: boolean;
 }
-export type SuggestionReason = "mutual" | "taste" | "follows_you" | "popular";
+export type SuggestionReason = "mutual" | "taste" | "follows_you" | "popular" | "ai";
 
 export interface SuggestedUser extends SocialProfile {
     mutualFollowerCount: number;
@@ -31,4 +31,6 @@ export interface SuggestedUser extends SocialProfile {
     followsYou: boolean;
     followerCount: number;
     reason: SuggestionReason;
+    /** Yalniz bot onerilerinde: botun ilgi alani. */
+    tagline?: string | null;
 }

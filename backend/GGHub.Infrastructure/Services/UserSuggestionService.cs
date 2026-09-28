@@ -149,6 +149,9 @@ namespace GGHub.Infrastructure.Services
                 .AsNoTracking()
                 .Where(u => candidateIds.Contains(u.Id) &&
                             !u.IsDeleted && !u.IsBanned &&
+                            // Botlar ayri bir seritte onerilir (AiClubService.GetSuggestedAgentsAsync):
+                            // takipleri riza istedigi icin kart ve akisi farkli.
+                            !u.IsAiAgent &&
                             // Sadece Private elenir. "Followers" gorunurluklu hesaplar BILEREK
                             // havuzda kalir: profilleri acilmasa da oneri kartindaki Takip Et
                             // butonu onlar icin dogru kesif yolu (takip et -> profil acilir).

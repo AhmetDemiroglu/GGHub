@@ -28,7 +28,10 @@ namespace GGHub.Application.Dtos
 
         public int FollowerCount { get; set; }
 
-        /// <summary>Önerinin baskın nedeni: mutual | taste | follows_you | popular.</summary>
+        /// <summary>Önerinin baskın nedeni: mutual | taste | follows_you | popular | ai.</summary>
         public string Reason { get; set; } = "popular";
+
+        /// <summary>Yalnız bot önerilerinde: botun ilgi alanı (bio'nun ilk anlamlı cümlesi).</summary>
+        public string? Tagline { get; set; }
     }
 }

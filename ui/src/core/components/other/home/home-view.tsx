@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getSuggestedUsers } from "@/api/social/social.api";
+import { getSuggestedAgents } from "@/api/ai/ai-club.api";
 import { getHomeContent } from "@/api/home/home.api";
 import { HomeContent } from "@/models/home/home.model";
 import { SuggestedUser } from "@/models/social/social.model";
@@ -22,6 +23,7 @@ export default function HomeView({ initialContent = null }: { initialContent?: H
     const { isAuthenticated, isLoading: authLoading } = useAuth();
     const [content, setContent] = useState<HomeContent | null>(initialContent);
     const [suggestions, setSuggestions] = useState<SuggestedUser[]>([]);
+    const [agentSuggestions, setAgentSuggestions] = useState<SuggestedUser[]>([]);
     // Sunucu içeriği hazır getirdiyse skeleton'a hiç düşme: hero, trending ve liderlik
     // tablosu ilk HTML'de geliyor, LCP görseli hydration'ı beklemiyor.
     const [loading, setLoading] = useState(initialContent === null);
@@ -52,13 +54,15 @@ export default function HomeView({ initialContent = null }: { initialContent?: H
                 // ona bağlı kalıyordu; istek başarısız olunca (hata sessizce yutuluyordu)
                 // o sekme kalıcı olarak boş kalıyordu. Artık her sekme kendi verisini
                 // kendisi çekiyor ve hatada yeniden deneyebiliyor.
-                const [homeData, suggestionData] = await Promise.all([
+                const [homeData, suggestionData, agentData] = await Promise.all([
                     needsContent ? getHomeContent() : Promise.resolve(content),
                     isAuthenticated ? getSuggestedUsers(12).catch(() => []) : Promise.resolve([]),
+                    isAuthenticated ? getSuggestedAgents(8).catch(() => []) : Promise.resolve([]),
                 ]);
                 if (!cancelled) {
                     setContent(homeData);
                     setSuggestions(suggestionData);
+                    setAgentSuggestions(agentData);
                 }
             } catch (error) {
                 console.error("Home data fetch error:", error);
@@ -104,8 +108,8 @@ export default function HomeView({ initialContent = null }: { initialContent?: H
                 </section>
             ) : null}
 
-            {isAuthenticated && suggestions.length > 0 ? (
-                <HomePeopleSuggestions suggestions={suggestions} />
+            {isAuthenticated && (suggestions.length > 0 || agentSuggestions.length > 0) ? (
+                <HomePeopleSuggestions suggestions={suggestions} agents={agentSuggestions} />
             ) : null}
 
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">

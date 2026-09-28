@@ -119,6 +119,90 @@ namespace GGHub.Infrastructure.Services
         }
 
         /// <summary>
+        /// Ana sayfadaki "Tanıyor olabileceğin botlar" seridi. Takip edilen ve engelli botlar elenir.
+        /// Sira: izleyicinin puanladigi ya da listeledigi oyunlari puanlamis botlar once; ortak oyun
+        /// yoksa gunluk donen bir sira (her gun ayni botlar one cikmasin). Takip riza ister; bu
+        /// yuzden kisi onerilerinden ayri dondurulur.
+        /// </summary>
+        public async Task<List<SuggestedUserDto>> GetSuggestedAgentsAsync(int viewerId, int limit, CancellationToken ct)
+        {
+            limit = Math.Clamp(limit, 1, 20);
+
+            var followingIds = _context.Follows.Where(f => f.FollowerId == viewerId).Select(f => f.FolloweeId);
+            var blockedIds = _context.UserBlocks
+                .Where(b => b.BlockerId == viewerId || b.BlockedId == viewerId)
+                .Select(b => b.BlockerId == viewerId ? b.BlockedId : b.BlockerId);
+
+            var rows = await _context.AiAgentProfiles.AsNoTracking()
+                .Where(p => p.IsEnabled && !p.User.IsDeleted && !p.User.IsBanned && p.UserId != viewerId &&
+                            !followingIds.Contains(p.UserId) && !blockedIds.Contains(p.UserId))
+                .Select(p => new
+                {
+                    p.UserId,
+                    p.PersonaKey,
+                    p.User.Username,
+                    p.User.FirstName,
+                    p.User.LastName,
+                    p.User.ProfileImageUrl,
+                    p.User.Bio,
+                    FollowerCount = p.User.Followers.Count
+                })
+                .ToListAsync(ct);
+            if (rows.Count == 0) return new List<SuggestedUserDto>();
+
+            var ids = rows.Select(r => r.UserId).ToList();
+            var myGameIds = await _context.Reviews.AsNoTracking()
+                .Where(r => r.UserId == viewerId)
+                .Select(r => r.GameId)
+                .Union(_context.UserListGames.Where(x => x.UserList.UserId == viewerId).Select(x => x.GameId))
+                .ToListAsync(ct);
+
+            var shared = myGameIds.Count == 0
+                ? new Dictionary<int, int>()
+                : await _context.Reviews.AsNoTracking()
+                    .Where(r => ids.Contains(r.UserId) && myGameIds.Contains(r.GameId))
+                    .GroupBy(r => r.UserId)
+                    .Select(g => new { UserId = g.Key, Count = g.Select(r => r.GameId).Distinct().Count() })
+                    .ToDictionaryAsync(x => x.UserId, x => x.Count, ct);
+
+            var followsYou = (await _context.Follows.AsNoTracking()
+                .Where(f => f.FolloweeId == viewerId && ids.Contains(f.FollowerId))
+                .Select(f => f.FollowerId)
+                .ToListAsync(ct)).ToHashSet();
+
+            var day = DateTime.UtcNow.DayOfYear;
+            return rows
+                .Select(r => new
+                {
+                    Row = r,
+                    Shared = shared.GetValueOrDefault(r.UserId),
+                    FollowsYou = followsYou.Contains(r.UserId),
+                    Spin = (int)(((uint)r.UserId * 2654435761u + (uint)(day * 40503 + viewerId)) % 997u)
+                })
+                .OrderByDescending(x => x.FollowsYou)
+                .ThenByDescending(x => x.Shared)
+                .ThenBy(x => x.Spin)
+                .Take(limit)
+                .Select(x => new SuggestedUserDto
+                {
+                    Id = x.Row.UserId,
+                    Username = x.Row.Username,
+                    FirstName = x.Row.FirstName,
+                    LastName = x.Row.LastName,
+                    ProfileImageUrl = x.Row.ProfileImageUrl,
+                    IsFollowing = false,
+                    IsAiAgent = true,
+                    IsProfileAccessible = true,
+                    SharedGameCount = x.Shared,
+                    FollowsYou = x.FollowsYou,
+                    FollowerCount = x.Row.FollowerCount,
+                    Reason = x.FollowsYou ? "follows_you" : x.Shared > 0 ? "taste" : "ai",
+                    Tagline = Interest(x.Row.PersonaKey, x.Row.Bio)
+                })
+                .ToList();
+        }
+
+        /// <summary>
         /// Son hareketi en yeni olan bot sohbetleri (sahneler). Ilk sayfada sahne az ise sahnesiz
         /// son bot gonderileriyle tamamlanir: motor yeni acildiginda sayfa bos kalmasin.
         /// </summary>
