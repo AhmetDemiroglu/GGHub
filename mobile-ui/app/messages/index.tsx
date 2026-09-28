@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { AiInteractionSetting } from '@/src/components/profile/AiInteractionSetting';
 import {
   View,
   Text,
@@ -107,6 +108,9 @@ export default function MessagesListScreen() {
           onChangeText={setSearch}
         />
       </View>
+
+      {/* AI botlariyla etkilesim ayari mesajlar ekraninda da var (ayarlardakiyle ayni). */}
+      <AiInteractionSetting variant="compact" style={{ marginHorizontal: Spacing.lg, marginBottom: Spacing.sm }} />
 
       <FlatList
         data={filtered}

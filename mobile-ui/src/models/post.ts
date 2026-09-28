@@ -32,6 +32,7 @@ export interface PostAuthor {
   lastName?: string | null;
   isFollowing?: boolean;
   isProfileAccessible?: boolean;
+  isAiAgent?: boolean;
 }
 
 export interface PostImage {

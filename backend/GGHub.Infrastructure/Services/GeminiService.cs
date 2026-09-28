@@ -41,22 +41,85 @@ namespace GGHub.Infrastructure.Services
 
             // Tavan servisin ICINDE, job'da degil: boylece /translate ucu dahil her cagri yolu
             // ayni deftere yazar. Job'a koysaydik uc acikta kalirdi.
-            await _budget.EnsureBudgetAvailableAsync(cancellationToken);
+            await _budget.EnsureBudgetAvailableAsync(GeminiSources.Translation, _settings.Model, cancellationToken);
 
-            var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_settings.Model}:generateContent";
-
-            var requestBody = new
+            var requestBody = new Dictionary<string, object>
             {
-                contents = new[]
+                ["contents"] = new[]
                 {
-                    new { parts = new[] { new { text = BuildPrompt(englishText) } } }
+                    new { role = "user", parts = new[] { new { text = BuildPrompt(englishText) } } }
                 },
-                generationConfig = new
+                ["generationConfig"] = new Dictionary<string, object>
                 {
-                    maxOutputTokens = _settings.MaxOutputTokens,
-                    temperature = 0.3
+                    ["maxOutputTokens"] = _settings.MaxOutputTokens,
+                    ["temperature"] = 0.3
                 }
             };
+
+            var result = await SendAsync(GeminiSources.Translation, _settings.Model, requestBody, cancellationToken);
+            if (result is null)
+            {
+                return null;
+            }
+
+            // maxOutputTokens'a carpan yanit yarim kalmis demektir; yarim ceviri bozuk veridir.
+            if (string.Equals(result.FinishReason, "MAX_TOKENS", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("[Gemini] Cikti {Max} token sinirina takildi, ceviri yarim; atlandi.", _settings.MaxOutputTokens);
+                return null;
+            }
+
+            return result.Text;
+        }
+
+        public async Task<GeminiGenerateResult> GenerateAsync(GeminiGenerateRequest request, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(request.Model) || request.Turns.Count == 0)
+            {
+                return new GeminiGenerateResult { Model = request.Model };
+            }
+
+            await _budget.EnsureBudgetAvailableAsync(request.Source, request.Model, cancellationToken);
+
+            var generationConfig = new Dictionary<string, object>
+            {
+                ["maxOutputTokens"] = request.MaxOutputTokens,
+                ["temperature"] = request.Temperature
+            };
+
+            // Bot metinleri kisa ve gunluk dilde; dusunme adimi yalnizca token ve gecikme ekliyor.
+            // "minimal" Gemma 4 ve Gemini 3 ailesinde gecerli (ai.google.dev, Eyl 2026).
+            if (request.Model.StartsWith("gemma-", StringComparison.OrdinalIgnoreCase) ||
+                request.Model.StartsWith("gemini-3", StringComparison.OrdinalIgnoreCase))
+            {
+                generationConfig["thinkingConfig"] = new { thinkingLevel = "minimal" };
+            }
+
+            var requestBody = new Dictionary<string, object>
+            {
+                ["contents"] = request.Turns
+                    .Select(t => new { role = t.Role, parts = new[] { new { text = t.Text } } })
+                    .ToArray(),
+                ["generationConfig"] = generationConfig
+            };
+
+            if (!string.IsNullOrWhiteSpace(request.SystemInstruction))
+            {
+                requestBody["systemInstruction"] = new { parts = new[] { new { text = request.SystemInstruction } } };
+            }
+
+            var result = await SendAsync(request.Source, request.Model, requestBody, cancellationToken);
+            return result ?? new GeminiGenerateResult { Model = request.Model };
+        }
+
+        /// <summary>
+        /// Ortak HTTP yolu: gonder, 429'u ayir, kullanimi deftere yaz, metni cikar.
+        /// null = ceviri/metin uretilemedi (HTTP hatasi, parse hatasi).
+        /// </summary>
+        private async Task<GeminiGenerateResult?> SendAsync(
+            string source, string model, object requestBody, CancellationToken cancellationToken)
+        {
+            var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent";
 
             using var request = new HttpRequestMessage(HttpMethod.Post, url)
             {
@@ -68,21 +131,20 @@ namespace GGHub.Infrastructure.Services
 
             using var response = await _httpClient.SendAsync(request, cancellationToken);
 
-            // 429'u digerlerinden AYIR. Google reddedilen istegi de gunluk kotaya yaziyor, yani
-            // sessizce null donup devam etmek kotayi yakmaya devam etmek demek. Ayrica cagiranin
-            // buna farkli tepki vermesi gerekiyor: bot gunu kapatmali, uc ise kullaniciya durust
-            // bir "simdi olmaz" donmeli.
+            // 429'u digerlerinden AYIR. Google reddedilen istegi de kotaya yaziyor, yani sessizce
+            // null donup devam etmek kotayi yakmaya devam etmek demek. Ayrica cagiranin buna farkli
+            // tepki vermesi gerekiyor: ceviri job'u gunu kapatmali, bot yedek modele gecmeli, uc ise
+            // kullaniciya durust bir "simdi olmaz" donmeli.
             if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
             {
-                await _budget.RecordRejectedCallAsync(cancellationToken);
+                await _budget.RecordRejectedCallAsync(source, model, cancellationToken);
 
                 var quotaBody = await response.Content.ReadAsStringAsync(cancellationToken);
 
                 // 429'un IKI ayri sebebi var ve karistirilmasi pahaliya mal oluyor:
                 //   a) hiz/kota limiti  -> bir sure sonra kendiliginden acilir
                 //   b) BAKIYE bitmesi   -> Google'a kredi yuklenene kadar ACILMAZ
-                // Eski mesaj her 429'u "ucretsiz katman gunluk 500 istek" diye yaziyordu; 3-6 Eylul
-                // 2026'da bot dort gun bosta durdu ve log yanlis yeri isaret ettigi icin sebep
+                // 3-6 Eylul 2026'da bot dort gun bosta durdu ve log yanlis yeri isaret ettigi icin sebep
                 // ancak yanit govdesi okununca anlasildi ("Your prepayment credits are depleted").
                 var isBilling = quotaBody.Contains("prepayment", StringComparison.OrdinalIgnoreCase)
                     || quotaBody.Contains("credits are depleted", StringComparison.OrdinalIgnoreCase)
@@ -91,29 +153,31 @@ namespace GGHub.Infrastructure.Services
                 if (isBilling)
                 {
                     _logger.LogWarning(
-                        "[Gemini] 429: GOOGLE HESABININ BAKIYESI BITMIS (kota degil). Ceviri, hesaba kredi "
-                        + "yuklenene kadar duracak. https://ai.studio/projects {Body}",
-                        quotaBody.Length > 300 ? quotaBody[..300] : quotaBody);
+                        "[Gemini] 429 ({Model}): GOOGLE HESABININ BAKIYESI BITMIS (kota degil). Kredi "
+                        + "yuklenene kadar ucretli cagrilar duracak. https://ai.studio/projects {Body}",
+                        model, quotaBody.Length > 300 ? quotaBody[..300] : quotaBody);
                 }
                 else
                 {
                     _logger.LogWarning(
-                        "[Gemini] 429 kota/hiz limiti. Ucretsiz katmanda limit model basina gunde 500 istek. {Body}",
-                        quotaBody.Length > 300 ? quotaBody[..300] : quotaBody);
+                        "[Gemini] 429 kota/hiz limiti ({Model}). {Body}",
+                        model, quotaBody.Length > 300 ? quotaBody[..300] : quotaBody);
                 }
 
                 throw new GeminiQuotaExceededException(
                     isBilling
                         ? "Google hesabinin bakiyesi bitmis (HTTP 429); kredi yuklenmeli."
-                        : "Gemini kotasi doldu (HTTP 429).");
+                        : $"Gemini kotasi doldu (HTTP 429, {model}).",
+                    isBilling);
             }
 
             if (!response.IsSuccessStatusCode)
             {
                 var body = await response.Content.ReadAsStringAsync(cancellationToken);
                 _logger.LogWarning(
-                    "[Gemini] HTTP {Status}: {Body}",
+                    "[Gemini] HTTP {Status} ({Model}): {Body}",
                     (int)response.StatusCode,
+                    model,
                     body.Length > 300 ? body[..300] : body);
                 return null;
             }
@@ -125,28 +189,36 @@ namespace GGHub.Infrastructure.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "[Gemini] Yanit parse edilemedi.");
+                _logger.LogWarning(ex, "[Gemini] Yanit parse edilemedi ({Model}).", model);
                 return null;
             }
 
             // Token'lar yandi: metni kullanabilsek de kullanamasak da harcamayi isle.
             // Aksi halde surekli MAX_TOKENS'a carpan bir girdi butceyi sessizce sizdirirdi.
-            if (result?.UsageMetadata is { } usage)
+            var inputTokens = result?.UsageMetadata?.PromptTokenCount ?? 0;
+            var outputTokens = (result?.UsageMetadata?.CandidatesTokenCount ?? 0)
+                             + (result?.UsageMetadata?.ThoughtsTokenCount ?? 0);
+            if (inputTokens > 0 || outputTokens > 0)
             {
-                await _budget.RecordUsageAsync(usage.PromptTokenCount, usage.CandidatesTokenCount, cancellationToken);
+                await _budget.RecordUsageAsync(source, model, inputTokens, outputTokens, cancellationToken);
             }
 
             var candidate = result?.Candidates?.FirstOrDefault();
 
-            // maxOutputTokens'a carpan yanit yarim kalmis demektir; yarim ceviri bozuk veridir.
-            if (string.Equals(candidate?.FinishReason, "MAX_TOKENS", StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.LogWarning("[Gemini] Cikti {Max} token sinirina takildi, ceviri yarim; atlandi.", _settings.MaxOutputTokens);
-                return null;
-            }
+            // Dusunme parcalari (thought = true) cevaba dahil degil.
+            var text = string.Concat(
+                candidate?.Content?.Parts?
+                    .Where(p => p.Thought != true && !string.IsNullOrEmpty(p.Text))
+                    .Select(p => p.Text) ?? Enumerable.Empty<string?>());
 
-            var text = candidate?.Content?.Parts?.FirstOrDefault()?.Text;
-            return string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+            return new GeminiGenerateResult
+            {
+                Text = string.IsNullOrWhiteSpace(text) ? null : text.Trim(),
+                FinishReason = candidate?.FinishReason,
+                Model = model,
+                InputTokens = inputTokens,
+                OutputTokens = outputTokens
+            };
         }
 
         private static string BuildPrompt(string englishText)
@@ -188,6 +260,10 @@ namespace GGHub.Infrastructure.Services
 
             [JsonPropertyName("candidatesTokenCount")]
             public int CandidatesTokenCount { get; set; }
+
+            /// <summary>Dusunme token'lari ayri raporlanir ama cikti fiyatindan faturalanir.</summary>
+            [JsonPropertyName("thoughtsTokenCount")]
+            public int ThoughtsTokenCount { get; set; }
         }
 
         private class Candidate
@@ -209,6 +285,9 @@ namespace GGHub.Infrastructure.Services
         {
             [JsonPropertyName("text")]
             public string? Text { get; set; }
+
+            [JsonPropertyName("thought")]
+            public bool? Thought { get; set; }
         }
     }
 }

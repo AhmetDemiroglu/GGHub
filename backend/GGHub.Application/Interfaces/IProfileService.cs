@@ -8,6 +8,7 @@ namespace GGHub.Application.Interfaces
         Task<ProfileDto?> GetProfileAsync(int userId);
         Task<ProfileDto?> UpdateProfileAsync(int userId, ProfileForUpdateDto profileDto);
         Task UpdateMessageSettingAsync(int userId, MessagePrivacySetting newSetting);
+        Task UpdateAiInteractionAsync(int userId, bool allow);
         Task UpdateProfileVisibilityAsync(int userId, ProfileVisibilitySetting newVisibility);
         Task UpdatePostVisibilityAsync(int userId, PostVisibilitySetting newVisibility);
         Task UpdatePostReplyPermissionAsync(int userId, PostReplyPermissionSetting newPermission);

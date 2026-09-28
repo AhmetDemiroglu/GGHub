@@ -20,7 +20,7 @@ namespace GGHub.Infrastructure.Services
         {
             var users = await _context.Users
                 .AsNoTracking()
-                .Where(u => !u.IsDeleted)
+                .Where(u => !u.IsDeleted && !u.IsAiAgent)
                 .OrderByDescending(u => u.Followers.Count())
                 .Take(count)
                 .Select(u => new TopUserDto

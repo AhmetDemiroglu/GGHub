@@ -19,8 +19,12 @@ namespace GGHub.Infrastructure.Services
         private readonly IUserSuggestionService _userSuggestionService;
         private readonly IUserDtoEnricher _userDtoEnricher;
         private readonly INotificationPreferenceService _notificationPreferenceService;
-        public SocialService(GGHubDbContext context, INotificationService notificationService, IGamificationService gamificationService, IHubNotificationService hubNotificationService, IPushNotificationService pushNotificationService, IUserSuggestionService userSuggestionService, IUserDtoEnricher userDtoEnricher, INotificationPreferenceService notificationPreferenceService)
+        private readonly IAiInteractionPolicy _aiPolicy;
+        private readonly IAiAgentEvents _aiEvents;
+        public SocialService(GGHubDbContext context, INotificationService notificationService, IGamificationService gamificationService, IHubNotificationService hubNotificationService, IPushNotificationService pushNotificationService, IUserSuggestionService userSuggestionService, IUserDtoEnricher userDtoEnricher, INotificationPreferenceService notificationPreferenceService, IAiInteractionPolicy aiPolicy, IAiAgentEvents aiEvents)
         {
+            _aiPolicy = aiPolicy;
+            _aiEvents = aiEvents;
             _context = context;
             _notificationService = notificationService;
             _gamificationService = gamificationService;
@@ -43,6 +47,14 @@ namespace GGHub.Infrastructure.Services
 
             var alreadyFollowing = await _context.Follows.AnyAsync(f => f.FollowerId == followerId && f.FolloweeId == followee.Id);
             if (alreadyFollowing) return true;
+
+            // Bot yalnizca AI etkilesimine UYGUN kullaniciyi takip edebilir (DOB, 18+, ayar acik).
+            // Kullanicinin bir botu takip etmesi serbest: bu yalnizca icerigini gormek demek.
+            if (await _context.Users.AnyAsync(u => u.Id == followerId && u.IsAiAgent) &&
+                !await _aiPolicy.CanInteractAsync(followee.Id))
+            {
+                return false;
+            }
 
             var follow = new Follow
             {
@@ -164,6 +176,7 @@ namespace GGHub.Infrastructure.Services
                 ProfileImageUrl = follow.Follower.ProfileImageUrl,
                 FirstName = follow.Follower.FirstName,
                 LastName = follow.Follower.LastName,
+                IsAiAgent = follow.Follower.IsAiAgent,
                 IsFollowing = followingSet.Contains(follow.Follower.Id),
                 IsProfileAccessible = ProfileAccess.CanView(
                     follow.Follower.ProfileVisibility,
@@ -203,6 +216,7 @@ namespace GGHub.Infrastructure.Services
                 ProfileImageUrl = follow.Followee.ProfileImageUrl,
                 FirstName = follow.Followee.FirstName,
                 LastName = follow.Followee.LastName,
+                IsAiAgent = follow.Followee.IsAiAgent,
                 IsFollowing = followingSet.Contains(follow.Followee.Id),
                 IsProfileAccessible = ProfileAccess.CanView(
                     follow.Followee.ProfileVisibility,
@@ -233,6 +247,27 @@ namespace GGHub.Infrastructure.Services
 
             if (recipient.MessageSetting == Core.Enums.MessagePrivacySetting.None)
                 throw new InvalidOperationException(AppText.Get("messages.userNotAcceptingMessages"));
+
+            // AI botlari: botla yazismanin iki yonu de AiInteractionPolicy'ye tabi (DOB, 18+, ayar).
+            // Bot bota yazmaz. Kural sunucuda; istemcideki pasif buton yalnizca kolaylik.
+            var senderIsAgent = await _context.Users.AnyAsync(u => u.Id == senderId && u.IsAiAgent);
+            if (senderIsAgent && recipient.IsAiAgent)
+                throw new InvalidOperationException(AppText.Get("messages.aiRecipientUnavailable"));
+            if (senderIsAgent && !await _aiPolicy.CanInteractAsync(recipient.Id))
+                throw new InvalidOperationException(AppText.Get("messages.aiRecipientUnavailable"));
+            if (recipient.IsAiAgent)
+            {
+                var reason = await _aiPolicy.GetBlockReasonAsync(senderId);
+                if (reason is not null)
+                {
+                    throw new InvalidOperationException(AppText.Get(reason switch
+                    {
+                        AiInteractionBlockReasons.NeedsBirthDate => "messages.aiNeedsBirthDate",
+                        AiInteractionBlockReasons.Underage => "messages.aiUnderage",
+                        _ => "messages.aiOptedOut"
+                    }));
+                }
+            }
 
             if (recipient.MessageSetting == Core.Enums.MessagePrivacySetting.Following)
             {
@@ -301,6 +336,12 @@ namespace GGHub.Infrastructure.Services
             await _userDtoEnricher.EnrichAsync(senderConversation.Partner, senderId);
             await _hubNotificationService.UpdateConversationAsync(senderId, senderConversation);
 
+            // Alici botsa motor icin yanit gorevi (best-effort, istisna firlatmaz).
+            if (recipient.IsAiAgent)
+            {
+                await _aiEvents.OnDirectMessageAsync(senderId, recipient.Id, message.Id);
+            }
+
             var recipientConversation = new ConversationDto
             {
                 PartnerId = senderId,
@@ -323,7 +364,8 @@ namespace GGHub.Infrastructure.Services
             Username = user.Username,
             ProfileImageUrl = user.ProfileImageUrl,
             FirstName = user.FirstName,
-            LastName = user.LastName
+            LastName = user.LastName,
+            IsAiAgent = user.IsAiAgent
         };
 
         public async Task<IEnumerable<ConversationDto>> GetConversationsAsync(int userId)

@@ -6,6 +6,8 @@ export interface SocialProfile {
     lastName: string | null;
     isFollowing: boolean;
     isProfileAccessible: boolean;
+    /** AI bot hesabi: kullanici adinin yanina "AI" rozeti basilir. */
+    isAiAgent?: boolean;
 }
 
 export interface BlockedUser {

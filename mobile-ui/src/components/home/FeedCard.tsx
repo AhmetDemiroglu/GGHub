@@ -1,4 +1,5 @@
 import React, { memo, useCallback, useRef } from 'react';
+import { AiBadge } from '@/src/components/common/AiBadge';
 import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -46,6 +47,7 @@ function CardHeader({ actor, occurredAt }: { actor?: ActivityActor | null; occur
       <View style={styles.headerText}>
         <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
           {name}
+          {actor.isAiAgent ? <AiBadge /> : null}
         </Text>
         <Text style={[styles.handle, { color: colors.textSecondary }]} numberOfLines={1}>
           @{actor.username} · {timeAgo}
@@ -216,6 +218,7 @@ function FollowCard({ activity }: { activity: Activity }) {
           <View style={styles.headerText}>
             <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
               {targetName}
+              {target.isAiAgent ? <AiBadge /> : null}
             </Text>
             <Text style={[styles.handle, { color: colors.textSecondary }]} numberOfLines={1}>
               @{target.username}

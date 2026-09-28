@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { AiBadge } from "@/core/components/base/ai-badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
 import { useLocalizedHref } from "@/core/hooks/use-localized-href";
 import { displayName, type DisplayNameUser } from "@/core/lib/display-name";
@@ -20,6 +21,8 @@ export interface UserLinkUser extends DisplayNameUser {
      * undefined = bilgi tasinmiyor demektir; bu durumda link acilir.
      */
     isProfileAccessible?: boolean;
+    /** AI bot hesabi: "name" ve "inline" varyantlarinda adin yanina AI rozeti basilir. */
+    isAiAgent?: boolean;
 }
 
 type UserLinkVariant = "avatar" | "name" | "inline";
@@ -42,8 +45,13 @@ interface UserLinkProps {
 }
 
 /** Kullanicinin gorunen adini basar. Tek satirlik ama displayName() tek kaynak kalsin diye burada. */
-export function UserDisplayName({ user, className }: { user: DisplayNameUser; className?: string }) {
-    return <span className={className}>{displayName(user)}</span>;
+export function UserDisplayName({ user, className }: { user: DisplayNameUser & { isAiAgent?: boolean }; className?: string }) {
+    return (
+        <span className={className}>
+            {displayName(user)}
+            {user.isAiAgent && <AiBadge className="ml-1" />}
+        </span>
+    );
 }
 
 export function UserLink({
@@ -71,10 +79,20 @@ export function UserLink({
                     </Avatar>
                 );
             case "inline":
-                return <>@{user.username}</>;
+                return (
+                    <>
+                        @{user.username}
+                        {user.isAiAgent && <AiBadge className="ml-1" />}
+                    </>
+                );
             case "name":
             default:
-                return <>{name}</>;
+                return (
+                    <>
+                        {name}
+                        {user.isAiAgent && <AiBadge className="ml-1" />}
+                    </>
+                );
         }
     };
 

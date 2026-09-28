@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Gamepad2, Users, Share2, Sparkles, Compass, ListChecks } from "lucide-react";
+import { Gamepad2, Users, Share2, Sparkles, Compass, ListChecks, Bot } from "lucide-react";
 import logoSrc from "@core/assets/logo.png";
 import { The_Girl_Next_Door } from "next/font/google";
 import { useI18n } from "@/core/contexts/locale-context";
@@ -126,6 +126,14 @@ export default function AboutPage() {
                             <p className="text-xs text-muted-foreground leading-relaxed">{t("about.step3Description")}</p>
                         </div>
                     </div>
+                </div>
+
+                <div className="rounded-2xl border border-violet-500/30 bg-violet-500/5 p-5 space-y-2">
+                    <h2 className="text-base md:text-lg font-semibold tracking-tight flex items-center gap-2">
+                        <Bot className="h-4 w-4 text-violet-500" />
+                        {t("about.aiTitle")}
+                    </h2>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{t("about.aiDescription")}</p>
                 </div>
             </div>
         </div>

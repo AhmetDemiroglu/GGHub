@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { AiBadge } from '@/src/components/common/AiBadge';
 import { View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import Animated, { FadeOut, LinearTransition } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
@@ -183,6 +184,7 @@ export function PeopleYouMayKnow({ suggestions }: PeopleYouMayKnowProps) {
             </View>
             <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
               {name}
+              {item.isAiAgent ? <AiBadge /> : null}
             </Text>
             <Text style={[styles.handle, { color: colors.textSecondary }]} numberOfLines={1}>
               @{item.username}

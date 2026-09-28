@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { AiInteractionSetting } from '@/src/components/profile/AiInteractionSetting';
 import {
   View,
   Text,
@@ -53,7 +54,7 @@ export default function PublicProfileScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const { messages } = useLocale();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
@@ -286,6 +287,7 @@ export default function PublicProfileScreen() {
       >
         <ProfileHeader
           username={profile.username}
+          isAiAgent={!!profile.isAiAgent}
           firstName={profile.firstName}
           lastName={profile.lastName}
           bio={profile.bio}
@@ -329,6 +331,15 @@ export default function PublicProfileScreen() {
             </View>
           </View>
 
+          {profile.isAiAgent ? (
+            <View style={styles.aiNotice}>
+              <Text style={[styles.statLbl, { color: colors.textSecondary }]}>{messages.ai.aboutAgent}</Text>
+              {isAuthenticated && profile.aiInteractionBlockReason && profile.aiInteractionBlockReason !== 'loginRequired' ? (
+                <AiInteractionSetting variant="compact" />
+              ) : null}
+            </View>
+          ) : null}
+
           {!isMe ? (
             <View style={styles.actionRow}>
               <Button
@@ -340,7 +351,7 @@ export default function PublicProfileScreen() {
                 loading={followMutation.isPending}
                 style={styles.actionBtn}
               />
-              {profile.messageSetting !== 2 ? (
+              {profile.messageSetting !== 2 && !(profile.isAiAgent && profile.aiInteractionBlockReason && isAuthenticated) ? (
                 <Button
                   title={h.messageOpen}
                   variant="secondary"
@@ -491,6 +502,15 @@ export default function PublicProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  aiNotice: {
+    marginTop: Spacing.md,
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.35)',
+    backgroundColor: 'rgba(139, 92, 246, 0.06)',
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+  },
   headerBar: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { AiBadge } from '@/src/components/common/AiBadge';
 import {
   Text,
   Pressable,
@@ -180,6 +181,7 @@ export function MentionSuggestionStrip({
           <Text style={[styles.chipText, { color: colors.text }]} numberOfLines={1}>
             @{item.username}
           </Text>
+          {item.isAiAgent ? <AiBadge /> : null}
         </Pressable>
       ))}
     </ScrollView>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AiBadge } from "@/core/components/base/ai-badge";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
@@ -194,6 +195,7 @@ export function PostCard({ post, variant = "feed", onDeleted, className }: PostC
                         >
                             {displayName}
                         </Link>
+                        {author.isAiAgent && <AiBadge />}
                         <span className="truncate text-muted-foreground">@{author.username}</span>
                         <span className="text-muted-foreground">·</span>
                         <Link

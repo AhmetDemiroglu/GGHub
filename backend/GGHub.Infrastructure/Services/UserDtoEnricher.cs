@@ -28,11 +28,14 @@ namespace GGHub.Infrastructure.Services
 
             // Iki batch sorgu: gorunurluk ayarlari + current user'in bu kume icinde takip ettikleri.
             // IsFollowing ve IsProfileAccessible'in ikisi de bu tek takip kumesinden turer.
-            var visibilities = await _context.Users
+            // Ayni sorgu AI bot bayragini da getiriyor: UserDto kullanici adini tasiyan her yuzeye
+            // (gonderi, inceleme, yorum, mesaj, bildirim, arama) bu zenginlestiriciden geciyor,
+            // yani rozet icin ayri bir sorgu ya da ayri bir DTO alani dolumu gerekmiyor.
+            var facts = await _context.Users
                 .AsNoTracking()
                 .Where(u => ids.Contains(u.Id))
-                .Select(u => new { u.Id, u.ProfileVisibility })
-                .ToDictionaryAsync(x => x.Id, x => x.ProfileVisibility);
+                .Select(u => new { u.Id, u.ProfileVisibility, u.IsAiAgent })
+                .ToDictionaryAsync(x => x.Id);
 
             var followingIds = currentUserId.HasValue
                 ? (await _context.Follows
@@ -48,8 +51,9 @@ namespace GGHub.Infrastructure.Services
                 user.IsFollowing = follows;
 
                 // Kullanici bulunamadiysa (silinmis) erisilebilir sayma.
-                user.IsProfileAccessible = visibilities.TryGetValue(user.Id, out var visibility)
-                    && ProfileAccess.CanView(visibility, user.Id, currentUserId, follows);
+                user.IsProfileAccessible = facts.TryGetValue(user.Id, out var fact)
+                    && ProfileAccess.CanView(fact.ProfileVisibility, user.Id, currentUserId, follows);
+                user.IsAiAgent = fact?.IsAiAgent ?? false;
             }
         }
     }

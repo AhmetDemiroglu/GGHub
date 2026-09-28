@@ -187,6 +187,8 @@ namespace GGHub.Infrastructure.Services
                 return await _context.UserStats
                     .AsNoTracking()
                     .Include(s => s.User)
+                    // AI botlari liderlik tablosuna girmez: XP yarisi insanlar arasinda.
+                    .Where(s => !s.User.IsAiAgent)
                     .OrderByDescending(s => s.CurrentXp)
                     .Take(10)
                     .Select(s => new LeaderboardDto
@@ -210,8 +212,9 @@ namespace GGHub.Infrastructure.Services
                 return new SiteStatsDto
                 {
                     TotalGames = await _context.Games.CountAsync(),
-                    TotalUsers = await _context.Users.CountAsync(),
-                    TotalReviews = await _context.Reviews.CountAsync(),
+                    // AI botlari ve silinmis hesaplar herkese acik kullanici sayisina girmez.
+                    TotalUsers = await _context.Users.CountAsync(u => !u.IsAiAgent && !u.IsDeleted),
+                    TotalReviews = await _context.Reviews.CountAsync(r => !r.User.IsAiAgent),
                     TotalLists = await _context.UserLists.CountAsync()
                 };
             });

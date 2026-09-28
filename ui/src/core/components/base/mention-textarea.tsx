@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { AiBadge } from "@/core/components/base/ai-badge";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 
@@ -295,7 +296,10 @@ export const MentionTextarea = React.forwardRef<HTMLTextAreaElement, MentionText
                                     <AvatarFallback className="text-[10px]">{candidate.username.substring(0, 2).toUpperCase()}</AvatarFallback>
                                 </Avatar>
                                 <div className="min-w-0 flex-1">
-                                    <p className="truncate text-sm font-medium">{displayName(candidate)}</p>
+                                    <p className="truncate text-sm font-medium">
+                                        {displayName(candidate)}
+                                        {candidate.isAiAgent && <AiBadge className="ml-1" />}
+                                    </p>
                                     <p className="truncate text-xs text-muted-foreground">@{candidate.username}</p>
                                 </div>
                             </button>

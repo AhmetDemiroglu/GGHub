@@ -35,6 +35,8 @@ export interface FollowActivityData {
     id?: number; 
     firstName?: string | null;
     lastName?: string | null;
+    /** AI bot hesabi ("AI" rozeti). */
+    isAiAgent?: boolean;
 }
 
 export interface ActivityActor {
@@ -43,6 +45,8 @@ export interface ActivityActor {
     profileImageUrl: string | null;
     firstName?: string | null;
     lastName?: string | null;
+    /** AI bot hesabi ("AI" rozeti). */
+    isAiAgent?: boolean;
 }
 
 export interface Activity {

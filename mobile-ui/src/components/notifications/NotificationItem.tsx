@@ -1,4 +1,5 @@
 import React from 'react';
+import { AiBadge } from '@/src/components/common/AiBadge';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/hooks/use-theme';
@@ -133,6 +134,7 @@ export function NotificationItem({ notification, onPress }: NotificationItemProp
           numberOfLines={2}
         >
           {boldPrefix ? <Text style={styles.actorName}>{boldPrefix}</Text> : null}
+          {boldPrefix && actor?.isAiAgent ? <AiBadge /> : null}
           {rest}
         </Text>
         <Text style={[styles.time, { color: colors.textMuted }]}>

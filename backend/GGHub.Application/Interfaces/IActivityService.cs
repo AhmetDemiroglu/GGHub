@@ -13,6 +13,6 @@ namespace GGHub.Application.Interfaces
         Task<IEnumerable<ActivityDto>> GetPersonalizedFeedAsync(int currentUserId, int limit = 20, DateTime? cursor = null, ActivityType? type = null);
 
         /// <summary>Yeni istemci yolu (?tab=): Gonderiler / Incelemeler / Kesfet.</summary>
-        Task<IEnumerable<ActivityDto>> GetFeedAsync(int currentUserId, FeedTab tab, int limit = 20, DateTime? cursor = null);
+        Task<IEnumerable<ActivityDto>> GetFeedAsync(int currentUserId, FeedTab tab, int limit = 20, DateTime? cursor = null, bool humansOnly = false);
     }
 }

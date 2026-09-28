@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Avatar } from '@/src/components/common/Avatar';
+import { AiBadge } from '@/src/components/common/AiBadge';
 import { displayName } from '@/src/utils/display-name';
 
 /**
@@ -28,6 +29,8 @@ export interface LinkableUser {
    * yalnizca acikca false ise kapatilir.
    */
   isProfileAccessible?: boolean;
+  /** AI bot hesabi: ad varyantlarinda yanina "AI" rozeti basilir. */
+  isAiAgent?: boolean;
 }
 
 /**
@@ -152,6 +155,7 @@ export function UserLinkName({
     <>
       <Text style={style} numberOfLines={numberOfLines}>
         {label}
+        {user.isAiAgent ? <AiBadge /> : null}
       </Text>
       {children}
     </>

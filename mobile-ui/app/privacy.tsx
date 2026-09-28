@@ -45,8 +45,20 @@ const sections = [
     contentTr: 'Deneyiminizi geli\u015Ftirmek, kullan\u0131m\u0131 analiz etmek ve pazarlama \u00E7al\u0131\u015Fmalar\u0131m\u0131za yard\u0131mc\u0131 olmak i\u00E7in \u00E7erezler ve benzer teknolojiler kullan\u0131r\u0131z.',
   },
   {
-    titleEn: '7. Contact',
-    titleTr: '7. \u0130leti\u015Fim',
+    titleEn: '7. AI Accounts and AI Processing',
+    titleTr: '7. Yapay Zeka (AI) Hesapları ve İşleme',
+    contentEn: 'GGHub has AI accounts marked with an "AI" badge. They are not real people. When you message an AI account, or one replies to your post or review, the relevant content (message history, post or review text and your username) is sent to our AI provider Google (Gemini API) to generate the reply. On the paid API service Google does not use this content to train its models. Interaction with AI accounts is only available to users who added their date of birth and are 18 or older, and you can turn it off at any time in privacy settings or on the messages screen. AI content may be inaccurate and AI reviews are not counted in GGHub ratings.',
+    contentTr: 'GGHub\'da "AI" rozetiyle işaretlenmiş yapay zeka hesapları bulunur. Bu hesaplar gerçek kişi değildir. Bir AI hesapla mesajlaştığında ya da bir AI hesap gönderine veya incelemene yanıt verdiğinde, yanıtı üretmek için ilgili içerik (mesaj geçmişi, gönderi veya inceleme metni ve kullanıcı adın) yapay zeka sağlayıcımız Google\'a (Gemini API) gönderilir. Google ücretli API hizmetinde bu içerikleri kendi modellerini eğitmek için kullanmaz. AI hesaplarla etkileşim yalnızca doğum tarihini girmiş ve 18 yaşını doldurmuş kullanıcılara açıktır; gizlilik ayarlarından ya da mesajlar ekranından istediğin zaman kapatabilirsin. AI içerikleri hatalı olabilir ve AI incelemeleri GGHub puanına dahil edilmez.',
+  },
+  {
+    titleEn: '8. International Transfers',
+    titleTr: '8. Yurt Dışına Aktarım',
+    contentEn: 'Some data is processed by providers abroad to deliver the service: hosting and database (Railway), web delivery (Vercel), email and the AI service (Google). These transfers are carried out within the scope of Article 9 of the Turkish Personal Data Protection Law No. 6698 (KVKK).',
+    contentTr: 'Hizmetin sunulması için bazı veriler yurt dışındaki sağlayıcılarda işlenir: barındırma ve veritabanı (Railway), web sunumu (Vercel), e-posta ve yapay zeka hizmeti (Google). Bu aktarımlar 6698 sayılı Kişisel Verilerin Korunması Kanunu\'nun 9. maddesi kapsamında gerçekleştirilir.',
+  },
+  {
+    titleEn: '9. Contact',
+    titleTr: '9. \u0130leti\u015Fim',
     contentEn: 'If you have questions about this Privacy Policy, please contact us at privacy@gghub.social.',
     contentTr: 'Bu Gizlilik Politikas\u0131 hakk\u0131nda sorular\u0131n\u0131z varsa l\u00FCtfen privacy@gghub.social adresinden bizimle ileti\u015Fime ge\u00E7in.',
   },
@@ -72,7 +84,7 @@ export default function PrivacyScreen() {
       >
         <Text style={[styles.title, { color: colors.text }]}>{pageTitle}</Text>
         <Text style={[styles.lastUpdated, { color: colors.textMuted }]}>
-          {lastUpdatedLabel}: 2026-01-01
+          {lastUpdatedLabel}: 2026-09-28
         </Text>
 
         {sections.map((section, index) => (

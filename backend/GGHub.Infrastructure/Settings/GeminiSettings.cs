@@ -5,22 +5,10 @@ namespace GGHub.Infrastructure.Settings
         public string ApiKey { get; set; } = string.Empty;
 
         /// <summary>
-        /// Fiyat listesindeki en ucuz model. Degistirirsen asagidaki USD/M degerlerini de guncelle.
+        /// Ceviri modeli. Yeni projelere acik en ucuz UCRETLI model. Degistirirsen fiyatini
+        /// <see cref="Models"/>'a da ekle; fiyati bilinmeyen model en pahali bilinen fiyattan sayilir.
         /// </summary>
         public string Model { get; set; } = "gemini-3.1-flash-lite";
-
-        /// <summary>
-        /// Aylik sert tavan. Dolunca cagri yapilmaz, bir sonraki ay kendiliginden acilir.
-        /// 10.00 USD, 16 Tem 2026 kuruyla (1 USD = 47.1 TL) ~471 TL'ye denk gelir; hedef 500 TL/ay
-        /// oldugu icin ay ici kur kaymasina pay birakildi. Kur ciddi oynarsa bu deger elle guncellenir.
-        /// </summary>
-        public decimal MonthlyBudgetUsd { get; set; } = 10.00m;
-
-        /// <summary>gemini-3.1-flash-lite girdi fiyati (1M token basina USD).</summary>
-        public decimal InputUsdPerMillion { get; set; } = 0.25m;
-
-        /// <summary>gemini-3.1-flash-lite cikti fiyati (1M token basina USD).</summary>
-        public decimal OutputUsdPerMillion { get; set; } = 1.50m;
 
         /// <summary>
         /// Olculen ortalama ceviri ~480 cikti token'i (aciklamalar ortalama 1193 karakter).
@@ -30,24 +18,26 @@ namespace GGHub.Infrastructure.Settings
         public int MaxOutputTokens { get; set; } = 2048;
 
         /// <summary>
-        /// Yalnizca GOSTERIM icin ("gghub-bot status" harcamayi TL olarak da yazsin diye).
-        /// Google USD uzerinden faturaliyor; tavan da USD, bu deger hesaba girmiyor.
-        /// 16 Tem 2026 kuru. Kur ciddi oynarsa guncelle, yanlis olmasi bir seyi bozmaz.
+        /// Model basina fiyat (1M token basina USD). Ucretsiz modeller 0/0: harcamaya islemez ama
+        /// token'lari sayilir. Kaynak: ai.google.dev/gemini-api/docs/pricing (Eyl 2026).
+        ///
+        /// Aylik TL tavanlari ve kur BURADA DEGIL: admin panelinden duzenlenen AiSettings satirinda.
+        /// Eski "MonthlyBudgetUsd", "DailyCallCap", "UsdToTryRate" anahtarlari artik okunmuyor.
         /// </summary>
-        public decimal UsdToTryRate { get; set; } = 47.1m;
+        public Dictionary<string, GeminiModelPrice> Models { get; set; } = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["gemini-3.1-flash-lite"] = new() { InputUsdPerMillion = 0.25m, OutputUsdPerMillion = 1.50m },
+            ["gemini-3.5-flash-lite"] = new() { InputUsdPerMillion = 0.30m, OutputUsdPerMillion = 2.50m },
+            ["gemma-4-31b-it"] = new() { InputUsdPerMillion = 0m, OutputUsdPerMillion = 0m },
+            ["gemma-4-26b-a4b-it"] = new() { InputUsdPerMillion = 0m, OutputUsdPerMillion = 0m },
+        };
+    }
 
-        /// <summary>
-        /// Botun GUNLUK cagri tavani. 0 = sinirsiz.
-        ///
-        /// Neden var: anahtar faturalandirma acik DEGILSE Gemini ucretsiz katmanda calisir ve
-        /// gemini-3.1-flash-lite icin limit model basina GUNDE 500 istek. Bot 4 sn araliklarla
-        /// ~1 saatte bunu bitiriyor; sonrasinda Google her cagriya 429 donuyor ve CANLI SITEDEKI
-        /// "Turkceye cevir" butonu da gunun geri kalaninda calismiyor. 400, siteye 100 istek
-        /// pay birakir.
-        ///
-        /// Faturalandirma acilirsa bu degeri 0 yap: odemeli katmanda limit dakikada binlerce
-        /// istektir ve gercek fren MonthlyBudgetUsd olur.
-        /// </summary>
-        public int DailyCallCap { get; set; } = 400;
+    public class GeminiModelPrice
+    {
+        public decimal InputUsdPerMillion { get; set; }
+        public decimal OutputUsdPerMillion { get; set; }
+
+        public bool IsFree => InputUsdPerMillion == 0m && OutputUsdPerMillion == 0m;
     }
 }

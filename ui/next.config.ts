@@ -35,6 +35,12 @@ const nextConfig: NextConfig = {
                 hostname: "i.pravatar.cc",
             },
             {
+                // AI bot avatarlari (illustrasyon, gercek fotograf DEGIL). AiAgentPersonas.AvatarUrl.
+                protocol: "https",
+                hostname: "api.dicebear.com",
+                pathname: "/9.x/**",
+            },
+            {
                 // R2 (profil fotoğrafı + kapak görseli). Buraya eklenmediği sürece bu görseller
                 // next/image'dan geçemiyordu; ham <img> ile tam çözünürlükte iniyorlardı.
                 protocol: "https",

@@ -17,8 +17,10 @@ namespace GGHub.Infrastructure.Services
         private readonly IGamificationService _gamificationService;
         private readonly IUserDtoEnricher _userDtoEnricher;
         private readonly IMentionService _mentionService;
-        public ReviewService(GGHubDbContext context, IGameService gameService, INotificationService notificationService, IGamificationService gamificationService, IUserDtoEnricher userDtoEnricher, IMentionService mentionService)
+        private readonly IAiAgentEvents _aiEvents;
+        public ReviewService(GGHubDbContext context, IGameService gameService, INotificationService notificationService, IGamificationService gamificationService, IUserDtoEnricher userDtoEnricher, IMentionService mentionService, IAiAgentEvents aiEvents)
         {
+            _aiEvents = aiEvents;
             _context = context;
             _gameService = gameService;
             _notificationService = notificationService;
@@ -62,6 +64,9 @@ namespace GGHub.Infrastructure.Services
                 review.Content,
                 "social.mentionInReviewNotification",
                 $"/reviews/{review.Id}");
+
+            // Bot yorumu (ilk inceleme kesin, sonrakiler olasilikla). Best-effort.
+            await _aiEvents.OnReviewCreatedAsync(review.Id, userId);
 
             return review;
         }
@@ -200,7 +205,7 @@ namespace GGHub.Infrastructure.Services
         public async Task<(double Average, int Count)> GetGameRatingSummaryAsync(int gameId)
         {
             var ratings = await _context.Reviews
-                .Where(r => r.GameId == gameId)
+                .Where(r => r.GameId == gameId && !r.User.IsAiAgent)
                 .Select(r => r.Rating)
                 .ToListAsync();
 
@@ -399,10 +404,15 @@ namespace GGHub.Infrastructure.Services
             return reviews;
         }
 
+        /// <summary>
+        /// GGHub puani yalnizca INSAN incelemelerinden. AI bot incelemeleri listede gorunur
+        /// (AI rozetiyle) ama ortalamaya ve sayiya girmez: botlar bir oyunun puanini sisirip
+        /// ya da dusurup gercek kullanici gorusunun yerine gecmemeli.
+        /// </summary>
         private async Task UpdateGameRatingStatisticsAsync(int gameId)
         {
             var stats = await _context.Reviews
-                .Where(r => r.GameId == gameId)
+                .Where(r => r.GameId == gameId && !r.User.IsAiAgent)
                 .GroupBy(r => r.GameId)
                 .Select(g => new
                 {

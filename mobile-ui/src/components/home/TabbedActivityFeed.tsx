@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Pressable,
   StyleSheet,
+  Switch,
   useWindowDimensions,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -108,6 +109,10 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
   const tt = messages.home.activityTabs;
 
   const [activeTab, setActiveTab] = useState<TabKey>('discover');
+  // "Sadece insanlar": AI bot kartlari sunucuda suzulur.
+  const [humansOnly, setHumansOnly] = useState(false);
+  const humansOnlyRef = useRef(humansOnly);
+  humansOnlyRef.current = humansOnly;
   const [feeds, setFeeds] = useState<Record<TabKey, TabState>>({
     discover: emptyTab(),
     posts: emptyTab(),
@@ -224,7 +229,7 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
             (min, a) => (min === undefined || a.occurredAt < min ? a.occurredAt : min),
             undefined,
           );
-      const page = await getFeedByTab(tab, PAGE_SIZE, cursor);
+      const page = await getFeedByTab(tab, PAGE_SIZE, cursor, humansOnlyRef.current);
 
       setFeeds((prev) => {
         const base = reset ? [] : prev[tab].items;
@@ -264,6 +269,20 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
       cancelled = true;
     };
   }, [loadTab]);
+
+  // Filtre degisince tum sekmeler gecersiz: bosalt, aktif sekmeyi bastan cek. Diger sekmeler
+  // girildiginde asagidaki emniyet efektiyle kendi ilk yuklemelerini yapar.
+  const toggleHumansOnly = useCallback(
+    (next: boolean) => {
+      humansOnlyRef.current = next;
+      setHumansOnly(next);
+      const reset = { discover: emptyTab(), posts: emptyTab(), reviews: emptyTab() };
+      feedsRef.current = reset;
+      setFeeds(reset);
+      void loadTab(activeTab, true);
+    },
+    [activeTab, loadTab],
+  );
 
   // Emniyet: prefetch başarısız olduysa sekmeye girildiğinde yükle.
   useEffect(() => {
@@ -619,6 +638,18 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
         <SegmentedTabs<TabKey> tabs={tabItems} activeKey={activeTab} onChange={setActiveTab} progress={pillProgress} />
       </View>
 
+      {isAuthenticated ? (
+        <View style={styles.humansOnlyRow}>
+          <Text style={[styles.humansOnlyText, { color: colors.textSecondary }]}>{messages.ai.humansOnly}</Text>
+          <Switch
+            value={humansOnly}
+            onValueChange={toggleHumansOnly}
+            trackColor={{ true: colors.primary, false: colors.border }}
+            accessibilityLabel={messages.ai.humansOnly}
+          />
+        </View>
+      ) : null}
+
       {/*
           Akisin en ustundeki gonderi girisi (X deseni). Tam composer DEGIL,
           yalnizca giris: dokununca /posts/new acilir. Boylece akis hafif kalir
@@ -785,6 +816,15 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
 }
 
 const styles = StyleSheet.create({
+  humansOnlyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 8,
+    paddingHorizontal: 16,
+    marginTop: 6,
+  },
+  humansOnlyText: { fontSize: 12 },
   root: {
     flex: 1,
   },

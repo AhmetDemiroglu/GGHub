@@ -14,6 +14,7 @@ import { ScreenHeader } from '@/src/components/shell';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
 import { Card } from '@/src/components/common/Card';
 import { PrivacySettings } from '@/src/components/profile/PrivacySettings';
+import { AiInteractionSetting } from '@/src/components/profile/AiInteractionSetting';
 import { ChangePasswordForm } from '@/src/components/profile/ChangePasswordForm';
 import { DangerZone } from '@/src/components/profile/DangerZone';
 import { BlockedUsersDialog } from '@/src/components/profile/BlockedUsersDialog';
@@ -230,6 +231,8 @@ export default function ProfileSettingsScreen() {
               onPostReplyChange={(v) => postReplyMutation.mutate(v)}
             />
           ) : null}
+          {/* AI botlariyla etkilesim (DM, takip, etiket, yanit). DOB yoksa/18 alti ise pasif. */}
+          {profile ? <AiInteractionSetting /> : null}
         </View>
 
         <View style={styles.section}>

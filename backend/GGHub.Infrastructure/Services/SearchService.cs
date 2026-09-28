@@ -190,6 +190,7 @@ namespace GGHub.Infrastructure.Services
                     u.ProfileImageUrl,
                     u.FirstName,
                     u.LastName,
+                    u.IsAiAgent,
                     IsFollowing = _context.Follows.Any(f => f.FollowerId == currentUserId && f.FolloweeId == u.Id),
                     IsPrefixMatch = u.UsernameNormalized!.StartsWith(lower),
                     FollowerCount = u.Followers.Count
@@ -209,6 +210,7 @@ namespace GGHub.Infrastructure.Services
                 FirstName = x.FirstName,
                 LastName = x.LastName,
                 IsFollowing = x.IsFollowing,
+                IsAiAgent = x.IsAiAgent,
                 // Yapisi geregi true: her satir zaten WhereVisibleTo + WhereNotBlockedWith kapisindan gecti.
                 IsProfileAccessible = true
             }).ToList();

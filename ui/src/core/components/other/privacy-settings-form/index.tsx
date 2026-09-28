@@ -14,6 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/cor
 import { RadioGroup, RadioGroupItem } from "@/core/components/ui/radio-group";
 import { Label } from "@/core/components/ui/label";
 import { useI18n } from "@/core/contexts/locale-context";
+import { AiInteractionSetting } from "@/core/components/other/ai-interaction-setting";
 
 interface PrivacySettingsFormProps {
     initialData: Profile;
@@ -165,6 +166,11 @@ export function PrivacySettingsForm({ initialData }: PrivacySettingsFormProps) {
                             <Label htmlFor="post-private">{t("profile.privacy.private")}</Label>
                         </div>
                     </RadioGroup>
+                </div>
+
+                {/* AI botlariyla etkilesim: DM, takip, etiket ve yanit. DOB yoksa/18 alti ise pasif. */}
+                <div className="border-t pt-6">
+                    <AiInteractionSetting />
                 </div>
 
                 <div className="border-t pt-6">

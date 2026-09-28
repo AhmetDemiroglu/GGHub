@@ -57,6 +57,195 @@ namespace GGHub.Infrastructure.Migrations
                     b.ToTable("Achievements");
                 });
 
+            modelBuilder.Entity("GGHub.Core.Entities.AiAgentProfile", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DailyActionQuota")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FavoriteGenres")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Persona")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("PersonaKey")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<int>("RatingBias")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId");
+
+                    b.HasIndex("PersonaKey")
+                        .IsUnique()
+                        .HasDatabaseName("IX_AiAgentProfiles_PersonaKey");
+
+                    b.ToTable("AiAgentProfiles");
+                });
+
+            modelBuilder.Entity("GGHub.Core.Entities.AiAgentTask", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("AgentUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("InputTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Model")
+                        .HasMaxLength(48)
+                        .HasColumnType("character varying(48)");
+
+                    b.Property<int>("OutputTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ResultEntityId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ResultSummary")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime>("ScheduledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TargetGameId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TargetPostId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TargetReviewId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TargetUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TriggerMessageId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgentUserId", "CreatedAt")
+                        .HasDatabaseName("IX_AiAgentTasks_AgentUserId_CreatedAt");
+
+                    b.HasIndex("Status", "ScheduledAt")
+                        .HasDatabaseName("IX_AiAgentTasks_Status_ScheduledAt");
+
+                    b.HasIndex("TargetUserId", "Type", "CreatedAt")
+                        .HasDatabaseName("IX_AiAgentTasks_TargetUserId_Type_CreatedAt")
+                        .HasFilter("\"TargetUserId\" IS NOT NULL");
+
+                    b.ToTable("AiAgentTasks");
+                });
+
+            modelBuilder.Entity("GGHub.Core.Entities.AiSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ActiveFromHour")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ActiveToHour")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("AgentMonthlyBudgetTry")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<bool>("AgentsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("DailyActionsPerAgent")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FallbackModel")
+                        .IsRequired()
+                        .HasMaxLength(48)
+                        .HasColumnType("character varying(48)");
+
+                    b.Property<int>("FeedMaxAiSharePercent")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MaxAgentMessagesPerUserPerDay")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MaxAgentRepliesPerPost")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MaxUnsolicitedDmPerUserPerWeek")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PrimaryModel")
+                        .IsRequired()
+                        .HasMaxLength(48)
+                        .HasColumnType("character varying(48)");
+
+                    b.Property<int>("PrimaryModelRpm")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("TranslationMonthlyBudgetTry")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("UsdToTryRate")
+                        .HasPrecision(12, 4)
+                        .HasColumnType("numeric(12,4)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AiSettings");
+                });
+
             modelBuilder.Entity("GGHub.Core.Entities.AuditLog", b =>
                 {
                     b.Property<int>("Id")
@@ -445,6 +634,13 @@ namespace GGHub.Infrastructure.Migrations
                     b.Property<DateTime>("LastUpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(48)
+                        .HasColumnType("character varying(48)")
+                        .HasDefaultValue("gemini-3.1-flash-lite");
+
                     b.Property<long>("OutputTokens")
                         .HasColumnType("bigint");
 
@@ -453,15 +649,22 @@ namespace GGHub.Infrastructure.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
 
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("translation");
+
                     b.Property<decimal>("SpentUsd")
                         .HasPrecision(18, 8)
                         .HasColumnType("numeric(18,8)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PeriodKey")
+                    b.HasIndex("PeriodKey", "Source", "Model")
                         .IsUnique()
-                        .HasDatabaseName("IX_GeminiUsages_PeriodKey");
+                        .HasDatabaseName("IX_GeminiUsages_PeriodKey_Source_Model");
 
                     b.ToTable("GeminiUsages");
                 });
@@ -1176,6 +1379,11 @@ namespace GGHub.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("AllowAiInteraction")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
                     b.Property<string>("AppleId")
                         .HasColumnType("text");
 
@@ -1209,6 +1417,9 @@ namespace GGHub.Infrastructure.Migrations
 
                     b.Property<string>("HeaderImageUrl")
                         .HasColumnType("text");
+
+                    b.Property<bool>("IsAiAgent")
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsBanned")
                         .HasColumnType("boolean");
@@ -1301,6 +1512,10 @@ namespace GGHub.Infrastructure.Migrations
                     b.HasIndex("GoogleId")
                         .IsUnique()
                         .HasFilter("\"GoogleId\" IS NOT NULL");
+
+                    b.HasIndex("IsAiAgent")
+                        .HasDatabaseName("IX_Users_IsAiAgent")
+                        .HasFilter("\"IsAiAgent\" = TRUE");
 
                     b.HasIndex("Username")
                         .IsUnique();
@@ -1573,6 +1788,28 @@ namespace GGHub.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("UserStats");
+                });
+
+            modelBuilder.Entity("GGHub.Core.Entities.AiAgentProfile", b =>
+                {
+                    b.HasOne("GGHub.Core.Entities.User", "User")
+                        .WithOne()
+                        .HasForeignKey("GGHub.Core.Entities.AiAgentProfile", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("GGHub.Core.Entities.AiAgentTask", b =>
+                {
+                    b.HasOne("GGHub.Core.Entities.User", "AgentUser")
+                        .WithMany()
+                        .HasForeignKey("AgentUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AgentUser");
                 });
 
             modelBuilder.Entity("GGHub.Core.Entities.BirthdayGreeting", b =>

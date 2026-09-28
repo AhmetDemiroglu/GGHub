@@ -4,6 +4,7 @@ import {
     Profile,
     ProfileForUpdate,
     UpdateMessageSettingDto,
+    UpdateAiInteractionDto,
     UpdatePostReplyPermissionDto,
     UpdatePostVisibilityDto,
     UpdateProfileVisibilityDto,
@@ -44,6 +45,11 @@ export const deleteMyAccount = async (): Promise<void> => {
 
 export const updateMessageSetting = async (data: UpdateMessageSettingDto) => {
     return axiosInstance.put("/profile/me/message-setting", data);
+};
+
+// "AI hesaplarla etkilesim" ayari. Kapatilinca botlarin takibi de sunucuda kalkar.
+export const updateAiInteraction = async (data: UpdateAiInteractionDto) => {
+    return axiosInstance.put("/profile/me/ai-interaction", data);
 };
 
 // Gonderi gizliligi CANLI: bu ucun donusu sonrasi gecmis gonderiler de yeni

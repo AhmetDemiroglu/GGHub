@@ -14,12 +14,18 @@ namespace GGHub.Infrastructure.Services
         private readonly GGHubDbContext _context;
         private readonly IAuditService _auditService;
         private readonly IUserDtoEnricher _userDtoEnricher;
+        private readonly IAiInteractionPolicy _aiPolicy;
 
-        public ProfileService(GGHubDbContext context, IAuditService auditService, IUserDtoEnricher userDtoEnricher)
+        public ProfileService(
+            GGHubDbContext context,
+            IAuditService auditService,
+            IUserDtoEnricher userDtoEnricher,
+            IAiInteractionPolicy aiPolicy)
         {
             _context = context;
             _auditService = auditService;
             _userDtoEnricher = userDtoEnricher;
+            _aiPolicy = aiPolicy;
         }
 
         public async Task<ProfileDto?> GetProfileAsync(int userId)
@@ -70,7 +76,11 @@ namespace GGHub.Infrastructure.Services
                 ReviewCount = counts?.ReviewCount ?? 0,
                 ListCount = counts?.ListCount ?? 0,
                 FollowerCount = counts?.FollowerCount ?? 0,
-                FollowingCount = counts?.FollowingCount ?? 0
+                FollowingCount = counts?.FollowingCount ?? 0,
+                IsAiAgent = user.IsAiAgent,
+                AllowAiInteraction = user.AllowAiInteraction,
+                AiInteractionBlockReason = AiInteractionRules.BlockReason(
+                    user.AllowAiInteraction, user.DateOfBirth, BirthdayCalendar.TodayInIstanbul())
             };
         }
 
@@ -150,6 +160,35 @@ namespace GGHub.Infrastructure.Services
             user.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
         }
+        /// <summary>
+        /// "AI hesaplarla etkilesim" ayari. Kapatildiginda botlarin bu kullaniciyi takibi de kalkar:
+        /// takip de bir etkilesim ve kullanici "istemiyorum" dedikten sonra bot takipcisi gormemeli.
+        /// Gecmis DM'ler kalir (kullanicinin kendi konusma gecmisi).
+        /// </summary>
+        public async Task UpdateAiInteractionAsync(int userId, bool allow)
+        {
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null || user.IsAiAgent) return;
+
+            user.AllowAiInteraction = allow;
+            user.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            if (!allow)
+            {
+                await _context.Follows
+                    .Where(f => f.FolloweeId == userId && f.Follower.IsAiAgent)
+                    .ExecuteDeleteAsync();
+
+                // Bekleyen bot gorevleri (DM yaniti, gonderi yaniti) iptal.
+                await _context.AiAgentTasks
+                    .Where(t => t.TargetUserId == userId && t.Status == Core.Enums.AiAgentTaskStatus.Pending)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(t => t.Status, Core.Enums.AiAgentTaskStatus.Skipped)
+                        .SetProperty(t => t.Error, "Kullanici AI etkilesimini kapatti."));
+            }
+        }
+
         public async Task UpdateProfileVisibilityAsync(int userId, ProfileVisibilitySetting newVisibility)
         {
             var user = await _context.Users.FindAsync(userId);
@@ -298,7 +337,14 @@ namespace GGHub.Infrastructure.Services
                 FollowingCount = counts?.FollowingCount ?? 0,
                 ReviewCount = counts?.ReviewCount ?? 0,
                 ListCount = counts?.ListCount ?? 0,
-                PostCount = postCount
+                PostCount = postCount,
+                IsAiAgent = profileUser.IsAiAgent,
+                AllowAiInteraction = profileUser.Id == currentUserId && profileUser.AllowAiInteraction,
+                AiInteractionBlockReason = profileUser.IsAiAgent || profileUser.Id == currentUserId
+                    ? (currentUserId.HasValue
+                        ? await _aiPolicy.GetBlockReasonAsync(currentUserId.Value)
+                        : "loginRequired")
+                    : null
             };
         }
         public async Task AnonymizeUserAsync(int userId)

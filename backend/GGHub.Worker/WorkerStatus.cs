@@ -17,7 +17,6 @@ public static class WorkerStatus
         using var scope = services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<GGHubDbContext>();
         var budget = scope.ServiceProvider.GetRequiredService<IGeminiBudgetService>();
-        var gemini = scope.ServiceProvider.GetRequiredService<IOptions<GeminiSettings>>().Value;
 
         // Tek tarama: her sayac icin ayri sorgu atmak Games'i defalarca taratirdi
         // (MetacriticSyncJob'da tam olarak bu hata vardi ve gunde ~161 GB okuyordu).
@@ -43,8 +42,8 @@ public static class WorkerStatus
             return;
         }
 
-        var status = await budget.GetStatusAsync();
-        var rate = gemini.UsdToTryRate;
+        var status = await budget.GetStatusAsync(GeminiSources.Translation);
+        var rate = status.UsdToTryRate;
 
         static string Bar(int done, int total, int width = 24)
         {
@@ -67,8 +66,9 @@ public static class WorkerStatus
         var limitTry = status.LimitUsd * rate;
         var pct = status.LimitUsd > 0 ? status.SpentUsd / status.LimitUsd * 100 : 0;
 
-        Console.WriteLine($"  Gemini ({status.PeriodKey}) : {spentTry:F2} TL / {limitTry:F0} TL  (%{pct:F1})  {status.CallCount:N0} cagri");
-        Console.WriteLine($"                  {status.SpentUsd:F4} USD / {status.LimitUsd:F2} USD   [1 USD = {rate:F1} TL varsayimi]");
+        Console.WriteLine($"  Ceviri ({status.PeriodKey}) : {spentTry:F2} TL / {limitTry:F0} TL  (%{pct:F1})  {status.CallCount:N0} cagri");
+        Console.WriteLine($"                  {status.SpentUsd:F4} USD / {status.LimitUsd:F2} USD   [1 USD = {rate:F1} TL, admin panelinden]");
+        Console.WriteLine($"                  Bugun: {status.SpentTodayUsd * rate:F2} TL / gunluk pay {status.DailyShareUsd * rate:F2} TL");
 
         // GUNLUK DOKUM: Google Cloud konsolu maliyeti GUN GUN gosteriyor ve verisi 24 saate
         // kadar gecikiyor. Aylik tek rakami karsilastirmak bu yuzden yaniltici: bizim sayacimiz
@@ -77,10 +77,18 @@ public static class WorkerStatus
         var monthPrefix = status.PeriodKey.Length >= 7 ? status.PeriodKey[..7] : status.PeriodKey;
         var daily = await context.GeminiUsages
             .AsNoTracking()
-            .Where(u => u.PeriodKey.StartsWith(monthPrefix))
+            .Where(u => u.Source == GeminiSources.Translation && u.PeriodKey.StartsWith(monthPrefix))
+            .GroupBy(u => u.PeriodKey)
+            .Select(grp => new
+            {
+                PeriodKey = grp.Key,
+                SpentUsd = grp.Sum(u => u.SpentUsd),
+                InputTokens = grp.Sum(u => u.InputTokens),
+                OutputTokens = grp.Sum(u => u.OutputTokens),
+                CallCount = grp.Sum(u => u.CallCount)
+            })
             .OrderByDescending(u => u.PeriodKey)
             .Take(8)
-            .Select(u => new { u.PeriodKey, u.SpentUsd, u.InputTokens, u.OutputTokens, u.CallCount })
             .ToListAsync();
 
         if (daily.Count > 0)

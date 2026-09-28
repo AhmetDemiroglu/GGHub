@@ -69,9 +69,10 @@ namespace GGHub.Infrastructure.Services
             var lastYear = now.AddYears(-1).ToString("yyyy-MM-dd");
 
             // 1) GGHub hareketi: inceleme (agirlikli) + liste/istek listesi eklemeleri.
+            // AI bot incelemeleri trend sinyali DEGIL: botlar bir oyunu gundeme tasimamali.
             var reviewActivity = await context.Reviews
                 .AsNoTracking()
-                .Where(r => r.CreatedAt >= d90)
+                .Where(r => r.CreatedAt >= d90 && !r.User.IsAiAgent)
                 .GroupBy(r => r.GameId)
                 .Select(g => new
                 {

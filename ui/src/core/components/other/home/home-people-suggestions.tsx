@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AiBadge } from "@/core/components/base/ai-badge";
 import { useState } from "react";
 import { Gamepad2, UserCheck, UserPlus, Users, X } from "lucide-react";
 import { followUser, unfollowUser } from "@/api/social/social.api";
@@ -89,7 +90,10 @@ export default function HomePeopleSuggestions({ suggestions }: HomePeopleSuggest
                                     <AvatarFallback className="text-lg font-semibold">{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
                                 </Avatar>
                                 <div className="min-w-0">
-                                    <p className="max-w-[140px] truncate text-sm font-semibold">{displayName || user.username}</p>
+                                    <p className="max-w-[140px] truncate text-sm font-semibold">
+                                        {displayName || user.username}
+                                        {user.isAiAgent && <AiBadge className="ml-1" />}
+                                    </p>
                                     <p className="max-w-[140px] truncate text-xs text-muted-foreground">@{user.username}</p>
                                 </div>
                             </Link>

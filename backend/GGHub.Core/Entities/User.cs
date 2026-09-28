@@ -73,6 +73,21 @@ namespace GGHub.Core.Entities
         public bool IsSeeded { get; set; } = false;
 
         /// <summary>
+        /// Yapay zeka bot hesabi. Arayuzde her yerde "AI" rozetiyle gosterilir; bu hesaplarla
+        /// giris yapilamaz (sifre ve OAuth kimligi yok, AuthService ayrica reddeder).
+        /// Bot incelemeleri GGHub puanina ve trend skoruna GIRMEZ.
+        /// </summary>
+        public bool IsAiAgent { get; set; } = false;
+
+        /// <summary>
+        /// Kullanici AI hesaplarla etkilesime (DM, takip, etiket, yanit) acik mi. Varsayilan acik,
+        /// ama tek basina YETMEZ: dogum tarihi girilmis ve 18 yasini doldurmus olmak da sart
+        /// (Gemini API sartlari). Tek kural noktasi: AiInteractionPolicy.
+        /// DB varsayilani true (bkz. GGHubDbContext); aksi halde migration mevcut herkesi kapatirdi.
+        /// </summary>
+        public bool AllowAiInteraction { get; set; } = true;
+
+        /// <summary>
         /// Kullanicinin son bilinen arayuz dili ("tr" | "en-US"), giris/kayit anindaki
         /// Accept-Language'dan yazilir.
         ///

@@ -50,6 +50,9 @@ namespace GGHub.Infrastructure.Persistence
         public DbSet<PostPollVote> PostPollVotes { get; set; }
         public DbSet<PostMention> PostMentions { get; set; }
         public DbSet<BirthdayGreeting> BirthdayGreetings { get; set; }
+        public DbSet<AiAgentProfile> AiAgentProfiles { get; set; }
+        public DbSet<AiAgentTask> AiAgentTasks { get; set; }
+        public DbSet<AiSettings> AiSettings { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -97,6 +100,19 @@ namespace GGHub.Infrastructure.Persistence
             modelBuilder.Entity<User>()
                 .Property(u => u.PushNotificationsEnabled)
                 .HasDefaultValue(true);
+
+            // Ayni gerekce: varsayilan ACIK. Store varsayilani olmadan migration mevcut tum
+            // kullanicilari "AI ile etkilesime kapali" yapardi. Kapatma her zaman UPDATE ile
+            // yazildigi icin (INSERT degil) bool-varsayilan tuzagi burada isirmaz.
+            modelBuilder.Entity<User>()
+                .Property(u => u.AllowAiInteraction)
+                .HasDefaultValue(true);
+
+            // Bot kumesi kucuk (~10); AiAgentDirectory her 5 dk bu indeksle okur.
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.IsAiAgent)
+                .HasFilter("\"IsAiAgent\" = TRUE")
+                .HasDatabaseName("IX_Users_IsAiAgent");
 
             modelBuilder.Entity<UserListRating>()
                 .HasKey(r => new { r.UserId, r.UserListId });
@@ -284,12 +300,19 @@ namespace GGHub.Infrastructure.Persistence
                 .HasFilter("\"DetailSyncedAt\" IS NULL")
                 .HasDatabaseName("IX_Games_DetailBackfillQueue");
 
-            // GeminiUsage: donem anahtari satir kimligi. Unique index ON CONFLICT upsert'inin dayanagi.
+            // GeminiUsage: (gun, kaynak, model) satir kimligi. Unique index ON CONFLICT upsert'inin dayanagi.
+            // Kaynak ve model sonradan geldi (AI botlari, Eyl 2026): her kaynagin kendi TL tavani var
+            // ve ucretsiz Gemma cagrilari 0 USD ile ama token'lariyla ayri satira yazilir.
             modelBuilder.Entity<GeminiUsage>(entity =>
             {
-                entity.HasIndex(u => u.PeriodKey)
+                entity.HasIndex(u => new { u.PeriodKey, u.Source, u.Model })
                     .IsUnique()
-                    .HasDatabaseName("IX_GeminiUsages_PeriodKey");
+                    .HasDatabaseName("IX_GeminiUsages_PeriodKey_Source_Model");
+
+                // Varsayilanlar MEVCUT satirlar icin: kaynak/model ayrimindan onceki tum harcama
+                // ceviriydi ve gemini-3.1-flash-lite ile yapildi.
+                entity.Property(u => u.Source).HasMaxLength(16).HasDefaultValue("translation");
+                entity.Property(u => u.Model).HasMaxLength(48).HasDefaultValue("gemini-3.1-flash-lite");
 
                 // "2026-07-16" = 10 karakter. Defter GUNLUK satir tutuyor; aylik harcama o ayin
                 // gunlerinin toplami. Gunluk kirilim sart cunku Gemini ucretsiz katmani GUNLUK
@@ -298,6 +321,52 @@ namespace GGHub.Infrastructure.Persistence
 
                 // Cagri basina maliyet ~0.0009 USD; iki ondalik basamak bunu sifira yuvarlardi.
                 entity.Property(u => u.SpentUsd).HasPrecision(18, 8);
+            });
+
+            modelBuilder.Entity<AiAgentProfile>(entity =>
+            {
+                entity.HasKey(p => p.UserId);
+                entity.HasOne(p => p.User)
+                    .WithOne()
+                    .HasForeignKey<AiAgentProfile>(p => p.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.Property(p => p.PersonaKey).HasMaxLength(32).IsRequired();
+                entity.HasIndex(p => p.PersonaKey).IsUnique().HasDatabaseName("IX_AiAgentProfiles_PersonaKey");
+                entity.Property(p => p.Persona).HasMaxLength(2000).IsRequired();
+                entity.Property(p => p.FavoriteGenres).HasMaxLength(200);
+            });
+
+            modelBuilder.Entity<AiAgentTask>(entity =>
+            {
+                entity.HasOne(t => t.AgentUser)
+                    .WithMany()
+                    .HasForeignKey(t => t.AgentUserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.Property(t => t.Model).HasMaxLength(48);
+                entity.Property(t => t.ResultSummary).HasMaxLength(300);
+                entity.Property(t => t.Error).HasMaxLength(500);
+
+                // Motorun kuyruk sorgusu: bekleyen ve zamani gelmis gorevler.
+                entity.HasIndex(t => new { t.Status, t.ScheduledAt })
+                    .HasDatabaseName("IX_AiAgentTasks_Status_ScheduledAt");
+                // Bot basina gunluk kota sayimi.
+                entity.HasIndex(t => new { t.AgentUserId, t.CreatedAt })
+                    .HasDatabaseName("IX_AiAgentTasks_AgentUserId_CreatedAt");
+                // Kullanici basina tavanlar (haftalik hos geldin DM'i vb.).
+                entity.HasIndex(t => new { t.TargetUserId, t.Type, t.CreatedAt })
+                    .HasDatabaseName("IX_AiAgentTasks_TargetUserId_Type_CreatedAt")
+                    .HasFilter("\"TargetUserId\" IS NOT NULL");
+            });
+
+            modelBuilder.Entity<AiSettings>(entity =>
+            {
+                entity.Property(s => s.Id).ValueGeneratedNever();
+                entity.Property(s => s.TranslationMonthlyBudgetTry).HasPrecision(12, 2);
+                entity.Property(s => s.AgentMonthlyBudgetTry).HasPrecision(12, 2);
+                entity.Property(s => s.UsdToTryRate).HasPrecision(12, 4);
+                entity.Property(s => s.PrimaryModel).HasMaxLength(48);
+                entity.Property(s => s.FallbackModel).HasMaxLength(48);
             });
 
             // BirthdayGreeting: kullanici basina yil basina TEK satir.

@@ -14,6 +14,9 @@ namespace GGHub.Application.Dtos
         public bool IsFollowing { get; set; }
         public bool IsProfileAccessible { get; set; }
 
+        /// <summary>AI bot hesabi ("AI" rozeti).</summary>
+        public bool IsAiAgent { get; set; }
+
         /// <summary>Ortak takip edilen kişi sayısı (friends-of-friends sinyali).</summary>
         public int MutualFollowerCount { get; set; }
 

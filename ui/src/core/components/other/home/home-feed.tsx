@@ -10,6 +10,7 @@ import { Star, List, UserPlus, Activity as ActivityIcon } from "lucide-react";
 import { getImageUrl } from "@/core/lib/get-image-url";
 import { displayName } from "@/core/lib/display-name";
 import { UserLink } from "@/core/components/base/user-link";
+import { AiBadge } from "@/core/components/base/ai-badge";
 import placeholderGame from "@/core/assets/placeholder.png";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -174,7 +175,10 @@ function renderActivityItem(activity: Activity) {
                                 <AvatarFallback>{follow.username.substring(0, 2).toUpperCase()}</AvatarFallback>
                             </Avatar>
                             <div>
-                                <p className="text-sm font-semibold">{displayName(follow)}</p>
+                                <p className="text-sm font-semibold">
+                                    {displayName(follow)}
+                                    {follow.isAiAgent && <AiBadge className="ml-1" />}
+                                </p>
                                 <p className="text-xs text-muted-foreground">Profilini görüntüle</p>
                             </div>
                         </UserLink>

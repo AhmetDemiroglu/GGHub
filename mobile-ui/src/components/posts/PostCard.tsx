@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AiBadge } from '@/src/components/common/AiBadge';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -186,6 +187,7 @@ export function PostCard({ post, variant = 'feed', onDeleted }: PostCardProps) {
             <Pressable style={styles.headerText} onPress={openProfile}>
               <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
                 {displayName(author)}
+                {author.isAiAgent ? <AiBadge /> : null}
               </Text>
               <Text style={[styles.handle, { color: colors.textSecondary }]} numberOfLines={1}>
                 @{author.username} · {timeAgo}

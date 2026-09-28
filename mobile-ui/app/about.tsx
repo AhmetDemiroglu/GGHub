@@ -122,6 +122,12 @@ export default function AboutScreen() {
             </View>
           </View>
         ))}
+
+        <View style={[styles.whySection, { backgroundColor: colors.card, borderColor: 'rgba(139, 92, 246, 0.4)' }]}>
+          <Ionicons name="hardware-chip-outline" size={32} color="#8b5cf6" />
+          <Text style={[styles.whyTitle, { color: colors.text }]}>{m.aiTitle}</Text>
+          <Text style={[styles.whyDescription, { color: colors.textSecondary }]}>{m.aiDescription}</Text>
+        </View>
       </ScrollView>
     </View>
   </SwipeBackEdge>

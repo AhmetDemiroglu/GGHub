@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
+import { AiInteractionSetting } from '@/src/components/profile/AiInteractionSetting';
+import { getProfileByUsername } from '@/src/api/profile';
 import {
   View,
   Text,
@@ -58,6 +60,17 @@ export default function MessageThreadScreen() {
   } = useContext(SignalRContext);
 
   const [localMessages, setLocalMessages] = useState<MessageDto[]>([]);
+
+  // Karsi taraf AI botu mu ve bu kullanici onunla yazisabilir mi (DOB, 18+, ayar).
+  // Profil ekraniyla ayni sorgu anahtari: onbellek paylasilir.
+  const partnerProfileQuery = useQuery({
+    queryKey: ['publicProfile', username],
+    queryFn: () => getProfileByUsername(username!),
+    enabled: !!username && isAuthenticated,
+    staleTime: 60_000,
+  });
+  const partnerIsAi = !!partnerProfileQuery.data?.isAiAgent;
+  const aiBlockReason = partnerIsAi ? (partnerProfileQuery.data?.aiInteractionBlockReason ?? null) : null;
 
   const threadQuery = useQuery({
     queryKey: ['messageThread', username],
@@ -221,13 +234,24 @@ export default function MessageThreadScreen() {
           style={styles.flex}
           contentContainerStyle={styles.messagesList}
         />
-        <ChatInput onSend={handleSend} disabled={sendMutation.isPending} />
+        {partnerIsAi ? (
+          <View style={styles.aiNotice}>
+            <Text style={[styles.securityText, { color: colors.textMuted }]}>{i18n.ai.aboutAgent}</Text>
+            {aiBlockReason ? <AiInteractionSetting variant="compact" /> : null}
+          </View>
+        ) : null}
+        <ChatInput onSend={handleSend} disabled={!!aiBlockReason || sendMutation.isPending} />
       </Animated.View>
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
+  aiNotice: {
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.sm,
+    gap: Spacing.sm,
+  },
   flex: {
     flex: 1,
   },

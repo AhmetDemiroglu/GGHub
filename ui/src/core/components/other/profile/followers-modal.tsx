@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { AiBadge } from "@/core/components/base/ai-badge";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/core/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/core/components/ui/tabs";
@@ -22,6 +23,7 @@ interface User {
     lastName?: string | null;
     isFollowing: boolean;
     isProfileAccessible: boolean;
+    isAiAgent?: boolean;
 }
 interface FollowersModalProps {
     isOpen: boolean;
@@ -104,7 +106,10 @@ export function FollowersModal({ isOpen, onClose, username, defaultTab = "follow
                                                 <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
                                             </Avatar>
                                             <div>
-                                                <p className="font-medium">{user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username}</p>
+                                                <p className="font-medium">
+                                                    {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username}
+                                                    {user.isAiAgent && <AiBadge className="ml-1" />}
+                                                </p>
                                                 <p className="text-xs text-muted-foreground">@{user.username}</p>
                                             </div>
                                         </Link>
@@ -115,7 +120,10 @@ export function FollowersModal({ isOpen, onClose, username, defaultTab = "follow
                                                 <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
                                             </Avatar>
                                             <div>
-                                                <p className="font-medium">{user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username}</p>
+                                                <p className="font-medium">
+                                                    {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username}
+                                                    {user.isAiAgent && <AiBadge className="ml-1" />}
+                                                </p>
                                                 <p className="text-xs text-muted-foreground">@{user.username}</p>
                                                 <p className="text-xs text-indigo-600 mt-0.5">{t("profile.followersModal.hiddenProfile")}</p>
                                             </div>
@@ -155,7 +163,10 @@ export function FollowersModal({ isOpen, onClose, username, defaultTab = "follow
                                                 <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
                                             </Avatar>
                                             <div>
-                                                <p className="font-medium">{user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username}</p>
+                                                <p className="font-medium">
+                                                    {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username}
+                                                    {user.isAiAgent && <AiBadge className="ml-1" />}
+                                                </p>
                                                 <p className="text-xs text-muted-foreground">@{user.username}</p>
                                             </div>
                                         </Link>
@@ -166,7 +177,10 @@ export function FollowersModal({ isOpen, onClose, username, defaultTab = "follow
                                                 <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
                                             </Avatar>
                                             <div>
-                                                <p className="font-medium">{user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username}</p>
+                                                <p className="font-medium">
+                                                    {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username}
+                                                    {user.isAiAgent && <AiBadge className="ml-1" />}
+                                                </p>
                                                 <p className="text-xs text-muted-foreground">@{user.username}</p>
                                                 <p className="text-xs text-indigo-600 mt-0.5">{t("profile.followersModal.hiddenProfile")}</p>
                                             </div>

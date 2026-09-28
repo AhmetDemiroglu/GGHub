@@ -25,17 +25,20 @@ namespace GGHub.Infrastructure.Services
         private readonly INotificationService _notificationService;
         private readonly IMentionService _mentionService;
         private readonly IUserDtoEnricher _userDtoEnricher;
+        private readonly IAiAgentEvents _aiEvents;
 
         public PostService(
             GGHubDbContext context,
             INotificationService notificationService,
             IMentionService mentionService,
-            IUserDtoEnricher userDtoEnricher)
+            IUserDtoEnricher userDtoEnricher,
+            IAiAgentEvents aiEvents)
         {
             _context = context;
             _notificationService = notificationService;
             _mentionService = mentionService;
             _userDtoEnricher = userDtoEnricher;
+            _aiEvents = aiEvents;
         }
 
         // ------------------------------------------------------------------
@@ -173,6 +176,14 @@ namespace GGHub.Infrastructure.Services
             await _context.SaveChangesAsync();
 
             await NotifyOnCreateAsync(post, parent, userId, parsed, resolved);
+
+            // Bot tepkisi (yanit, etiket, ilk gonderi). Best-effort: istisna firlatmaz.
+            var mentionedUserIds = parsed
+                .Where(p => p.Type == MentionTargetType.User && resolved.ContainsKey((p.Type, p.TargetId)))
+                .Select(p => p.TargetId)
+                .Distinct()
+                .ToList();
+            await _aiEvents.OnPostCreatedAsync(post.Id, userId, post.ParentPostId, mentionedUserIds);
 
             return await GetByIdAsync(post.Id, userId);
         }

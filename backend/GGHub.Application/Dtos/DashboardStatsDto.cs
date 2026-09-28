@@ -16,5 +16,9 @@
         /// </summary>
         public int SeededUsers { get; set; }
         public int SeededReviews { get; set; }
+
+        /// <summary>AI bot hesaplari ve incelemeleri. TotalUsers/TotalReviews bunlari ICERMEZ.</summary>
+        public int AiAgentUsers { get; set; }
+        public int AiAgentReviews { get; set; }
     }
 }

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { AiBadge } from '@/src/components/common/AiBadge';
 import { View, Text, TouchableOpacity, StyleSheet, Image, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -47,6 +48,8 @@ interface ProfileHeaderProps {
   followingCount: number;
   onFollowersPress?: () => void;
   onFollowingPress?: () => void;
+  /** AI bot hesabi: adin yanina "AI" rozeti basilir. */
+  isAiAgent?: boolean;
   /** Avatar satirinin sag ucunda gosterilen aksiyon (X tarzi: Duzenle / Takip et) */
   topRightAction?: React.ReactNode;
   children?: React.ReactNode;
@@ -54,6 +57,7 @@ interface ProfileHeaderProps {
 
 export function ProfileHeader({
   username,
+  isAiAgent,
   firstName,
   lastName,
   bio,
@@ -191,7 +195,10 @@ export function ProfileHeader({
           {topRightAction ? <View style={styles.topRightAction}>{topRightAction}</View> : null}
         </View>
 
-        <Text style={[styles.displayName, { color: colors.text }]}>{displayName}</Text>
+        <Text style={[styles.displayName, { color: colors.text }]}>
+          {displayName}
+          {isAiAgent ? <AiBadge /> : null}
+        </Text>
         <Text style={[styles.username, { color: colors.textSecondary }]}>@{username}</Text>
 
         {status ? (

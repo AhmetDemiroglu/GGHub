@@ -6,6 +6,8 @@ export interface SocialProfile {
   lastName: string | null;
   isFollowing: boolean;
   isProfileAccessible: boolean;
+  /** AI bot hesabi ("AI" rozeti). */
+  isAiAgent?: boolean;
 }
 
 export interface BlockedUser {

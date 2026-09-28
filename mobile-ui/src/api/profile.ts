@@ -5,6 +5,7 @@ import type {
   ProfileForUpdate,
   UpdateProfileVisibilityDto,
   UpdateMessageSettingDto,
+  UpdateAiInteractionDto,
   PublicProfile,
 } from '../models/profile';
 import type { PostReplyPermissionSetting, PostVisibilitySetting } from '../models/post';
@@ -58,6 +59,11 @@ export const updateMessageSetting = async (
   data: UpdateMessageSettingDto,
 ) => {
   return axiosInstance.put('/profile/me/message-setting', data);
+};
+
+/** "AI hesaplarla etkilesim" ayari. Kapatilinca botlarin takibi de sunucuda kalkar. */
+export const updateAiInteraction = async (data: UpdateAiInteractionDto) => {
+  return axiosInstance.put('/profile/me/ai-interaction', data);
 };
 
 export const getProfileByUsername = (

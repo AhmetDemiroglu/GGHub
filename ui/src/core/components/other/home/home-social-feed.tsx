@@ -18,7 +18,10 @@ import placeholderGame from "@/core/assets/placeholder.png";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/core/components/ui/tabs";
 import { Skeleton } from "@/core/components/ui/skeleton";
+import { Switch } from "@/core/components/ui/switch";
+import { Label } from "@/core/components/ui/label";
 import { MentionText } from "@/core/components/base/mention-text";
+import { AiBadge } from "@/core/components/base/ai-badge";
 import { PostCard } from "@/core/components/other/posts/post-card";
 import { PostComposer } from "@/core/components/other/posts/post-composer";
 import {
@@ -72,6 +75,8 @@ const emptyTab = (): TabState => ({ items: [], hasMore: true, loading: false, lo
 interface FeedMemory {
     feeds: Record<TabKey, TabState>;
     activeTab: TabKey;
+    /** "Sadece insanlar" filtresi: AI bot kartlari sunucuda suzulur. */
+    humansOnly?: boolean;
     /**
      * SEKME BASINA kaydirma konumu.
      *
@@ -95,6 +100,9 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
     // Buradaki başlangıç değeri ile <Tabs defaultValue> BİRLİKTE değişmeli,
     // yoksa seçili sekme ile listelenen içerik birbirini tutmaz.
     const [activeTab, setActiveTab] = useState<TabKey>(() => feedMemory?.activeTab ?? "discover");
+    const [humansOnly, setHumansOnly] = useState<boolean>(() => feedMemory?.humansOnly ?? false);
+    const humansOnlyRef = useRef(humansOnly);
+    humansOnlyRef.current = humansOnly;
     // Her sekme KENDI sayfasini sunucudan ceker.
     //
     // UC SEKME DE emptyTab() ile basliyor. Onceden "all" sekmesi prop'tan
@@ -131,7 +139,7 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
                       undefined,
                   );
 
-            const page = await getFeedByTab(tab, FEED_PAGE_SIZE, cursor);
+            const page = await getFeedByTab(tab, FEED_PAGE_SIZE, cursor, humansOnlyRef.current);
 
             setFeeds((prev) => {
                 const base = reset ? [] : prev[tab].items;
@@ -199,8 +207,24 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
     // Her degisimde hafizayi tazele; unmount'ta yazmak yeterli degil, cunku
     // Next.js gezinmesinde cleanup her zaman guvenilir sirada calismiyor.
     useEffect(() => {
-        feedMemory = { feeds, activeTab, scrollTopByTab: feedMemory?.scrollTopByTab ?? {} };
-    }, [feeds, activeTab]);
+        feedMemory = { feeds, activeTab, humansOnly, scrollTopByTab: feedMemory?.scrollTopByTab ?? {} };
+    }, [feeds, activeTab, humansOnly]);
+
+    /**
+     * "Sadece insanlar" degisince yuklu sekmeler gecersiz: hepsi bosaltilir, aktif sekme bastan
+     * cekilir (diger sekmeler ziyaret edildiginde kendi ilk yuklemelerini yapar).
+     */
+    const toggleHumansOnly = useCallback(
+        (next: boolean) => {
+            humansOnlyRef.current = next;
+            setHumansOnly(next);
+            const reset = { discover: emptyTab(), posts: emptyTab(), reviews: emptyTab() };
+            feedsRef.current = reset;
+            setFeeds(reset);
+            void loadTab(activeTab, true);
+        },
+        [activeTab, loadTab],
+    );
 
     // Kaydirma konumu: kabin kendisi <main>, window degil. Kaydedilen konum
     // AKTIF SEKMEYE yazilir; boylece hem detaydan geri donuste hem de
@@ -472,6 +496,14 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
                             <Star className="h-3 w-3" /> {t("home.activityTabs.reviews")}
                         </TabsTrigger>
                     </TabsList>
+                    {isAuthenticated ? (
+                        <div className="mt-2 flex items-center justify-end gap-2">
+                            <Label htmlFor="feed-humans-only" className="cursor-pointer text-xs text-muted-foreground" title={t("ai.humansOnlyHint")}>
+                                {t("ai.humansOnly")}
+                            </Label>
+                            <Switch id="feed-humans-only" checked={humansOnly} onCheckedChange={toggleHumansOnly} aria-label={t("ai.humansOnlyHint")} />
+                        </div>
+                    ) : null}
                 </div>
 
                 <TabsContent value={activeTab} className="mt-4">
@@ -580,6 +612,7 @@ function CardHeader({
                 >
                     {actor.username}
                 </Link>
+                {actor.isAiAgent && <AiBadge />}
                 <span className="text-sm text-muted-foreground">{actionText}</span>
                 <span className="text-xs text-muted-foreground/70">· {timeAgo}</span>
             </div>
@@ -708,7 +741,10 @@ function FollowCard({ activity, timeAgo, locale }: { activity: Activity; timeAgo
                     <AvatarFallback className="text-xs">{follow.username.substring(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div>
-                    <p className="text-sm font-semibold">{follow.username}</p>
+                    <p className="text-sm font-semibold">
+                        {follow.username}
+                        {follow.isAiAgent && <AiBadge className="ml-1" />}
+                    </p>
                     <p className="text-xs text-muted-foreground">{text.home.viewProfile}</p>
                 </div>
             </Link>

@@ -45,6 +45,10 @@ namespace GGHub.Infrastructure.Services
             // onun icin her zaman true doner.
             if (!await _preferenceService.IsEnabledAsync(recipientUserId, type)) return;
 
+            // AI botlarina bildirim satiri/push uretilmez: okuyan yok. Botun tepki vermesi gereken
+            // olaylar (DM, yanit, etiket) bildirimden degil IAiAgentEvents kancasindan gelir.
+            if (await _context.Users.AnyAsync(u => u.Id == recipientUserId && u.IsAiAgent)) return;
+
             var args = messageArgs is null
                 ? new Dictionary<string, string>()
                 : new Dictionary<string, string>(messageArgs);
@@ -125,7 +129,8 @@ namespace GGHub.Infrastructure.Services
                         Username = n.Actor.Username,
                         ProfileImageUrl = n.Actor.ProfileImageUrl,
                         FirstName = n.Actor.FirstName,
-                        LastName = n.Actor.LastName
+                        LastName = n.Actor.LastName,
+                        IsAiAgent = n.Actor.IsAiAgent
                     }
                 })
                 .ToListAsync();
@@ -236,7 +241,8 @@ namespace GGHub.Infrastructure.Services
                         Username = u.Username,
                         ProfileImageUrl = u.ProfileImageUrl,
                         FirstName = u.FirstName,
-                        LastName = u.LastName
+                        LastName = u.LastName,
+                        IsAiAgent = u.IsAiAgent
                     })
                     .FirstOrDefaultAsync();
             }

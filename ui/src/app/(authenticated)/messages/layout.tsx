@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { AiInteractionSetting } from "@/core/components/other/ai-interaction-setting";
 import { getConversations } from "@/api/messages/messages.api";
 import { ConversationDto } from "@/models/messages/message.model";
 import { Avatar, AvatarFallback, AvatarImage } from "@core/components/ui/avatar";
@@ -100,6 +101,13 @@ export default function MessagesLayout({ children }: { children: React.ReactNode
                         {sidebarExpanded ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                     </Button>
                 </div>
+
+                {/* AI botlariyla etkilesim ayari mesajlar ekraninda da var (profil ayarlariyla ayni). */}
+                {sidebarExpanded ? (
+                    <div className="border-b border-border/40 p-3 shrink-0">
+                        <AiInteractionSetting variant="compact" />
+                    </div>
+                ) : null}
 
                 {/* Conversations */}
                 <div className="flex-1 overflow-y-auto">

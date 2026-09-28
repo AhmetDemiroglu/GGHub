@@ -49,7 +49,8 @@ namespace GGHub.WebAPI.Controllers
             [FromQuery] int limit = 10,
             [FromQuery] DateTime? cursor = null,
             [FromQuery] ActivityType? type = null,
-            [FromQuery] string? tab = null)
+            [FromQuery] string? tab = null,
+            [FromQuery] bool humansOnly = false)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
@@ -62,7 +63,7 @@ namespace GGHub.WebAPI.Controllers
                     _ => FeedTab.Posts
                 };
 
-                return Ok(await _activityService.GetFeedAsync(userId, resolved, limit, cursor));
+                return Ok(await _activityService.GetFeedAsync(userId, resolved, limit, cursor, humansOnly));
             }
 
             var feed = await _activityService.GetPersonalizedFeedAsync(userId, limit, cursor, type);

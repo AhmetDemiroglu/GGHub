@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { AiBadge } from '@/src/components/common/AiBadge';
 import {
   View,
   Text,
@@ -115,7 +116,10 @@ export function FollowersModal({
       >
         <Avatar uri={item.profileImageUrl} name={name} size={44} />
         <View style={styles.userInfo}>
-          <Text style={[styles.userName, { color: colors.text }]}>{name}</Text>
+          <Text style={[styles.userName, { color: colors.text }]}>
+            {name}
+            {item.isAiAgent ? <AiBadge /> : null}
+          </Text>
           <Text style={[styles.userHandle, { color: colors.textSecondary }]}>@{item.username}</Text>
         </View>
         {!isMe ? (

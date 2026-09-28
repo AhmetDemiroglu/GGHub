@@ -20,6 +20,8 @@ import { ProfilePhotoUploader } from "@core/components/other/profile-photo-uploa
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/core/components/ui/dropdown-menu";
 import { FollowersModal } from "./followers-modal";
 import { MessageDialog } from "@core/components/other/message-dialog";
+import { AiBadge } from "@/core/components/base/ai-badge";
+import { AiInteractionSetting } from "@/core/components/other/ai-interaction-setting";
 import Link from "next/link";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@core/components/ui/tooltip";
 import { BlockedUsersDialog } from "@core/components/other/blocked-users-dialog";
@@ -138,13 +140,22 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
         }
     };
 
+    // AI botuna yazma engeli (DOB yok, 18 alti, ayar kapali). Sunucu da reddeder.
+    const aiBlockReason = profile.isAiAgent ? (profile.aiInteractionBlockReason ?? null) : null;
+
     const canSendMessage = () => {
+        if (aiBlockReason) return false;
         if (profile.messageSetting === 2) return false;
         if (profile.messageSetting === 1 && !profile.isFollowedBy) return false;
         return true;
     };
 
-    const displayName = profile.firstName && profile.lastName ? `${profile.firstName} ${profile.lastName}` : profile.username;
+    // AI botlarinin yalnizca adi var (soyadi yok): "Retro" gibi gorunsun, kullanici adi degil.
+    const displayName = profile.firstName && profile.lastName
+        ? `${profile.firstName} ${profile.lastName}`
+        : profile.isAiAgent && profile.firstName
+            ? profile.firstName
+            : profile.username;
 
     const [followersModalOpen, setFollowersModalOpen] = useState(false);
     const [defaultModalTab, setDefaultModalTab] = useState<"followers" | "following">("followers");
@@ -193,9 +204,19 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
 
                     <div className="mt-4 space-y-3">
                         <div>
-                            <h1 className="text-2xl font-bold">{displayName}</h1>
+                            <h1 className="flex items-center gap-2 text-2xl font-bold">
+                                {displayName}
+                                {profile.isAiAgent && <AiBadge className="text-xs" />}
+                            </h1>
                             <p className="text-muted-foreground">@{profile.username}</p>
                         </div>
+
+                        {profile.isAiAgent && (
+                            <div className="rounded-lg border border-violet-500/30 bg-violet-500/5 p-3 space-y-2">
+                                <p className="text-xs text-muted-foreground">{t("ai.aboutAgent")}</p>
+                                {user && aiBlockReason && aiBlockReason !== "loginRequired" ? <AiInteractionSetting variant="compact" /> : null}
+                            </div>
+                        )}
 
                         {profile.isBlockedByMe && (
                             <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 mt-4">
@@ -342,6 +363,10 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                                             toast.error(t("profile.header.loginRequiredMessage"));
                                             return;
                                         }
+                                        if (aiBlockReason) {
+                                            toast.error(t(`ai.${aiBlockReason}`));
+                                            return;
+                                        }
                                         setMessageDialogOpen(true);
                                     }}
                                     disabled={!user}
@@ -406,6 +431,7 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                     <div>
                         <div className="flex items-center gap-2">
                             <h1 className="text-2xl font-bold">{displayName}</h1>
+                            {profile.isAiAgent && <AiBadge className="text-xs" />}
                             {stats && (
                                 <TooltipProvider>
                                     <Tooltip>
@@ -440,6 +466,14 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                     )}
 
                     {profile.bio && <p className="text-sm text-foreground/90 pt-2 max-w-2xl leading-relaxed">{profile.bio}</p>}
+
+                    {/* AI botu: kim oldugunu acikca soyle; bu kullanici yazisamiyorsa nedenini ve ayari goster. */}
+                    {profile.isAiAgent && (
+                        <div className="max-w-2xl rounded-lg border border-violet-500/30 bg-violet-500/5 p-3 space-y-2">
+                            <p className="text-xs text-muted-foreground">{t("ai.aboutAgent")}</p>
+                            {user && aiBlockReason && aiBlockReason !== "loginRequired" ? <AiInteractionSetting variant="compact" /> : null}
+                        </div>
+                    )}
                 </div>
 
                 <div className="mt-2 flex flex-col sm:flex-row sm:items-end justify-between gap-4">

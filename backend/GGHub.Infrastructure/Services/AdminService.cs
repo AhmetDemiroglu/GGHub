@@ -356,14 +356,16 @@ namespace GGHub.Infrastructure.Services
 
         public async Task<DashboardStatsDto> GetDashboardStatisticsAsync()
         {
-            // Sahte (seed) ve silinmis hesaplar GERCEK sayilara girmez; ayri alanda raporlanir.
-            var totalUsers = await _context.Users.CountAsync(u => !u.IsSeeded && !u.IsDeleted);
+            // Sahte (seed), AI bot ve silinmis hesaplar GERCEK sayilara girmez; ayri alanda raporlanir.
+            var totalUsers = await _context.Users.CountAsync(u => !u.IsSeeded && !u.IsAiAgent && !u.IsDeleted);
             var seededUsers = await _context.Users.CountAsync(u => u.IsSeeded);
-            var bannedUsers = await _context.Users.CountAsync(u => u.IsBanned && !u.IsSeeded);
+            var aiAgentUsers = await _context.Users.CountAsync(u => u.IsAiAgent && !u.IsDeleted);
+            var bannedUsers = await _context.Users.CountAsync(u => u.IsBanned && !u.IsSeeded && !u.IsAiAgent);
             var pendingReports = await _context.ContentReports.CountAsync(r => r.Status == Core.Enums.ReportStatus.Open);
             var totalLists = await _context.UserLists.CountAsync();
-            var totalReviews = await _context.Reviews.CountAsync(r => !_context.Users.Any(u => u.Id == r.UserId && u.IsSeeded));
+            var totalReviews = await _context.Reviews.CountAsync(r => !_context.Users.Any(u => u.Id == r.UserId && (u.IsSeeded || u.IsAiAgent)));
             var seededReviews = await _context.Reviews.CountAsync(r => _context.Users.Any(u => u.Id == r.UserId && u.IsSeeded));
+            var aiAgentReviews = await _context.Reviews.CountAsync(r => r.User.IsAiAgent);
 
             var stats = new DashboardStatsDto
             {
@@ -374,6 +376,8 @@ namespace GGHub.Infrastructure.Services
                 TotalReviews = totalReviews,
                 SeededUsers = seededUsers,
                 SeededReviews = seededReviews,
+                AiAgentUsers = aiAgentUsers,
+                AiAgentReviews = aiAgentReviews,
             };
 
             return stats;

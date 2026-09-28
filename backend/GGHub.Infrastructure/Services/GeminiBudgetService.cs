@@ -2,29 +2,39 @@ using GGHub.Application.Interfaces;
 using GGHub.Infrastructure.Persistence;
 using GGHub.Infrastructure.Settings;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace GGHub.Infrastructure.Services
 {
     /// <summary>
-    /// Gemini harcama defteri. Iki ayri fren var ve karistirilmamali:
-    ///   1) MonthlyBudgetUsd:   BIZIM koydugumuz para tavani (hedef: aylik 500 TL).
-    ///   2) DailyCallCap:       Google'in UCRETSIZ katman gunluk 500 istek limitine karsi koruma.
-    ///      Bot bu limiti tek basina yerse canli sitedeki "Turkceye cevir" butonu da olur.
+    /// Gemini harcama defteri.
     ///
-    /// Defter GUNLUK satir tutuyor (PeriodKey = "yyyy-MM-dd"); aylik harcama o ayin gunlerinin
-    /// toplami. Anahtari satir kimliginin parcasi yapmak "sifirla" mantigini tamamen kaldiriyor:
-    /// yeni gun = yeni satir, reset job'i ve yaris kosulu yok, gecmis gunler audit olarak kaliyor.
+    /// Defter GUNLUK ve (kaynak, model) bazinda satir tutuyor: PeriodKey = "yyyy-MM-dd". Aylik harcama
+    /// o ayin gunlerinin toplami. Anahtari satir kimliginin parcasi yapmak "sifirla" mantigini tamamen
+    /// kaldiriyor: yeni gun = yeni satir, reset job'i ve yaris kosulu yok, gecmis gunler audit olarak kaliyor.
+    ///
+    /// Tavanlar kaynak basina ve TL cinsinden (AiSettings, admin paneli). Google USD ile fiyatliyor;
+    /// cevrim AiSettings.UsdToTryRate ile. Ucretsiz modeller (Gemma) 0 USD yazilir ve tavana takilmaz,
+    /// ama token'lari ve cagri sayilari yine sayilir (admin sayaci icin).
     /// </summary>
     public class GeminiBudgetService : IGeminiBudgetService
     {
         private readonly GGHubDbContext _context;
         private readonly GeminiSettings _settings;
+        private readonly IAiSettingsProvider _aiSettings;
+        private readonly ILogger<GeminiBudgetService> _logger;
 
-        public GeminiBudgetService(GGHubDbContext context, IOptions<GeminiSettings> settings)
+        public GeminiBudgetService(
+            GGHubDbContext context,
+            IOptions<GeminiSettings> settings,
+            IAiSettingsProvider aiSettings,
+            ILogger<GeminiBudgetService> logger)
         {
             _context = context;
             _settings = settings.Value;
+            _aiSettings = aiSettings;
+            _logger = logger;
         }
 
         /// <summary>Bugunun anahtari, UTC. Google'in kotasi da UTC gunune gore sifirlanir.</summary>
@@ -32,43 +42,61 @@ namespace GGHub.Infrastructure.Services
 
         private static string CurrentMonthPrefix() => DateTime.UtcNow.ToString("yyyy-MM");
 
-        public async Task EnsureBudgetAvailableAsync(CancellationToken cancellationToken = default)
-        {
-            var status = await GetStatusAsync(cancellationToken);
+        public bool IsFreeModel(string model) => PriceOf(model).IsFree;
 
-            if (status.IsExhausted)
+        /// <summary>
+        /// Fiyati bilinmeyen model EN PAHALI bilinen fiyattan sayilir: yanlis yazilmis bir model
+        /// adi tavani sessizce devre disi birakmasin.
+        /// </summary>
+        private GeminiModelPrice PriceOf(string model)
+        {
+            if (_settings.Models.TryGetValue(model, out var price))
             {
-                throw new GeminiBudgetExceededException(
-                    CurrentMonthPrefix(), status.SpentUsd, status.LimitUsd);
+                return price;
             }
 
-            if (status.IsDailyCapReached)
+            var fallback = _settings.Models.Values
+                .OrderByDescending(p => p.InputUsdPerMillion + p.OutputUsdPerMillion)
+                .FirstOrDefault() ?? new GeminiModelPrice { InputUsdPerMillion = 1m, OutputUsdPerMillion = 5m };
+
+            _logger.LogWarning("[Gemini] '{Model}' icin fiyat tanimli degil; en pahali bilinen fiyattan sayiliyor.", model);
+            return fallback;
+        }
+
+        public async Task EnsureBudgetAvailableAsync(string source, string model, CancellationToken cancellationToken = default)
+        {
+            if (IsFreeModel(model))
             {
-                throw new GeminiQuotaExceededException(
-                    $"Gunluk cagri tavanina ulasildi ({status.CallsToday}/{status.DailyCap}). " +
-                    "Canli sitedeki ceviri butonuna pay birakmak icin bot burada duruyor.");
+                return;
+            }
+
+            var status = await GetStatusAsync(source, cancellationToken);
+            if (status.IsExhausted)
+            {
+                throw new GeminiBudgetExceededException(source, status.PeriodKey, status.SpentUsd, status.LimitUsd);
             }
         }
 
-        public async Task RecordUsageAsync(int inputTokens, int outputTokens, CancellationToken cancellationToken = default)
+        public async Task RecordUsageAsync(string source, string model, int inputTokens, int outputTokens, CancellationToken cancellationToken = default)
         {
             if (inputTokens <= 0 && outputTokens <= 0)
             {
                 return;
             }
 
-            var cost = (inputTokens / 1_000_000m) * _settings.InputUsdPerMillion
-                     + (outputTokens / 1_000_000m) * _settings.OutputUsdPerMillion;
+            var price = PriceOf(model);
+            var cost = (inputTokens / 1_000_000m) * price.InputUsdPerMillion
+                     + (outputTokens / 1_000_000m) * price.OutputUsdPerMillion;
 
             var dayKey = TodayKey();
             var now = DateTime.UtcNow;
 
-            // Tek ifadede atomik upsert. EF ile oku-degistir-yaz yapsaydik bot ile /translate ucu
-            // ayni anda calisirken harcamalar birbirinin uzerine yazilir ve tavan sizardi.
+            // Tek ifadede atomik upsert. EF ile oku-degistir-yaz yapsaydik bot, ceviri job'u ve
+            // /translate ucu ayni anda calisirken harcamalar birbirinin uzerine yazilir ve tavan sizardi.
             await _context.Database.ExecuteSqlInterpolatedAsync($"""
-                INSERT INTO "GeminiUsages" ("PeriodKey", "SpentUsd", "InputTokens", "OutputTokens", "CallCount", "LastUpdatedAt")
-                VALUES ({dayKey}, {cost}, {(long)inputTokens}, {(long)outputTokens}, 1, {now})
-                ON CONFLICT ("PeriodKey") DO UPDATE SET
+                INSERT INTO "GeminiUsages" ("PeriodKey", "Source", "Model", "SpentUsd", "InputTokens", "OutputTokens", "CallCount", "LastUpdatedAt")
+                VALUES ({dayKey}, {source}, {model}, {cost}, {(long)inputTokens}, {(long)outputTokens}, 1, {now})
+                ON CONFLICT ("PeriodKey", "Source", "Model") DO UPDATE SET
                     "SpentUsd"     = "GeminiUsages"."SpentUsd"     + {cost},
                     "InputTokens"  = "GeminiUsages"."InputTokens"  + {(long)inputTokens},
                     "OutputTokens" = "GeminiUsages"."OutputTokens" + {(long)outputTokens},
@@ -79,46 +107,62 @@ namespace GGHub.Infrastructure.Services
 
         /// <summary>
         /// 429 gibi, token yakmayan ama kotadan DUSEN cagrilari sayar. Google reddedilen istegi de
-        /// gunluk kotaya yaziyor; saymazsak bot "daha cok hakkim var" sanip 429 uretmeye devam eder.
+        /// kotaya yaziyor; saymazsak "daha cok hakkim var" sanip 429 uretmeye devam ederiz.
         /// </summary>
-        public async Task RecordRejectedCallAsync(CancellationToken cancellationToken = default)
+        public async Task RecordRejectedCallAsync(string source, string model, CancellationToken cancellationToken = default)
         {
             var dayKey = TodayKey();
             var now = DateTime.UtcNow;
 
             await _context.Database.ExecuteSqlInterpolatedAsync($"""
-                INSERT INTO "GeminiUsages" ("PeriodKey", "SpentUsd", "InputTokens", "OutputTokens", "CallCount", "LastUpdatedAt")
-                VALUES ({dayKey}, 0, 0, 0, 1, {now})
-                ON CONFLICT ("PeriodKey") DO UPDATE SET
+                INSERT INTO "GeminiUsages" ("PeriodKey", "Source", "Model", "SpentUsd", "InputTokens", "OutputTokens", "CallCount", "LastUpdatedAt")
+                VALUES ({dayKey}, {source}, {model}, 0, 0, 0, 1, {now})
+                ON CONFLICT ("PeriodKey", "Source", "Model") DO UPDATE SET
                     "CallCount"     = "GeminiUsages"."CallCount" + 1,
                     "LastUpdatedAt" = {now}
                 """, cancellationToken);
         }
 
-        public async Task<GeminiBudgetStatus> GetStatusAsync(CancellationToken cancellationToken = default)
+        public async Task<GeminiBudgetStatus> GetStatusAsync(string source, CancellationToken cancellationToken = default)
         {
+            var settings = await _aiSettings.GetAsync(cancellationToken);
             var monthPrefix = CurrentMonthPrefix();
             var dayKey = TodayKey();
 
-            // Bu ayin butun gunleri. "2026-07" (eski aylik satir) da bu kalibi gectigi icin
-            // semantik degisiminden onceki harcama kaybolmuyor.
             var monthRows = await _context.GeminiUsages
                 .AsNoTracking()
-                .Where(u => u.PeriodKey.StartsWith(monthPrefix))
+                .Where(u => u.Source == source && u.PeriodKey.StartsWith(monthPrefix))
                 .ToListAsync(cancellationToken);
 
-            var today = monthRows.FirstOrDefault(u => u.PeriodKey == dayKey);
+            var rate = settings.UsdToTryRate > 0 ? settings.UsdToTryRate : 1m;
+            var limitTry = source == GeminiSources.AiAgent
+                ? settings.AgentMonthlyBudgetTry
+                : settings.TranslationMonthlyBudgetTry;
+            var limitUsd = limitTry / rate;
+
+            var spent = monthRows.Sum(u => u.SpentUsd);
+            var todayRows = monthRows.Where(u => u.PeriodKey == dayKey).ToList();
+            var spentToday = todayRows.Sum(u => u.SpentUsd);
+
+            // Gunluk pay: bugunun basindaki kalan butce, ayin kalan gunlerine (bugun dahil) esit bolunur.
+            var now = DateTime.UtcNow;
+            var daysLeft = DateTime.DaysInMonth(now.Year, now.Month) - now.Day + 1;
+            var remainingAtDayStart = Math.Max(0m, limitUsd - (spent - spentToday));
+            var dailyShare = daysLeft > 0 ? remainingAtDayStart / daysLeft : remainingAtDayStart;
 
             return new GeminiBudgetStatus
             {
+                Source = source,
                 PeriodKey = monthPrefix,
-                LimitUsd = _settings.MonthlyBudgetUsd,
-                SpentUsd = monthRows.Sum(u => u.SpentUsd),
+                LimitUsd = limitUsd,
+                UsdToTryRate = rate,
+                SpentUsd = spent,
                 InputTokens = monthRows.Sum(u => u.InputTokens),
                 OutputTokens = monthRows.Sum(u => u.OutputTokens),
                 CallCount = monthRows.Sum(u => u.CallCount),
-                CallsToday = today?.CallCount ?? 0,
-                DailyCap = _settings.DailyCallCap
+                CallsToday = todayRows.Sum(u => u.CallCount),
+                SpentTodayUsd = spentToday,
+                DailyShareUsd = dailyShare
             };
         }
     }

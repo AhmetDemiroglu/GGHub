@@ -163,6 +163,7 @@ namespace GGHub.Infrastructure.Services
                     u.FirstName,
                     u.LastName,
                     u.ProfileVisibility,
+                    u.IsAiAgent,
                     FollowerCount = u.Followers.Count
                 })
                 .ToListAsync();
@@ -195,6 +196,7 @@ namespace GGHub.Infrastructure.Services
                             FirstName = u.FirstName,
                             LastName = u.LastName,
                             IsFollowing = false,
+                            IsAiAgent = u.IsAiAgent,
                             // followingIds zaten "benim takip ettiklerim" kumesi (me -> them).
                             // Aday havuzu IsExcluded ile takip ettiklerimi eledigi icin bu bugun
                             // hep false; kurali yine de tek kaynaktan gecirip eleme degisirse

@@ -175,7 +175,24 @@ builder.Services.AddHostedService<DownloadEventRetentionJob>();
 // Maliyet gunde birkac kez tek bir dar seq scan; Enabled bayragi job'in icinde
 // kontrol ediliyor ve varsayilani false.
 builder.Services.AddHostedService<BirthdayGreetingJob>();
+// Dorduncu mesru istisna: AI bot motoru. Kullaniciya DM atan, gonderisine yanit veren bir is
+// prod'da calismak ZORUNDA (SignalR ve push yalnizca WebAPI'den gider). Iki kapi: host kapisi
+// AiAgents:HostEnabled (varsayilan false, yalnizca Railway env'de true; localdeki backend canli
+// DB'ye bagli oldugu icin sart) + admin panelindeki AiSettings.AgentsEnabled. Maliyet: 30 sn'de
+// bir kucuk bir kuyruk sorgusu; LLM cagrilari dakikada ~12 ile sinirli.
+builder.Services.Configure<AiAgentHostSettings>(builder.Configuration.GetSection("AiAgents"));
+builder.Services.AddSingleton<GeminiRateLimiter>();
+builder.Services.AddScoped<AiLlmGateway>();
+builder.Services.AddScoped<AiContentWriter>();
+builder.Services.AddScoped<AiAgentTaskProcessor>();
+builder.Services.AddScoped<AiAgentPlanner>();
+builder.Services.AddScoped<AiAdminService>();
+builder.Services.AddHostedService<AiAgentEngine>();
 builder.Services.Configure<GeminiSettings>(builder.Configuration.GetSection("Gemini"));
+builder.Services.AddScoped<IAiSettingsProvider, AiSettingsProvider>();
+builder.Services.AddScoped<IAiAgentDirectory, AiAgentDirectory>();
+builder.Services.AddScoped<IAiInteractionPolicy, AiInteractionPolicy>();
+builder.Services.AddScoped<IAiAgentEvents, AiAgentEvents>();
 builder.Services.AddScoped<IGeminiBudgetService, GeminiBudgetService>();
 builder.Services.AddHttpClient<IGeminiService, GeminiService>(client =>
 {

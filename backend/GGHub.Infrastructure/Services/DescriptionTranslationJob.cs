@@ -117,24 +117,25 @@ namespace GGHub.Infrastructure.Services
                 var gemini = scope.ServiceProvider.GetRequiredService<IGeminiService>();
                 var budget = scope.ServiceProvider.GetRequiredService<IGeminiBudgetService>();
 
-                var status = await budget.GetStatusAsync(stoppingToken);
+                var status = await budget.GetStatusAsync(GeminiSources.Translation, stoppingToken);
 
                 if (status.IsExhausted)
                 {
                     _logger.LogWarning(
-                        "[Translation] {Period} butcesi doldu: {Spent:F4}/{Limit:F2} USD, {Calls} cagri. Ay basinda kendiliginden acilacak.",
-                        status.PeriodKey, status.SpentUsd, status.LimitUsd, status.CallCount);
+                        "[Translation] {Period} ceviri butcesi doldu: {Spent:F2}/{Limit:F0} TL, {Calls} cagri. Ay basinda kendiliginden acilacak.",
+                        status.PeriodKey, status.SpentTry, status.LimitTry, status.CallCount);
                     return false;
                 }
 
-                // Gunluk tavan: Google'in ucretsiz katmani model basina gunde 500 istek veriyor.
-                // Bot hepsini yerse CANLI SITEDEKI ceviri butonu da gunun kalanini 429 yer.
-                // Burada durup yarina birakiyoruz; kalan pay kullanicilarin.
-                if (status.IsDailyCapReached)
+                // Gunluk pay (28 Eyl 2026): aylik ceviri tavani ayin kalan gunlerine bolunur ve job
+                // bugunun payini doldurunca durur. Amac cevirinin ayin ilk haftasinda butceyi bitirip
+                // sitedeki "Turkceye cevir" butonunu ay sonuna kadar kapatmamasi; buton kalan payi
+                // kullanmaya devam eder.
+                if (status.IsDailyShareReached)
                 {
                     _logger.LogInformation(
-                        "[Translation] Gunluk tavan doldu ({Today}/{Cap}). Siteye pay birakmak icin yarina kadar duruluyor.",
-                        status.CallsToday, status.DailyCap);
+                        "[Translation] Gunluk pay doldu ({Today:F2}/{Share:F2} TL). Yarin devam edilecek.",
+                        status.SpentTodayUsd * status.UsdToTryRate, status.DailyShareUsd * status.UsdToTryRate);
                     return false;
                 }
 
@@ -154,8 +155,8 @@ namespace GGHub.Infrastructure.Services
                 if (batch.Count == 0)
                 {
                     _logger.LogInformation(
-                        "[Translation] Kuyruk bos ({Skipped} cevrilemeyen atlandi). Bu ay: {Spent:F4}/{Limit:F2} USD, {Calls} cagri.",
-                        _untranslatable.Count, status.SpentUsd, status.LimitUsd, status.CallCount);
+                        "[Translation] Kuyruk bos ({Skipped} cevrilemeyen atlandi). Bu ay: {Spent:F2}/{Limit:F0} TL, {Calls} cagri.",
+                        _untranslatable.Count, status.SpentTry, status.LimitTry, status.CallCount);
 
                     // Kuyruk bittiginde atlananlar tekrar denensin: bir sonraki tur saatler sonra
                     // kosacagi icin bu, tikanma degil normal yeniden deneme.

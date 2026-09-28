@@ -17,15 +17,18 @@ namespace GGHub.Infrastructure.Services
         // Bunlari IPostService'e tasimak Core entity'lerini Application arayuzune
         // sizdirirdi; kod tabani entity'leri o katmanin disinda tutuyor.
         private readonly PostService _postService;
+        private readonly IAiSettingsProvider _aiSettings;
 
         public ActivityService(
             GGHubDbContext context,
             IUserDtoEnricher userDtoEnricher,
-            PostService postService)
+            PostService postService,
+            IAiSettingsProvider aiSettings)
         {
             _context = context;
             _userDtoEnricher = userDtoEnricher;
             _postService = postService;
+            _aiSettings = aiSettings;
         }
 
         /// <summary>
@@ -247,20 +250,65 @@ namespace GGHub.Infrastructure.Services
         // ==================================================================
 
         public async Task<IEnumerable<ActivityDto>> GetFeedAsync(
-            int currentUserId, FeedTab tab, int limit = 20, DateTime? cursor = null)
+            int currentUserId, FeedTab tab, int limit = 20, DateTime? cursor = null, bool humansOnly = false)
         {
             if (limit <= 0) limit = 20;
             if (limit > 50) limit = 50;
             cursor = NormalizeCursor(cursor);
 
-            return tab switch
+            // Bot kartlari suzulecegi/kirpilacagi icin fazladan aday cekilir; aksi halde botlarin
+            // yogun oldugu bir sayfa kisa donup istemciye "akisin sonu" dedirtirdi (istemci
+            // hasMore'u sayfa uzunlugundan cikariyor).
+            var fetchLimit = Math.Min(50, limit * (humansOnly ? 3 : 2));
+
+            var page = tab switch
             {
                 // Sekme, eski ?type=0 yolunun BIREBIR aynisi. Tek satirda
                 // delege ediliyor ki iki yol zamanla birbirinden sapmasin.
-                FeedTab.Reviews => await GetPersonalizedFeedAsync(currentUserId, limit, cursor, ActivityType.Review),
-                FeedTab.Discover => await GetDiscoverFeedAsync(currentUserId, limit, cursor),
-                _ => await GetPostFeedAsync(currentUserId, limit, cursor)
+                FeedTab.Reviews => await GetPersonalizedFeedAsync(currentUserId, fetchLimit, cursor, ActivityType.Review),
+                FeedTab.Discover => await GetDiscoverFeedAsync(currentUserId, fetchLimit, cursor),
+                _ => await GetPostFeedAsync(currentUserId, fetchLimit, cursor)
             };
+
+            return await ApplyAiSharePolicyAsync(page, humansOnly, limit);
+        }
+
+        /// <summary>
+        /// AI bot kartlari icin akis kurali:
+        ///   - humansOnly: bot kartlari tamamen cikar ("Sadece insanlar" filtresi).
+        ///   - aksi halde bot kartlari sayfanin en fazla AiSettings.FeedMaxAiSharePercent'i kadar olur;
+        ///     sirali sayfadaki ILK bot kartlari kalir, fazlasi duser.
+        /// Kart sahibi = Actor (repost kartinda repost EDEN). Kullanicinin kendi kartlari ve
+        /// kendi takip ettigi botlar ayri tutulmaz: kural sayfa bazinda, sade.
+        /// Sayfa biraz kisalabilir; cursor son donen kartin zamanindan devam ettigi icin sorun degil.
+        /// </summary>
+        private async Task<IEnumerable<ActivityDto>> ApplyAiSharePolicyAsync(
+            IEnumerable<ActivityDto> page, bool humansOnly, int limit)
+        {
+            var items = page.ToList();
+            var settings = await _aiSettings.GetAsync();
+            var share = Math.Clamp(settings.FeedMaxAiSharePercent, 0, 100);
+            var maxAi = humansOnly ? 0 : Math.Max(share > 0 ? 1 : 0, (int)Math.Floor(limit * share / 100.0));
+
+            // Kronolojik pencere: en yeni kartlardan baslayip sayfayi doldur. Botlar tavani asinca
+            // atlanir. Donen kartlarin EN ESKISINDEN daha eski her sey bir sonraki sayfaya kalir
+            // (istemci cursor'u donen kartlarin en eski zamanindan kuruyor), yani insan karti
+            // kaybolmaz; yalnizca tavani asan bot kartlari duser.
+            var keptSet = new HashSet<ActivityDto>(ReferenceEqualityComparer.Instance);
+            var aiKept = 0;
+            foreach (var item in items.OrderByDescending(i => i.OccurredAt))
+            {
+                if (keptSet.Count >= limit) break;
+                if (item.Actor?.IsAiAgent == true)
+                {
+                    if (aiKept >= maxAi) continue;
+                    aiKept++;
+                }
+                keptSet.Add(item);
+            }
+
+            // Sunucunun skor sirasi korunur.
+            return items.Where(keptSet.Contains).ToList();
         }
 
         /// <summary>

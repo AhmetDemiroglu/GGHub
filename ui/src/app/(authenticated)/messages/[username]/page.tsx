@@ -3,6 +3,8 @@
 import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getMessageThread, sendMessage } from "@/api/messages/messages.api";
+import { getProfileByUsername } from "@/api/profile/profile.api";
+import { AiInteractionSetting } from "@/core/components/other/ai-interaction-setting";
 import { MessageDto, MessageForCreationDto } from "@/models/messages/message.model";
 import { Button } from "@core/components/ui/button";
 import { Textarea } from "@core/components/ui/textarea";
@@ -35,6 +37,16 @@ export default function MessageThreadPage() {
         staleTime: 0,
         refetchOnMount: "always",
     });
+
+    // Karsi taraf AI botu mu ve bu kullanici onunla yazisabilir mi (DOB, 18+, ayar).
+    // Profil sorgusu profil sayfasiyla ayni anahtari kullanir; onbellek paylasilir.
+    const { data: partnerProfile } = useQuery({
+        queryKey: ["profile", username],
+        queryFn: () => getProfileByUsername(username),
+        enabled: !!username && !!user,
+        staleTime: 60 * 1000,
+    });
+    const aiBlockReason = partnerProfile?.isAiAgent ? (partnerProfile.aiInteractionBlockReason ?? null) : null;
 
     useEffect(() => {
         if (!username || connectionStatus !== "connected") return;
@@ -137,12 +149,15 @@ export default function MessageThreadPage() {
             : undefined;
     const partnerUser = partner ?? {
         username,
+        // Bos sohbette karsi taraf mesajdan cozulemiyor; AI rozeti icin profil sorgusundan al.
+        isAiAgent: partnerProfile?.isAiAgent,
+        firstName: partnerProfile?.isAiAgent ? partnerProfile.firstName : undefined,
         profileImageUrl:
             messages && messages.length > 0
                 ? messages[0].senderId === currentUserId
                     ? messages[0].recipientProfileImageUrl
                     : messages[0].senderProfileImageUrl
-                : undefined,
+                : partnerProfile?.profileImageUrl,
     };
 
     return (
@@ -249,6 +264,15 @@ export default function MessageThreadPage() {
                 <p className="text-[11px] text-muted-foreground/60">{t("messages.securityWarning")}</p>
             </div>
 
+            {/* AI botu: yazisma engeli varsa (DOB yok, 18 alti, ayar kapali) nedenini ve
+                ayari goster; sunucu zaten reddediyor, bu yalnizca kullaniciya durust aciklama. */}
+            {partnerProfile?.isAiAgent ? (
+                <div className="shrink-0 border-t border-border/40 px-4 pt-3">
+                    <p className="mb-2 text-[11px] text-muted-foreground">{t("ai.aboutAgent")}</p>
+                    {aiBlockReason ? <AiInteractionSetting variant="compact" /> : null}
+                </div>
+            ) : null}
+
             {/* Input Area */}
             <div className="shrink-0 border-t border-border/40 bg-card/30 px-4 py-3">
                 <div className="flex items-end gap-2">
@@ -264,10 +288,11 @@ export default function MessageThreadPage() {
                         }}
                         className="min-h-10 max-h-32 resize-none rounded-xl border-border/40 bg-background/50 text-sm"
                         rows={1}
+                        disabled={!!aiBlockReason}
                     />
                     <Button
                         onClick={handleSend}
-                        disabled={!messageContent.trim() || sendMutation.isPending}
+                        disabled={!!aiBlockReason || !messageContent.trim() || sendMutation.isPending}
                         size="icon"
                         className="h-10 w-10 shrink-0 rounded-xl"
                     >

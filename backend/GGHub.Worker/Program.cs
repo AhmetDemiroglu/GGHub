@@ -52,6 +52,8 @@ builder.Services.AddHttpClient("Metacritic")
 builder.Services.AddScoped<IMetacriticService, MetacriticService>();
 
 builder.Services.Configure<GeminiSettings>(builder.Configuration.GetSection("Gemini"));
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<IAiSettingsProvider, AiSettingsProvider>();
 builder.Services.AddScoped<IGeminiBudgetService, GeminiBudgetService>();
 builder.Services.AddHttpClient<IGeminiService, GeminiService>(client =>
 {
@@ -68,7 +70,6 @@ builder.Services.Configure<RawgUpcomingSyncSettings>(builder.Configuration.GetSe
 // cunku ayarlarin bir kismi (OnDemandEnabled) WebAPI tarafinda da gecerli.
 builder.Services.Configure<SteamCatalogSettings>(builder.Configuration.GetSection("SteamCatalog"));
 builder.Services.AddHttpClient("Steam");
-builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ISteamCatalogService, SteamCatalogService>();
 
 // IGDB (Twitch): konsol ozel yapimlarin tek ucretsiz kaynagi. Kimlik bilgileri

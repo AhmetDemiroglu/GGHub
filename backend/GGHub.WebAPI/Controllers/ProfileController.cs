@@ -88,6 +88,17 @@ namespace GGHub.WebAPI.Controllers
             await _profileService.UpdateMessageSettingAsync(userId, settingDto.NewSetting);
             return NoContent();
         }
+        /// <summary>
+        /// "AI hesaplarla etkilesim" ayari. Ayar acik olsa da botlar yalnizca dogum tarihini girmis
+        /// ve 18 yasini doldurmus kullanicilarla etkilesir (AiInteractionPolicy).
+        /// </summary>
+        [HttpPut("me/ai-interaction")]
+        public async Task<IActionResult> UpdateMyAiInteraction(UpdateAiInteractionDto dto)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            await _profileService.UpdateAiInteractionAsync(userId, dto.Allow);
+            return NoContent();
+        }
         [HttpPut("me/visibility")]
         public async Task<IActionResult> UpdateMyProfileVisibility(UpdateProfileVisibilityDto visibilityDto)
         {

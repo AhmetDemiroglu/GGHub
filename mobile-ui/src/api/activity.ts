@@ -34,9 +34,12 @@ export const getFeedByTab = (
   tab: FeedTabKey,
   limit: number = 10,
   cursor?: string,
+  humansOnly: boolean = false,
 ): Promise<Activity[]> => {
   const params = new URLSearchParams({ limit: String(limit), tab });
   if (cursor) params.set('cursor', cursor);
+  // "Sadece insanlar": AI bot kartlari sunucuda suzulur.
+  if (humansOnly) params.set('humansOnly', 'true');
   return axiosInstance
     .get<Activity[]>(`/activities/feed?${params.toString()}`)
     .then((response) => response.data);

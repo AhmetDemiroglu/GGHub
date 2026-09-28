@@ -20,6 +20,17 @@ export interface Profile {
     isEmailPublic: boolean;
     isPhoneNumberPublic: boolean;
     isDateOfBirthPublic: boolean;
+    /** Kendi profili: "AI hesaplarla etkilesim" ayari. */
+    allowAiInteraction?: boolean;
+    /** Kendi AI etkilesim engeli: null (serbest) | "needsBirthDate" | "underage" | "optedOut". */
+    aiInteractionBlockReason?: AiInteractionBlockReason | null;
+}
+
+/** Sunucu AiInteractionBlockReasons aynasi. */
+export type AiInteractionBlockReason = "needsBirthDate" | "underage" | "optedOut" | "loginRequired";
+
+export interface UpdateAiInteractionDto {
+    allow: boolean;
 }
 
 /**
@@ -112,4 +123,11 @@ export interface PublicProfile {
     listCount?: number;
     /** Okuyucunun gorebildigi kok gonderi sayisi; 0 ise Gonderiler sekmesi cizilmez. */
     postCount?: number;
+    /** AI bot hesabi ("AI" rozeti). */
+    isAiAgent?: boolean;
+    /**
+     * Profil bir AI botuysa: GORUNTULEYENIN botla etkilesim engeli (null = mesaj atabilir).
+     * Mesaj butonu buna gore pasif olur ve aciklama notu gosterilir.
+     */
+    aiInteractionBlockReason?: AiInteractionBlockReason | null;
 }

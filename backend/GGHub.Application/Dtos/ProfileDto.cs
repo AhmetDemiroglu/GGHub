@@ -61,5 +61,20 @@ namespace GGHub.Application.Dtos
         /// 0 iken hic cizilmez, o yuzden GetUserPostsAsync ile ayni suzgecten gecer.
         /// </summary>
         public int PostCount { get; set; }
+
+        /// <summary>Profil bir AI bot hesabi mi ("AI" rozeti, mesaj butonu kurali).</summary>
+        public bool IsAiAgent { get; set; }
+
+        /// <summary>
+        /// "AI hesaplarla etkilesim" ayari. YALNIZCA kendi profilinde doldurulur (gizlilik ekrani).
+        /// </summary>
+        public bool AllowAiInteraction { get; set; }
+
+        /// <summary>
+        /// GORUNTULEYEN kullanicinin AI botlariyla etkilesim engeli: null (serbest), "needsBirthDate",
+        /// "underage", "optedOut" ya da "loginRequired". Kendi profilinde ve AI bot profillerinde
+        /// doldurulur; istemci anahtari/mesaj butonunu pasif yapip aciklama notunu buna gore gosterir.
+        /// </summary>
+        public string? AiInteractionBlockReason { get; set; }
     }
 }

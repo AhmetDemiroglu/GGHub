@@ -37,6 +37,7 @@ namespace GGHub.Infrastructure.Services
               AND u."IsBanned" = FALSE
               AND u."IsEmailVerified" = TRUE
               AND u."IsSeeded" = FALSE
+              AND u."IsAiAgent" = FALSE
               AND u."Email" IS NOT NULL
               AND u."Email" <> ''
             """;

@@ -63,7 +63,8 @@ namespace GGHub.Infrastructure.Services
                 (usernameKey != "" && u.UsernameNormalized == usernameKey));
 
             // PasswordHash/Salt are null for social-only (Google/Apple) accounts → treat as invalid credentials.
-            if (user == null || user.PasswordHash == null || user.PasswordSalt == null ||
+            // AI bot hesaplariyla giris YOK (sifreleri de yok; bu satir ek emniyet).
+            if (user == null || user.IsAiAgent || user.PasswordHash == null || user.PasswordSalt == null ||
                 !VerifyPasswordHash(userForLoginDto.Password, user.PasswordHash, user.PasswordSalt))
             {
                 return null;
@@ -199,7 +200,9 @@ namespace GGHub.Infrastructure.Services
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email.ToLower());
 
-            if (user == null)
+            // AI bot hesaplari icin sifirlama kodu URETILMEZ: bot e-postasi tahmin edilebilir
+            // (@ai.gghub.social) ve 6 haneli kod, hesabi ele gecirmeye giden tek kapi olurdu.
+            if (user == null || user.IsAiAgent)
             {
                 return true;
             }
@@ -229,6 +232,7 @@ namespace GGHub.Infrastructure.Services
         public async Task<bool> ResetPasswordAsync(string token, string newPassword)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u =>
+                !u.IsAiAgent &&
                 u.PasswordResetToken == token &&
                 u.PasswordResetTokenExpiry > DateTime.UtcNow);
 
@@ -652,6 +656,13 @@ namespace GGHub.Infrastructure.Services
 
         private async Task<LoginResponseDto> IssueTokensAsync(User user)
         {
+            // Tum giris yollari (sifre, Google, Apple, refresh) buradan gecer: AI bot hesabina
+            // hicbir kosulda oturum acilmaz.
+            if (user.IsAiAgent)
+            {
+                throw new InvalidOperationException(AppText.Get("auth.accountSuspended"));
+            }
+
             // Kullanicinin son bilinen dilini burada tazeliyoruz: parola, Google ve Apple
             // girislerinin HEPSI bu metottan geciyor, yani tek yazma noktasi.
             // Arka plan job'larinda (dogum gunu maili gibi) istek kulturu yoktur ve web'den

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, AlertCircle, ArrowLeftToLine, LayoutDashboard, Map, Megaphone, Users } from "lucide-react";
+import { Activity, AlertCircle, ArrowLeftToLine, Bot, LayoutDashboard, Map, Megaphone, Users } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@core/components/ui/avatar";
 import { buttonVariants } from "@core/components/ui/button";
 import { cn } from "@core/lib/utils";
@@ -29,6 +29,7 @@ export const AdminSidebarNav = ({ user, onLinkClick }: AdminSidebarNavProps) => 
         { title: t("admin.trafficAnalytics"), href: "/traffic", icon: Activity },
         { title: t("admin.behaviorAnalytics"), href: "/behavior", icon: Map },
         { title: t("admin.campaignAnalytics"), href: "/download-analytics", icon: Megaphone },
+        { title: t("admin.aiAgents"), href: "/ai-agents", icon: Bot },
     ];
 
     return (
