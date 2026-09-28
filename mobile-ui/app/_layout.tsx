@@ -15,6 +15,7 @@ import { ToastProvider } from '@/src/components/common/Toast';
 import { ConfirmProvider } from '@/src/components/common/ConfirmDialog';
 import { AuthPromptProvider } from '@/src/contexts/auth-prompt-context';
 import { AiConsentProvider } from '@/src/components/ai/AiConsentProvider';
+import { AppReleaseGate } from '@/src/components/app-release/AppReleaseGate';
 import { AppSidebar } from '@/src/components/shell';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useAuth } from '@/src/hooks/use-auth';
@@ -154,9 +155,12 @@ export default function RootLayout() {
                         <AuthPromptProvider>
                           {/* AI etkilesimi onay penceresi: interceptor bota yazma reddinde acar. */}
                           <AiConsentProvider>
-                            <AppSidebar>
-                              <RootLayoutNav />
-                            </AppSidebar>
+                            {/* Surum/bakim kapisi: kapaliysa navigator yerine engel ekrani, oneride ustune pencere. */}
+                            <AppReleaseGate>
+                              <AppSidebar>
+                                <RootLayoutNav />
+                              </AppSidebar>
+                            </AppReleaseGate>
                           </AiConsentProvider>
                         </AuthPromptProvider>
                       </ConfirmProvider>

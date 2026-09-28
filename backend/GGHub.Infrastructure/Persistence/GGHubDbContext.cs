@@ -55,6 +55,7 @@ namespace GGHub.Infrastructure.Persistence
         public DbSet<AiSettings> AiSettings { get; set; }
         public DbSet<AiConsentRecord> AiConsentRecords { get; set; }
         public DbSet<AiConversation> AiConversations { get; set; }
+        public DbSet<AppReleasePolicy> AppReleasePolicies { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -403,6 +404,20 @@ namespace GGHub.Infrastructure.Persistence
                 entity.Property(s => s.UsdToTryRate).HasPrecision(12, 4);
                 entity.Property(s => s.PrimaryModel).HasMaxLength(48);
                 entity.Property(s => s.FallbackModel).HasMaxLength(48);
+            });
+
+            // AppReleasePolicy: tek satir (Id = 1), mobil surum/bakim politikasi.
+            modelBuilder.Entity<AppReleasePolicy>(entity =>
+            {
+                entity.Property(p => p.Id).ValueGeneratedNever();
+                entity.Property(p => p.MaintenanceMessageTr).HasMaxLength(500);
+                entity.Property(p => p.MaintenanceMessageEn).HasMaxLength(500);
+                entity.Property(p => p.IosMinVersion).HasMaxLength(20);
+                entity.Property(p => p.IosRecommendedVersion).HasMaxLength(20);
+                entity.Property(p => p.AndroidMinVersion).HasMaxLength(20);
+                entity.Property(p => p.AndroidRecommendedVersion).HasMaxLength(20);
+                entity.Property(p => p.IosStoreUrl).HasMaxLength(300);
+                entity.Property(p => p.AndroidStoreUrl).HasMaxLength(300);
             });
 
             // BirthdayGreeting: kullanici basina yil basina TEK satir.
