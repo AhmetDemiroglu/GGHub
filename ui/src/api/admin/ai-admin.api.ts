@@ -9,7 +9,9 @@ export const aiAdminApi = {
     provisionAgents: () => axiosInstance.post<{ created: number }>("/admin/ai/agents/provision").then((r) => r.data),
     updateAgent: (userId: number, data: AiAgentUpdate) => axiosInstance.put(`/admin/ai/agents/${userId}`, data),
     getUsage: (days = 30) => axiosInstance.get<AiUsageReport>(`/admin/ai/usage?days=${days}`).then((r) => r.data),
-    purgePreview: () => axiosInstance.get<AiPurgeReport>("/admin/ai/purge-fake/preview").then((r) => r.data),
+    // Temizlik buyuk tablolarda uzun surebilir; varsayilan 15 sn istemci zaman asimi burada yetmez.
+    purgePreview: () =>
+        axiosInstance.get<AiPurgeReport>("/admin/ai/purge-fake/preview", { timeout: 300_000 }).then((r) => r.data),
     purge: (confirmation: string) =>
-        axiosInstance.post<AiPurgeReport>("/admin/ai/purge-fake", { confirmation }).then((r) => r.data),
+        axiosInstance.post<AiPurgeReport>("/admin/ai/purge-fake", { confirmation }, { timeout: 300_000 }).then((r) => r.data),
 };

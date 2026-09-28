@@ -174,6 +174,9 @@ namespace GGHub.Infrastructure.Persistence.Seeders
             bool dryRun,
             CancellationToken cancellationToken = default)
         {
+            // Buyuk silme: varsayilan 30 sn komut zaman asimi yetmeyebilir.
+            _context.Database.SetCommandTimeout(TimeSpan.FromMinutes(5));
+
             var strategy = _context.Database.CreateExecutionStrategy();
             return await strategy.ExecuteAsync(async () =>
             {
@@ -378,17 +381,20 @@ namespace GGHub.Infrastructure.Persistence.Seeders
             // --- Sayac onarimi ------------------------------------------------------------
 
             // Oyun puani: kalan INSAN incelemelerinden (AI botlari puana girmez, bkz. ReviewService).
-            foreach (var gameId in affectedGameIds)
-            {
-                var stats = await _context.Reviews
-                    .Where(r => r.GameId == gameId && !r.User.IsAiAgent)
-                    .GroupBy(r => r.GameId)
-                    .Select(g => new { Average = g.Average(r => r.Rating), Count = g.Count() })
-                    .FirstOrDefaultAsync(cancellationToken);
+            // Sayac onarimi KUME TABANLI: her etkilenen kayit icin ayri sorgu atmak (eski surum) eski
+            // sahte hesaplarin yuzlerce oyuna yayilmis incelemelerinde dakikalar suruyordu ve istek
+            // zaman asimina dusup transaction geri aliniyordu (28 Eyl 2026). Tek UPDATE, ilintili alt sorgu.
 
-                await _context.Games.Where(g => g.Id == gameId).ExecuteUpdateAsync(set => set
-                    .SetProperty(g => g.AverageRating, stats == null ? 0 : stats.Average)
-                    .SetProperty(g => g.RatingCount, stats == null ? 0 : stats.Count), cancellationToken);
+            // Oyun puani: kalan INSAN incelemelerinden (AI botlari puana girmez, bkz. ReviewService).
+            if (affectedGameIds.Count > 0)
+            {
+                await _context.Games.Where(g => affectedGameIds.Contains(g.Id)).ExecuteUpdateAsync(set => set
+                    .SetProperty(g => g.AverageRating, g => _context.Reviews
+                        .Where(r => r.GameId == g.Id && !r.User.IsAiAgent)
+                        .Average(r => (double?)r.Rating) ?? 0)
+                    .SetProperty(g => g.RatingCount, g => _context.Reviews
+                        .Count(r => r.GameId == g.Id && !r.User.IsAiAgent)),
+                    cancellationToken);
             }
 
             if (affectedPostIds.Count > 0)
@@ -400,17 +406,15 @@ namespace GGHub.Infrastructure.Persistence.Seeders
                     cancellationToken);
             }
 
-            foreach (var listId in affectedListIds)
+            if (affectedListIds.Count > 0)
             {
-                var stats = await _context.UserListRatings
-                    .Where(r => r.UserListId == listId)
-                    .GroupBy(r => r.UserListId)
-                    .Select(g => new { Average = g.Average(r => r.Value), Count = g.Count() })
-                    .FirstOrDefaultAsync(cancellationToken);
-
-                await _context.UserLists.Where(l => l.Id == listId).ExecuteUpdateAsync(set => set
-                    .SetProperty(l => l.AverageRating, stats == null ? 0 : stats.Average)
-                    .SetProperty(l => l.RatingCount, stats == null ? 0 : stats.Count), cancellationToken);
+                await _context.UserLists.Where(l => affectedListIds.Contains(l.Id)).ExecuteUpdateAsync(set => set
+                    .SetProperty(l => l.AverageRating, l => _context.UserListRatings
+                        .Where(r => r.UserListId == l.Id)
+                        .Average(r => (double?)r.Value) ?? 0)
+                    .SetProperty(l => l.RatingCount, l => _context.UserListRatings
+                        .Count(r => r.UserListId == l.Id)),
+                    cancellationToken);
             }
 
             _logger.LogInformation(

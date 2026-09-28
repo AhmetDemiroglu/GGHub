@@ -81,7 +81,9 @@ namespace GGHub.WebAPI.Controllers
                 return BadRequest(new { message = "Onay için SİL yazın." });
             }
 
-            return Ok(await _service.PurgeFakeContentAsync(dryRun: false, ct));
+            // Istek iptali (tarayici zaman asimi, sekme kapanmasi) silmeyi yarida KESMEMELI: islem tek
+            // transaction, basladiysa sonuna kadar gitsin. Bu yuzden istek token'i bilerek verilmiyor.
+            return Ok(await _service.PurgeFakeContentAsync(dryRun: false, CancellationToken.None));
         }
     }
 }
