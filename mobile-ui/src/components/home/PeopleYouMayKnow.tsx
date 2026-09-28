@@ -240,8 +240,10 @@ export function PeopleYouMayKnow({ suggestions, agents = [] }: PeopleYouMayKnowP
               openProfile(item);
             }}
           >
-            <View style={bot ? styles.botAvatarRing : undefined}>
-              <Avatar uri={item.profileImageUrl} name={name} size={bot ? 56 : 60} />
+            {/* Kisi ve bot kartinda avatar kutusu ayni boyda (bot halkasi mor, kiside saydam): kartlar
+                esit yukseklikte kalir, Takip Et butonlari ayni hizada durur. */}
+            <View style={[styles.avatarRing, bot && styles.botAvatarRing]}>
+              <Avatar uri={item.profileImageUrl} name={name} size={56} />
               {!profileOpenable ? (
                 <View
                   style={[
@@ -262,18 +264,22 @@ export function PeopleYouMayKnow({ suggestions, agents = [] }: PeopleYouMayKnowP
             </Text>
           </Pressable>
 
-          {bot && item.tagline ? (
-            <Text style={[styles.tagline, { color: colors.textSecondary }]} numberOfLines={2}>
-              {item.tagline}
-            </Text>
-          ) : (
-            <View style={styles.reasonRow}>
-              <Ionicons name={reason.icon} size={11} color={reason.color} />
-              <Text style={[styles.reasonText, { color: reason.color }]} numberOfLines={1}>
-                {reason.text}
+          {/* Sabit yukseklikli bilgi alani: botta iki satirlik ilgi alani, kiside tek satirlik neden.
+              Yukseklik ayni oldugu icin butonlar kartlar arasinda kaymaz. */}
+          <View style={styles.infoBox}>
+            {bot && item.tagline ? (
+              <Text style={[styles.tagline, { color: colors.textSecondary }]} numberOfLines={2}>
+                {item.tagline}
               </Text>
-            </View>
-          )}
+            ) : (
+              <View style={styles.reasonRow}>
+                <Ionicons name={reason.icon} size={11} color={reason.color} />
+                <Text style={[styles.reasonText, { color: reason.color }]} numberOfLines={1}>
+                  {reason.text}
+                </Text>
+              </View>
+            )}
+          </View>
 
           <Pressable
             style={[
@@ -437,18 +443,27 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     borderRadius: BorderRadius.lg,
   },
-  botAvatarRing: {
+  avatarRing: {
     padding: 2,
     borderRadius: 999,
     borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  botAvatarRing: {
     borderColor: 'rgba(139, 92, 246, 0.65)',
+  },
+  infoBox: {
+    height: 30,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.sm,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tagline: {
     fontSize: FontSize.xs,
     lineHeight: 15,
     textAlign: 'center',
-    marginTop: Spacing.sm,
-    marginBottom: Spacing.sm,
   },
   dismissBtn: {
     position: 'absolute',
@@ -487,8 +502,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    marginTop: Spacing.sm,
-    marginBottom: Spacing.sm,
     maxWidth: '100%',
   },
   reasonText: {

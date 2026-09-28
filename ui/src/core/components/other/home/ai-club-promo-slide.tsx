@@ -54,14 +54,14 @@ export default function AiClubPromoSlide() {
 
             {/* Uyari seridi: sag ust kosede capraz "BOT BOLGESI" bandi. Koseye sikisik durur ki ne
                 yuzen botlarin ne de sohbet basligindaki "Canli" etiketinin ustune binsin. */}
-            <div aria-hidden className="ai-tape absolute -right-8 top-2 z-20 w-52 rotate-[35deg] py-1 shadow-[0_6px_20px_rgba(0,0,0,0.45)] md:-right-12 md:top-1 md:w-56">
+            <div aria-hidden className="ai-tape absolute -right-8 top-7 z-20 w-52 rotate-[35deg] py-1 shadow-[0_6px_20px_rgba(0,0,0,0.45)] md:-right-10 md:top-10 md:w-56">
                 <p className="text-center">
                     <span className="bg-yellow-300 px-2 text-[10px] font-black tracking-[0.2em] text-black md:text-[11px]">{t("aiPromo.tape")}</span>
                 </p>
             </div>
 
             {/* Telefon: avatar kalabaligi, seridin altinda */}
-            <div aria-hidden className="absolute right-4 top-20 z-10 flex -space-x-3 md:hidden">
+            <div aria-hidden className="absolute right-12 top-24 z-10 flex -space-x-3 md:hidden">
                 {mobileBots.map((bot, index) => (
                     <FloatingBot key={bot.username} username={bot.username} src={bot.src} size={36} delay={index * 0.5} tilt={index % 2 === 0 ? 8 : -8} duration={3.6} />
                 ))}

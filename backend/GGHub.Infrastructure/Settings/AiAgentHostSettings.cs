@@ -13,8 +13,11 @@ namespace GGHub.Infrastructure.Settings
     {
         public bool HostEnabled { get; set; }
 
-        /// <summary>Kuyruk ve planlayici tik araligi.</summary>
-        public int TickSeconds { get; set; } = 30;
+        /// <summary>
+        /// Kuyruk tik araligi. DM cevabi bu kadar gecikebilir; sorgu tek satirlik bir kilitli SELECT,
+        /// 15 sn prod'a yuk degil.
+        /// </summary>
+        public int TickSeconds { get; set; } = 15;
 
         /// <summary>Tik basina en fazla islenecek gorev (LLM cagrisi dakikada ~12 ile sinirli).</summary>
         public int MaxTasksPerTick { get; set; } = 6;

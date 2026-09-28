@@ -45,6 +45,9 @@ export function HeroSlider({ games }: HeroSliderProps) {
   const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   const startAutoScroll = useCallback(() => {
+    // Once eskisi temizlenir: surukle-birak sonu ve dokunus sonu ikisi de baslatiyor, iki
+    // zamanlayici ust uste binerse kart iki kat sik kayardi.
+    if (intervalRef.current) clearInterval(intervalRef.current);
     if (items.length <= 1) return;
     intervalRef.current = setInterval(() => {
       setActiveIndex((prev) => {
@@ -150,6 +153,11 @@ export function HeroSlider({ games }: HeroSliderProps) {
           contentContainerStyle={styles.listContent}
           onScrollBeginDrag={handleScrollBeginDrag}
           onScrollEndDrag={handleScrollEndDrag}
+          // Parmak karttayken otomatik kaydirma durur. Aksi halde okuyup dokunan kullanicinin ilk
+          // dokunusu tam o an baslayan kaydirma animasyonunu durdurmaya gidiyor, kart acilmiyordu.
+          onTouchStart={stopAutoScroll}
+          onTouchEnd={startAutoScroll}
+          onTouchCancel={startAutoScroll}
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig}
           getItemLayout={(_, index) => ({

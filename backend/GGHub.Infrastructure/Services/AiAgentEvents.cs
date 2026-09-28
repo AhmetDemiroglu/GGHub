@@ -70,7 +70,8 @@ namespace GGHub.Infrastructure.Services
                     (t.Status == AiAgentTaskStatus.Pending || t.Status == AiAgentTaskStatus.Running));
                 if (pending) return;
 
-                await AddTaskAsync(recipientId, AiAgentTaskType.ReplyToDirectMessage, TimeSpan.FromSeconds(Random.Shared.Next(20, 61)),
+                // Kisa gecikme: kullanici DM'de cevap bekler (gonderi yanitlarindaki dakikalar burada uzun).
+                await AddTaskAsync(recipientId, AiAgentTaskType.ReplyToDirectMessage, TimeSpan.FromSeconds(Random.Shared.Next(5, 16)),
                     targetUserId: senderId, triggerMessageId: messageId);
             }
             catch (Exception ex)

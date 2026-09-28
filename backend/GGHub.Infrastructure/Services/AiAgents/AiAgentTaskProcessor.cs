@@ -40,6 +40,7 @@ namespace GGHub.Infrastructure.Services
         private readonly IAiAgentDirectory _directory;
         private readonly IAiSettingsProvider _settings;
         private readonly AiConversationService _conversations;
+        private readonly IHubNotificationService _hub;
         private readonly ILogger<AiAgentTaskProcessor> _logger;
 
         public AiAgentTaskProcessor(
@@ -53,6 +54,7 @@ namespace GGHub.Infrastructure.Services
             IAiAgentDirectory directory,
             IAiSettingsProvider settings,
             AiConversationService conversations,
+            IHubNotificationService hub,
             ILogger<AiAgentTaskProcessor> logger)
         {
             _context = context;
@@ -65,6 +67,7 @@ namespace GGHub.Infrastructure.Services
             _directory = directory;
             _settings = settings;
             _conversations = conversations;
+            _hub = hub;
             _logger = logger;
         }
 
@@ -107,6 +110,9 @@ namespace GGHub.Infrastructure.Services
         {
             if (task.TargetUserId is not int userId) return Outcome.Skip("Hedef yok.");
             if (!await _policy.CanInteractAsync(userId, ct)) return Outcome.Skip("Kullanici AI etkilesimine uygun degil.");
+            // Bot mesaji "gordu": insan tarafinda cift tik. Bot sohbeti hic acmadigi icin eskiden
+            // kullanicinin mesaji sonsuza dek tek tikte kaliyordu.
+            await MarkThreadReadAsync(task.AgentUserId, agent.Username, userId, ct);
             if (!await UnderDailyMessageCapAsync(userId, ct)) return Outcome.Skip("Kullanicinin gunluk bot mesaji tavani doldu.");
 
             var partnerRow = await _context.Users.AsNoTracking().Where(u => u.Id == userId).Select(u => new { u.Username, u.PreferredLocale }).FirstAsync(ct);
@@ -725,6 +731,26 @@ namespace GGHub.Infrastructure.Services
         /// <summary>Bir dil grubundaki acik botlarin kucuk harf kullanici adi -> kimlik sozlugu (etiket cevirici icin).</summary>
         private async Task<Dictionary<string, int>> AgentHandlesAsync(string lang, CancellationToken ct)
             => (await _conversations.LoadRosterAsync(lang, ct)).ToDictionary(a => a.Username.ToLowerInvariant(), a => a.UserId);
+
+        /// <summary>
+        /// Insanin bota gonderdigi okunmamis mesajlari okundu yapar ve gonderene SignalR ile bildirir
+        /// (insanin sohbeti acmasindaki SocialService yoluyla ayni olay). Hata ana isi bozmaz.
+        /// </summary>
+        private async Task MarkThreadReadAsync(int agentId, string agentUsername, int humanId, CancellationToken ct)
+        {
+            try
+            {
+                var now = DateTime.UtcNow;
+                var updated = await _context.Messages
+                    .Where(m => m.SenderId == humanId && m.RecipientId == agentId && m.ReadAt == null)
+                    .ExecuteUpdateAsync(s => s.SetProperty(m => m.ReadAt, now), ct);
+                if (updated > 0) await _hub.MessageReadAsync(humanId, agentUsername);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning(ex, "[AiAgents] Bot mesajlari okundu isaretleyemedi (kullanici {UserId}).", humanId);
+            }
+        }
 
         /// <summary>Insanin arayuz tercihinin bot dili karsiligi (metinden dil cikmazsa yedek).</summary>
         private async Task<string> PreferredLanguageAsync(int userId, string fallback, CancellationToken ct)

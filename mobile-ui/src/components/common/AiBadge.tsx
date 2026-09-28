@@ -10,16 +10,24 @@ export function AiBadge({ style }: { style?: StyleProp<ViewStyle> }) {
   const { messages } = useLocale();
   return (
     <View
-      style={[styles.badge, style]}
+      style={[styles.spacer, style]}
       accessibilityLabel={messages.ai.badgeHint}
       accessibilityRole="text"
     >
-      <Text style={styles.text}>{messages.ai.badge}</Text>
+      <View style={styles.badge}>
+        <Text style={styles.text}>{messages.ai.badge}</Text>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // Isimle rozet arasi bosluk. marginLeft DEGIL: <Text> icine gomulu View'da iOS dis marjini yok sayiyor
+  // ve rozet isme yapisiyordu; ic dolgu kutunun olcusune dahil oldugu icin her yerde calisir.
+  spacer: {
+    paddingLeft: 6,
+    alignSelf: 'center',
+  },
   badge: {
     borderWidth: 1,
     borderColor: 'rgba(139, 92, 246, 0.45)',
@@ -27,8 +35,6 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     paddingHorizontal: 4,
     paddingVertical: 0,
-    marginLeft: 4,
-    alignSelf: 'center',
   },
   text: {
     color: '#8b5cf6',
