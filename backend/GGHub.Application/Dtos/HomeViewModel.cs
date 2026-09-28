@@ -15,5 +15,8 @@
         public int TotalUsers { get; set; }
         public int TotalReviews { get; set; }
         public int TotalLists { get; set; }
+
+        /// <summary>Izleyicinin arayuz dilindeki ACIK AI botlari (kulup ve akisla ayni kume).</summary>
+        public int TotalAiAgents { get; set; }
     }
 }

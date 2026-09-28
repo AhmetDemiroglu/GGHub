@@ -113,7 +113,14 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
     // ("catch(() => [])") sekme kalici olarak bos kaliyordu: kullanici tikliyor,
     // hicbir sey olmuyordu. Tohumlama tamamen kaldirildi.
     // Hafizadaki akis baska dilde cekildiyse (dil baska sayfada degistirildi) sifirdan baslanir.
-    const rememberedFeeds = feedMemory?.locale === locale ? feedMemory?.feeds : undefined;
+    // Yukleme ortasinda unmount olmus sekmenin "loading" bayragi hafizada kalirsa loadTab onu hep
+    // atlar ve sekme bos kalirdi: geri yuklerken bayrak temizlenir.
+    const rememberedFeeds =
+        feedMemory?.locale === locale
+            ? (Object.fromEntries(
+                  TAB_ORDER.map((tab) => [tab, { ...feedMemory!.feeds[tab], loading: false }]),
+              ) as Record<TabKey, TabState>)
+            : undefined;
     const [feeds, setFeeds] = useState<Record<TabKey, TabState>>(
         () =>
             rememberedFeeds ?? {

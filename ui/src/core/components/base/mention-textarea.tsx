@@ -95,6 +95,16 @@ export const MentionTextarea = React.forwardRef<HTMLTextAreaElement, MentionText
     const suggestions = isQueryable ? (candidates ?? []) : [];
     const isOpen = mentionQuery !== null && mentionQuery.length >= 1;
 
+    // Altta yer yoksa liste yukari acilir: pencere (dialog) icinde ya da sayfa sonunda kesilmesin.
+    const [flipUp, setFlipUp] = React.useState(false);
+    React.useEffect(() => {
+        if (!isOpen) return;
+        const rect = textareaRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const needed = 240;
+        setFlipUp(window.innerHeight - rect.bottom < needed && rect.top > needed);
+    }, [isOpen]);
+
     const setRefs = React.useCallback(
         (node: HTMLTextAreaElement | null) => {
             textareaRef.current = node;
@@ -269,7 +279,8 @@ export const MentionTextarea = React.forwardRef<HTMLTextAreaElement, MentionText
             {isOpen && (isFetching || suggestions.length > 0) ? (
                 <div
                     className={cn(
-                        "absolute left-0 right-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-md border bg-popover shadow-lg",
+                        "absolute left-0 right-0 z-50 max-h-56 overflow-y-auto rounded-md border bg-popover shadow-lg",
+                        flipUp ? "bottom-full mb-1" : "top-full mt-1",
                         popoverClassName
                     )}
                 >

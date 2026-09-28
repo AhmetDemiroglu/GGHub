@@ -35,6 +35,8 @@ export interface SiteStats {
     totalUsers: number;
     totalReviews: number;
     totalLists: number;
+    /** Arayuz dilindeki acik AI botlari (AI Kulubu ile ayni kume). */
+    totalAiAgents: number;
 }
 
 export interface HomeContent {

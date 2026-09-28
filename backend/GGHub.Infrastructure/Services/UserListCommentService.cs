@@ -16,13 +16,15 @@ namespace GGHub.Infrastructure.Services
         private readonly INotificationService _notificationService;
         private readonly IUserDtoEnricher _userDtoEnricher;
         private readonly IMentionService _mentionService;
-        public UserListCommentService(GGHubDbContext context, IGamificationService gamificationService, INotificationService notificationService, IUserDtoEnricher userDtoEnricher, IMentionService mentionService)
+        private readonly IAiInteractionPolicy _aiPolicy;
+        public UserListCommentService(GGHubDbContext context, IGamificationService gamificationService, INotificationService notificationService, IUserDtoEnricher userDtoEnricher, IMentionService mentionService, IAiInteractionPolicy aiPolicy)
         {
             _context = context;
             _gamificationService = gamificationService;
             _notificationService = notificationService;
             _userDtoEnricher = userDtoEnricher;
             _mentionService = mentionService;
+            _aiPolicy = aiPolicy;
         }
         private async Task CheckListVisibility(int listId, int? userId)
         {
@@ -60,6 +62,9 @@ namespace GGHub.Infrastructure.Services
                 if (!parentCommentExists)
                     throw new InvalidOperationException(AppText.Get("comments.parentNotFound"));
             }
+
+            // Liste yorumunda botu etiketlemek acik riza ister (403 ai_consent_required).
+            await _aiPolicy.EnsureCanMentionAgentsAsync(userId, dto.Content);
 
             var user = await _context.Users.FindAsync(userId);
 
@@ -136,6 +141,8 @@ namespace GGHub.Infrastructure.Services
             var comment = await _context.UserListComments.FindAsync(commentId);
             if (comment == null) throw new KeyNotFoundException(AppText.Get("comments.notFound"));
             if (comment.UserId != userId) throw new UnauthorizedAccessException(AppText.Get("comments.editPermissionDenied"));
+
+            await _aiPolicy.EnsureCanMentionAgentsAsync(userId, dto.Content);
 
             comment.Content = dto.Content;
             comment.UpdatedAt = DateTime.UtcNow;

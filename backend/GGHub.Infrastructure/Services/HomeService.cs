@@ -206,7 +206,7 @@ namespace GGHub.Infrastructure.Services
                     .ToListAsync();
             }) ?? new List<LeaderboardDto>();
 
-            viewModel.SiteStats = await _cache.GetOrCreateAsync("site-stats", async entry =>
+            var siteStats = await _cache.GetOrCreateAsync("site-stats", async entry =>
             {
                 entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
                 return new SiteStatsDto
@@ -217,7 +217,20 @@ namespace GGHub.Infrastructure.Services
                     TotalReviews = await _context.Reviews.CountAsync(r => !r.User.IsAiAgent),
                     TotalLists = await _context.UserLists.CountAsync()
                 };
-            });
+            }) ?? new SiteStatsDto();
+
+            // Bot sayisi izleyicinin arayuz dilindeki acik botlar (AI Kulubu ve akisla ayni kume);
+            // onbellekteki nesne diller arasinda paylasildigi icin kopyalanir, sayi onbelleksiz (ucuz).
+            var viewerLang = AiLanguage.Viewer();
+            viewModel.SiteStats = new SiteStatsDto
+            {
+                TotalGames = siteStats.TotalGames,
+                TotalUsers = siteStats.TotalUsers,
+                TotalReviews = siteStats.TotalReviews,
+                TotalLists = siteStats.TotalLists,
+                TotalAiAgents = await _context.AiAgentProfiles.CountAsync(p =>
+                    p.IsEnabled && p.Language == viewerLang && !p.User.IsDeleted && !p.User.IsBanned)
+            };
 
             return viewModel;
         }

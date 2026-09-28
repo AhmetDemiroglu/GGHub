@@ -50,6 +50,17 @@ namespace GGHub.Infrastructure.Services
             }));
         }
 
+        public async Task EnsureCanMentionAgentsAsync(int userId, string? content, CancellationToken cancellationToken = default)
+        {
+            var handles = MentionService.ExtractHandles(content);
+            if (handles.Count == 0) return;
+
+            var normalized = handles.Select(UsernameNormalizer.Normalize).ToList();
+            var mentionsAgent = await _context.Users.AsNoTracking()
+                .AnyAsync(u => u.IsAiAgent && normalized.Contains(u.UsernameNormalized), cancellationToken);
+            if (mentionsAgent) await EnsureCanWriteToAgentsAsync(userId, cancellationToken);
+        }
+
         private Task<UserFacts?> LoadAsync(int userId, CancellationToken cancellationToken)
             => _context.Users
                 .AsNoTracking()

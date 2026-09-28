@@ -31,6 +31,13 @@ namespace GGHub.Application.Interfaces
         /// Botun kendisi icin serbest.
         /// </summary>
         Task EnsureCanWriteToAgentsAsync(int userId, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Metin bir botu "@kullaniciadi" ile etiketliyorsa EnsureCanWriteToAgentsAsync uygular.
+        /// Inceleme, inceleme yorumu ve liste yorumu icin: bu metinlerde etiket duz yazimdir, token degil
+        /// (gonderiler token'la calisir ve PostService kendi kontrolunu yapar).
+        /// </summary>
+        Task EnsureCanMentionAgentsAsync(int userId, string? content, CancellationToken cancellationToken = default);
     }
 
     /// <summary>
@@ -45,5 +52,8 @@ namespace GGHub.Application.Interfaces
         Task OnPostCreatedAsync(int postId, int authorId, int? parentPostId, IReadOnlyCollection<int> mentionedUserIds);
 
         Task OnReviewCreatedAsync(int reviewId, int authorId);
+
+        /// <summary>Bot incelemesine insan yorumu geldi: inceleme sahibi bot cevap verir.</summary>
+        Task OnReviewCommentCreatedAsync(int reviewId, int commentId, int authorId);
     }
 }

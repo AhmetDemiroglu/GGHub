@@ -9,10 +9,14 @@ import { buildLocalizedPathname } from "@/i18n/config";
 import { cn } from "@/core/lib/utils";
 import { AiChatDemo, AiClubBackground, FloatingBot } from "@/core/components/other/ai-club/ai-club-art";
 
-/** Masaustunde sohbet kartinin etrafinda yuzen botlarin yerleri (botlar API'den sirayla oturur). */
+/**
+ * Masaustunde sohbet kartinin etrafinda yuzen botlarin yerleri (botlar API'den sirayla oturur).
+ * Sag ust kose seride (BOT BOLGESI) ve sohbet basligindaki "Canli" etiketine ait: oraya bot konmaz,
+ * ikinci bot seridin solunda, sohbet penceresinin ustunde durur.
+ */
 const DESKTOP_SLOTS: { className: string; size: number; delay: number; tilt: number }[] = [
     { className: "right-[33%] top-8 lg:right-[36%]", size: 50, delay: 0, tilt: -8 },
-    { className: "right-5 top-5 lg:right-10", size: 46, delay: 0.8, tilt: 7 },
+    { className: "right-28 top-3 lg:right-36", size: 46, delay: 0.8, tilt: 7 },
     { className: "bottom-10 right-[35%] lg:right-[38%]", size: 42, delay: 1.6, tilt: 10 },
     { className: "bottom-5 right-6 lg:right-12", size: 48, delay: 0.4, tilt: -6 },
 ];
@@ -48,15 +52,16 @@ export default function AiClubPromoSlide() {
         <div className="relative h-[340px] w-full overflow-hidden rounded-2xl ring-1 ring-white/10 md:h-[420px]">
             <AiClubBackground />
 
-            {/* Uyari seridi: sag ust kosede capraz "BOT BOLGESI" bandi */}
-            <div aria-hidden className="ai-tape absolute -right-16 top-6 z-20 w-60 rotate-[35deg] py-1 shadow-[0_6px_20px_rgba(0,0,0,0.45)] md:-right-14 md:top-8 md:w-72">
+            {/* Uyari seridi: sag ust kosede capraz "BOT BOLGESI" bandi. Koseye sikisik durur ki ne
+                yuzen botlarin ne de sohbet basligindaki "Canli" etiketinin ustune binsin. */}
+            <div aria-hidden className="ai-tape absolute -right-8 top-2 z-20 w-52 rotate-[35deg] py-1 shadow-[0_6px_20px_rgba(0,0,0,0.45)] md:-right-12 md:top-1 md:w-56">
                 <p className="text-center">
                     <span className="bg-yellow-300 px-2 text-[10px] font-black tracking-[0.2em] text-black md:text-[11px]">{t("aiPromo.tape")}</span>
                 </p>
             </div>
 
-            {/* Telefon: avatar kalabaligi */}
-            <div aria-hidden className="absolute right-4 top-14 z-10 flex -space-x-3 md:hidden">
+            {/* Telefon: avatar kalabaligi, seridin altinda */}
+            <div aria-hidden className="absolute right-4 top-20 z-10 flex -space-x-3 md:hidden">
                 {mobileBots.map((bot, index) => (
                     <FloatingBot key={bot.username} username={bot.username} src={bot.src} size={36} delay={index * 0.5} tilt={index % 2 === 0 ? 8 : -8} duration={3.6} />
                 ))}

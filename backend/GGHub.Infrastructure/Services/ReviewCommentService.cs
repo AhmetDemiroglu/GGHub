@@ -18,8 +18,9 @@ namespace GGHub.Infrastructure.Services
         private readonly IUserDtoEnricher _userDtoEnricher;
         private readonly IMentionService _mentionService;
         private readonly IAiInteractionPolicy _aiPolicy;
+        private readonly IAiAgentEvents _aiEvents;
 
-        public ReviewCommentService(GGHubDbContext context, IGamificationService gamificationService, INotificationService notificationService, IUserDtoEnricher userDtoEnricher, IMentionService mentionService, IAiInteractionPolicy aiPolicy)
+        public ReviewCommentService(GGHubDbContext context, IGamificationService gamificationService, INotificationService notificationService, IUserDtoEnricher userDtoEnricher, IMentionService mentionService, IAiInteractionPolicy aiPolicy, IAiAgentEvents aiEvents)
         {
             _context = context;
             _gamificationService = gamificationService;
@@ -27,6 +28,7 @@ namespace GGHub.Infrastructure.Services
             _userDtoEnricher = userDtoEnricher;
             _mentionService = mentionService;
             _aiPolicy = aiPolicy;
+            _aiEvents = aiEvents;
         }
 
         /// <summary>
@@ -82,14 +84,8 @@ namespace GGHub.Infrastructure.Services
                     throw new InvalidOperationException(AppText.Get("reviewComments.parentNotFound"));
             }
 
-            // Insan -> bot: bot incelemesine ya da bot yorumuna yazmak acik riza ister.
-            var writesToAgent = await _context.Reviews.AnyAsync(r => r.Id == reviewId && r.User.IsAiAgent) ||
-                (dto.ParentCommentId.HasValue &&
-                 await _context.ReviewComments.AnyAsync(c => c.Id == dto.ParentCommentId.Value && c.User.IsAiAgent));
-            if (writesToAgent)
-            {
-                await _aiPolicy.EnsureCanWriteToAgentsAsync(userId);
-            }
+            // Insan -> bot: bot incelemesine ya da bot yorumuna yazmak, yorumda botu etiketlemek acik riza ister.
+            await EnsureCanWriteAsync(reviewId, userId, dto.ParentCommentId, dto.Content);
 
             var user = await _context.Users.FindAsync(userId);
 
@@ -155,6 +151,9 @@ namespace GGHub.Infrastructure.Services
                     excludeUserIds: notifiedUserId.HasValue ? new[] { notifiedUserId.Value } : null);
             }
 
+            // Bot incelemesine gelen insan yorumu: inceleme sahibi bot cevap verir. Best-effort.
+            await _aiEvents.OnReviewCommentCreatedAsync(reviewId, comment.Id, userId);
+
             var created = MapToCommentDto(comment, user, 0, 0, 0, userId);
             await _userDtoEnricher.EnrichAsync(created.Owner, userId);
             return created;
@@ -166,9 +165,28 @@ namespace GGHub.Infrastructure.Services
             if (comment == null) throw new KeyNotFoundException(AppText.Get("reviewComments.notFound"));
             if (comment.UserId != userId) throw new UnauthorizedAccessException(AppText.Get("reviewComments.editPermissionDenied"));
 
+            // Duzenleme de bota yazmaktir (riza geri alindiysa 403).
+            await EnsureCanWriteAsync(comment.ReviewId, userId, comment.ParentCommentId, dto.Content);
+
             comment.Content = dto.Content;
             comment.UpdatedAt = DateTime.UtcNow;
             return await _context.SaveChangesAsync() > 0;
+        }
+
+        /// <summary>
+        /// Insan -> bot kapisi: inceleme botun, yanitlanan yorum botun ya da metin bir botu etiketliyor
+        /// ise acik riza sart (AiConsentRequiredException -> 403). Botun kendisi icin serbest.
+        /// </summary>
+        private async Task EnsureCanWriteAsync(int reviewId, int userId, int? parentCommentId, string? content)
+        {
+            var writesToAgent = await _context.Reviews.AnyAsync(r => r.Id == reviewId && r.User.IsAiAgent) ||
+                (parentCommentId.HasValue &&
+                 await _context.ReviewComments.AnyAsync(c => c.Id == parentCommentId.Value && c.User.IsAiAgent));
+            if (writesToAgent)
+            {
+                await _aiPolicy.EnsureCanWriteToAgentsAsync(userId);
+            }
+            await _aiPolicy.EnsureCanMentionAgentsAsync(userId, content);
         }
 
         public async Task<bool> DeleteCommentAsync(int commentId, int userId)

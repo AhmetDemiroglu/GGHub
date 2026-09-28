@@ -6,6 +6,7 @@ import React, { useState } from "react";
 import { toast } from "sonner";
 import { Review } from "@/models/review/review.model";
 import { MentionTextarea } from "@core/components/base/mention-textarea";
+import { useI18n } from "@/core/contexts/locale-context";
 
 interface GameReviewDialogProps {
     isOpen: boolean;
@@ -18,6 +19,7 @@ interface GameReviewDialogProps {
 
 export const GameReviewDialog = ({ isOpen, onClose, gameId, gameSlug, gameName, existingReview }: GameReviewDialogProps) => {
     const queryClient = useQueryClient();
+    const t = useI18n();
     const [rating, setRating] = useState(existingReview?.rating || 0);
     const [content, setContent] = useState(existingReview?.content || "");
 
@@ -37,7 +39,7 @@ export const GameReviewDialog = ({ isOpen, onClose, gameId, gameSlug, gameName, 
         },
         onSuccess: () => {
             trackAction("review_create");
-            toast.success(existingReview ? "İnceleme Güncellendi" : "İnceleme Kaydedildi");
+            toast.success(existingReview ? t("reviewDialog.updated") : t("reviewDialog.saved"));
 
             queryClient.invalidateQueries({ queryKey: ["game", gameSlug] });
             queryClient.invalidateQueries({ queryKey: ["game", gameId.toString()] });
@@ -50,11 +52,11 @@ export const GameReviewDialog = ({ isOpen, onClose, gameId, gameSlug, gameName, 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (rating === 0) {
-            toast.warning("Puan Vermediniz", { description: "Lütfen 1-10 arası bir puan seçin." });
+            toast.warning(t("reviewDialog.noRatingTitle"), { description: t("reviewDialog.noRatingText") });
             return;
         }
         if (!content.trim()) {
-            toast.warning("Yorum Yazmadınız", { description: "Lütfen kısa da olsa düşüncelerinizi paylaşın." });
+            toast.warning(t("reviewDialog.noContentTitle"), { description: t("reviewDialog.noContentText") });
             return;
         }
         submitReview();
@@ -100,11 +102,12 @@ export const GameReviewDialog = ({ isOpen, onClose, gameId, gameSlug, gameName, 
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="w-full max-w-lg bg-[#151515] border border-zinc-800 rounded-xl shadow-2xl overflow-hidden zoom-in-95 duration-200">
+            {/* overflow-visible: etiket onerileri (MentionTextarea) pencerenin altindan tasabilsin, kesilmesin. */}
+            <div className="w-full max-w-lg bg-[#151515] border border-zinc-800 rounded-xl shadow-2xl overflow-visible zoom-in-95 duration-200">
                 {/* Header */}
-                <div className="flex items-center justify-between p-5 border-b border-zinc-800 bg-zinc-900/50">
+                <div className="flex items-center justify-between rounded-t-xl p-5 border-b border-zinc-800 bg-zinc-900/50">
                     <div>
-                        <h3 className="font-bold text-white text-lg">İnceleme Yaz</h3>
+                        <h3 className="font-bold text-white text-lg">{t("reviewDialog.title")}</h3>
                         <p className="text-xs text-zinc-400">{gameName}</p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
@@ -117,27 +120,27 @@ export const GameReviewDialog = ({ isOpen, onClose, gameId, gameSlug, gameName, 
                     {/* Puanlama Alanı */}
                     <div className="mb-6 text-center">
                         <label className="block text-sm font-medium text-zinc-400 mb-3 uppercase tracking-wider">
-                            Puanınız ({rating}/10)
+                            {t("reviewDialog.ratingLabel", { rating })}
                         </label>
                         {renderRatingButtons()}
                         <div className="flex items-center justify-center gap-2 text-xs text-zinc-500">
-                            <span>Zayıf</span>
+                            <span>{t("reviewDialog.weak")}</span>
                             <div className="h-px w-20 bg-zinc-800"></div>
-                            <span>Ortalama</span>
+                            <span>{t("reviewDialog.average")}</span>
                             <div className="h-px w-20 bg-zinc-800"></div>
-                            <span>Efsane</span>
+                            <span>{t("reviewDialog.legendary")}</span>
                         </div>
                     </div>
 
                     {/* Yorum Alanı */}
                     <div className="mb-6">
                         <label className="block text-sm font-medium text-zinc-400 mb-2 uppercase tracking-wider">
-                            Düşünceleriniz
+                            {t("reviewDialog.thoughtsLabel")}
                         </label>
                         <MentionTextarea
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
-                            placeholder="Bu oyun hakkında ne düşünüyorsun? Hikaye, oynanış, grafikler..."
+                            placeholder={t("reviewDialog.placeholder")}
                             className="w-full h-32 bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 text-white placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all resize-none"
                         />
                     </div>
@@ -149,7 +152,7 @@ export const GameReviewDialog = ({ isOpen, onClose, gameId, gameSlug, gameName, 
                             onClick={onClose}
                             className="cursor-pointer px-5 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
                         >
-                            İptal
+                            {t("reviewDialog.cancel")}
                         </button>
                         <button
                             type="submit"
@@ -157,7 +160,7 @@ export const GameReviewDialog = ({ isOpen, onClose, gameId, gameSlug, gameName, 
                             className="cursor-pointer px-6 py-2.5 bg-white text-black rounded-lg text-sm font-bold hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                         >
                             {isPending && <Loader2 size={16} className="animate-spin" />}
-                            Gönder
+                            {t("reviewDialog.submit")}
                         </button>
                     </div>
                 </form>

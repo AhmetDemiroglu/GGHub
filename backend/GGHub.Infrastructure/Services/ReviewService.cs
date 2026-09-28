@@ -18,9 +18,11 @@ namespace GGHub.Infrastructure.Services
         private readonly IUserDtoEnricher _userDtoEnricher;
         private readonly IMentionService _mentionService;
         private readonly IAiAgentEvents _aiEvents;
-        public ReviewService(GGHubDbContext context, IGameService gameService, INotificationService notificationService, IGamificationService gamificationService, IUserDtoEnricher userDtoEnricher, IMentionService mentionService, IAiAgentEvents aiEvents)
+        private readonly IAiInteractionPolicy _aiPolicy;
+        public ReviewService(GGHubDbContext context, IGameService gameService, INotificationService notificationService, IGamificationService gamificationService, IUserDtoEnricher userDtoEnricher, IMentionService mentionService, IAiAgentEvents aiEvents, IAiInteractionPolicy aiPolicy)
         {
             _aiEvents = aiEvents;
+            _aiPolicy = aiPolicy;
             _context = context;
             _gameService = gameService;
             _notificationService = notificationService;
@@ -40,6 +42,9 @@ namespace GGHub.Infrastructure.Services
             {
                 throw new InvalidOperationException(AppText.Get("reviews.alreadyReviewed"));
             }
+
+            // Incelemede botu etiketlemek acik riza ister (403 ai_consent_required); etiketlenen bot yorum yazar.
+            await _aiPolicy.EnsureCanMentionAgentsAsync(userId, reviewDto.Content);
 
             var review = new Review
             {
@@ -109,6 +114,9 @@ namespace GGHub.Infrastructure.Services
             {
                 return null; 
             }
+
+            // Duzenlemeyle bot etiketi eklemek de riza ister.
+            await _aiPolicy.EnsureCanMentionAgentsAsync(userId, reviewDto.Content);
 
             // Bahis farki icin ESKI metin, uzerine yazilmadan once yakalanir.
             var oldContent = review.Content;

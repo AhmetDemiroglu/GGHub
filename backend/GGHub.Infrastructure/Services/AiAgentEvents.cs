@@ -1,6 +1,7 @@
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
 using GGHub.Core.Enums;
+using GGHub.Core.Specifications;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -159,11 +160,25 @@ namespace GGHub.Infrastructure.Services
                 if (!await _policy.CanInteractAsync(authorId)) return;
                 if (!await UnderUserDailyCapAsync(authorId)) return;
 
+                var content = await _context.Reviews.AsNoTracking().Where(r => r.Id == reviewId).Select(r => r.Content).FirstOrDefaultAsync();
+
+                // (a) Incelemede bot etiketlendi: etiketlenen bot(lar) yorum yazar (gonderideki etiketle ayni kural).
+                var mentioned = await MentionedEnabledAgentIdsAsync(content);
+                if (mentioned.Count > 0)
+                {
+                    foreach (var agentId in mentioned.Take(2))
+                    {
+                        await AddTaskAsync(agentId, AiAgentTaskType.CommentOnReview, TimeSpan.FromSeconds(Random.Shared.Next(60, 301)),
+                            targetUserId: authorId, targetReviewId: reviewId);
+                    }
+                    return;
+                }
+
+                // (b) Etiket yok: ilk inceleme kesin, sonrakiler olasilikla; metnin dilindeki bir bot.
                 var reviewCount = await _context.Reviews.CountAsync(r => r.UserId == authorId);
                 var isFirst = reviewCount <= 1;
                 if (!isFirst && Random.Shared.NextDouble() >= LaterReviewCommentChance) return;
 
-                var content = await _context.Reviews.AsNoTracking().Where(r => r.Id == reviewId).Select(r => r.Content).FirstOrDefaultAsync();
                 var agent = await PickAgentAsync(AiLanguage.Detect(content));
                 if (agent is null) return;
 
@@ -177,7 +192,52 @@ namespace GGHub.Infrastructure.Services
             }
         }
 
+        public async Task OnReviewCommentCreatedAsync(int reviewId, int commentId, int authorId)
+        {
+            try
+            {
+                if (!(await _settings.GetAsync()).AgentsEnabled) return;
+
+                var agents = await _directory.GetAgentIdsAsync();
+                if (agents.Contains(authorId)) return;
+                if (!await _policy.CanInteractAsync(authorId)) return;
+
+                // Yalniz BOTUN incelemesine gelen yorum: inceleme sahibi bot tek seviye cevap verir
+                // (islenirken AiAgentTaskProcessor.ReplyToReviewCommentAsync). Baska birinin incelemesindeki
+                // bot etiketi yalnizca riza kapisindan gecer, bot orada cevap yazmaz.
+                var reviewAuthorId = await _context.Reviews.AsNoTracking()
+                    .Where(r => r.Id == reviewId).Select(r => (int?)r.UserId).FirstOrDefaultAsync();
+                if (reviewAuthorId is not int botId || !agents.Contains(botId)) return;
+                if (!await IsEnabledAgentAsync(botId)) return;
+                if (!await UnderUserDailyCapAsync(authorId)) return;
+
+                var pending = await _context.AiAgentTasks.AnyAsync(t =>
+                    t.TargetCommentId == commentId &&
+                    (t.Status == AiAgentTaskStatus.Pending || t.Status == AiAgentTaskStatus.Running));
+                if (pending) return;
+
+                await AddTaskAsync(botId, AiAgentTaskType.CommentOnReview, TimeSpan.FromSeconds(Random.Shared.Next(60, 301)),
+                    targetUserId: authorId, targetReviewId: reviewId, targetCommentId: commentId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[AiAgents] Inceleme yorumu tepki gorevi yazilamadi (yorum {CommentId}).", commentId);
+            }
+        }
+
         // ------------------------------------------------------------------
+
+        /// <summary>Metinde "@kullaniciadi" ile etiketlenen ACIK botlarin kimlikleri.</summary>
+        private async Task<List<int>> MentionedEnabledAgentIdsAsync(string? content)
+        {
+            var handles = MentionService.ExtractHandles(content);
+            if (handles.Count == 0) return new List<int>();
+            var normalized = handles.Select(UsernameNormalizer.Normalize).ToList();
+            return await _context.AiAgentProfiles
+                .Where(p => p.IsEnabled && !p.User.IsDeleted && !p.User.IsBanned && normalized.Contains(p.User.UsernameNormalized))
+                .Select(p => p.UserId)
+                .ToListAsync();
+        }
 
         private Task<bool> IsEnabledAgentAsync(int agentId)
             => _context.AiAgentProfiles.AnyAsync(p => p.UserId == agentId && p.IsEnabled);
@@ -222,7 +282,8 @@ namespace GGHub.Infrastructure.Services
 
         private async Task AddTaskAsync(
             int agentId, AiAgentTaskType type, TimeSpan delay,
-            int? targetUserId = null, int? targetPostId = null, int? targetReviewId = null, int? triggerMessageId = null)
+            int? targetUserId = null, int? targetPostId = null, int? targetReviewId = null, int? triggerMessageId = null,
+            int? targetCommentId = null)
         {
             var task = new AiAgentTask
             {
@@ -232,6 +293,7 @@ namespace GGHub.Infrastructure.Services
                 TargetUserId = targetUserId,
                 TargetPostId = targetPostId,
                 TargetReviewId = targetReviewId,
+                TargetCommentId = targetCommentId,
                 TriggerMessageId = triggerMessageId,
                 ScheduledAt = DateTime.UtcNow + delay,
                 CreatedAt = DateTime.UtcNow
