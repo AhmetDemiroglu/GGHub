@@ -192,6 +192,7 @@ builder.Services.AddScoped<AiAdminService>();
 builder.Services.AddHostedService<AiAgentEngine>();
 builder.Services.Configure<GeminiSettings>(builder.Configuration.GetSection("Gemini"));
 builder.Services.AddScoped<IAiSettingsProvider, AiSettingsProvider>();
+builder.Services.AddScoped<IAppReleaseService, AppReleaseService>();
 builder.Services.AddScoped<IAiAgentDirectory, AiAgentDirectory>();
 builder.Services.AddScoped<IAiInteractionPolicy, AiInteractionPolicy>();
 builder.Services.AddScoped<IAiAgentEvents, AiAgentEvents>();
