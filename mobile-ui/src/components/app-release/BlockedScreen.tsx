@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -8,7 +8,7 @@ import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { BorderRadius, FontSize, Spacing } from '@/src/constants/theme';
 import type { AppReleaseCheck } from '@/src/models/app-release';
-import { DinoRunner } from './DinoRunner';
+import { DinoRunner, type DinoRunnerHandle } from './DinoRunner';
 
 interface BlockedScreenProps {
   result: AppReleaseCheck;
@@ -26,6 +26,7 @@ export function BlockedScreen({ result, onRetry }: BlockedScreenProps) {
   const { locale, messages } = useLocale();
   const m = messages.appRelease;
   const [retrying, setRetrying] = useState(false);
+  const game = useRef<DinoRunnerHandle>(null);
 
   const isMaintenance = result.status === 'maintenance';
   const customMessage = locale === 'tr' ? result.maintenanceMessageTr : result.maintenanceMessageEn;
@@ -54,7 +55,9 @@ export function BlockedScreen({ result, onRetry }: BlockedScreenProps) {
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <View style={styles.content}>
+      {/* Bos alanin tamami oyun kumandasi: oyun alani kucuk, basparmak nereye dokunursa ziplasin.
+          Butonlar kendi Pressable'lari oldugu icin dokunusu kendileri alir, oyuna gitmez. */}
+      <Pressable style={styles.content} onPress={() => game.current?.tap()}>
         <LinearGradient
           colors={isMaintenance ? ['#f59e0b', '#ef4444'] : ['#6366f1', '#8b5cf6']}
           start={{ x: 0, y: 0 }}
@@ -68,7 +71,7 @@ export function BlockedScreen({ result, onRetry }: BlockedScreenProps) {
         <Text style={[styles.body, { color: colors.textSecondary }]}>{body}</Text>
 
         <View style={styles.game}>
-          <DinoRunner />
+          <DinoRunner ref={game} />
         </View>
 
         <View style={styles.actions}>
@@ -96,7 +99,7 @@ export function BlockedScreen({ result, onRetry }: BlockedScreenProps) {
             {m.currentVersion.replace('{version}', result.currentVersion)}
           </Text>
         </View>
-      </View>
+      </Pressable>
     </SafeAreaView>
   );
 }
