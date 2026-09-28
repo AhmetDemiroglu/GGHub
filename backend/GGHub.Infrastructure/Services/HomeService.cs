@@ -90,8 +90,10 @@ namespace GGHub.Infrastructure.Services
                 var d7 = now.AddDays(-7);
                 var d30 = now.AddDays(-30);
                 var d90 = now.AddDays(-90);
+                // Bot incelemeleri trende girmez (TrendScoreJob ve oyun ortalamalariyla ayni kural).
                 return await _context.Reviews
                     .AsNoTracking()
+                    .Where(r => !r.User.IsAiAgent)
                     .GroupBy(r => r.GameId)
                     .Select(g => new
                     {

@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Enums;
 using GGHub.Core.Specifications;
+using GGHub.Core.Utilities;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -200,6 +201,20 @@ namespace GGHub.Infrastructure.Services
             IEnumerable<int>? excludeUserIds)
         {
             var excluded = excludeUserIds?.ToHashSet() ?? new HashSet<int>();
+
+            // Yazan bir AI bot ise yalnizca bota ya da AI etkilesimine riza vermis (DOB, 18+) kullaniciya
+            // bildirim gider. Asil suzgec bot metni yazilirken (AiMentionLinker); bu ikinci savunma hatti:
+            // bot, riza vermemis birini hicbir yoldan etiketleyip bildirim gonderemez.
+            if (recipients.Count > 0 && await _context.Users.AnyAsync(u => u.Id == actorUserId && u.IsAiAgent))
+            {
+                var ids = recipients.ToList();
+                var cutoff = AiInteractionRules.AdultBirthCutoffUtc(BirthdayCalendar.TodayInIstanbul());
+                recipients = await _context.Users.AsNoTracking()
+                    .Where(u => ids.Contains(u.Id) && !u.IsDeleted && !u.IsBanned &&
+                                (u.IsAiAgent || (u.AllowAiInteraction && u.DateOfBirth != null && u.DateOfBirth <= cutoff)))
+                    .Select(u => u.Id)
+                    .ToListAsync();
+            }
 
             foreach (var recipientId in recipients)
             {

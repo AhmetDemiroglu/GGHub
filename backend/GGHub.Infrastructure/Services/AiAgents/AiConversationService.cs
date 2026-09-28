@@ -106,6 +106,9 @@ namespace GGHub.Infrastructure.Services
         /// </summary>
         public async Task<string> RenderForModelAsync(string content, string lang, CancellationToken ct)
         {
+            // Once duz "@ad" yazimlari (token'lardan ONCE: "@bir kullanici" yer tutucusu yeniden
+            // eslesmesin), sonra token'lar.
+            content = await MaskPlainHandlesAsync(content, lang, ct);
             var matches = MentionToken.Matches(content);
             if (matches.Count == 0) return content;
 
@@ -141,6 +144,40 @@ namespace GGHub.Infrastructure.Services
 
         private static readonly Regex MentionToken = new(MentionTokens.PatternSource, RegexOptions.Compiled);
 
+        /// <summary>
+        /// Metindeki DUZ "@ad" yazimlarini (inceleme, yorum, DM ve eski gonderilerde etiket bu bicimde)
+        /// modele gitmeden once suzer: bot ve riza vermis kullanicilar adiyla kalir, riza vermemis bir
+        /// kullanicinin adi "@bir kullanici" / "@a user" olur. Kimseye ait olmayan "@" oldugu gibi kalir.
+        /// </summary>
+        public async Task<string> MaskPlainHandlesAsync(string text, string lang, CancellationToken ct)
+        {
+            var handles = AiMentionLinker.PlainHandles(text);
+            if (handles.Count == 0) return text;
+
+            var keys = handles.Select(UsernameNormalizer.Normalize).Where(k => k.Length > 0).Distinct().ToList();
+            var today = BirthdayCalendar.TodayInIstanbul();
+            var hidden = (await _context.Users.AsNoTracking()
+                    .Where(u => keys.Contains(u.UsernameNormalized!))
+                    .Select(u => new { u.UsernameNormalized, u.IsAiAgent, u.IsDeleted, u.IsBanned, u.AllowAiInteraction, u.DateOfBirth })
+                    .ToListAsync(ct))
+                .Where(u => !u.IsAiAgent && !AiInteractionRules.IsEligible(false, u.IsDeleted, u.IsBanned, u.AllowAiInteraction, u.DateOfBirth, today))
+                .Select(u => u.UsernameNormalized!)
+                .ToHashSet();
+            if (hidden.Count == 0) return text;
+
+            var someone = AiLanguage.Normalize(lang) == AiLanguage.En ? "@a user" : "@bir kullanıcı";
+            return AiMentionLinker.ReplacePlainHandles(text, name => hidden.Contains(UsernameNormalizer.Normalize(name)) ? someone : "@" + name);
+        }
+
+        /// <summary>
+        /// Bir dil grubunun gunluk sahne payi: toplam hedef gruplara bot sayisiyla orantili bolunur
+        /// (10 TR + 4 EN, 8 sahne: 6 + 2). Planlayici ve sahne acilisi ayni formulu kullanir.
+        /// </summary>
+        public static int DailyShare(int perDay, int groupSize, int botsInGroups)
+            => perDay <= 0 || groupSize < 2 || botsInGroups <= 0
+                ? 0
+                : Math.Max(1, (int)Math.Round(perDay * groupSize / (double)botsInGroups));
+
         /// <summary>6 saattir hareket olmayan acik sahneleri kapatir (kok silinmis, gorevler dusmus...).</summary>
         public async Task AbandonStaleAsync(CancellationToken ct)
         {
@@ -159,17 +196,22 @@ namespace GGHub.Infrastructure.Services
             var settings = await _settings.GetAsync(ct);
             var dayAgo = DateTime.UtcNow.AddHours(-24);
 
-            var active = await _context.AiConversations.CountAsync(c => c.Status == AiConversationStatus.Active, ct);
-            if (active >= MaxActiveConversations) return Outcome.Skip("Acik sahne tavani dolu.");
-            var today = await _context.AiConversations.CountAsync(c => c.CreatedAt >= dayAgo, ct);
-            if (today >= settings.ConversationsPerDay) return Outcome.Skip("Gunluk sahne tavani dolu.");
-            if (await _context.AiConversations.AnyAsync(c => c.Status == AiConversationStatus.Active && c.HostAgentId == task.AgentUserId, ct))
-                return Outcome.Skip("Bu botun zaten acik bir sahnesi var.");
-
             // Sahne ev sahibinin dil grubunda kurulur: Plan*/PickThird/Friends bu kadrodan secer.
-            var roster = await LoadRosterAsync(identity.Language, ct);
+            // Tavanlar da grup basina: ortak tavanda kalabalik grup acik sahne yuvalarini ve gunluk
+            // payi doldurup oteki grubun izleyicisini bos "canli" listesiyle birakirdi.
+            var fullRoster = await LoadRosterAsync(ct);
+            var roster = fullRoster.Where(a => a.Language == identity.Language).ToList();
             var host = roster.FirstOrDefault(a => a.UserId == task.AgentUserId);
             if (host is null || roster.Count < 2) return Outcome.Skip("Sahne icin dil grubunda yeterli bot yok.");
+
+            var groupIds = roster.Select(a => a.UserId).ToList();
+            var botsInGroups = fullRoster.GroupBy(a => a.Language).Where(g => g.Count() >= 2).Sum(g => g.Count());
+            var active = await _context.AiConversations.CountAsync(c => c.Status == AiConversationStatus.Active && groupIds.Contains(c.HostAgentId), ct);
+            if (active >= MaxActiveConversations) return Outcome.Skip("Acik sahne tavani dolu.");
+            var today = await _context.AiConversations.CountAsync(c => c.CreatedAt >= dayAgo && groupIds.Contains(c.HostAgentId), ct);
+            if (today >= DailyShare(settings.ConversationsPerDay, roster.Count, botsInGroups)) return Outcome.Skip("Gunluk sahne tavani dolu.");
+            if (await _context.AiConversations.AnyAsync(c => c.Status == AiConversationStatus.Active && c.HostAgentId == task.AgentUserId, ct))
+                return Outcome.Skip("Bu botun zaten acik bir sahnesi var.");
 
             var maxTurns = Math.Clamp(settings.MaxConversationTurns, 2, 12);
             var recentGameIds = await _context.AiConversations.AsNoTracking()
@@ -518,7 +560,7 @@ namespace GGHub.Infrastructure.Services
 
             var roster = await LoadRosterAsync(identity.Language, ct);
             var me = roster.FirstOrDefault(a => a.UserId == task.AgentUserId);
-            if (me is null) return Outcome.Skip("Bot kapali.");
+            if (me is null) return await SkipTurnAsync(conversation, roster, task.AgentUserId, "Bot kapali.", ct);
 
             var root = await _context.Posts.AsNoTracking()
                 .Where(p => p.Id == conversation.RootPostId)
@@ -547,7 +589,10 @@ namespace GGHub.Infrastructure.Services
             }
             var replies = rawReplies.Where(r => r.IsAiAgent || eligibleHumans.ContainsKey(r.UserId)).TakeLast(14).ToList();
 
-            if (replies.Count > 0 && replies[^1].UserId == me.UserId) return Outcome.Skip("Son soz zaten bu botun.");
+            // Son soz bu botunsa (araya giren insana ReplyToPost ile zaten cevap verdi) tur yapilmis sayilir
+            // ve sahne siradakiyle surer; aksi halde sahne 6 saat "canli" kalip yuvayi tikardi.
+            if (replies.Count > 0 && replies[^1].UserId == me.UserId)
+                return await SkipTurnAsync(conversation, roster, me.UserId, "Son soz zaten bu botun.", ct);
 
             var lines = new List<AiThreadLine>();
             foreach (var r in replies)
@@ -585,10 +630,13 @@ namespace GGHub.Infrastructure.Services
             var addresseeIsHuman = lastOther is not null ? !lastOther.IsAiAgent : addresseeId.HasValue && !root.IsAiAgent;
             var lang = addresseeIsHuman ? AiLanguage.Detect(lastOther?.Content ?? root.Content) ?? me.Language : me.Language;
             var direction = AiSceneDrama.Direct(stances, isFinal, addresseeIsHuman);
+            // Insana cevapta botlar arasi sert rol talimati ("dalga gec", "laf sok") modele gitmez.
+            if (addresseeIsHuman) stance = null;
 
             var text = await _writer.WriteConversationTurnAsync(
-                identity, conversation.Brief, stance, relationNote, rootLine, lines, addresseeName, isFinal, direction, lang, ct);
-            if (text is null) return Outcome.Skip("Metin uretilemedi.");
+                identity, conversation.Brief, stance, relationNote, rootLine, lines, addresseeName, isFinal, direction, lang, ct,
+                addresseeIsHuman);
+            if (text is null) return await SkipTurnAsync(conversation, roster, me.UserId, "Metin uretilemedi.", ct);
 
             var allowed = roster.ToDictionary(a => a.Username.ToLowerInvariant(), a => a.UserId);
             foreach (var (id, name) in eligibleHumans) allowed[name.ToLowerInvariant()] = id;
@@ -639,6 +687,42 @@ namespace GGHub.Infrastructure.Services
             task.TargetPostId = root.Id;
             task.TargetUserId = addresseeId;
             return new Outcome(AiAgentTaskStatus.Done, $"[{conversation.Kind} {turnNo}/{conversation.PlannedTurns}] {Summary(text.Text)}", created.Id, text);
+        }
+
+        /// <summary>
+        /// Tur yazilamadi (bot kapali, son soz zaten onun, metin uretilemedi): tur yapilmis sayilir,
+        /// planlanan tur dolduysa sahne biter, dolmadiysa siradaki konusmaciya gecer. TurnsDone arttigi
+        /// icin art arda basarisizlik da sahneyi PlannedTurns'te bitirir (sonsuz zincir olmaz).
+        /// </summary>
+        private async Task<Outcome> SkipTurnAsync(AiConversation conversation, List<AiAgentInfo> roster, int me, string reason, CancellationToken ct)
+        {
+            var now = DateTime.UtcNow;
+            conversation.TurnsDone++;
+            conversation.LastActivityAt = now;
+            var others = ParseIds(conversation.ParticipantIds).Where(id => id != me && roster.Any(a => a.UserId == id)).ToList();
+            if (conversation.TurnsDone >= conversation.PlannedTurns || others.Count == 0)
+            {
+                conversation.Status = AiConversationStatus.Finished;
+                conversation.FinishedAt = now;
+            }
+            else
+            {
+                var next = conversation.TurnsDone + 1 >= conversation.PlannedTurns && others.Contains(conversation.HostAgentId)
+                    ? conversation.HostAgentId
+                    : others[Random.Shared.Next(others.Count)];
+                _context.AiAgentTasks.Add(new AiAgentTask
+                {
+                    AgentUserId = next,
+                    Type = AiAgentTaskType.ConversationTurn,
+                    Status = AiAgentTaskStatus.Pending,
+                    ConversationId = conversation.Id,
+                    TargetPostId = conversation.RootPostId,
+                    ScheduledAt = now.AddSeconds(Random.Shared.Next(120, 601)),
+                    CreatedAt = now
+                });
+            }
+            await _context.SaveChangesAsync(ct);
+            return Outcome.Skip(reason);
         }
 
         private static int? PickNextSpeaker(

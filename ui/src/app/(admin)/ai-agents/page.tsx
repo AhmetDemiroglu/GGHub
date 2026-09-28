@@ -59,6 +59,7 @@ export default function AiAgentsPage() {
     }, [settingsQuery.data]);
 
     const saveSettings = useMutation({
+        meta: { suppressGlobalToast: true },
         mutationFn: (data: AiSettings) => aiAdminApi.updateSettings(data),
         onSuccess: (data) => {
             toast.success(t("aiAdmin.saved"));
@@ -71,6 +72,7 @@ export default function AiAgentsPage() {
     });
 
     const provision = useMutation({
+        meta: { suppressGlobalToast: true },
         mutationFn: aiAdminApi.provisionAgents,
         onSuccess: (res) => {
             toast.success(t("aiAdmin.provisioned", { count: res.created }));
@@ -82,6 +84,7 @@ export default function AiAgentsPage() {
     const emptyNewAgent: AiAgentCreate = { username: "", displayName: "", bio: "", persona: "", favoriteGenres: "", ratingBias: 0, language: "tr" };
     const [newAgent, setNewAgent] = useState<AiAgentCreate | null>(null);
     const createAgent = useMutation({
+        meta: { suppressGlobalToast: true },
         mutationFn: (data: AiAgentCreate) => aiAdminApi.createAgent(data),
         onSuccess: () => {
             toast.success(t("aiAdmin.agentCreated"));
@@ -94,6 +97,7 @@ export default function AiAgentsPage() {
 
     const [refreshConfirm, setRefreshConfirm] = useState(false);
     const refreshPersonas = useMutation({
+        meta: { suppressGlobalToast: true },
         mutationFn: aiAdminApi.refreshPersonas,
         onSuccess: (res) => {
             toast.success(t("aiAdmin.personasRefreshed", { count: res.updated }));
@@ -105,6 +109,7 @@ export default function AiAgentsPage() {
     const [editing, setEditing] = useState<AiAgentAdmin | null>(null);
     const [agentDraft, setAgentDraft] = useState<AiAgentUpdate | null>(null);
     const updateAgent = useMutation({
+        meta: { suppressGlobalToast: true },
         mutationFn: ({ userId, data }: { userId: number; data: AiAgentUpdate }) => aiAdminApi.updateAgent(userId, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["ai-admin", "agents"] });
@@ -130,11 +135,13 @@ export default function AiAgentsPage() {
     const [confirmText, setConfirmText] = useState("");
     const [confirmOpen, setConfirmOpen] = useState(false);
     const purgePreview = useMutation({
+        meta: { suppressGlobalToast: true },
         mutationFn: aiAdminApi.purgePreview,
         onSuccess: (report) => setPreview(report),
         onError: (error: Error) => toast.error(t("aiAdmin.purgeError"), { description: error.message }),
     });
     const purge = useMutation({
+        meta: { suppressGlobalToast: true },
         mutationFn: () => aiAdminApi.purge(confirmText),
         onSuccess: (report) => {
             setPreview(report);

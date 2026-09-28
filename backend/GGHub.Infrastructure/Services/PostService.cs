@@ -125,6 +125,12 @@ namespace GGHub.Infrastructure.Services
             {
                 await _aiPolicy.EnsureCanWriteToAgentsAsync(userId);
             }
+            else
+            {
+                // Duz "@botadi" yazimi (istemci token'a cevirmediyse) da etiket sayilir: inceleme ve
+                // yorumlardaki kuralla ayni.
+                await _aiPolicy.EnsureCanMentionAgentsAsync(userId, content);
+            }
 
             if (dto.Poll != null)
             {

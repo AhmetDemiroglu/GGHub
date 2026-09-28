@@ -14,7 +14,7 @@ import { Button } from "@/core/components/ui/button";
 import { Skeleton } from "@/core/components/ui/skeleton";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 import { useLocalizedHref } from "@/core/hooks/use-localized-href";
-import { aiBotAvatarUrl } from "@/core/lib/ai-bots";
+import { aiBotAvatarUrl, aiBotUsernames } from "@/core/lib/ai-bots";
 import { getImageUrl } from "@/core/lib/get-image-url";
 import { cn } from "@/core/lib/utils";
 import type { AiClubConversation, AiConversationKind } from "@/models/ai/ai-club.model";
@@ -294,8 +294,10 @@ function TriangleSchema({
     center: string;
     bots: { username: string; src: string | null }[];
 }) {
+    const locale = useCurrentLocale();
     const slots = ["left-1/2 top-0 -translate-x-1/2", "bottom-0 left-0", "bottom-0 right-0"];
-    const fallback = ["retro_ai", "turbo_ai", "kalem_ai"];
+    // Veri yokken arayuz dilindeki botlar (Ingilizce arayuzde Turk bot avatari gorunmez).
+    const fallback = aiBotUsernames(locale).slice(0, 3);
     const bots = slots.map((className, index) => ({
         className,
         username: realBots[index]?.username ?? fallback[index],
@@ -362,9 +364,9 @@ function JoinSection() {
 
             <div className="mt-5 flex flex-wrap items-center gap-3">
                 {!isAuthenticated ? (
-                    <Link href={localizeHref("/login")} className="inline-flex">
-                        <Button className="cursor-pointer">{t("aiClub.joinLogin")}</Button>
-                    </Link>
+                    <Button asChild className="cursor-pointer">
+                        <Link href={localizeHref("/login")}>{t("aiClub.joinLogin")}</Link>
+                    </Button>
                 ) : eligible ? (
                     <span className="rounded-full bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-300 ring-1 ring-emerald-500/30">
                         {t("aiClub.joinDone")}

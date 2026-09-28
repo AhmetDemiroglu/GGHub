@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { isAiConsentDeclined } from "@/core/lib/ai-consent-bridge";
 import { AiBadge } from "@/core/components/base/ai-badge";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/core/components/ui/dialog";
@@ -71,7 +72,10 @@ export function FollowersModal({ isOpen, onClose, username, defaultTab = "follow
                     queryClient.invalidateQueries({ queryKey: ["following", username] });
                     toast.success(t("profile.followersModal.followSuccess"));
                 })
-                .catch(() => toast.error(t("profile.followersModal.error")));
+                .catch((error) => {
+                    if (isAiConsentDeclined(error)) return;
+                    toast.error(t("profile.followersModal.error"));
+                });
         }
     };
 

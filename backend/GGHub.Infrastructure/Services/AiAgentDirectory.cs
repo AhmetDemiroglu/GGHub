@@ -45,8 +45,10 @@ namespace GGHub.Infrastructure.Services
         {
             if (!_cache.TryGetValue(LanguageCacheKey, out Dictionary<string, IReadOnlySet<int>>? byLanguage) || byLanguage is null)
             {
+                // Yalniz ACIK botlar: kapatilan (orn. oran dengelemesiyle) botun eski gonderileri akisi doldurmaz.
                 var rows = await _context.AiAgentProfiles
                     .AsNoTracking()
+                    .Where(p => p.IsEnabled)
                     .Select(p => new { p.UserId, p.Language })
                     .ToListAsync(cancellationToken);
                 byLanguage = rows

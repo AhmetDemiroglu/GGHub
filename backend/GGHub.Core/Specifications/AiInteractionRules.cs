@@ -63,6 +63,13 @@ namespace GGHub.Core.Specifications
     {
         public const string CurrentVersion = "2026-09-29";
 
+        /// <summary>
+        /// Yayinlanmis metin surumleri. Istemcinin gonderdigi surum bunlardan biri degilse kayda
+        /// CurrentVersion yazilir: riza gunlugune istemciden gelen rastgele bir deger girmez.
+        /// Metin degisince yeni tarih BURAYA da eklenir (eski surumlu uygulamalar bir sure yasar).
+        /// </summary>
+        public static readonly IReadOnlySet<string> KnownVersions = new HashSet<string> { "2026-09-29" };
+
         public static readonly IReadOnlySet<string> Sources = new HashSet<string> { "web", "ios", "android", "unknown" };
     }
 }

@@ -43,6 +43,7 @@ export function AiInteractionSetting({ className, variant = "card" }: AiInteract
     const [confirmOff, setConfirmOff] = useState(false);
 
     const { mutate: turnOff, isPending } = useMutation({
+        meta: { suppressGlobalToast: true },
         mutationFn: () => updateAiInteraction({ allow: false, source: "web" }),
         onSuccess: () => {
             toast.success(t("ai.disabled"));

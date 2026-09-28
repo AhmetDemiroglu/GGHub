@@ -31,6 +31,7 @@ import {
   type PickedMention,
 } from '@/src/utils/composer-mentions';
 import * as haptics from '@/src/utils/haptics';
+import { isAiConsentDeclined } from '@/src/utils/ai-consent-bridge';
 import {
   MentionTargetType,
   POLL_MIN_OPTIONS,
@@ -186,7 +187,10 @@ export function PostComposer({ parentPostId, placeholder, autoFocus, onCreated }
 
       onCreated?.(post);
     },
-    onError: () => showToast('error', messages.posts.createError),
+    onError: (error) => {
+      if (isAiConsentDeclined(error)) return;
+      showToast('error', messages.posts.createError);
+    },
   });
 
   const pickImages = async () => {

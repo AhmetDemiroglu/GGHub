@@ -15,6 +15,7 @@ import type { UserListComment, UserListCommentForCreation, UserListCommentForUpd
 
 import { ListCommentForm } from "./list-comment-form";
 import { ListCommentItem } from "./list-comment-item";
+import { isAiConsentDeclined } from "@/core/lib/ai-consent-bridge";
 
 const COMMENTS_PAGE_SIZE = 10;
 
@@ -91,6 +92,7 @@ export function ListCommentSection({ listId }: ListCommentSectionProps) {
             queryClient.invalidateQueries({ queryKey: commentsQueryKey });
         },
         onError: (error) => {
+            if (isAiConsentDeclined(error)) return;
             toast.error(t("commentsSection.addError", { message: reasonText(error) }));
         },
         onSettled: (_data, _error, newComment) => {
@@ -132,6 +134,7 @@ export function ListCommentSection({ listId }: ListCommentSectionProps) {
             queryClient.invalidateQueries({ queryKey: commentsQueryKey });
         },
         onError: (error) => {
+            if (isAiConsentDeclined(error)) return;
             toast.error(t("commentsSection.updateError", { message: reasonText(error) }));
         },
     });

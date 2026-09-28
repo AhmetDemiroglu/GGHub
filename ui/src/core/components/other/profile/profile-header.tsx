@@ -31,6 +31,7 @@ import { getImageUrl } from "@/core/lib/get-image-url";
 import { getUserGamificationStats } from "@/api/gamification/gamification.api";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 import { buildLocalizedPathname } from "@/i18n/config";
+import { isAiConsentDeclined } from "@/core/lib/ai-consent-bridge";
 
 interface ProfileHeaderProps {
     profile: PublicProfile;
@@ -78,7 +79,8 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
             queryClient.invalidateQueries({ queryKey: ["profile", profile.username] });
             toast.success(t("profile.header.followSuccess"));
         },
-        onError: () => {
+        onError: (error) => {
+            if (isAiConsentDeclined(error)) return;
             toast.error(t("profile.header.followError"));
         },
     });

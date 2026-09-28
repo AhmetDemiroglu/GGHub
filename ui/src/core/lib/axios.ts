@@ -78,7 +78,8 @@ axiosInstance.interceptors.response.use(
                 originalRequest._aiConsentRetry = true;
                 return axiosInstance(originalRequest);
             }
-            (error as AxiosError & { isBusinessError?: boolean }).isBusinessError = true;
+            (error as AxiosError & { isBusinessError?: boolean; isAiConsentDeclined?: boolean }).isBusinessError = true;
+            (error as AxiosError & { isAiConsentDeclined?: boolean }).isAiConsentDeclined = true;
             return Promise.reject(error);
         }
 

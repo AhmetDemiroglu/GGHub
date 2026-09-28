@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/core/components/ui/t
 import { toast } from "sonner";
 import { useAuth } from "@/core/hooks/use-auth";
 import { useI18n } from "@/core/contexts/locale-context";
+import { isAiConsentDeclined } from "@/core/lib/ai-consent-bridge";
 
 interface SocialUser {
     id: number;
@@ -53,7 +54,10 @@ export default function ProfileNetwork({ username }: ProfileNetworkProps) {
             queryClient.invalidateQueries({ queryKey: ["following", username] });
             toast.success(t("profile.network.followSuccess"));
         },
-        onError: () => toast.error(t("profile.network.error")),
+        onError: (error) => {
+            if (isAiConsentDeclined(error)) return;
+            toast.error(t("profile.network.error"));
+        },
     });
 
     const unfollowMutation = useMutation({

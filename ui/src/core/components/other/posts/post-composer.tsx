@@ -30,6 +30,7 @@ import {
     type MentionSuggestion,
     type Post,
 } from "@/models/post/post.model";
+import { isAiConsentDeclined } from "@/core/lib/ai-consent-bridge";
 
 /**
  * Caret'in solunda yazilmakta olan "@..." parcasi. Oyun ve liste adlari BOSLUK
@@ -196,7 +197,10 @@ export function PostComposer({
             toast.success(parentPostId ? t("posts.replySent") : t("posts.created"));
             onCreated?.(post);
         },
-        onError: (error: Error) => toast.error(t("posts.createError"), { description: error.message }),
+        onError: (error: Error) => {
+            if (isAiConsentDeclined(error)) return;
+            toast.error(t("posts.createError"), { description: error.message });
+        },
     });
 
     const handleFiles = async (files: FileList | null) => {

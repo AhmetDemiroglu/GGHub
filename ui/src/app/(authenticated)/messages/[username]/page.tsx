@@ -18,6 +18,7 @@ import { UnauthorizedAccess } from "@core/components/other/unauthorized-access";
 import { AxiosError } from "axios";
 import { useI18n } from "@/core/contexts/locale-context";
 import { useSignalR } from "@/core/contexts/signalr-context";
+import { isAiConsentDeclined } from "@/core/lib/ai-consent-bridge";
 
 export default function MessageThreadPage() {
     const params = useParams();
@@ -99,6 +100,7 @@ export default function MessageThreadPage() {
             scrollToBottom();
         },
         onError: (error: unknown) => {
+            if (isAiConsentDeclined(error)) return;
             if (error instanceof AxiosError && (error.response as unknown as { isRateLimitError?: boolean })?.isRateLimitError) {
                 return;
             }

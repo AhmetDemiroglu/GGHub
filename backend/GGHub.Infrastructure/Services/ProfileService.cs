@@ -215,8 +215,8 @@ namespace GGHub.Infrastructure.Services
             if (!AiInteractionRules.IsAdult(dateOfBirth, today))
                 throw new InvalidOperationException(AppText.Get("ai.underage"));
 
-            var version = string.IsNullOrWhiteSpace(dto.TextVersion) ? AiConsentTexts.CurrentVersion : dto.TextVersion.Trim();
-            if (version.Length > 16) version = version[..16];
+            var requested = dto.TextVersion?.Trim();
+            var version = requested is not null && AiConsentTexts.KnownVersions.Contains(requested) ? requested : AiConsentTexts.CurrentVersion;
 
             if (setBirthDate) user.DateOfBirth = dateOfBirth;
             user.AllowAiInteraction = true;

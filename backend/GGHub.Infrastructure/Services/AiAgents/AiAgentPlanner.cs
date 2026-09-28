@@ -116,9 +116,9 @@ namespace GGHub.Infrastructure.Services
             var groupBots = groups.Sum(g => g.Count());
             foreach (var group in groups)
             {
-                var perDay = Math.Max(1, (int)Math.Round(settings.ConversationsPerDay * group.Count() / (double)groupBots));
+                var perDay = AiConversationService.DailyShare(settings.ConversationsPerDay, group.Count(), groupBots);
                 planned += await PlanConversationsAsync(group.Select(a => a.UserId).ToList(),
-                    settings.ConversationsPerDay > 0 ? perDay : 0, dayStartUtc, remainingActiveMinutes, intervalMinutes, ct);
+                    perDay, dayStartUtc, remainingActiveMinutes, intervalMinutes, ct);
             }
 
             if (planned > 0)

@@ -23,3 +23,11 @@ export async function requestAiConsent(reason: AiConsentReason): Promise<boolean
 }
 
 export const AI_CONSENT_ERROR_CODE = "ai_consent_required";
+
+/**
+ * Kullanici onay penceresini kapatti (ya da 18 alti bilgilendirmesini gordu): istek bilerek
+ * gonderilmedi. Cagiran onError bunu gorunce hata toast'i BASMAZ, yalnizca state'i geri alir.
+ */
+export function isAiConsentDeclined(error: unknown): boolean {
+    return !!(error as { isAiConsentDeclined?: boolean } | null)?.isAiConsentDeclined;
+}

@@ -348,6 +348,7 @@ namespace GGHub.Infrastructure.Services
                 updated++;
             }
             await _context.SaveChangesAsync(ct);
+            _directory.Invalidate(); // dil degismis olabilir: dil gruplarinin onbellegi tazelenir
             _logger.LogInformation("[AiAgents] {Count} botun karakteri koddan guncellendi.", updated);
             return updated;
         }
@@ -425,6 +426,7 @@ namespace GGHub.Infrastructure.Services
 
             if (dto.IsEnabled) await EnsureBotFollowNetworkAsync(ct);
             else await SkipPendingTasksAsync(userId, ct);
+            _directory.Invalidate(); // akis dolgusu yalniz acik botlardan (AiAgentDirectory dil kumeleri)
             return true;
         }
 

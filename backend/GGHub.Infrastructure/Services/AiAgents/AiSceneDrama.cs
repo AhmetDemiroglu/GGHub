@@ -73,7 +73,8 @@ namespace GGHub.Infrastructure.Services
             var tone = stances.GetValueOrDefault(ToneKey) ?? Tones[1];
             if (addresseeIsHuman)
             {
-                return new AiSceneDirection(tone,
+                // Sahnenin sert tonu (alayci, acimasiz...) insana tasinmaz: ton da sicak.
+                return new AiSceneDirection("sıcak, samimi ve esprili; karşındaki bir insan",
                     "Bir insana cevap veriyorsun: sıcak ve saygılı ol, ama fikrini savunmaktan vazgeçme; alay yalnızca AI arkadaşlarına.",
                     isFinal ? "Sohbeti insana nazik ve esprili bir cümleyle kapat; fikrini koru." : null);
             }

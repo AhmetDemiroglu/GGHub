@@ -63,9 +63,16 @@ namespace GGHub.Infrastructure.Services
             - Sınır kesin: hedef her zaman fikir ve zevktir, kişi değil. Küfür, hakaret, aşağılama, nefret söylemi ve kimlik (cinsiyet, köken, din, engel) üzerinden laf yok.
             - İnsan kullanıcılara karşı her zaman sıcak ve saygılısın; sert takılma ve alay yalnızca AI karakterler arasında.
             - Her sohbette aynı kalıbı tekrar etme: girişini, cümle yapını ve kapanışını değiştir.
-            - Birine seslenirken @kullaniciadi yaz (örnek: @{(AiLanguage.Normalize(lang) == AiLanguage.En ? "pixel_ai" : "retro_ai")}). Sana verilmeyen kullanıcı adlarını uydurma.
+            - Birine seslenirken @kullaniciadi yaz; yalnızca bu mesajda sana verilen kullanıcı adlarını kullan, başka ad uydurma.
             - Yalnızca yazacağın metni ver. Açıklama, tırnak, "İşte cevabım" gibi giriş ekleme.
             """;
+
+        /// <summary>
+        /// Muhatap bir INSANSA isteme eklenir: botlar arasi alay ve sert ton insana tasinmaz
+        /// (BaseRules genel kural, bu satir o anki muhatabi acikca soyler).
+        /// </summary>
+        private const string HumanAddressee =
+            "Muhatabın bir insan kullanıcı, AI karakter değil: sıcak, samimi ve saygılı ol. Alay etme, iğneleme, laf sokma; fikrini nazikçe söyleyebilirsin.";
 
         public async Task<AiText?> WriteDirectMessageReplyAsync(
             AiAgentIdentity agent, string partnerName, IReadOnlyList<AiThreadLine> thread, string lang, CancellationToken ct)
@@ -74,7 +81,7 @@ namespace GGHub.Infrastructure.Services
 
             var system = BaseRules(agent, lang) + $"""
 
-                Şu an @{partnerName} ile özel mesajdasın. Samimi ama saygılı bir oyun sohbeti yap. Cevabın en fazla 3 kısa cümle olsun.
+                Şu an @{partnerName} ile özel mesajdasın. {HumanAddressee} Cevabın en fazla 3 kısa cümle olsun.
                 Sohbet oyun dışına kayarsa kısa cevap verip oyunlara dön.
                 """;
 
@@ -111,30 +118,41 @@ namespace GGHub.Infrastructure.Services
                 @{partnerName} GGHub'a yeni katıldı. Ona kısa bir hoş geldin mesajı yaz.
                 {games}
                 Kendini GGHub'ın AI oyun arkadaşı olarak tanıt, ona hangi oyunları sevdiğini sor. En fazla 2 kısa cümle.
+                {HumanAddressee}
                 """;
             return RunAsync(BaseRules(agent, lang), new[] { new GeminiTurn("user", prompt) }, lang, 200, 300, 0.9, ct);
         }
 
+        /// <param name="addressee">Cevap verilecek kisi (kendisi degil). Null ise gonderinin sahibi.</param>
         public Task<AiText?> WritePostReplyAsync(
             AiAgentIdentity agent,
             AiThreadLine root,
             IReadOnlyList<AiThreadLine> replies,
             string lang,
-            CancellationToken ct)
+            CancellationToken ct,
+            string? addressee = null,
+            bool addresseeIsHuman = false)
         {
             var sb = new StringBuilder();
-            sb.AppendLine($"GGHub'da @{root.AuthorName}{(root.AuthorIsAi ? " (AI)" : "")} şu gönderiyi paylaştı:");
+            sb.AppendLine(root.FromAgent
+                ? "GGHub'da SEN şu gönderiyi paylaşmıştın:"
+                : $"GGHub'da @{root.AuthorName}{(root.AuthorIsAi ? " (AI)" : "")} şu gönderiyi paylaştı:");
             sb.AppendLine($"\"{root.Text}\"");
             if (replies.Count > 0)
             {
                 sb.AppendLine("Altındaki yanıtlar:");
                 foreach (var r in replies)
                 {
-                    sb.AppendLine($"- @{r.AuthorName}{(r.AuthorIsAi ? " (AI)" : "")}: \"{r.Text}\"");
+                    var who = r.FromAgent ? "sen" : $"@{r.AuthorName}{(r.AuthorIsAi ? " (AI)" : "")}";
+                    sb.AppendLine($"- {who}: \"{r.Text}\"");
                 }
             }
             sb.AppendLine();
-            sb.AppendLine("Bu gönderiye tek bir yanıt yaz. Gönderinin sahibine hitap et, konuya bir şey kat. En fazla 160 karakter.");
+            var target = addressee ?? (root.FromAgent ? null : root.AuthorName);
+            sb.AppendLine(target is null
+                ? "Tek bir yanıt yaz, konuya bir şey kat. Kendine cevap verme. En fazla 160 karakter."
+                : $"Tek bir yanıt yaz: @{target} adlı kişiye hitap et, konuya bir şey kat. Kendine cevap verme. En fazla 160 karakter.");
+            if (addresseeIsHuman) sb.AppendLine(HumanAddressee);
 
             return RunAsync(BaseRules(agent, lang), new[] { new GeminiTurn("user", sb.ToString()) }, lang, 200, 180, 0.9, ct);
         }
@@ -197,7 +215,7 @@ namespace GGHub.Infrastructure.Services
         public Task<AiText?> WriteConversationTurnAsync(
             AiAgentIdentity agent, string brief, string? stance, string relationNote,
             AiThreadLine root, IReadOnlyList<AiThreadLine> replies, string? addresseeUsername,
-            bool isFinal, AiSceneDirection direction, string lang, CancellationToken ct)
+            bool isFinal, AiSceneDirection direction, string lang, CancellationToken ct, bool addresseeIsHuman = false)
         {
             var sb = new StringBuilder();
             sb.AppendLine("GGHub'da AI karakterlerin herkese açık sohbetindesin.");
@@ -224,6 +242,7 @@ namespace GGHub.Infrastructure.Services
             sb.AppendLine(isFinal && direction.Ending is not null
                 ? $"Bu sohbetteki son mesajın. {direction.Ending}"
                 : $"Hamlen: {direction.Move} Kendini ve önceki mesajları tekrar etme.");
+            if (addresseeIsHuman) sb.AppendLine(HumanAddressee);
             sb.AppendLine("En fazla 170 karakter.");
 
             return RunAsync(BaseRules(agent, lang), new[] { new GeminiTurn("user", sb.ToString()) }, lang, 220, 175, 1.0, ct);
@@ -245,9 +264,10 @@ namespace GGHub.Infrastructure.Services
 
         public Task<AiText?> WriteReviewCommentAsync(
             AiAgentIdentity agent, string reviewAuthor, AiGameFacts game, int rating, string reviewText, string lang, CancellationToken ct,
-            string? peerNote = null, int? myRating = null)
+            string? peerNote = null, int? myRating = null, bool authorIsHuman = false)
         {
             var extra = new StringBuilder();
+            if (authorIsHuman) extra.AppendLine(HumanAddressee);
             if (!string.IsNullOrWhiteSpace(peerNote)) extra.AppendLine(peerNote);
             if (myRating.HasValue) extra.AppendLine($"Sen bu oyuna daha önce 10 üzerinden {myRating} vermiştin.");
 
@@ -266,8 +286,9 @@ namespace GGHub.Infrastructure.Services
         /// <summary>Botun kendi incelemesine gelen yoruma cevabi (yorum zincirinde tek seviye).</summary>
         public Task<AiText?> WriteReviewCommentReplyAsync(
             AiAgentIdentity agent, string commenter, string commentText, AiGameFacts game, int myRating,
-            string myReviewText, string? peerNote, string lang, CancellationToken ct)
+            string myReviewText, string? peerNote, string lang, CancellationToken ct, bool commenterIsHuman = false)
         {
+            if (commenterIsHuman) peerNote = $"{peerNote}\n{HumanAddressee}".Trim();
             var prompt = $"""
                 {game.Name} için 10 üzerinden {myRating} verip şu incelemeyi yazmıştın:
                 "{Trim(myReviewText, 500)}"

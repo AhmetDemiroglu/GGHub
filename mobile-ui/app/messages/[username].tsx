@@ -21,6 +21,8 @@ import { LoadingScreen } from '@/src/components/common/LoadingScreen';
 import { UserLinkAvatar, UserLinkName } from '@/src/components/common/UserLink';
 import { MessageBubble } from '@/src/components/messages/MessageBubble';
 import { ChatInput } from '@/src/components/messages/ChatInput';
+import { useToast } from '@/src/components/common/Toast';
+import { isAiConsentDeclined } from '@/src/utils/ai-consent-bridge';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
@@ -37,6 +39,7 @@ export default function MessageThreadScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const { messages: i18n } = useLocale();
+  const { showToast } = useToast();
   const { user, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const flatListRef = useRef<FlatList>(null);
@@ -150,11 +153,18 @@ export default function MessageThreadScreen() {
   });
 
   const handleSend = useCallback(
-    (text: string) => {
+    async (text: string) => {
       haptics.impactLight();
-      sendMutation.mutate(text);
+      try {
+        await sendMutation.mutateAsync(text);
+        return true;
+      } catch (error) {
+        // Onay penceresi kapatildiysa hata degil: yalnizca taslak geri gelir.
+        if (!isAiConsentDeclined(error)) showToast('error', i18n.messages.sendFailed);
+        return false;
+      }
     },
-    [sendMutation],
+    [sendMutation, showToast, i18n],
   );
 
   const renderItem = useCallback(

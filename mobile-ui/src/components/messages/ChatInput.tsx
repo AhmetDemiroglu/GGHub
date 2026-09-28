@@ -6,7 +6,8 @@ import { useLocale } from '@/src/hooks/use-locale';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 
 interface ChatInputProps {
-  onSend: (text: string) => void;
+  /** false donerse (gonderilemedi, onay penceresi kapatildi) yazilan metin kutuya geri gelir. */
+  onSend: (text: string) => void | boolean | Promise<void | boolean>;
   disabled?: boolean;
 }
 
@@ -15,11 +16,13 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   const { messages } = useLocale();
   const [text, setText] = useState('');
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    onSend(trimmed);
     setText('');
+    const ok = await onSend(trimmed);
+    // Kullanici bu arada yeni bir sey yazmadiysa taslak geri konur.
+    if (ok === false) setText((current) => current || trimmed);
   };
 
   return (

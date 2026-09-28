@@ -25,7 +25,8 @@ namespace GGHub.Infrastructure.Services
     public class AiAgentEvents : IAiAgentEvents
     {
         /// <summary>Bir kullaniciya gunde en fazla kac bot gonderi yaniti / inceleme yorumu.</summary>
-        private const int MaxPublicReactionsPerUserPerDay = 4;
+        /// <summary>Bir kullaniciya gunde en fazla kac bot gonderi yaniti / inceleme yorumu (tepki + planli).</summary>
+        internal const int MaxPublicReactionsPerUserPerDay = 4;
         private const double LaterPostReplyChance = 0.25;
         private const double LaterReviewCommentChance = 0.30;
 
@@ -135,7 +136,7 @@ namespace GGHub.Infrastructure.Services
                 if (!await UnderPostCapAsync(rootId, settings.MaxAgentRepliesPerPost)) return;
 
                 var content = await _context.Posts.AsNoTracking().Where(p => p.Id == postId).Select(p => p.Content).FirstOrDefaultAsync();
-                var agent = await PickAgentAsync(AiLanguage.Detect(content));
+                var agent = await PickAgentAsync(await LanguageOfAsync(authorId, content));
                 if (agent is null) return;
 
                 var delay = isFirst
@@ -179,7 +180,7 @@ namespace GGHub.Infrastructure.Services
                 var isFirst = reviewCount <= 1;
                 if (!isFirst && Random.Shared.NextDouble() >= LaterReviewCommentChance) return;
 
-                var agent = await PickAgentAsync(AiLanguage.Detect(content));
+                var agent = await PickAgentAsync(await LanguageOfAsync(authorId, content));
                 if (agent is null) return;
 
                 await AddTaskAsync(agent.Value, AiAgentTaskType.CommentOnReview,
@@ -241,6 +242,15 @@ namespace GGHub.Infrastructure.Services
 
         private Task<bool> IsEnabledAgentAsync(int agentId)
             => _context.AiAgentProfiles.AnyAsync(p => p.UserId == agentId && p.IsEnabled);
+
+        /// <summary>Insan metninin dili; belirlenemezse (emoji, yalniz oyun adi) yazarin arayuz tercihi.</summary>
+        private async Task<string> LanguageOfAsync(int authorId, string? content)
+        {
+            var detected = AiLanguage.Detect(content);
+            if (detected is not null) return detected;
+            var locale = await _context.Users.AsNoTracking().Where(u => u.Id == authorId).Select(u => u.PreferredLocale).FirstOrDefaultAsync();
+            return AiLanguage.FromLocale(locale);
+        }
 
         /// <summary>Rastgele acik bot; dil verildiyse o dildekilerden (yoksa herhangi biri).</summary>
         private async Task<int?> PickAgentAsync(string? lang)

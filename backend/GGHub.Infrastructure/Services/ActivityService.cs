@@ -330,7 +330,8 @@ namespace GGHub.Infrastructure.Services
             foreach (var item in items.OrderByDescending(i => i.OccurredAt))
             {
                 if (keptSet.Count >= limit) break;
-                if (item.Actor?.IsAiAgent == true)
+                // Bir insanin bot gonderisini repost'u da bot icerigi sayilir ("Sadece insanlar"da gorunmez).
+                if (item.Actor?.IsAiAgent == true || item.PostData?.RepostOf?.Author?.IsAiAgent == true)
                 {
                     if (aiKept >= maxAi) continue;
                     aiKept++;

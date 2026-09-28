@@ -17,6 +17,7 @@ import type { ReviewComment, ReviewCommentForCreation, ReviewCommentForUpdate } 
 
 import { ReviewCommentForm } from "./review-comment-form";
 import { ReviewCommentItem } from "./review-comment-item";
+import { isAiConsentDeclined } from "@/core/lib/ai-consent-bridge";
 
 const COMMENTS_PAGE_SIZE = 10;
 
@@ -97,6 +98,7 @@ export function ReviewCommentSection({ reviewId, className, hideTitle = false }:
             queryClient.invalidateQueries({ queryKey: commentsQueryKey });
         },
         onError: (error) => {
+            if (isAiConsentDeclined(error)) return;
             toast.error(t("reviewComments.addError", { message: reasonText(error) }));
         },
         onSettled: (_data, _error, newComment) => {
@@ -138,6 +140,7 @@ export function ReviewCommentSection({ reviewId, className, hideTitle = false }:
             queryClient.invalidateQueries({ queryKey: commentsQueryKey });
         },
         onError: (error) => {
+            if (isAiConsentDeclined(error)) return;
             toast.error(t("reviewComments.updateError", { message: reasonText(error) }));
         },
     });

@@ -62,7 +62,7 @@ namespace GGHub.Infrastructure.Services
             var gameRatings = _context.Reviews
                 .AsNoTracking()
                 .Include(r => r.User)
-                .Where(r => !r.User.IsDeleted)
+                .Where(r => !r.User.IsDeleted && !r.User.IsAiAgent)
                 .GroupBy(r => r.GameId)
                 .Select(g => new
                 {

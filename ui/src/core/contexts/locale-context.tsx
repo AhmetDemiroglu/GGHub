@@ -18,7 +18,13 @@ const LocaleContext = createContext<LocaleContextValue | null>(null);
 
 export function LocaleProvider({ children, locale, messages }: { children: React.ReactNode; locale: AppLocale; messages: Messages }) {
     const pathname = usePathname();
-    const [activeLocale, setActiveLocale] = useState<AppLocale>(locale);
+    const [activeLocale, setActiveLocale] = useState<AppLocale>(() => {
+        // Cocuklarin ilk sorgulari efektlerden ONCE cikar: Accept-Language'i ilk render'da ayarla ki
+        // "/" altinda eski bir localStorage tercihi yuzunden baska dilin bot verisi istenmesin.
+        const fromPath = pathname?.split("/").filter(Boolean)[0];
+        setActiveClientLocale(fromPath && isLocale(fromPath) ? fromPath : locale);
+        return locale;
+    });
     const [activeMessages, setActiveMessages] = useState<Messages>(messages);
 
     useEffect(() => {

@@ -47,13 +47,22 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
   }, [queryClient]);
 
   useEffect(() => {
+    // Acilista bulunan dil: istemcinin Accept-Language'i HEMEN guncellenir (asagidaki efekt render
+    // sonrasi calisir, cocuklarin sorgulari ondan once cikar). Varsayilandan farkliysa o arada
+    // varsayilan dille cekilmis sorgular (bot onerileri, bot sayaci) yeni dille yeniden istenir.
+    const apply = (normalized: AppLocale) => {
+      setLocaleGetter(() => normalized);
+      setLocale(normalized);
+      setMessages(getMessages(normalized));
+      if (normalized !== defaultLocale) void queryClient.invalidateQueries();
+    };
+
     const loadLocale = async () => {
       try {
         const stored = await SecureStore.getItemAsync(LOCALE_STORAGE_KEY);
         const normalized = normalizeLocale(stored);
         if (normalized) {
-          setLocale(normalized);
-          setMessages(getMessages(normalized));
+          apply(normalized);
           return;
         }
       } catch {
@@ -66,8 +75,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
         for (const dl of deviceLocales ?? []) {
           const normalized = normalizeLocale(dl.languageTag) ?? normalizeLocale(dl.languageCode);
           if (normalized) {
-            setLocale(normalized);
-            setMessages(getMessages(normalized));
+            apply(normalized);
             return;
           }
         }
@@ -77,7 +85,7 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
     };
 
     loadLocale();
-  }, []);
+  }, [queryClient]);
 
   // Register locale getter with API client
   useEffect(() => {

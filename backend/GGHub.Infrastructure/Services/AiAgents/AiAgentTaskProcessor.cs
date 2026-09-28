@@ -109,7 +109,8 @@ namespace GGHub.Infrastructure.Services
             if (!await _policy.CanInteractAsync(userId, ct)) return Outcome.Skip("Kullanici AI etkilesimine uygun degil.");
             if (!await UnderDailyMessageCapAsync(userId, ct)) return Outcome.Skip("Kullanicinin gunluk bot mesaji tavani doldu.");
 
-            var partner = await _context.Users.AsNoTracking().Where(u => u.Id == userId).Select(u => u.Username).FirstAsync(ct);
+            var partnerRow = await _context.Users.AsNoTracking().Where(u => u.Id == userId).Select(u => new { u.Username, u.PreferredLocale }).FirstAsync(ct);
+            var partner = partnerRow.Username;
 
             var recent = await _context.Messages.AsNoTracking()
                 .Where(m => (m.SenderId == task.AgentUserId && m.RecipientId == userId) ||
@@ -120,12 +121,20 @@ namespace GGHub.Infrastructure.Services
                 .ToListAsync(ct);
             recent.Reverse();
 
-            var thread = recent
-                .Select(m => new AiThreadLine(m.SenderId == task.AgentUserId, m.SenderId == task.AgentUserId ? agent.Username : partner, m.SenderId == task.AgentUserId, m.Content))
-                .ToList();
-            if (thread.Count == 0 || thread[^1].FromAgent) return Outcome.Skip("Yanitlanacak yeni mesaj yok.");
+            if (recent.Count == 0 || recent[^1].SenderId == task.AgentUserId) return Outcome.Skip("Yanitlanacak yeni mesaj yok.");
 
-            var lang = AiLanguage.OfLatest(thread.Where(l => !l.FromAgent).Reverse().Select(l => l.Text), agent.Language);
+            // Dil: kullanicinin son metni; belirlenemezse (emoji, oyun adi) onun arayuz tercihi.
+            var lang = AiLanguage.OfLatest(recent.Where(m => m.SenderId != task.AgentUserId).Reverse().Select(m => m.Content),
+                AiLanguage.FromLocale(partnerRow.PreferredLocale));
+
+            // Kullanicinin metnindeki duz "@ad"lar: riza vermemis ucuncu kisilerin adi modele gitmez.
+            var thread = new List<AiThreadLine>();
+            foreach (var m in recent)
+            {
+                var fromAgent = m.SenderId == task.AgentUserId;
+                thread.Add(new AiThreadLine(fromAgent, fromAgent ? agent.Username : partner, fromAgent,
+                    fromAgent ? m.Content : await _conversations.MaskPlainHandlesAsync(m.Content, lang, ct)));
+            }
             var text = await _writer.WriteDirectMessageReplyAsync(agent, partner, thread, lang, ct);
             if (text is null) return Outcome.Skip("Metin uretilemedi.");
 
@@ -218,10 +227,15 @@ namespace GGHub.Infrastructure.Services
                     .Select(p => new LangCandidate(p.Id, p.UserId, p.User.IsAiAgent, p.Content))
                     .Take(30)
                     .ToListAsync(ct);
+                // Insan gonderisinde kullanici basina gunluk tepki tavani (olay yoluyla ortak sayim).
+                var cappedHumans = await CappedHumansAsync(candidates.Where(c => !c.IsAiAgent).Select(c => c.UserId), ct);
+                candidates = candidates.Where(c => c.IsAiAgent || !cappedHumans.Contains(c.UserId)).ToList();
                 if (PickInLanguage(candidates, sameLanguageBots, agent.Language) is not int picked)
                     return Outcome.Skip("Yanitlanacak uygun gonderi yok.");
                 rootId = picked;
                 task.TargetPostId = rootId;
+                var pickedRow = candidates.First(c => c.Id == picked);
+                if (!pickedRow.IsAiAgent) task.TargetUserId = pickedRow.UserId;
             }
 
             var root = await _context.Posts.AsNoTracking()
@@ -268,26 +282,41 @@ namespace GGHub.Infrastructure.Services
                 return Outcome.Skip("Son yanit zaten bu botun.");
             }
 
-            var rootLine = new AiThreadLine(false, root.Username, root.IsAiAgent, await _conversations.RenderForModelAsync(root.Content, agent.Language, ct));
+            var isOwnPost = root.UserId == task.AgentUserId;
+            var rootLine = new AiThreadLine(isOwnPost, root.Username, root.IsAiAgent, await _conversations.RenderForModelAsync(root.Content, agent.Language, ct));
             var replyLines = new List<AiThreadLine>();
             foreach (var r in replies)
             {
                 replyLines.Add(new AiThreadLine(r.UserId == task.AgentUserId, r.Username, r.IsAiAgent, await _conversations.RenderForModelAsync(r.Content!, agent.Language, ct)));
             }
 
-            // Insana onun son metninin dilinde cevap: en yeni rizali insan yaniti, yoksa insan kok gonderisi.
-            // Konusmada insan yoksa (bot-bot) botun dili.
+            // Muhatap: bu botun disinda son yazan (rizali insan ya da ayni dildeki bot); yoksa gonderi
+            // sahibi. Kendi gonderisinin altinda bot kendine cevap vermez, yanitlayana doner.
+            var lastOther = replies.LastOrDefault(r => r.UserId != task.AgentUserId);
+            var addressee = lastOther?.Username ?? (isOwnPost ? null : root.Username);
+            var addresseeIsHuman = lastOther is not null ? !lastOther.IsAiAgent : !isOwnPost && !root.IsAiAgent;
+            int? humanId = lastOther is { IsAiAgent: false } ? lastOther.UserId : !root.IsAiAgent ? root.UserId : null;
+
+            // Insana onun son metninin dilinde cevap: en yeni rizali insan yaniti, yoksa insan kok gonderisi;
+            // belirlenemezse insanin arayuz tercihi. Konusmada insan yoksa (bot-bot) botun dili.
             var humanTexts = replies.Where(r => !r.IsAiAgent).Reverse().Select(r => r.Content);
             if (!root.IsAiAgent) humanTexts = humanTexts.Append(root.Content);
-            var lang = AiLanguage.OfLatest(humanTexts, agent.Language);
+            var fallback = humanId is int hid ? await PreferredLanguageAsync(hid, agent.Language, ct) : agent.Language;
+            var lang = AiLanguage.OfLatest(humanTexts, fallback);
 
-            var text = await _writer.WritePostReplyAsync(agent, rootLine, replyLines, lang, ct);
+            var text = await _writer.WritePostReplyAsync(agent, rootLine, replyLines, lang, ct, addressee, addresseeIsHuman);
             if (text is null) return Outcome.Skip("Metin uretilemedi.");
 
+            // Model yazarken kullanici rizasini geri almis olabilir: yazmadan once yeniden kontrol.
+            if (!root.IsAiAgent && !await _policy.CanInteractAsync(root.UserId, ct))
+                return Outcome.Skip("Gonderi sahibi AI etkilesimine uygun degil.");
+
             // Etiket yalnizca ayni dildeki botlara ve riza vermis katilimcilara (gonderi sahibi dahil) donusur.
+            // Baska dildeki bir botun gonderisinde bile o bot etiketlenmez (dil grubu kurali).
             var allowed = await AgentHandlesAsync(agent.Language, ct);
             foreach (var (id, name) in eligibleHumans) allowed[name.ToLowerInvariant()] = id;
-            if (root.IsAiAgent || await _policy.CanInteractAsync(root.UserId, ct)) allowed[root.Username.ToLowerInvariant()] = root.UserId;
+            if (!root.IsAiAgent) allowed[root.Username.ToLowerInvariant()] = root.UserId;
+            allowed.Remove(agent.Username.ToLowerInvariant());
             var content = AiMentionLinker.Link(text.Text, allowed);
 
             var created = await _posts.CreateAsync(task.AgentUserId, new PostForCreationDto { Content = content, ParentPostId = rootId });
@@ -364,6 +393,8 @@ namespace GGHub.Infrastructure.Services
 
             var text = await _writer.WriteReviewAsync(agent, Facts(game, agent.Language), rating, ct);
             if (text is null) return Outcome.Skip("Metin uretilemedi.");
+            // Incelemede "@ad" dogrudan bildirim: yalnizca ayni dildeki botlar etiketli kalir.
+            text = text with { Text = AiMentionLinker.KeepAllowedHandles(text.Text, (await AgentHandlesAsync(agent.Language, ct)).Keys.ToHashSet()) };
 
             task.TargetGameId = game.Id;
             var review = await _reviews.CreateReviewAsync(
@@ -437,10 +468,21 @@ namespace GGHub.Infrastructure.Services
                 .Select(r => (int?)r.Rating)
                 .FirstOrDefaultAsync(ct);
 
-            // Insan incelemesine onun yazdigi dilde, bot incelemesine botun dilinde yorum.
-            var lang = review.IsAiAgent ? agent.Language : AiLanguage.Detect(review.Content) ?? agent.Language;
-            var text = await _writer.WriteReviewCommentAsync(agent, review.Username, Facts(game, lang), review.Rating, review.Content, lang, ct, peerNote, myRating);
+            // Insan incelemesine onun yazdigi dilde (belirlenemezse arayuz tercihi), bot incelemesine botun dilinde.
+            var lang = review.IsAiAgent
+                ? agent.Language
+                : AiLanguage.Detect(review.Content) ?? await PreferredLanguageAsync(review.UserId, agent.Language, ct);
+            var reviewText = review.IsAiAgent ? review.Content : await _conversations.MaskPlainHandlesAsync(review.Content, lang, ct);
+            var text = await _writer.WriteReviewCommentAsync(agent, review.Username, Facts(game, lang), review.Rating, reviewText, lang, ct,
+                peerNote, myRating, authorIsHuman: !review.IsAiAgent);
             if (text is null) return Outcome.Skip("Metin uretilemedi.");
+
+            // Model yazarken riza geri alinmis olabilir; yorumdaki "@ad" dogrudan bildirim oldugu icin
+            // yalnizca ayni dildeki botlar ve (rizali) inceleme sahibi etiketli kalir.
+            if (!review.IsAiAgent && !await _policy.CanInteractAsync(review.UserId, ct)) return Outcome.Skip("Inceleme sahibi AI etkilesimine uygun degil.");
+            var allowedHandles = (await AgentHandlesAsync(agent.Language, ct)).Keys.ToHashSet();
+            if (!review.IsAiAgent) allowedHandles.Add(review.Username.ToLowerInvariant());
+            text = text with { Text = AiMentionLinker.KeepAllowedHandles(text.Text, allowedHandles) };
 
             var comment = await _reviewComments.CreateCommentAsync(reviewId, task.AgentUserId, new ReviewCommentForCreationDto { Content = text.Text });
 
@@ -488,10 +530,18 @@ namespace GGHub.Infrastructure.Services
                 : null;
 
             var game = await _context.Games.AsNoTracking().FirstAsync(g => g.Id == comment.GameId, ct);
-            var lang = comment.IsAiAgent ? agent.Language : AiLanguage.Detect(comment.Content) ?? agent.Language;
-            var text = await _writer.WriteReviewCommentReplyAsync(agent, comment.Username, comment.Content, Facts(game, lang),
-                comment.Rating, comment.ReviewContent, peerNote, lang, ct);
+            var lang = comment.IsAiAgent
+                ? agent.Language
+                : AiLanguage.Detect(comment.Content) ?? await PreferredLanguageAsync(comment.UserId, agent.Language, ct);
+            var commentText = comment.IsAiAgent ? comment.Content : await _conversations.MaskPlainHandlesAsync(comment.Content, lang, ct);
+            var text = await _writer.WriteReviewCommentReplyAsync(agent, comment.Username, commentText, Facts(game, lang),
+                comment.Rating, comment.ReviewContent, peerNote, lang, ct, commenterIsHuman: !comment.IsAiAgent);
             if (text is null) return Outcome.Skip("Metin uretilemedi.");
+
+            if (!comment.IsAiAgent && !await _policy.CanInteractAsync(comment.UserId, ct)) return Outcome.Skip("Yorum sahibi uygun degil.");
+            var allowedHandles = roster.Select(a => a.Username.ToLowerInvariant()).ToHashSet();
+            if (!comment.IsAiAgent) allowedHandles.Add(comment.Username.ToLowerInvariant());
+            text = text with { Text = AiMentionLinker.KeepAllowedHandles(text.Text, allowedHandles) };
 
             var reply = await _reviewComments.CreateCommentAsync(comment.ReviewId, task.AgentUserId,
                 new ReviewCommentForCreationDto { Content = text.Text, ParentCommentId = commentId });
@@ -675,6 +725,30 @@ namespace GGHub.Infrastructure.Services
         /// <summary>Bir dil grubundaki acik botlarin kucuk harf kullanici adi -> kimlik sozlugu (etiket cevirici icin).</summary>
         private async Task<Dictionary<string, int>> AgentHandlesAsync(string lang, CancellationToken ct)
             => (await _conversations.LoadRosterAsync(lang, ct)).ToDictionary(a => a.Username.ToLowerInvariant(), a => a.UserId);
+
+        /// <summary>Insanin arayuz tercihinin bot dili karsiligi (metinden dil cikmazsa yedek).</summary>
+        private async Task<string> PreferredLanguageAsync(int userId, string fallback, CancellationToken ct)
+        {
+            var locale = await _context.Users.AsNoTracking().Where(u => u.Id == userId).Select(u => u.PreferredLocale).FirstOrDefaultAsync(ct);
+            return locale is null ? fallback : AiLanguage.FromLocale(locale);
+        }
+
+        /// <summary>Son 24 saatte bot tepki tavanini (AiAgentEvents ile ortak) doldurmus kullanicilar.</summary>
+        private async Task<HashSet<int>> CappedHumansAsync(IEnumerable<int> userIds, CancellationToken ct)
+        {
+            var ids = userIds.Distinct().ToList();
+            if (ids.Count == 0) return new HashSet<int>();
+            var since = DateTime.UtcNow.AddHours(-24);
+            return (await _context.AiAgentTasks.AsNoTracking()
+                    .Where(t => t.TargetUserId != null && ids.Contains(t.TargetUserId.Value) && t.CreatedAt >= since &&
+                                (t.Type == AiAgentTaskType.ReplyToPost || t.Type == AiAgentTaskType.CommentOnReview))
+                    .GroupBy(t => t.TargetUserId!.Value)
+                    .Select(g => new { UserId = g.Key, Count = g.Count() })
+                    .ToListAsync(ct))
+                .Where(x => x.Count >= AiAgentEvents.MaxPublicReactionsPerUserPerDay)
+                .Select(x => x.UserId)
+                .ToHashSet();
+        }
 
         private async Task<IReadOnlySet<int>> SameLanguageBotIdsAsync(string lang, CancellationToken ct)
             => (await _conversations.LoadRosterAsync(lang, ct)).Select(a => a.UserId).ToHashSet();
