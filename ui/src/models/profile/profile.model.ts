@@ -20,18 +20,36 @@ export interface Profile {
     isEmailPublic: boolean;
     isPhoneNumberPublic: boolean;
     isDateOfBirthPublic: boolean;
-    /** Kendi profili: "AI hesaplarla etkilesim" ayari. */
+    /** Kendi profili: "AI hesaplarla etkilesim" ayari (yalnizca acik riza ile acilir). */
     allowAiInteraction?: boolean;
-    /** Kendi AI etkilesim engeli: null (serbest) | "needsBirthDate" | "underage" | "optedOut". */
+    /** Son AI etkilesim onayinin zamani (acikken). */
+    aiConsentAt?: string | null;
+    /** Kendi AI etkilesim engeli: null (serbest) | "needsBirthDate" | "underage" | "consentRequired". */
     aiInteractionBlockReason?: AiInteractionBlockReason | null;
 }
 
 /** Sunucu AiInteractionBlockReasons aynasi. */
-export type AiInteractionBlockReason = "needsBirthDate" | "underage" | "optedOut" | "loginRequired";
+export type AiInteractionBlockReason = "needsBirthDate" | "underage" | "consentRequired" | "loginRequired";
 
+/** PUT /profile/me/ai-interaction: YALNIZCA kapatir (allow=false). Acmak icin giveAiConsent. */
 export interface UpdateAiInteractionDto {
-    allow: boolean;
+    allow: false;
+    source?: "web";
 }
+
+/**
+ * POST /profile/me/ai-consent. Sunucu AiConsentTexts.CurrentVersion ile ayni surum gonderilir.
+ * Dogum tarihi profilde yoksa "yyyy-MM-dd" olarak gelir; 18 yas alti reddedilir.
+ */
+export interface AiConsentDto {
+    accept: true;
+    textVersion: string;
+    source: "web";
+    dateOfBirth?: string | null;
+}
+
+/** Riza metninin surumu. Metin anlamca degisirse backend AiConsentTexts ile birlikte guncellenir. */
+export const AI_CONSENT_VERSION = "2026-09-29";
 
 /**
  * PUT /profile/me govdesinin TAMAMI. Sunucu (ProfileService.UpdateProfileAsync) alanlari

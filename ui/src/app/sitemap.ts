@@ -3,7 +3,7 @@ import type { MetadataRoute } from "next";
 const siteUrl = "https://gghub.social";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-    const routes = ["", "/discover", "/lists", "/about", "/privacy", "/terms"];
+    const routes = ["", "/discover", "/lists", "/ai-bots", "/about", "/privacy", "/terms"];
     const locales = ["tr", "en-US"] as const;
 
     return locales.flatMap((locale) =>

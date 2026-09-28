@@ -61,5 +61,17 @@ target 'GGHub' do
       :mac_catalyst_enabled => false,
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
+
+    # Xcode 27, 15.0 altindaki IPHONEOS_DEPLOYMENT_TARGET'i HATA sayiyor. Bazi pod'larin kaynak
+    # paketi hedefleri (GoogleSignIn, SDWebImage, RNSVGFilters, *_Privacy) 9.0-12.4 bildiriyor ve
+    # derleme/arsiv bu yuzden duruyordu. Uygulamanin kendi hedefi 15.1; pod'lar da en az o olsun.
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |build_config|
+        current = build_config.build_settings['IPHONEOS_DEPLOYMENT_TARGET']
+        if current.nil? || current.to_f < 15.1
+          build_config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'
+        end
+      end
+    end
   end
 end

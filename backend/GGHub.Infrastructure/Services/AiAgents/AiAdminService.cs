@@ -75,6 +75,8 @@ namespace GGHub.Infrastructure.Services
                 s.FallbackModel = dto.FallbackModel;
                 s.PrimaryModelRpm = Math.Clamp(dto.PrimaryModelRpm, 1, 60);
                 s.DailyActionsPerAgent = Math.Clamp(dto.DailyActionsPerAgent, 0, 50);
+                s.ConversationsPerDay = Math.Clamp(dto.ConversationsPerDay, 0, 40);
+                s.MaxConversationTurns = Math.Clamp(dto.MaxConversationTurns, 2, 12);
                 s.MaxAgentMessagesPerUserPerDay = Math.Clamp(dto.MaxAgentMessagesPerUserPerDay, 0, 200);
                 s.MaxUnsolicitedDmPerUserPerWeek = Math.Clamp(dto.MaxUnsolicitedDmPerUserPerWeek, 0, 7);
                 s.MaxAgentRepliesPerPost = Math.Clamp(dto.MaxAgentRepliesPerPost, 0, 10);
@@ -97,6 +99,8 @@ namespace GGHub.Infrastructure.Services
             FallbackModel = s.FallbackModel,
             PrimaryModelRpm = s.PrimaryModelRpm,
             DailyActionsPerAgent = s.DailyActionsPerAgent,
+            ConversationsPerDay = s.ConversationsPerDay,
+            MaxConversationTurns = s.MaxConversationTurns,
             MaxAgentMessagesPerUserPerDay = s.MaxAgentMessagesPerUserPerDay,
             MaxUnsolicitedDmPerUserPerWeek = s.MaxUnsolicitedDmPerUserPerWeek,
             MaxAgentRepliesPerPost = s.MaxAgentRepliesPerPost,
@@ -199,6 +203,109 @@ namespace GGHub.Infrastructure.Services
                 _logger.LogInformation("[AiAgents] {Count} bot olusturuldu.", created);
             }
             return created;
+        }
+
+        /// <summary>
+        /// Koddaki karakterleri (AiAgentPersonas) mevcut botlara yazar: ad, bio, avatar, persona metni,
+        /// turler, puan egilimi. Admin panelindeki elle duzenlemenin UZERINE yazar. Bot hesaplarinin
+        /// gorunurlugu de herkese acik olarak sabitlenir (botlarin yaptigi her sey gorunur olmali).
+        /// </summary>
+        public async Task<int> RefreshPersonasAsync(CancellationToken ct)
+        {
+            var profiles = await _context.AiAgentProfiles.Include(p => p.User).ToListAsync(ct);
+            var updated = 0;
+            foreach (var profile in profiles)
+            {
+                var persona = AiAgentPersonas.ByKey(profile.PersonaKey);
+                if (persona is null) continue;
+
+                profile.Persona = persona.Character;
+                profile.FavoriteGenres = persona.Genres;
+                profile.RatingBias = persona.RatingBias;
+                profile.UpdatedAt = DateTime.UtcNow;
+
+                var user = profile.User;
+                user.FirstName = persona.DisplayName;
+                user.Bio = persona.Bio;
+                user.ProfileImageUrl = AiAgentPersonas.AvatarUrl(user.Username);
+                user.MessageSetting = MessagePrivacySetting.Everyone;
+                user.ProfileVisibility = ProfileVisibilitySetting.Public;
+                user.PostVisibility = PostVisibilitySetting.Everyone;
+                user.PostReplyPermission = PostReplyPermissionSetting.Everyone;
+                user.UpdatedAt = DateTime.UtcNow;
+                updated++;
+            }
+            await _context.SaveChangesAsync(ct);
+            _logger.LogInformation("[AiAgents] {Count} botun karakteri koddan guncellendi.", updated);
+            return updated;
+        }
+
+        private static readonly System.Text.RegularExpressions.Regex BotUsername =
+            new("^[a-z0-9_]{2,21}_ai$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        /// <summary>
+        /// Admin'den yeni bot: koddaki karakterlere ek, bot sayisi boylece parametrik buyur. Kurallar
+        /// koddakilerle ayni: kullanici adi "_ai" ile biter, bio AI oldugunu soyler, avatar illustrasyon,
+        /// profil herkese acik, sifre ve OAuth yok. Iliski haritasi yok; bot yine sahnelere katilir.
+        /// </summary>
+        /// <exception cref="ArgumentException">Gecersiz ya da alinmis kullanici adi, bos alan.</exception>
+        public async Task<int> CreateAgentAsync(AiAgentCreateDto dto, CancellationToken ct)
+        {
+            var username = (dto.Username ?? string.Empty).Trim().ToLowerInvariant();
+            if (!BotUsername.IsMatch(username))
+                throw new ArgumentException("Kullanıcı adı küçük harf, rakam ve alt çizgiden oluşmalı ve _ai ile bitmeli (ör. arena_ai).");
+            if (string.IsNullOrWhiteSpace(dto.DisplayName)) throw new ArgumentException("Görünen ad boş olamaz.");
+            if (string.IsNullOrWhiteSpace(dto.Persona)) throw new ArgumentException("Karakter metni boş olamaz.");
+
+            var normalized = UsernameNormalizer.Normalize(username);
+            if (await _context.Users.AnyAsync(u => u.UsernameNormalized == normalized, ct))
+                throw new ArgumentException("Bu kullanıcı adı alınmış.");
+
+            var bio = (dto.Bio ?? string.Empty).Trim();
+            const string aiNote = "Yapay zekayım, gerçek bir kişi değilim.";
+            if (!bio.Contains("Yapay zeka", StringComparison.OrdinalIgnoreCase)) bio = $"{bio} {aiNote}".Trim();
+            if (bio.Length > 300) bio = bio[..300];
+            var persona = dto.Persona.Trim();
+            if (persona.Length > 2000) persona = persona[..2000];
+
+            var user = new User
+            {
+                Username = username,
+                UsernameNormalized = normalized,
+                Email = $"{username}{BotEmailDomain}",
+                FirstName = dto.DisplayName.Trim().Length > 40 ? dto.DisplayName.Trim()[..40] : dto.DisplayName.Trim(),
+                Bio = bio,
+                ProfileImageUrl = AiAgentPersonas.AvatarUrl(username),
+                IsEmailVerified = true,
+                IsAiAgent = true,
+                AllowAiInteraction = false,
+                MessageSetting = MessagePrivacySetting.Everyone,
+                ProfileVisibility = ProfileVisibilitySetting.Public,
+                PostVisibility = PostVisibilitySetting.Everyone,
+                PostReplyPermission = PostReplyPermissionSetting.Everyone,
+                PreferredLocale = "tr",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync(ct);
+
+            _context.AiAgentProfiles.Add(new AiAgentProfile
+            {
+                UserId = user.Id,
+                PersonaKey = $"custom_{user.Id}",
+                Persona = persona,
+                FavoriteGenres = (dto.FavoriteGenres ?? string.Empty).Trim(),
+                RatingBias = Math.Clamp(dto.RatingBias, -2, 2),
+                DailyActionQuota = 0,
+                IsEnabled = true
+            });
+            _context.UserStats.Add(new UserStats { UserId = user.Id });
+            await _context.SaveChangesAsync(ct);
+
+            _directory.Invalidate();
+            _logger.LogInformation("[AiAgents] Admin yeni bot acti: @{Username}", username);
+            return user.Id;
         }
 
         public async Task<bool> UpdateAgentAsync(int userId, AiAgentUpdateDto dto, CancellationToken ct)

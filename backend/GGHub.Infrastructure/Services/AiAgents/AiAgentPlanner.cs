@@ -21,28 +21,36 @@ namespace GGHub.Infrastructure.Services
         private static readonly AiAgentTaskType[] Autonomous =
         {
             AiAgentTaskType.ReviewGame, AiAgentTaskType.CreatePost, AiAgentTaskType.ReplyToPost,
-            AiAgentTaskType.LikePost, AiAgentTaskType.FollowUser, AiAgentTaskType.WelcomeDirectMessage
+            AiAgentTaskType.LikePost, AiAgentTaskType.FollowUser, AiAgentTaskType.WelcomeDirectMessage,
+            AiAgentTaskType.CommentOnReview
         };
 
-        /// <summary>Tip agirliklari (toplam 100).</summary>
+        /// <summary>
+        /// Tip agirliklari (toplam 100). Inceleme yorumu planli yolda BOT incelemelerini hedefler
+        /// (botlar birbirinin incelemesine yorum yazar, inceleme sahibi cevaplar).
+        /// </summary>
         private static readonly (AiAgentTaskType Type, int Weight)[] Weights =
         {
-            (AiAgentTaskType.ReviewGame, 22),
-            (AiAgentTaskType.CreatePost, 25),
-            (AiAgentTaskType.ReplyToPost, 18),
-            (AiAgentTaskType.LikePost, 20),
-            (AiAgentTaskType.FollowUser, 9),
-            (AiAgentTaskType.WelcomeDirectMessage, 6),
+            (AiAgentTaskType.ReviewGame, 20),
+            (AiAgentTaskType.CreatePost, 22),
+            (AiAgentTaskType.ReplyToPost, 15),
+            (AiAgentTaskType.LikePost, 17),
+            (AiAgentTaskType.FollowUser, 8),
+            (AiAgentTaskType.WelcomeDirectMessage, 5),
+            (AiAgentTaskType.CommentOnReview, 13),
         };
 
         private readonly GGHubDbContext _context;
         private readonly IAiSettingsProvider _settings;
+        private readonly AiConversationService _conversations;
         private readonly ILogger<AiAgentPlanner> _logger;
 
-        public AiAgentPlanner(GGHubDbContext context, IAiSettingsProvider settings, ILogger<AiAgentPlanner> logger)
+        public AiAgentPlanner(
+            GGHubDbContext context, IAiSettingsProvider settings, AiConversationService conversations, ILogger<AiAgentPlanner> logger)
         {
             _context = context;
             _settings = settings;
+            _conversations = conversations;
             _logger = logger;
         }
 
@@ -99,12 +107,49 @@ namespace GGHub.Infrastructure.Services
                 }
             }
 
+            planned += await PlanConversationsAsync(agents.Select(a => a.UserId).ToList(), settings.ConversationsPerDay,
+                dayStartUtc, remainingActiveMinutes, intervalMinutes, ct);
+
             if (planned > 0)
             {
                 await _context.SaveChangesAsync(ct);
                 _logger.LogInformation("[AiAgents] Planlayici {Count} gorev acti.", planned);
             }
             return planned;
+        }
+
+        /// <summary>
+        /// Bot sohbet sahneleri: gunluk hedefi (ConversationsPerDay) aktif pencereye yayar. Ev sahibi
+        /// rastgele bir bot; sahnenin kendisi (konu, katilimcilar) gorev islenirken secilir.
+        /// </summary>
+        private async Task<int> PlanConversationsAsync(
+            List<int> agentIds, int perDay, DateTime dayStartUtc, int remainingActiveMinutes, int intervalMinutes, CancellationToken ct)
+        {
+            await _conversations.AbandonStaleAsync(ct);
+            if (perDay <= 0 || agentIds.Count < 2) return 0;
+
+            var startedToday = await _context.AiAgentTasks.CountAsync(t =>
+                t.Type == AiAgentTaskType.StartConversation && t.CreatedAt >= dayStartUtc, ct);
+            var remaining = perDay - startedToday;
+            if (remaining <= 0) return 0;
+
+            var slotsLeft = Math.Max(1.0, remainingActiveMinutes / (double)intervalMinutes);
+            var expected = remaining / slotsLeft;
+            var count = (int)Math.Floor(expected);
+            if (Random.Shared.NextDouble() < expected - count) count++;
+
+            for (var i = 0; i < count; i++)
+            {
+                _context.AiAgentTasks.Add(new AiAgentTask
+                {
+                    AgentUserId = agentIds[Random.Shared.Next(agentIds.Count)],
+                    Type = AiAgentTaskType.StartConversation,
+                    Status = AiAgentTaskStatus.Pending,
+                    ScheduledAt = DateTime.UtcNow.AddSeconds(Random.Shared.Next(0, intervalMinutes * 60)),
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+            return count;
         }
 
         private static AiAgentTaskType PickType()

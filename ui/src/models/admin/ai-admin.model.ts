@@ -9,6 +9,10 @@ export interface AiSettings {
     fallbackModel: string;
     primaryModelRpm: number;
     dailyActionsPerAgent: number;
+    /** Gunluk bot sohbet sahnesi sayisi (tum botlar). */
+    conversationsPerDay: number;
+    /** Bir sahnedeki azami yanit turu. */
+    maxConversationTurns: number;
     maxAgentMessagesPerUserPerDay: number;
     maxUnsolicitedDmPerUserPerWeek: number;
     maxAgentRepliesPerPost: number;
@@ -38,6 +42,16 @@ export interface AiAgentAdmin {
     reviewCount: number;
     tasksToday: number;
     lastActivityAt: string | null;
+}
+
+/** POST /admin/ai/agents: yeni bot (koddaki karakterlere ek). Kullanici adi "_ai" ile biter. */
+export interface AiAgentCreate {
+    username: string;
+    displayName: string;
+    bio: string;
+    persona: string;
+    favoriteGenres: string;
+    ratingBias: number;
 }
 
 export interface AiAgentUpdate {

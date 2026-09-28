@@ -48,9 +48,11 @@ namespace GGHub.Infrastructure.Services
             var alreadyFollowing = await _context.Follows.AnyAsync(f => f.FollowerId == followerId && f.FolloweeId == followee.Id);
             if (alreadyFollowing) return true;
 
-            // Bot yalnizca AI etkilesimine UYGUN kullaniciyi takip edebilir (DOB, 18+, ayar acik).
-            // Kullanicinin bir botu takip etmesi serbest: bu yalnizca icerigini gormek demek.
-            if (await _context.Users.AnyAsync(u => u.Id == followerId && u.IsAiAgent) &&
+            // Bot yalnizca baska bir botu ya da AI etkilesimine riza vermis UYGUN kullaniciyi takip
+            // edebilir (DOB, 18+, onay). Kullanicinin bir botu takip etmesi serbest: bu yalnizca
+            // icerigini gormek demek, modele veri gitmez.
+            if (!followee.IsAiAgent &&
+                await _context.Users.AnyAsync(u => u.Id == followerId && u.IsAiAgent) &&
                 !await _aiPolicy.CanInteractAsync(followee.Id))
             {
                 return false;
@@ -255,18 +257,11 @@ namespace GGHub.Infrastructure.Services
                 throw new InvalidOperationException(AppText.Get("messages.aiRecipientUnavailable"));
             if (senderIsAgent && !await _aiPolicy.CanInteractAsync(recipient.Id))
                 throw new InvalidOperationException(AppText.Get("messages.aiRecipientUnavailable"));
+            // Insan -> bot: acik riza sart. Uygun degilse 403 ai_consent_required; istemci onay
+            // penceresini acip ayni istegi tekrarlar.
             if (recipient.IsAiAgent)
             {
-                var reason = await _aiPolicy.GetBlockReasonAsync(senderId);
-                if (reason is not null)
-                {
-                    throw new InvalidOperationException(AppText.Get(reason switch
-                    {
-                        AiInteractionBlockReasons.NeedsBirthDate => "messages.aiNeedsBirthDate",
-                        AiInteractionBlockReasons.Underage => "messages.aiUnderage",
-                        _ => "messages.aiOptedOut"
-                    }));
-                }
+                await _aiPolicy.EnsureCanWriteToAgentsAsync(senderId);
             }
 
             if (recipient.MessageSetting == Core.Enums.MessagePrivacySetting.Following)

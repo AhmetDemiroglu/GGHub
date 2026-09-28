@@ -37,7 +37,7 @@ namespace GGHub.Core.Specifications
         {
             if (!dateOfBirth.HasValue) return AiInteractionBlockReasons.NeedsBirthDate;
             if (!IsAdult(dateOfBirth, today)) return AiInteractionBlockReasons.Underage;
-            if (!allowAiInteraction) return AiInteractionBlockReasons.OptedOut;
+            if (!allowAiInteraction) return AiInteractionBlockReasons.ConsentRequired;
             return null;
         }
 
@@ -50,6 +50,19 @@ namespace GGHub.Core.Specifications
     {
         public const string NeedsBirthDate = "needsBirthDate";
         public const string Underage = "underage";
-        public const string OptedOut = "optedOut";
+        /// <summary>Riza metni onaylanmamis (varsayilan) ya da onay geri alinmis.</summary>
+        public const string ConsentRequired = "consentRequired";
+    }
+
+    /// <summary>
+    /// AI etkilesimi acik riza metninin surumu. Metin (web + mobil i18n "aiConsent" ve gizlilik
+    /// politikasindaki riza bolumu) anlamca degisirse bu tarih guncellenir; eski onaylar gecerli
+    /// kalir ama yeni onaylar yeni surumle kaydedilir.
+    /// </summary>
+    public static class AiConsentTexts
+    {
+        public const string CurrentVersion = "2026-09-29";
+
+        public static readonly IReadOnlySet<string> Sources = new HashSet<string> { "web", "ios", "android", "unknown" };
     }
 }

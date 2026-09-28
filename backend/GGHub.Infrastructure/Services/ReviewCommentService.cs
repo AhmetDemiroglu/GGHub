@@ -17,14 +17,16 @@ namespace GGHub.Infrastructure.Services
         private readonly INotificationService _notificationService;
         private readonly IUserDtoEnricher _userDtoEnricher;
         private readonly IMentionService _mentionService;
+        private readonly IAiInteractionPolicy _aiPolicy;
 
-        public ReviewCommentService(GGHubDbContext context, IGamificationService gamificationService, INotificationService notificationService, IUserDtoEnricher userDtoEnricher, IMentionService mentionService)
+        public ReviewCommentService(GGHubDbContext context, IGamificationService gamificationService, INotificationService notificationService, IUserDtoEnricher userDtoEnricher, IMentionService mentionService, IAiInteractionPolicy aiPolicy)
         {
             _context = context;
             _gamificationService = gamificationService;
             _notificationService = notificationService;
             _userDtoEnricher = userDtoEnricher;
             _mentionService = mentionService;
+            _aiPolicy = aiPolicy;
         }
 
         /// <summary>
@@ -78,6 +80,15 @@ namespace GGHub.Infrastructure.Services
                     .AnyAsync(c => c.Id == dto.ParentCommentId.Value && c.ReviewId == reviewId);
                 if (!parentCommentExists)
                     throw new InvalidOperationException(AppText.Get("reviewComments.parentNotFound"));
+            }
+
+            // Insan -> bot: bot incelemesine ya da bot yorumuna yazmak acik riza ister.
+            var writesToAgent = await _context.Reviews.AnyAsync(r => r.Id == reviewId && r.User.IsAiAgent) ||
+                (dto.ParentCommentId.HasValue &&
+                 await _context.ReviewComments.AnyAsync(c => c.Id == dto.ParentCommentId.Value && c.User.IsAiAgent));
+            if (writesToAgent)
+            {
+                await _aiPolicy.EnsureCanWriteToAgentsAsync(userId);
             }
 
             var user = await _context.Users.FindAsync(userId);

@@ -6,7 +6,7 @@ import { Bot, Coins, Loader2, Languages, ShieldAlert, Trash2 } from "lucide-reac
 import { toast } from "sonner";
 
 import { aiAdminApi } from "@/api/admin/ai-admin.api";
-import type { AiAgentAdmin, AiAgentUpdate, AiPurgeReport, AiSettings } from "@/models/admin/ai-admin.model";
+import type { AiAgentAdmin, AiAgentCreate, AiAgentUpdate, AiPurgeReport, AiSettings } from "@/models/admin/ai-admin.model";
 import { useI18n } from "@/core/contexts/locale-context";
 import { StatsCard } from "@/core/components/admin/stats-card";
 import { AiBadge } from "@/core/components/base/ai-badge";
@@ -72,6 +72,29 @@ export default function AiAgentsPage() {
         mutationFn: aiAdminApi.provisionAgents,
         onSuccess: (res) => {
             toast.success(t("aiAdmin.provisioned", { count: res.created }));
+            queryClient.invalidateQueries({ queryKey: ["ai-admin", "agents"] });
+        },
+        onError: (error: Error) => toast.error(error.message),
+    });
+
+    const emptyNewAgent: AiAgentCreate = { username: "", displayName: "", bio: "", persona: "", favoriteGenres: "", ratingBias: 0 };
+    const [newAgent, setNewAgent] = useState<AiAgentCreate | null>(null);
+    const createAgent = useMutation({
+        mutationFn: (data: AiAgentCreate) => aiAdminApi.createAgent(data),
+        onSuccess: () => {
+            toast.success(t("aiAdmin.agentCreated"));
+            queryClient.invalidateQueries({ queryKey: ["ai-admin", "agents"] });
+            setNewAgent(null);
+        },
+        onError: (error: Error & { response?: { data?: { message?: string } } }) =>
+            toast.error(t("aiAdmin.saveError"), { description: error.response?.data?.message ?? error.message }),
+    });
+
+    const [refreshConfirm, setRefreshConfirm] = useState(false);
+    const refreshPersonas = useMutation({
+        mutationFn: aiAdminApi.refreshPersonas,
+        onSuccess: (res) => {
+            toast.success(t("aiAdmin.personasRefreshed", { count: res.updated }));
             queryClient.invalidateQueries({ queryKey: ["ai-admin", "agents"] });
         },
         onError: (error: Error) => toast.error(error.message),
@@ -229,6 +252,8 @@ export default function AiAgentsPage() {
                         </div>
                         {numberField("primaryModelRpm", t("aiAdmin.primaryRpm"))}
                         {numberField("dailyActionsPerAgent", t("aiAdmin.dailyActions"))}
+                        {numberField("conversationsPerDay", t("aiAdmin.conversationsPerDay"))}
+                        {numberField("maxConversationTurns", t("aiAdmin.maxConversationTurns"))}
                         {numberField("maxAgentMessagesPerUserPerDay", t("aiAdmin.maxMessages"))}
                         {numberField("maxUnsolicitedDmPerUserPerWeek", t("aiAdmin.maxWelcome"))}
                         {numberField("maxAgentRepliesPerPost", t("aiAdmin.maxReplies"))}
@@ -246,10 +271,34 @@ export default function AiAgentsPage() {
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0">
                     <CardTitle>{t("aiAdmin.agentsTitle")}</CardTitle>
-                    <Button variant="outline" size="sm" onClick={() => provision.mutate()} disabled={provision.isPending} className="cursor-pointer">
-                        {provision.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />}
-                        {t("aiAdmin.provision")}
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                        <Button size="sm" onClick={() => setNewAgent(emptyNewAgent)} className="cursor-pointer">
+                            <Bot className="h-4 w-4" />
+                            {t("aiAdmin.newAgent")}
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => setRefreshConfirm(true)} disabled={refreshPersonas.isPending} className="cursor-pointer">
+                            {refreshPersonas.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Languages className="h-4 w-4" />}
+                            {t("aiAdmin.refreshPersonas")}
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => provision.mutate()} disabled={provision.isPending} className="cursor-pointer">
+                            {provision.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />}
+                            {t("aiAdmin.provision")}
+                        </Button>
+                    </div>
+                    <AlertDialog open={refreshConfirm} onOpenChange={setRefreshConfirm}>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>{t("aiAdmin.refreshPersonasTitle")}</AlertDialogTitle>
+                                <AlertDialogDescription>{t("aiAdmin.refreshPersonasDescription")}</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel className="cursor-pointer">{t("common.cancel")}</AlertDialogCancel>
+                                <AlertDialogAction className="cursor-pointer" onClick={() => refreshPersonas.mutate()}>
+                                    {t("aiAdmin.refreshPersonas")}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                 </CardHeader>
                 <CardContent>
                     {(agentsQuery.data ?? []).length === 0 ? (
@@ -505,6 +554,66 @@ export default function AiAgentsPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <Dialog open={!!newAgent} onOpenChange={(open) => !open && setNewAgent(null)}>
+                <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>{t("aiAdmin.newAgentTitle")}</DialogTitle>
+                    </DialogHeader>
+                    {newAgent ? (
+                        <div className="space-y-3">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="new-agent-username" className="text-xs">{t("aiAdmin.newAgentUsername")}</Label>
+                                    <Input
+                                        id="new-agent-username"
+                                        placeholder="arena_ai"
+                                        value={newAgent.username}
+                                        onChange={(e) => setNewAgent({ ...newAgent, username: e.target.value.toLowerCase() })}
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="new-agent-name" className="text-xs">{t("aiAdmin.newAgentDisplayName")}</Label>
+                                    <Input id="new-agent-name" maxLength={40} value={newAgent.displayName} onChange={(e) => setNewAgent({ ...newAgent, displayName: e.target.value })} />
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="new-agent-bio" className="text-xs">{t("aiAdmin.newAgentBio")}</Label>
+                                <Input id="new-agent-bio" maxLength={200} value={newAgent.bio} onChange={(e) => setNewAgent({ ...newAgent, bio: e.target.value })} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="new-agent-persona" className="text-xs">{t("aiAdmin.persona")}</Label>
+                                <Textarea
+                                    id="new-agent-persona"
+                                    rows={5}
+                                    maxLength={2000}
+                                    placeholder={t("aiAdmin.newAgentPersonaHint")}
+                                    value={newAgent.persona}
+                                    onChange={(e) => setNewAgent({ ...newAgent, persona: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="new-agent-genres" className="text-xs">{t("aiAdmin.genres")}</Label>
+                                    <Input id="new-agent-genres" placeholder="action,indie" value={newAgent.favoriteGenres} onChange={(e) => setNewAgent({ ...newAgent, favoriteGenres: e.target.value })} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="new-agent-bias" className="text-xs">{t("aiAdmin.ratingBias")}</Label>
+                                    <Input id="new-agent-bias" type="number" min={-2} max={2} value={newAgent.ratingBias} onChange={(e) => setNewAgent({ ...newAgent, ratingBias: Number(e.target.value) })} />
+                                </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground">{t("aiAdmin.newAgentNote")}</p>
+                        </div>
+                    ) : null}
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setNewAgent(null)} className="cursor-pointer">{t("aiAdmin.cancel")}</Button>
+                        <Button onClick={() => newAgent && createAgent.mutate(newAgent)} disabled={createAgent.isPending} className="cursor-pointer">
+                            {createAgent.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                            {t("aiAdmin.newAgentCreate")}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
                 <DialogContent className="max-w-lg">

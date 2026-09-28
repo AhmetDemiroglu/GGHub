@@ -10,6 +10,7 @@ import "dayjs/locale/en";
 import "dayjs/locale/tr";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+    Bot,
     AtSign,
     Bell,
     Cake,
@@ -255,6 +256,7 @@ function SidebarInner({ isMobile }: { isMobile: boolean }) {
         { href: "/", label: t("nav.home"), icon: Home },
         { href: "/discover", label: t("nav.discover"), icon: Gamepad2 },
         { href: "/agenda", label: t("nav.agenda"), icon: CalendarDays },
+        { href: "/ai-bots", label: t("nav.aiClub"), icon: Bot },
         ...(isAuthenticated
             ? [
                   { href: "/lists", label: t("nav.lists"), icon: Library },

@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { AiInteractionSetting } from '@/src/components/profile/AiInteractionSetting';
+import { useAiConsent } from '@/src/components/ai/AiConsentProvider';
 import {
   View,
   Text,
@@ -55,6 +56,7 @@ export default function PublicProfileScreen() {
   const { colors } = useTheme();
   const { messages } = useLocale();
   const { user, isAuthenticated } = useAuth();
+  const { open: openAiConsent } = useAiConsent();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
@@ -351,11 +353,21 @@ export default function PublicProfileScreen() {
                 loading={followMutation.isPending}
                 style={styles.actionBtn}
               />
-              {profile.messageSetting !== 2 && !(profile.isAiAgent && profile.aiInteractionBlockReason && isAuthenticated) ? (
+              {profile.messageSetting !== 2 && !(profile.isAiAgent && profile.aiInteractionBlockReason === 'underage') ? (
                 <Button
                   title={h.messageOpen}
                   variant="secondary"
-                  onPress={() => requireAuth(() => router.push(`/messages/${username}`))}
+                  onPress={() =>
+                    requireAuth(async () => {
+                      // AI botu: riza yoksa once onay penceresi (dogum tarihi + tik).
+                      const block = profile.isAiAgent ? profile.aiInteractionBlockReason : null;
+                      if (block && block !== 'loginRequired') {
+                        const accepted = await openAiConsent(block);
+                        if (!accepted) return;
+                      }
+                      router.push(`/messages/${username}`);
+                    })
+                  }
                   style={styles.actionBtn}
                   icon={<Ionicons name="chatbubble-outline" size={16} color={colors.text} />}
                 />

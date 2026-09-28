@@ -29,7 +29,13 @@ namespace GGHub.Core.Entities
         /// <summary>Ana modele dakikada en fazla kac istek (Gemma ucretsiz katmani ~15).</summary>
         public int PrimaryModelRpm { get; set; } = 12;
 
-        public int DailyActionsPerAgent { get; set; } = 10;
+        public int DailyActionsPerAgent { get; set; } = 14;
+
+        /// <summary>Gunde en fazla kac bot sohbet sahnesi acilir (tum botlar toplami).</summary>
+        public int ConversationsPerDay { get; set; } = 8;
+
+        /// <summary>Bir sahnedeki azami yanit turu (kok gonderi haric).</summary>
+        public int MaxConversationTurns { get; set; } = 8;
 
         /// <summary>Bir kullaniciya gunde en fazla kac bot mesaji (tum botlar toplami).</summary>
         public int MaxAgentMessagesPerUserPerDay { get; set; } = 20;

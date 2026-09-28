@@ -14,6 +14,7 @@ import { ShellProvider } from '@/src/contexts/shell-context';
 import { ToastProvider } from '@/src/components/common/Toast';
 import { ConfirmProvider } from '@/src/components/common/ConfirmDialog';
 import { AuthPromptProvider } from '@/src/contexts/auth-prompt-context';
+import { AiConsentProvider } from '@/src/components/ai/AiConsentProvider';
 import { AppSidebar } from '@/src/components/shell';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useAuth } from '@/src/hooks/use-auth';
@@ -115,6 +116,8 @@ function RootLayoutNav() {
         <Stack.Screen name="my-lists" />
         {/* Oyun Gundemi: web'deki /agenda ile ayni yol, derin baglanti 1:1 calisir. */}
         <Stack.Screen name="agenda" />
+        {/* AI Kulubu: web'deki /ai-bots ile ayni yol. */}
+        <Stack.Screen name="ai-bots" />
         <Stack.Screen name="wishlist" />
         <Stack.Screen name="favorites" />
         <Stack.Screen name="my-reports" />
@@ -149,9 +152,12 @@ export default function RootLayout() {
                     <ToastProvider>
                       <ConfirmProvider>
                         <AuthPromptProvider>
-                          <AppSidebar>
-                            <RootLayoutNav />
-                          </AppSidebar>
+                          {/* AI etkilesimi onay penceresi: interceptor bota yazma reddinde acar. */}
+                          <AiConsentProvider>
+                            <AppSidebar>
+                              <RootLayoutNav />
+                            </AppSidebar>
+                          </AiConsentProvider>
                         </AuthPromptProvider>
                       </ConfirmProvider>
                     </ToastProvider>

@@ -18,17 +18,20 @@ namespace GGHub.Infrastructure.Services
         // sizdirirdi; kod tabani entity'leri o katmanin disinda tutuyor.
         private readonly PostService _postService;
         private readonly IAiSettingsProvider _aiSettings;
+        private readonly IAiAgentDirectory _aiDirectory;
 
         public ActivityService(
             GGHubDbContext context,
             IUserDtoEnricher userDtoEnricher,
             PostService postService,
-            IAiSettingsProvider aiSettings)
+            IAiSettingsProvider aiSettings,
+            IAiAgentDirectory aiDirectory)
         {
             _context = context;
             _userDtoEnricher = userDtoEnricher;
             _postService = postService;
             _aiSettings = aiSettings;
+            _aiDirectory = aiDirectory;
         }
 
         /// <summary>
@@ -274,10 +277,24 @@ namespace GGHub.Infrastructure.Services
         }
 
         /// <summary>
+        /// Takip edilmeyen AI botlarinin herkese acik kok gonderileri. Botlar herkese acik yasar;
+        /// kimse onlari takip etmese de akista gorunmeleri gerekir (29 Eyl 2026, Ahmet).
+        /// </summary>
+        private async Task<List<(ActivityDto Dto, int Engagement)>> BuildAgentPostCandidatesAsync(
+            int currentUserId, ICollection<int> exclude, int limit, DateTime? cursor)
+        {
+            var agentIds = (await _aiDirectory.GetAgentIdsAsync()).Where(id => !exclude.Contains(id)).ToList();
+            if (agentIds.Count == 0) return new List<(ActivityDto, int)>();
+            return await BuildPostCandidatesAsync(currentUserId, agentIds, limit, cursor);
+        }
+
+        /// <summary>
         /// AI bot kartlari icin akis kurali:
         ///   - humansOnly: bot kartlari tamamen cikar ("Sadece insanlar" filtresi).
         ///   - aksi halde bot kartlari sayfanin en fazla AiSettings.FeedMaxAiSharePercent'i kadar olur;
         ///     sirali sayfadaki ILK bot kartlari kalir, fazlasi duser.
+        ///   - Insan icerigi sayfayi dolduramiyorsa botlar boslugu doldurur: tavan
+        ///     max(yuzde, limit - insan karti sayisi). Sessiz bir akis bos kalmaz.
         /// Kart sahibi = Actor (repost kartinda repost EDEN). Kullanicinin kendi kartlari ve
         /// kendi takip ettigi botlar ayri tutulmaz: kural sayfa bazinda, sade.
         /// Sayfa biraz kisalabilir; cursor son donen kartin zamanindan devam ettigi icin sorun degil.
@@ -288,7 +305,10 @@ namespace GGHub.Infrastructure.Services
             var items = page.ToList();
             var settings = await _aiSettings.GetAsync();
             var share = Math.Clamp(settings.FeedMaxAiSharePercent, 0, 100);
-            var maxAi = humansOnly ? 0 : Math.Max(share > 0 ? 1 : 0, (int)Math.Floor(limit * share / 100.0));
+            var humanCount = items.Count(i => i.Actor?.IsAiAgent != true);
+            var maxAi = humansOnly
+                ? 0
+                : Math.Max(Math.Max(share > 0 ? 1 : 0, (int)Math.Floor(limit * share / 100.0)), limit - humanCount);
 
             // Kronolojik pencere: en yeni kartlardan baslayip sayfayi doldur. Botlar tavani asinca
             // atlanir. Donen kartlarin EN ESKISINDEN daha eski her sey bir sonraki sayfaya kalir
@@ -320,6 +340,17 @@ namespace GGHub.Infrastructure.Services
         {
             var (followingIds, blockedSet, mutualIds) = await LoadSocialGraphAsync(currentUserId);
             var candidates = await BuildPostCandidatesAsync(currentUserId, followingIds, limit, cursor);
+
+            // Takip akisi sayfayi dolduramiyorsa herkese acik bot gonderileriyle tamamlanir:
+            // kimseyi takip etmeyen ya da sessiz bir ag, bos akis yerine botlarin sohbetini gorur.
+            if (candidates.Count < limit)
+            {
+                var seen = candidates.Select(c => ActivityKey(c.Dto)).ToHashSet();
+                foreach (var c in await BuildAgentPostCandidatesAsync(currentUserId, followingIds, limit, cursor))
+                {
+                    if (seen.Add(ActivityKey(c.Dto))) candidates.Add(c);
+                }
+            }
 
             return await FinalizeAsync(candidates, currentUserId, limit, mutualIds, null);
         }
@@ -366,6 +397,12 @@ namespace GGHub.Infrastructure.Services
             Add(await BuildFollowCandidatesAsync(followingIds, blockedSet, limit, cursor), DiscoverSource.InNetwork);
 
             var seenIds = new HashSet<int>(followingIds);
+
+            // --- AI: botlarin herkese acik sohbetleri, takip edilmeseler de Kesfet'te gorunur.
+            // Sayfadaki payi ApplyAiSharePolicyAsync ve kaynak cesitliligi sinirlar.
+            var agentPosts = await BuildAgentPostCandidatesAsync(currentUserId, seenIds, limit, cursor);
+            Add(agentPosts, DiscoverSource.Ai);
+            foreach (var c in agentPosts) if (c.Dto.Actor?.Id is int agentActor) seenIds.Add(agentActor);
 
             // --- (b) AG DISI ZEVK: ilgilendigim oyunlar hakkinda yazanlar ---
             if (taste.GameIds.Count > 0)
@@ -676,7 +713,7 @@ namespace GGHub.Infrastructure.Services
             _ => $"{(int)dto.Type}-{dto.Id}"
         };
 
-        private enum DiscoverSource { InNetwork, Taste, FriendOfFriend, Trending }
+        private enum DiscoverSource { InNetwork, Taste, FriendOfFriend, Trending, Ai }
 
         private sealed record TasteProfile(HashSet<int> GameIds);
 

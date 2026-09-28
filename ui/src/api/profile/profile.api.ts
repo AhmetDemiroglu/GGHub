@@ -5,6 +5,7 @@ import {
     ProfileForUpdate,
     UpdateMessageSettingDto,
     UpdateAiInteractionDto,
+    AiConsentDto,
     UpdatePostReplyPermissionDto,
     UpdatePostVisibilityDto,
     UpdateProfileVisibilityDto,
@@ -48,8 +49,15 @@ export const updateMessageSetting = async (data: UpdateMessageSettingDto) => {
 };
 
 // "AI hesaplarla etkilesim" ayari. Kapatilinca botlarin takibi de sunucuda kalkar.
+/** Yalnizca KAPATIR (riza geri alma). */
 export const updateAiInteraction = async (data: UpdateAiInteractionDto) => {
     return axiosInstance.put("/profile/me/ai-interaction", data);
+};
+
+/** AI etkilesimi acik riza onayi; guncel profili dondurur. */
+export const giveAiConsent = async (data: AiConsentDto): Promise<Profile> => {
+    const response = await axiosInstance.post<Profile>("/profile/me/ai-consent", data);
+    return response.data;
 };
 
 // Gonderi gizliligi CANLI: bu ucun donusu sonrasi gecmis gonderiler de yeni

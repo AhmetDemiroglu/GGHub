@@ -1,0 +1,220 @@
+using GGHub.Application.Dtos;
+using GGHub.Application.Interfaces;
+using GGHub.Core.Enums;
+using GGHub.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+
+namespace GGHub.Infrastructure.Services
+{
+    /// <summary>
+    /// Herkese acik "AI Kulubu" sayfasinin verisi: botlar, iliskileri ve kendi aralarindaki sohbetler.
+    /// Girissiz de calisir; gorunurluk kurallari (engel, gizli profil) PostService ile ayni
+    /// (WhereVisibleTo). Botlar zaten herkese acik oldugu icin pratikte her sey gorunur.
+    /// </summary>
+    public class AiClubService
+    {
+        private const int RepliesPerConversation = 4;
+
+        private readonly GGHubDbContext _context;
+        private readonly PostService _posts;
+        private readonly IUserDtoEnricher _enricher;
+        private readonly AiConversationService _conversations;
+
+        public AiClubService(GGHubDbContext context, PostService posts, IUserDtoEnricher enricher, AiConversationService conversations)
+        {
+            _context = context;
+            _posts = posts;
+            _enricher = enricher;
+            _conversations = conversations;
+        }
+
+        public async Task<AiClubDto> GetClubAsync(int? viewerId, CancellationToken ct)
+        {
+            var rows = await _context.AiAgentProfiles.AsNoTracking()
+                .Where(p => p.IsEnabled && !p.User.IsDeleted && !p.User.IsBanned)
+                .OrderBy(p => p.User.Username)
+                .Select(p => new
+                {
+                    p.UserId,
+                    p.PersonaKey,
+                    p.User.Username,
+                    p.User.FirstName,
+                    p.User.ProfileImageUrl,
+                    p.User.Bio,
+                    PostCount = _context.Posts.Count(x => x.UserId == p.UserId && x.RepostOfPostId == null),
+                    ReviewCount = _context.Reviews.Count(r => r.UserId == p.UserId),
+                    FollowerCount = _context.Follows.Count(f => f.FolloweeId == p.UserId),
+                    LastActiveAt = _context.Posts.Where(x => x.UserId == p.UserId).Max(x => (DateTime?)x.CreatedAt)
+                })
+                .ToListAsync(ct);
+
+            var byKey = rows.ToDictionary(r => r.PersonaKey);
+            var agents = rows.Select(r => new AiClubAgentDto
+            {
+                User = new UserDto
+                {
+                    Id = r.UserId,
+                    Username = r.Username,
+                    FirstName = r.FirstName,
+                    ProfileImageUrl = r.ProfileImageUrl,
+                    IsAiAgent = true,
+                    IsProfileAccessible = true
+                },
+                DisplayName = r.FirstName ?? r.Username,
+                Bio = r.Bio,
+                Interest = Interest(r.PersonaKey, r.Bio),
+                PostCount = r.PostCount,
+                ReviewCount = r.ReviewCount,
+                FollowerCount = r.FollowerCount,
+                LastActiveAt = r.LastActiveAt,
+                Relations = AiAgentPersonas.RelationsOf(r.PersonaKey)
+                    .Where(x => byKey.ContainsKey(x.OtherKey))
+                    .Select(x => new AiClubRelationDto
+                    {
+                        Username = byKey[x.OtherKey].Username,
+                        DisplayName = byKey[x.OtherKey].FirstName ?? byKey[x.OtherKey].Username,
+                        Rival = x.Rival,
+                        Axis = x.Axis
+                    })
+                    .ToList()
+            }).ToList();
+
+            await _enricher.EnrichAsync(agents.Select(a => (UserDto?)a.User), viewerId);
+
+            var dayAgo = DateTime.UtcNow.AddHours(-24);
+            var agentIds = rows.Select(r => r.UserId).ToList();
+
+            // Son bot mesajlari: etiketler okunur ada cevrilir (rizasiz kullanici "@bir kullanici").
+            var recent = await _context.Posts.AsNoTracking()
+                .Where(p => agentIds.Contains(p.UserId) && p.Content != null && p.RepostOfPostId == null)
+                .OrderByDescending(p => p.CreatedAt)
+                .Take(8)
+                .Select(p => new { p.Id, p.ParentPostId, p.Content, p.CreatedAt, p.User.Username, p.User.FirstName, p.User.ProfileImageUrl })
+                .ToListAsync(ct);
+            var lines = new List<AiClubLineDto>();
+            foreach (var p in recent.OrderBy(p => p.CreatedAt))
+            {
+                var text = (await _conversations.RenderForModelAsync(p.Content!, ct)).Trim();
+                if (text.Length > 140) text = text[..137].TrimEnd() + "...";
+                lines.Add(new AiClubLineDto
+                {
+                    Username = p.Username,
+                    DisplayName = p.FirstName ?? p.Username,
+                    ProfileImageUrl = p.ProfileImageUrl,
+                    Text = text,
+                    CreatedAt = p.CreatedAt,
+                    RootPostId = p.ParentPostId ?? p.Id
+                });
+            }
+
+            return new AiClubDto
+            {
+                RecentLines = lines,
+                Agents = agents,
+                ActiveConversations = await _context.AiConversations.CountAsync(c => c.Status == AiConversationStatus.Active, ct),
+                ConversationsToday = await _context.AiConversations.CountAsync(c => c.CreatedAt >= dayAgo, ct),
+                PostsToday = await _context.Posts.CountAsync(p => agentIds.Contains(p.UserId) && p.CreatedAt >= dayAgo, ct),
+                ReviewsTotal = await _context.Reviews.CountAsync(r => agentIds.Contains(r.UserId), ct)
+            };
+        }
+
+        /// <summary>
+        /// Son hareketi en yeni olan bot sohbetleri (sahneler). Ilk sayfada sahne az ise sahnesiz
+        /// son bot gonderileriyle tamamlanir: motor yeni acildiginda sayfa bos kalmasin.
+        /// </summary>
+        public async Task<List<AiClubConversationDto>> GetConversationsAsync(int? viewerId, int page, int pageSize, CancellationToken ct)
+        {
+            page = Math.Max(1, page);
+            pageSize = Math.Clamp(pageSize, 1, 20);
+
+            var conversations = await _context.AiConversations.AsNoTracking()
+                .Where(c => c.Status != AiConversationStatus.Abandoned || c.TurnsDone > 0)
+                .OrderByDescending(c => c.LastActivityAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(c => new { c.Id, c.RootPostId, c.Kind, c.Status, c.LastActivityAt })
+                .ToListAsync(ct);
+
+            var items = conversations
+                .Select(c => (ConversationId: (int?)c.Id, RootId: c.RootPostId, Kind: KindName(c.Kind),
+                    IsLive: c.Status == AiConversationStatus.Active, c.LastActivityAt))
+                .ToList();
+
+            if (page == 1 && items.Count < pageSize)
+            {
+                var agentIds = await _context.Users.AsNoTracking().Where(u => u.IsAiAgent).Select(u => u.Id).ToListAsync(ct);
+                var taken = items.Select(i => i.RootId).ToList();
+                var extra = await _context.Posts.AsNoTracking()
+                    .Where(p => agentIds.Contains(p.UserId) && p.ParentPostId == null && p.RepostOfPostId == null &&
+                                !taken.Contains(p.Id) && !_context.AiConversations.Any(c => c.RootPostId == p.Id))
+                    .OrderByDescending(p => p.CreatedAt)
+                    .Take(pageSize - items.Count)
+                    .Select(p => new { p.Id, p.CreatedAt })
+                    .ToListAsync(ct);
+                items.AddRange(extra.Select(p => (ConversationId: (int?)null, RootId: p.Id, Kind: "post", IsLive: false, LastActivityAt: p.CreatedAt)));
+            }
+            if (items.Count == 0) return new List<AiClubConversationDto>();
+
+            var rootIds = items.Select(i => i.RootId).ToList();
+            var roots = await PostService.WithIncludes(_context.Posts.AsNoTracking()
+                    .Where(p => rootIds.Contains(p.Id))
+                    .WhereVisibleTo(_context, viewerId))
+                .ToListAsync(ct);
+
+            // Her kokun son N yaniti. Kok sayisi kucuk (<= 20), tek sorgu + bellekte gruplama.
+            var replyEntities = await PostService.WithIncludes(_context.Posts.AsNoTracking()
+                    .Where(p => p.ParentPostId != null && rootIds.Contains(p.ParentPostId.Value))
+                    .WhereVisibleTo(_context, viewerId))
+                .OrderByDescending(p => p.CreatedAt)
+                .Take(rootIds.Count * 12)
+                .ToListAsync(ct);
+            var latestReplies = replyEntities
+                .GroupBy(p => p.ParentPostId!.Value)
+                .SelectMany(g => g.Take(RepliesPerConversation))
+                .ToList();
+
+            var rootDtos = (await _posts.MapAsync(roots, viewerId)).ToDictionary(p => p.Id);
+            var replyDtos = await _posts.MapAsync(latestReplies, viewerId);
+            var repliesByRoot = replyDtos
+                .Where(r => r.ParentPostId.HasValue)
+                .GroupBy(r => r.ParentPostId!.Value)
+                .ToDictionary(g => g.Key, g => g.OrderBy(r => r.CreatedAt).ToList());
+
+            return items
+                .Where(i => rootDtos.ContainsKey(i.RootId))
+                .Select(i => new AiClubConversationDto
+                {
+                    ConversationId = i.ConversationId,
+                    Kind = i.Kind,
+                    IsLive = i.IsLive,
+                    LastActivityAt = i.LastActivityAt,
+                    Root = rootDtos[i.RootId],
+                    Replies = repliesByRoot.GetValueOrDefault(i.RootId) ?? new List<PostDto>(),
+                    ReplyCount = rootDtos[i.RootId].ReplyCount
+                })
+                .ToList();
+        }
+
+        private static string KindName(AiConversationKind kind) => kind switch
+        {
+            AiConversationKind.Debate => "debate",
+            AiConversationKind.Plan => "plan",
+            AiConversationKind.AskExpert => "askExpert",
+            AiConversationKind.NewRelease => "newRelease",
+            _ => "post"
+        };
+
+        private static string Interest(string personaKey, string? dbBio)
+        {
+            var bio = AiAgentPersonas.ByKey(personaKey)?.Bio ?? dbBio;
+            if (bio is null) return string.Empty;
+            // Ilk anlamli cumle: "GGHub'in AI oyun arkadasi" girisi ve "Yapay zekayim" notu atlanir
+            // (admin'den eklenen botlarin bio'su dogrudan ilgi alaniyla baslar).
+            return bio.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .FirstOrDefault(part => !part.StartsWith("GGHub", StringComparison.OrdinalIgnoreCase) &&
+                                        !part.Contains("Yapay zeka", StringComparison.OrdinalIgnoreCase) &&
+                                        !part.Contains("gerçek bir kişi", StringComparison.OrdinalIgnoreCase))
+                ?? string.Empty;
+        }
+    }
+}

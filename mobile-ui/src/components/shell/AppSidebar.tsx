@@ -424,6 +424,7 @@ export function AppSidebar({ children }: AppSidebarProps) {
           {/* ── Kesif nav (herkese acik) ── */}
           <View style={styles.navGroup}>
             <NavRow icon="calendar-outline" label={nav.agenda} onPress={() => navigate('/agenda')} colors={colors} />
+            <NavRow icon="hardware-chip-outline" label={nav.aiClub} onPress={() => navigate('/ai-bots')} colors={colors} />
           </View>
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />

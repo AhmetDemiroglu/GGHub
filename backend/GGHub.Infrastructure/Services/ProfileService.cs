@@ -79,6 +79,7 @@ namespace GGHub.Infrastructure.Services
                 FollowingCount = counts?.FollowingCount ?? 0,
                 IsAiAgent = user.IsAiAgent,
                 AllowAiInteraction = user.AllowAiInteraction,
+                AiConsentAt = user.AllowAiInteraction ? user.AiConsentAt : null,
                 AiInteractionBlockReason = AiInteractionRules.BlockReason(
                     user.AllowAiInteraction, user.DateOfBirth, BirthdayCalendar.TodayInIstanbul())
             };
@@ -102,6 +103,13 @@ namespace GGHub.Infrastructure.Services
                         user.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+
+            // Dogum tarihi silindiyse ya da 18 alti bir tarihe cekildiyse acik AI rizasi da
+            // kapanir: aksi halde bot takipleri ve bekleyen gorevler "uygun degil" haliyle asili kalirdi.
+            if (user.AllowAiInteraction && !AiInteractionRules.IsAdult(user.DateOfBirth, BirthdayCalendar.TodayInIstanbul()))
+            {
+                await RevokeAiConsentAsync(user, "system");
+            }
 
             await _auditService.LogAsync(userId, "UpdateProfile", "User", userId, profileDto);
 
@@ -161,32 +169,112 @@ namespace GGHub.Infrastructure.Services
             await _context.SaveChangesAsync();
         }
         /// <summary>
-        /// "AI hesaplarla etkilesim" ayari. Kapatildiginda botlarin bu kullaniciyi takibi de kalkar:
-        /// takip de bir etkilesim ve kullanici "istemiyorum" dedikten sonra bot takipcisi gormemeli.
-        /// Gecmis DM'ler kalir (kullanicinin kendi konusma gecmisi).
+        /// "AI hesaplarla etkilesim" ayari: bu uc YALNIZCA KAPATIR. Acmak acik riza ister
+        /// (GiveAiConsentAsync). Kapatinca botlarin takibi kalkar, bekleyen gorevler atlanir ve
+        /// riza gunlugune "geri alindi" satiri yazilir. Gecmis DM'ler kalir.
         /// </summary>
-        public async Task UpdateAiInteractionAsync(int userId, bool allow)
+        public async Task UpdateAiInteractionAsync(int userId, bool allow, string? source = null)
         {
+            if (allow) throw new InvalidOperationException(AppText.Get("ai.enableRequiresConsent"));
+
             var user = await _context.Users.FindAsync(userId);
             if (user == null || user.IsAiAgent) return;
 
-            user.AllowAiInteraction = allow;
+            await RevokeAiConsentAsync(user, NormalizeSource(source));
+        }
+
+        /// <summary>
+        /// AI etkilesimi acik riza metnini onaylar ve etkilesimi acar. Sira: riza isareti, dogum
+        /// tarihi (profilde yoksa istekteki), 18 yas. 18 alti tarih KAYDEDILMEZ.
+        /// Her onay AiConsentRecords'a satir yazar (metin surumu + kaynak + zaman).
+        /// </summary>
+        public async Task<ProfileDto?> GiveAiConsentAsync(int userId, AiConsentDto dto)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null || user.IsDeleted || user.IsAiAgent) return null;
+
+            if (!dto.Accept) throw new InvalidOperationException(AppText.Get("ai.consentNotAccepted"));
+
+            var today = BirthdayCalendar.TodayInIstanbul();
+            var dateOfBirth = user.DateOfBirth;
+            var setBirthDate = false;
+            if (!dateOfBirth.HasValue)
+            {
+                if (!dto.DateOfBirth.HasValue) throw new InvalidOperationException(AppText.Get("ai.needsBirthDate"));
+
+                var raw = dto.DateOfBirth.Value;
+                var utc = raw.Kind == DateTimeKind.Utc ? raw : DateTime.SpecifyKind(raw, DateTimeKind.Utc);
+                var normalized = new DateTime(utc.Year, utc.Month, utc.Day, 0, 0, 0, DateTimeKind.Utc);
+                if (normalized.Year < 1900 || DateOnly.FromDateTime(normalized) > today)
+                    throw new InvalidOperationException(AppText.Get("ai.invalidBirthDate"));
+
+                dateOfBirth = normalized;
+                setBirthDate = true;
+            }
+
+            if (!AiInteractionRules.IsAdult(dateOfBirth, today))
+                throw new InvalidOperationException(AppText.Get("ai.underage"));
+
+            var version = string.IsNullOrWhiteSpace(dto.TextVersion) ? AiConsentTexts.CurrentVersion : dto.TextVersion.Trim();
+            if (version.Length > 16) version = version[..16];
+
+            if (setBirthDate) user.DateOfBirth = dateOfBirth;
+            user.AllowAiInteraction = true;
+            user.AiConsentAt = DateTime.UtcNow;
+            user.AiConsentVersion = version;
             user.UpdatedAt = DateTime.UtcNow;
+
+            _context.AiConsentRecords.Add(new Core.Entities.AiConsentRecord
+            {
+                UserId = userId,
+                Granted = true,
+                TextVersion = version,
+                Source = NormalizeSource(dto.Source),
+                CreatedAt = DateTime.UtcNow
+            });
             await _context.SaveChangesAsync();
 
-            if (!allow)
-            {
-                await _context.Follows
-                    .Where(f => f.FolloweeId == userId && f.Follower.IsAiAgent)
-                    .ExecuteDeleteAsync();
+            await _auditService.LogAsync(userId, "GiveAiConsent", "User", userId, new { version, source = NormalizeSource(dto.Source), setBirthDate });
 
-                // Bekleyen bot gorevleri (DM yaniti, gonderi yaniti) iptal.
-                await _context.AiAgentTasks
-                    .Where(t => t.TargetUserId == userId && t.Status == Core.Enums.AiAgentTaskStatus.Pending)
-                    .ExecuteUpdateAsync(s => s
-                        .SetProperty(t => t.Status, Core.Enums.AiAgentTaskStatus.Skipped)
-                        .SetProperty(t => t.Error, "Kullanici AI etkilesimini kapatti."));
+            return await GetProfileAsync(userId);
+        }
+
+        private async Task RevokeAiConsentAsync(Core.Entities.User user, string source)
+        {
+            var wasOn = user.AllowAiInteraction;
+            user.AllowAiInteraction = false;
+            user.AiConsentAt = null;
+            user.UpdatedAt = DateTime.UtcNow;
+            if (wasOn)
+            {
+                _context.AiConsentRecords.Add(new Core.Entities.AiConsentRecord
+                {
+                    UserId = user.Id,
+                    Granted = false,
+                    TextVersion = user.AiConsentVersion ?? AiConsentTexts.CurrentVersion,
+                    Source = source,
+                    CreatedAt = DateTime.UtcNow
+                });
             }
+            await _context.SaveChangesAsync();
+
+            // Takip de bir etkilesim: "istemiyorum" dedikten sonra bot takipcisi gormemeli.
+            await _context.Follows
+                .Where(f => f.FolloweeId == user.Id && f.Follower.IsAiAgent)
+                .ExecuteDeleteAsync();
+
+            // Bekleyen bot gorevleri (DM yaniti, gonderi yaniti) iptal.
+            await _context.AiAgentTasks
+                .Where(t => t.TargetUserId == user.Id && t.Status == Core.Enums.AiAgentTaskStatus.Pending)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(t => t.Status, Core.Enums.AiAgentTaskStatus.Skipped)
+                    .SetProperty(t => t.Error, "Kullanici AI etkilesimini kapatti."));
+        }
+
+        private static string NormalizeSource(string? source)
+        {
+            var s = source?.Trim().ToLowerInvariant();
+            return s != null && AiConsentTexts.Sources.Contains(s) ? s : "unknown";
         }
 
         public async Task UpdateProfileVisibilityAsync(int userId, ProfileVisibilitySetting newVisibility)

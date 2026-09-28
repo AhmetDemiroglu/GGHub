@@ -240,7 +240,8 @@ export default function MessageThreadScreen() {
             {aiBlockReason ? <AiInteractionSetting variant="compact" /> : null}
           </View>
         ) : null}
-        <ChatInput onSend={handleSend} disabled={!!aiBlockReason || sendMutation.isPending} />
+        {/* Riza eksikse gonderim sunucuda 403 alir, interceptor onay penceresini acar. */}
+        <ChatInput onSend={handleSend} disabled={aiBlockReason === 'underage' || sendMutation.isPending} />
       </Animated.View>
     </ScreenWrapper>
   );

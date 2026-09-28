@@ -3,7 +3,9 @@ import axios, {
   InternalAxiosRequestConfig,
 } from 'axios';
 
-type RetryableRequest = InternalAxiosRequestConfig & { _retry?: boolean };
+import { AI_CONSENT_ERROR_CODE, requestAiConsent, type AiConsentReason } from '../utils/ai-consent-bridge';
+
+type RetryableRequest = InternalAxiosRequestConfig & { _retry?: boolean; _aiConsentRetry?: boolean };
 
 type RateLimitedAxiosError = AxiosError & {
   response?: AxiosError['response'] & {
@@ -143,6 +145,24 @@ axiosInstance.interceptors.response.use(
     }
 
     const originalRequest = error.config as RetryableRequest;
+
+    // Bota yazma denemesi rizasiz: onay penceresini ac, onaylanirsa istegi BIR kez tekrarla.
+    const errorBody = error.response?.data as { code?: string; reason?: AiConsentReason } | undefined;
+    if (
+      error.response?.status === 403 &&
+      errorBody?.code === AI_CONSENT_ERROR_CODE &&
+      originalRequest &&
+      !originalRequest._aiConsentRetry
+    ) {
+      const accepted = await requestAiConsent(errorBody.reason ?? 'consentRequired');
+      if (accepted) {
+        originalRequest._aiConsentRetry = true;
+        return axiosInstance(originalRequest);
+      }
+      (error as AxiosError & { isAiConsentDeclined?: boolean }).isAiConsentDeclined = true;
+      return Promise.reject(error);
+    }
+
     const isSkipRefreshPath = skipRefreshPaths.some((path) =>
       originalRequest?.url?.includes(path),
     );

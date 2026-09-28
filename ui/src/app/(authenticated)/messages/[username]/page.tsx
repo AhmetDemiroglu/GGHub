@@ -174,7 +174,9 @@ export default function MessageThreadPage() {
                     <h2 className="text-sm font-semibold leading-tight">
                         <UserLink user={partnerUser} variant="name" className="hover:underline" />
                     </h2>
-                    <p className="text-xs text-muted-foreground">{t("messages.online") ?? "Online"}</p>
+                    {/* Cevrimici bilgisi tutulmuyor: sahte "Online" yerine kullanici adi. (Eskiden i18n
+                        anahtari olmadigi icin ekrana ham "messages.online" basiliyordu.) */}
+                    <p className="text-xs text-muted-foreground">@{username}</p>
                 </div>
             </div>
 
@@ -264,8 +266,8 @@ export default function MessageThreadPage() {
                 <p className="text-[11px] text-muted-foreground/60">{t("messages.securityWarning")}</p>
             </div>
 
-            {/* AI botu: yazisma engeli varsa (DOB yok, 18 alti, ayar kapali) nedenini ve
-                ayari goster; sunucu zaten reddediyor, bu yalnizca kullaniciya durust aciklama. */}
+            {/* AI botu: riza yoksa ayar anahtari (onay penceresini acar) gosterilir. Riza olmadan
+                gonderilen mesajda da sunucu 403 doner ve interceptor ayni pencereyi acar. */}
             {partnerProfile?.isAiAgent ? (
                 <div className="shrink-0 border-t border-border/40 px-4 pt-3">
                     <p className="mb-2 text-[11px] text-muted-foreground">{t("ai.aboutAgent")}</p>
@@ -288,11 +290,11 @@ export default function MessageThreadPage() {
                         }}
                         className="min-h-10 max-h-32 resize-none rounded-xl border-border/40 bg-background/50 text-sm"
                         rows={1}
-                        disabled={!!aiBlockReason}
+                        disabled={aiBlockReason === "underage"}
                     />
                     <Button
                         onClick={handleSend}
-                        disabled={!!aiBlockReason || !messageContent.trim() || sendMutation.isPending}
+                        disabled={aiBlockReason === "underage" || !messageContent.trim() || sendMutation.isPending}
                         size="icon"
                         className="h-10 w-10 shrink-0 rounded-xl"
                     >

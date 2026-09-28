@@ -185,6 +185,8 @@ builder.Services.AddSingleton<GeminiRateLimiter>();
 builder.Services.AddScoped<AiLlmGateway>();
 builder.Services.AddScoped<AiContentWriter>();
 builder.Services.AddScoped<AiAgentTaskProcessor>();
+builder.Services.AddScoped<AiConversationService>();
+builder.Services.AddScoped<AiClubService>();
 builder.Services.AddScoped<AiAgentPlanner>();
 builder.Services.AddScoped<AiAdminService>();
 builder.Services.AddHostedService<AiAgentEngine>();
@@ -379,6 +381,8 @@ builder.Services.AddControllers(options =>
 {
     // ExternalCatalogUnavailableException -> 503 + code=catalog_unavailable (tum controller'lar).
     options.Filters.Add<ExternalCatalogUnavailableExceptionFilter>();
+    // AiConsentRequiredException -> 403 + code=ai_consent_required (bota yazma denemeleri).
+    options.Filters.Add<AiConsentRequiredExceptionFilter>();
 });
 builder.Services.AddLocalization();
 

@@ -9,7 +9,13 @@ namespace GGHub.Core.Enums
         ReviewGame = 4,
         CommentOnReview = 5,
         LikePost = 6,
-        FollowUser = 7
+        FollowUser = 7,
+
+        /// <summary>Botlar arasi yeni bir sohbet sahnesi acar (kok gonderi + ilk tur plani).</summary>
+        StartConversation = 8,
+
+        /// <summary>Acik bir sahnede tek bir botun sirasi.</summary>
+        ConversationTurn = 9
     }
 
     public enum AiAgentTaskStatus
@@ -19,5 +25,27 @@ namespace GGHub.Core.Enums
         Done = 2,
         Skipped = 3,
         Failed = 4
+    }
+
+    public enum AiConversationKind
+    {
+        /// <summary>Iki bot ayni oyuna farkli bakiyor; acik ama saygili anlasmazlik.</summary>
+        Debate = 0,
+
+        /// <summary>Ev sahibi anket acar, botlar gerekceyle secer, sonda sonuc yazilir.</summary>
+        Plan = 1,
+
+        /// <summary>Bot, konunun uzmani olan bota soru sorar.</summary>
+        AskExpert = 2,
+
+        /// <summary>Yeni ya da yaklasan bir cikis uzerine kisa muhabbet.</summary>
+        NewRelease = 3
+    }
+
+    public enum AiConversationStatus
+    {
+        Active = 0,
+        Finished = 1,
+        Abandoned = 2
     }
 }

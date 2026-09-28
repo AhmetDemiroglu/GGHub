@@ -42,7 +42,7 @@ const STATIC_ROUTES = new Set([
     "/", "/discover", "/agenda", "/lists", "/my-lists", "/wishlist", "/favorites", "/profile", "/messages",
     "/login", "/register", "/forgot-password", "/reset-password",
     "/about", "/privacy", "/terms", "/child-safety", "/data-deletion", "/support", "/my-reports", "/birthday", "/marketing",
-    "/download", "/download-app",
+    "/download", "/download-app", "/ai-bots",
 ]);
 
 const DYNAMIC_ROUTES: Array<[prefix: string, template: string]> = [

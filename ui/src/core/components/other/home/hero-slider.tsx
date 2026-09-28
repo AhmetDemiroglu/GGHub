@@ -18,6 +18,7 @@ import { PlatformIcons } from "@/core/components/other/platform-icons";
 import { IgdbLogo } from "@/core/components/other/igdb-logo";
 import { StoreButtons } from "@/core/components/other/public/store-buttons";
 import logoSrc from "@core/assets/logo.png";
+import AiClubPromoSlide from "./ai-club-promo-slide";
 import metacriticLogoSrc from "@core/assets/metacritic_logo.png";
 import rawgLogoSrc from "@core/assets/rawg_logo.png";
 
@@ -73,8 +74,8 @@ export default function HeroSlider({ games = [] }: HeroSliderProps) {
     const [progressCycle, setProgressCycle] = useState(0);
     const [descriptionOverrides, setDescriptionOverrides] = useState<Record<string, string>>({});
 
-    // 2 sabit slayt: mobil uygulama tanıtımı + Oyun Gündemi. Oyun slaytları 3. sıradan başlar.
-    const FIXED_SLIDES = 2;
+    // 3 sabit slayt: AI Kulübü, Oyun Gündemi, mobil uygulama. Oyun slaytları 4. sıradan başlar.
+    const FIXED_SLIDES = 3;
     const slideCount = games.length + FIXED_SLIDES;
 
     // Gündem slaytının kolajı YIL görünümünden beslenir: içinde bulunulan ay boş olsa bile
@@ -201,68 +202,9 @@ export default function HeroSlider({ games = [] }: HeroSliderProps) {
                 onMouseLeave={handleMouseLeave}
             >
                 <CarouselContent>
-                    {/* Sabit tanıtım slaytı: canlı mobil uygulama CTA'sı her zaman ilk sırada. */}
-                    <CarouselItem key="app-promo">
-                        <div className="relative h-[340px] w-full overflow-hidden rounded-2xl bg-[#080910] ring-1 ring-white/10 md:h-[420px]">
-                            <div className="absolute inset-0 z-0 bg-gradient-to-br from-cyan-500/20 via-[#080910] to-violet-600/25" />
-                            <div
-                                aria-hidden
-                                className="absolute inset-0 z-0 opacity-[0.35]"
-                                style={{
-                                    backgroundImage:
-                                        "linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px)",
-                                    backgroundSize: "56px 56px",
-                                    maskImage: "radial-gradient(ellipse 90% 70% at 30% 40%, black 30%, transparent 75%)",
-                                }}
-                            />
-                            <div aria-hidden className="pointer-events-none absolute -left-24 -top-24 z-0 h-80 w-80 rounded-full bg-cyan-500/15 blur-3xl" />
-                            <div aria-hidden className="pointer-events-none absolute -bottom-28 right-1/4 z-0 h-96 w-96 rounded-full bg-violet-600/20 blur-3xl" />
-
-                            {/* Mobilde slayt sabit 340px: dolgu ve boşluklar dar tutulmazsa
-                                içerik taşıp overflow-hidden tarafından kırpılıyor. md: ve
-                                üstünde eski ferah düzen aynen korunuyor. */}
-                            <div className="relative z-10 flex h-full max-w-[620px] flex-col items-center justify-center gap-2.5 px-4 pb-12 pt-5 text-center md:max-w-[58%] md:items-start md:gap-4 md:p-12 md:pb-16 md:text-left lg:px-16">
-                                <Image
-                                    src={logoSrc}
-                                    alt={t("common.appName")}
-                                    width={150}
-                                    height={42}
-                                    priority
-                                    className="h-7 w-auto drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)] md:h-9"
-                                />
-                                <h2 className="text-2xl font-black tracking-tight text-white drop-shadow-xl md:text-3xl lg:text-[2.6rem] lg:leading-[1.05]">{t("home.promoTitle")}</h2>
-                                <p className="line-clamp-2 max-w-md text-sm text-white/65 md:line-clamp-none md:text-base">{t("home.promoSubtitle")}</p>
-                                <div className="w-full pt-1 sm:max-w-sm md:pt-2">
-                                    {/* Butonlar dar ekranda da yan yana: alt alta dizilmeleri
-                                        slaytın sabit yüksekliğinde ~58px yiyip taşmaya yol açıyordu. */}
-                                    <StoreButtons
-                                        appStoreLabel={t("common.appStore")}
-                                        googlePlayLabel={t("common.googlePlay")}
-                                        soonText={t("common.soon")}
-                                        className="flex-row gap-2 sm:gap-3"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Sağ alttan taşan iPhone mockup; hover'da doğrulur */}
-                            <div className="absolute right-4 top-10 z-10 hidden w-[190px] md:block lg:right-16 lg:top-12 lg:w-[270px]">
-                                <div className="rotate-[5deg] transition-transform duration-500 ease-out will-change-transform hover:-translate-y-3 hover:rotate-0">
-                                    <div className="relative rounded-[2.4rem] bg-zinc-900 p-[7px] shadow-[0_30px_70px_-20px_rgba(0,0,0,0.85)] ring-1 ring-white/10">
-                                        <div className="absolute left-1/2 top-[11px] z-20 h-[15px] w-[66px] -translate-x-1/2 rounded-full bg-black" />
-                                        <div className="overflow-hidden rounded-[1.9rem] bg-black">
-                                            <Image
-                                                src={locale === "tr" ? "/gghub-app-tr.jpg" : "/gghub-app-en.jpg"}
-                                                alt={t("common.appName")}
-                                                width={540}
-                                                height={1174}
-                                                className="block h-auto w-full"
-                                                sizes="270px"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    {/* Sabit 1. slayt: AI Kulübü. Botların kendi aralarındaki sohbetine davet. */}
+                    <CarouselItem key="ai-club-promo">
+                        <AiClubPromoSlide />
                     </CarouselItem>
 
                     {/* Sabit 2. slayt: Oyun Gündemi. Bu ayın yeni çıkanları + sayfaya CTA. */}
@@ -350,6 +292,71 @@ export default function HeroSlider({ games = [] }: HeroSliderProps) {
                                     </div>
                                 </div>
                             ) : null}
+                        </div>
+                    </CarouselItem>
+
+                    {/* Sabit 3. slayt: mobil uygulama. Mağaza düğmeleri masaüstünde QR'lı indirme
+                        penceresini açar, telefonda doğrudan mağazaya gider. */}
+                    <CarouselItem key="app-promo">
+                        <div className="relative h-[340px] w-full overflow-hidden rounded-2xl bg-[#080910] ring-1 ring-white/10 md:h-[420px]">
+                            <div className="absolute inset-0 z-0 bg-gradient-to-br from-cyan-500/20 via-[#080910] to-violet-600/25" />
+                            <div
+                                aria-hidden
+                                className="absolute inset-0 z-0 opacity-[0.35]"
+                                style={{
+                                    backgroundImage:
+                                        "linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px)",
+                                    backgroundSize: "56px 56px",
+                                    maskImage: "radial-gradient(ellipse 90% 70% at 30% 40%, black 30%, transparent 75%)",
+                                }}
+                            />
+                            <div aria-hidden className="pointer-events-none absolute -left-24 -top-24 z-0 h-80 w-80 rounded-full bg-cyan-500/15 blur-3xl" />
+                            <div aria-hidden className="pointer-events-none absolute -bottom-28 right-1/4 z-0 h-96 w-96 rounded-full bg-violet-600/20 blur-3xl" />
+
+                            {/* Mobilde slayt sabit 340px: dolgu ve boşluklar dar tutulmazsa
+                                içerik taşıp overflow-hidden tarafından kırpılıyor. md: ve
+                                üstünde eski ferah düzen aynen korunuyor. */}
+                            <div className="relative z-10 flex h-full max-w-[620px] flex-col items-center justify-center gap-2.5 px-4 pb-12 pt-5 text-center md:max-w-[58%] md:items-start md:gap-4 md:p-12 md:pb-16 md:text-left lg:px-16">
+                                <Image
+                                    src={logoSrc}
+                                    alt={t("common.appName")}
+                                    width={150}
+                                    height={42}
+                                    className="h-7 w-auto drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)] md:h-9"
+                                />
+                                <h2 className="text-2xl font-black tracking-tight text-white drop-shadow-xl md:text-3xl lg:text-[2.6rem] lg:leading-[1.05]">{t("home.promoTitle")}</h2>
+                                <p className="line-clamp-2 max-w-md text-sm text-white/65 md:line-clamp-none md:text-base">{t("home.promoSubtitle")}</p>
+                                <div className="w-full pt-1 sm:max-w-sm md:pt-2">
+                                    {/* Butonlar dar ekranda da yan yana: alt alta dizilmeleri
+                                        slaytın sabit yüksekliğinde ~58px yiyip taşmaya yol açıyordu. */}
+                                    <StoreButtons
+                                        appStoreLabel={t("common.appStore")}
+                                        googlePlayLabel={t("common.googlePlay")}
+                                        soonText={t("common.soon")}
+                                        className="flex-row gap-2 sm:gap-3"
+                                        opensDialog
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Sağ alttan taşan iPhone mockup; hover'da doğrulur */}
+                            <div className="absolute right-4 top-10 z-10 hidden w-[190px] md:block lg:right-16 lg:top-12 lg:w-[270px]">
+                                <div className="rotate-[5deg] transition-transform duration-500 ease-out will-change-transform hover:-translate-y-3 hover:rotate-0">
+                                    <div className="relative rounded-[2.4rem] bg-zinc-900 p-[7px] shadow-[0_30px_70px_-20px_rgba(0,0,0,0.85)] ring-1 ring-white/10">
+                                        <div className="absolute left-1/2 top-[11px] z-20 h-[15px] w-[66px] -translate-x-1/2 rounded-full bg-black" />
+                                        <div className="overflow-hidden rounded-[1.9rem] bg-black">
+                                            <Image
+                                                src={locale === "tr" ? "/gghub-app-tr.jpg" : "/gghub-app-en.jpg"}
+                                                alt={t("common.appName")}
+                                                width={540}
+                                                height={1174}
+                                                className="block h-auto w-full"
+                                                sizes="270px"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </CarouselItem>
 

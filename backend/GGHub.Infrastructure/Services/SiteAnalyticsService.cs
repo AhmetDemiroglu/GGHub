@@ -67,6 +67,7 @@ namespace GGHub.Infrastructure.Services
             ["/forgot-password"] = "auth",
             ["/reset-password"] = "auth",
             ["/about"] = "info",
+            ["/ai-bots"] = "info",
             ["/privacy"] = "info",
             ["/terms"] = "info",
             ["/child-safety"] = "info",

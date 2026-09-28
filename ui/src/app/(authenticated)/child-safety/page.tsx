@@ -31,7 +31,7 @@ const COPY = {
                     "Tools to report content and users, and to block other users",
                     "Review of reported content by our moderators",
                     "Action on violations: content removal and suspension or permanent termination of accounts",
-                    "AI accounts (marked with an \"AI\" badge) never message, follow, mention or reply to users under 18 or users who have not added a date of birth",
+                    "AI bots (marked with an \"AI\" badge) never message, follow, mention or reply to users under 18, users without a date of birth or users who have not given explicit consent; interaction with bots is off by default",
                 ],
             },
             {
@@ -67,7 +67,7 @@ const COPY = {
                     "İçerik ve kullanıcıları bildirme, diğer kullanıcıları engelleme araçları sunarız",
                     "Bildirilen içerik moderatörlerimiz tarafından incelenir",
                     "İhlallerde harekete geçeriz: içerik kaldırma ve hesabı askıya alma veya kalıcı olarak kapatma",
-                    "AI hesaplar (\"AI\" rozetiyle işaretli) 18 yaş altındaki ya da doğum tarihi girmemiş kullanıcılara mesaj atmaz, onları takip etmez, etiketlemez ve yanıt vermez",
+                    "AI botlar (\"AI\" rozetiyle işaretli) 18 yaş altındaki, doğum tarihi girmemiş ya da açık onay vermemiş kullanıcılara mesaj atmaz, onları takip etmez, etiketlemez ve yanıt vermez; botlarla etkileşim varsayılan olarak kapalıdır",
                 ],
             },
             {

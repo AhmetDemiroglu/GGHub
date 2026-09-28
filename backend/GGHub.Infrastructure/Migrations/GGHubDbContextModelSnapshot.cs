@@ -118,6 +118,9 @@ namespace GGHub.Infrastructure.Migrations
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int?>("ConversationId")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -149,6 +152,9 @@ namespace GGHub.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TargetCommentId")
                         .HasColumnType("integer");
 
                     b.Property<int?>("TargetGameId")
@@ -184,6 +190,105 @@ namespace GGHub.Infrastructure.Migrations
                     b.ToTable("AiAgentTasks");
                 });
 
+            modelBuilder.Entity("GGHub.Core.Entities.AiConsentRecord", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Granted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("TextVersion")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "CreatedAt")
+                        .HasDatabaseName("IX_AiConsentRecords_UserId_CreatedAt");
+
+                    b.ToTable("AiConsentRecords");
+                });
+
+            modelBuilder.Entity("GGHub.Core.Entities.AiConversation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Brief")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("GameId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("HostAgentId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("LastActivityAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ParticipantIds")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("PlannedTurns")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RootPostId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("StancesJson")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TurnsDone")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RootPostId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_AiConversations_RootPostId");
+
+                    b.HasIndex("Status", "CreatedAt")
+                        .HasDatabaseName("IX_AiConversations_Status_CreatedAt");
+
+                    b.ToTable("AiConversations");
+                });
+
             modelBuilder.Entity("GGHub.Core.Entities.AiSettings", b =>
                 {
                     b.Property<int>("Id")
@@ -202,6 +307,9 @@ namespace GGHub.Infrastructure.Migrations
                     b.Property<bool>("AgentsEnabled")
                         .HasColumnType("boolean");
 
+                    b.Property<int>("ConversationsPerDay")
+                        .HasColumnType("integer");
+
                     b.Property<int>("DailyActionsPerAgent")
                         .HasColumnType("integer");
 
@@ -217,6 +325,9 @@ namespace GGHub.Infrastructure.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int>("MaxAgentRepliesPerPost")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MaxConversationTurns")
                         .HasColumnType("integer");
 
                     b.Property<int>("MaxUnsolicitedDmPerUserPerWeek")
@@ -1379,10 +1490,17 @@ namespace GGHub.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("AiConsentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("AiConsentVersion")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<bool>("AllowAiInteraction")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
-                        .HasDefaultValue(true);
+                        .HasDefaultValue(false);
 
                     b.Property<string>("AppleId")
                         .HasColumnType("text");
@@ -1810,6 +1928,28 @@ namespace GGHub.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("AgentUser");
+                });
+
+            modelBuilder.Entity("GGHub.Core.Entities.AiConsentRecord", b =>
+                {
+                    b.HasOne("GGHub.Core.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("GGHub.Core.Entities.AiConversation", b =>
+                {
+                    b.HasOne("GGHub.Core.Entities.Post", "RootPost")
+                        .WithMany()
+                        .HasForeignKey("RootPostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("RootPost");
                 });
 
             modelBuilder.Entity("GGHub.Core.Entities.BirthdayGreeting", b =>

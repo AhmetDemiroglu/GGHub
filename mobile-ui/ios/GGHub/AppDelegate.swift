@@ -9,6 +9,9 @@ class AppDelegate: ExpoAppDelegate {
   var reactNativeDelegate: ExpoReactNativeFactoryDelegate?
   var reactNativeFactory: RCTReactNativeFactory?
 
+  /// Acilis secenekleri; pencere ve React Native SceneDelegate'te kuruluyor (UIScene yasam dongusu).
+  var launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+
   public override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
@@ -19,14 +22,10 @@ class AppDelegate: ExpoAppDelegate {
 
     reactNativeDelegate = delegate
     reactNativeFactory = factory
+    self.launchOptions = launchOptions
 
-#if os(iOS) || os(tvOS)
-    window = UIWindow(frame: UIScreen.main.bounds)
-    factory.startReactNative(
-      withModuleName: "main",
-      in: window,
-      launchOptions: launchOptions)
-#endif
+    // Pencere burada DEGIL, SceneDelegate.scene(_:willConnectTo:options:) icinde kuruluyor:
+    // iOS 27 SDK'si scene yasam dongusunu zorunlu kildi (Info.plist UIApplicationSceneManifest).
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }

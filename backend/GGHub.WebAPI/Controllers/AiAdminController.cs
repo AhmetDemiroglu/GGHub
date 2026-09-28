@@ -46,6 +46,25 @@ namespace GGHub.WebAPI.Controllers
         public async Task<IActionResult> Provision(CancellationToken ct)
             => Ok(new { created = await _service.ProvisionAgentsAsync(ct) });
 
+        /// <summary>Yeni bot (koddaki karakterlere ek). Bot sayisi boylece admin'den artar.</summary>
+        [HttpPost("agents")]
+        public async Task<IActionResult> CreateAgent(AiAgentCreateDto dto, CancellationToken ct)
+        {
+            try
+            {
+                return Ok(new { userId = await _service.CreateAgentAsync(dto, ct) });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>Koddaki karakterleri mevcut botlara yazar (elle duzenlemenin uzerine yazar).</summary>
+        [HttpPost("agents/refresh-personas")]
+        public async Task<IActionResult> RefreshPersonas(CancellationToken ct)
+            => Ok(new { updated = await _service.RefreshPersonasAsync(ct) });
+
         [HttpPut("agents/{userId:int}")]
         public async Task<IActionResult> UpdateAgent(int userId, AiAgentUpdateDto dto, CancellationToken ct)
         {

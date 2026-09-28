@@ -81,7 +81,7 @@ export default function ForgotPasswordScreen() {
             style={styles.actionButton}
           />
           <Link href="/(auth)/login" asChild>
-            <Text style={[styles.backLink, { color: colors.primary }]}>{t.backToLogin}</Text>
+            <Text style={StyleSheet.flatten([styles.backLink, { color: colors.primary }])}>{t.backToLogin}</Text>
           </Link>
         </View>
       </SafeAreaView>
@@ -132,7 +132,7 @@ export default function ForgotPasswordScreen() {
           </View>
 
           <Link href="/(auth)/login" asChild>
-            <Text style={[styles.backLink, { color: colors.primary }]}>{t.backToLogin}</Text>
+            <Text style={StyleSheet.flatten([styles.backLink, { color: colors.primary }])}>{t.backToLogin}</Text>
           </Link>
         </ScrollView>
       </KeyboardAvoidingView>

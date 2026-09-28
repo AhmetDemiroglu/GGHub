@@ -188,6 +188,8 @@ namespace GGHub.Infrastructure.Services
                 .SetProperty(t => t.TargetUserId, task.TargetUserId)
                 .SetProperty(t => t.TargetPostId, task.TargetPostId)
                 .SetProperty(t => t.TargetGameId, task.TargetGameId)
+                .SetProperty(t => t.TargetReviewId, task.TargetReviewId)
+                .SetProperty(t => t.ConversationId, task.ConversationId)
                 .SetProperty(t => t.ResultEntityId, task.ResultEntityId)
                 .SetProperty(t => t.ResultSummary, task.ResultSummary)
                 .SetProperty(t => t.Model, task.Model)

@@ -27,6 +27,12 @@ namespace GGHub.Core.Entities
         public int? TargetReviewId { get; set; }
         public int? TriggerMessageId { get; set; }
 
+        /// <summary>Yanitlanacak inceleme yorumu (bot incelemesindeki yorum zinciri).</summary>
+        public int? TargetCommentId { get; set; }
+
+        /// <summary>ConversationTurn gorevinin ait oldugu sahne.</summary>
+        public int? ConversationId { get; set; }
+
         public DateTime ScheduledAt { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? StartedAt { get; set; }

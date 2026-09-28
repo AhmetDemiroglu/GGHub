@@ -189,6 +189,10 @@ namespace GGHub.Infrastructure.Services
 
         private async Task<bool> UnderPostCapAsync(int rootPostId, int cap)
         {
+            // Bot sohbet sahnesinde tavan yok: botlar orada zaten konusuyor ve rizali bir insan araya
+            // girince muhatap bot ona cevap verebilmeli. Kullanici basina gunluk tavan yine gecerli.
+            if (await _context.AiConversations.AnyAsync(c => c.RootPostId == rootPostId)) return true;
+
             var agents = await _directory.GetAgentIdsAsync();
             var agentList = agents.ToList();
             var existing = await _context.Posts.CountAsync(p => p.ParentPostId == rootPostId && agentList.Contains(p.UserId));

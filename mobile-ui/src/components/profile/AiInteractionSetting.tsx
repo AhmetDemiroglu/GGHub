@@ -1,15 +1,15 @@
 import React from 'react';
-import { StyleSheet, Switch, Text, TouchableOpacity, View, type StyleProp, type ViewStyle } from 'react-native';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { Platform, StyleSheet, Switch, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 
-import { getMyProfile, updateAiInteraction } from '@/src/api/profile';
-import { useTheme } from '@/src/hooks/use-theme';
-import { useLocale } from '@/src/hooks/use-locale';
+import { updateAiInteraction } from '@/src/api/profile';
+import { useAiConsent } from '@/src/components/ai/AiConsentProvider';
+import { useConfirm } from '@/src/components/common/ConfirmDialog';
 import { useToast } from '@/src/components/common/Toast';
-import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
-import type { AiInteractionBlockReason } from '@/src/models/profile';
+import { useLocale } from '@/src/hooks/use-locale';
+import { useTheme } from '@/src/hooks/use-theme';
+import { BorderRadius, FontSize, Spacing } from '@/src/constants/theme';
 
 interface AiInteractionSettingProps {
   /** "card": ayarlar ekranindaki bolum. "compact": mesajlar ekranindaki ince serit. */
@@ -18,35 +18,64 @@ interface AiInteractionSettingProps {
 }
 
 /**
- * "AI hesaplarla etkilesim" anahtari. Gizlilik ayarlarinda VE mesajlar ekraninda ayni bilesen.
- * Dogum tarihi yoksa ya da 18 yas altindaysa anahtar PASIF (Gemini API sartlari); kural sunucuda
- * (AiInteractionPolicy), burasi yalnizca durumu dogru gosterir.
+ * "AI hesaplarla etkilesim" ayari. Gizlilik ayarlarinda VE mesajlar ekraninda ayni bilesen.
+ *
+ * Varsayilan KAPALI. Acmak: anahtar onay penceresini acar (dogum tarihi + riza tiki); anahtar
+ * ancak sunucu onayi kaydedince acik gorunur. Kapatmak: ConfirmDialog ile sorulur, riza geri
+ * alinir, botlarin takibi kalkar. 18 yas altinda anahtar pasif. Kural sunucuda.
  */
 export function AiInteractionSetting({ variant = 'card', style }: AiInteractionSettingProps) {
   const { colors } = useTheme();
-  const { messages } = useLocale();
+  const { messages, locale } = useLocale();
   const { showToast } = useToast();
-  const router = useRouter();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
+  const { profile, open } = useAiConsent();
   const m = messages.ai;
 
-  const { data: profile } = useQuery({ queryKey: ['myProfile'], queryFn: getMyProfile, staleTime: 60_000 });
-
   const mutation = useMutation({
-    mutationFn: (allow: boolean) => updateAiInteraction({ allow }),
+    mutationFn: () => updateAiInteraction({ allow: false, source: Platform.OS === 'ios' ? 'ios' : 'android' }),
     onSuccess: () => {
-      showToast('success', m.updated);
+      showToast('success', m.disabled);
       queryClient.invalidateQueries({ queryKey: ['myProfile'] });
+      queryClient.invalidateQueries({ queryKey: ['publicProfile'] });
     },
     onError: () => showToast('error', m.updateError),
   });
 
   if (!profile) return null;
 
-  const reason = (profile.aiInteractionBlockReason ?? null) as AiInteractionBlockReason | null;
-  const locked = reason === 'needsBirthDate' || reason === 'underage';
-  const checked = !locked && (profile.allowAiInteraction ?? true);
-  const note = reason === 'needsBirthDate' ? m.needsBirthDate : reason === 'underage' ? m.underage : null;
+  const reason = profile.aiInteractionBlockReason ?? null;
+  const underage = reason === 'underage';
+  const isOn = !reason && profile.allowAiInteraction === true;
+
+  const consentDate = profile.aiConsentAt
+    ? new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(profile.aiConsentAt))
+    : null;
+
+  const note = underage
+    ? m.underage
+    : isOn
+      ? consentDate
+        ? m.onSince.replace('{date}', consentDate)
+        : null
+      : reason === 'needsBirthDate'
+        ? m.needsBirthDate
+        : m.consentRequired;
+
+  const handleChange = async (next: boolean) => {
+    if (next) {
+      await open(reason === 'needsBirthDate' ? 'needsBirthDate' : 'consentRequired');
+      return;
+    }
+    const ok = await confirm({
+      title: m.disableTitle,
+      message: m.disableDescription,
+      confirmLabel: m.disableConfirm,
+      destructive: true,
+    });
+    if (ok) mutation.mutate();
+  };
 
   return (
     <View
@@ -70,9 +99,9 @@ export function AiInteractionSetting({ variant = 'card', style }: AiInteractionS
           ) : null}
         </View>
         <Switch
-          value={checked}
-          disabled={locked || mutation.isPending}
-          onValueChange={(next) => mutation.mutate(next)}
+          value={isOn}
+          disabled={underage || mutation.isPending}
+          onValueChange={(next) => void handleChange(next)}
           trackColor={{ true: colors.primary, false: colors.border }}
           accessibilityLabel={m.interactionTitle}
         />
@@ -80,12 +109,10 @@ export function AiInteractionSetting({ variant = 'card', style }: AiInteractionS
       {note ? (
         <View style={styles.noteBox}>
           <Text style={[styles.note, { color: colors.textSecondary }]}>{note}</Text>
-          {reason === 'needsBirthDate' ? (
-            <TouchableOpacity onPress={() => router.push('/profile/edit')} hitSlop={6}>
-              <Text style={[styles.link, { color: colors.primary }]}>{m.addBirthDate}</Text>
-            </TouchableOpacity>
-          ) : null}
         </View>
+      ) : null}
+      {variant === 'card' && isOn ? (
+        <Text style={[styles.note, { color: colors.textSecondary, marginTop: 4 }]}>{m.revokeHint}</Text>
       ) : null}
     </View>
   );
@@ -111,5 +138,4 @@ const styles = StyleSheet.create({
   description: { fontSize: FontSize.sm, lineHeight: 18 },
   noteBox: { marginTop: Spacing.sm, gap: 4 },
   note: { fontSize: FontSize.xs, lineHeight: 16 },
-  link: { fontSize: FontSize.sm, fontWeight: '600' },
 });

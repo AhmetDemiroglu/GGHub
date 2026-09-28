@@ -22,6 +22,7 @@ import { FollowersModal } from "./followers-modal";
 import { MessageDialog } from "@core/components/other/message-dialog";
 import { AiBadge } from "@/core/components/base/ai-badge";
 import { AiInteractionSetting } from "@/core/components/other/ai-interaction-setting";
+import { useAiConsent } from "@/core/components/other/ai-consent";
 import Link from "next/link";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@core/components/ui/tooltip";
 import { BlockedUsersDialog } from "@core/components/other/blocked-users-dialog";
@@ -140,11 +141,13 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
         }
     };
 
-    // AI botuna yazma engeli (DOB yok, 18 alti, ayar kapali). Sunucu da reddeder.
+    // AI botuna yazma engeli (DOB yok, 18 alti, riza yok). Riza eksikse mesaj butonu onay
+    // penceresini acar; 18 alti icin buton kapali. Sunucu da ayrica reddeder.
     const aiBlockReason = profile.isAiAgent ? (profile.aiInteractionBlockReason ?? null) : null;
+    const { open: openAiConsent } = useAiConsent();
 
     const canSendMessage = () => {
-        if (aiBlockReason) return false;
+        if (aiBlockReason === "underage") return false;
         if (profile.messageSetting === 2) return false;
         if (profile.messageSetting === 1 && !profile.isFollowedBy) return false;
         return true;
@@ -358,14 +361,14 @@ export default function ProfileHeader({ profile, isOwnProfile = false }: Profile
                                     variant="outline"
                                     size="sm"
                                     className="cursor-pointer"
-                                    onClick={() => {
+                                    onClick={async () => {
                                         if (!user) {
                                             toast.error(t("profile.header.loginRequiredMessage"));
                                             return;
                                         }
-                                        if (aiBlockReason) {
-                                            toast.error(t(`ai.${aiBlockReason}`));
-                                            return;
+                                        if (aiBlockReason && aiBlockReason !== "loginRequired") {
+                                            const accepted = await openAiConsent(aiBlockReason);
+                                            if (!accepted) return;
                                         }
                                         setMessageDialogOpen(true);
                                     }}

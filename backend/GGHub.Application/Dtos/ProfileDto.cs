@@ -70,6 +70,9 @@ namespace GGHub.Application.Dtos
         /// </summary>
         public bool AllowAiInteraction { get; set; }
 
+        /// <summary>Son AI etkilesim onayinin zamani. YALNIZCA kendi profilinde ve etkilesim acikken doldurulur.</summary>
+        public DateTime? AiConsentAt { get; set; }
+
         /// <summary>
         /// GORUNTULEYEN kullanicinin AI botlariyla etkilesim engeli: null (serbest), "needsBirthDate",
         /// "underage", "optedOut" ya da "loginRequired". Kendi profilinde ve AI bot profillerinde

@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { Play } from "lucide-react";
+import { MobileAppDialog, isPhoneOrTablet, type MobilePlatform } from "@/core/components/other/public/mobile-app-dialog";
 import { cn } from "@/core/lib/utils";
 import { APP_STORE_URL, GOOGLE_PLAY_URL } from "@/core/lib/store-links";
 
@@ -24,6 +26,7 @@ export function StoreButton({
     soon,
     className,
     onClick,
+    onLinkClick,
 }: {
     icon: React.ReactNode;
     label: string;
@@ -32,6 +35,8 @@ export function StoreButton({
     className?: string;
     /** Opsiyonel: yalnizca /download-app olcum icin geciyor, diger cagrilari etkilemez. */
     onClick?: () => void;
+    /** Opsiyonel: baglantiyi durdurup yerine pencere acmak icin (event.preventDefault). */
+    onLinkClick?: (event: React.MouseEvent) => void;
 }) {
     // Yan yana dizildiklerinde 320px'lik ekranlarda etiket iki satira kiriliyordu;
     // 360px altinda dolgu ve punto bir kademe kisiliyor, 375px ve ustu aynen korunuyor.
@@ -45,7 +50,10 @@ export function StoreButton({
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={onClick}
+                onClick={(event) => {
+                    onLinkClick?.(event);
+                    onClick?.();
+                }}
                 className={cn(base, "transition-all hover:scale-[1.02] hover:border-cyan-400/60 hover:bg-black", className)}
             >
                 {icon}
@@ -68,28 +76,42 @@ export function StoreButton({
 }
 
 /**
- * App Store + Google Play pair. App Store links to the live listing; Google
- * Play follows GOOGLE_PLAY_URL (currently null → "Soon" badge until approved).
+ * App Store + Google Play pair.
+ *
+ * `opensDialog`: masaustunde dugme QR'li indirme penceresini acar (MobileAppDialog);
+ * telefonda/tablette ise dogrudan tiklanan magazaya gider (QR kendi ekranindan okunamaz).
+ * Verilmezse eski davranis: dugme dogrudan magaza baglantisi.
  */
 export function StoreButtons({
     appStoreLabel = "App Store",
     googlePlayLabel = "Google Play",
     soonText = "Soon",
     className,
+    opensDialog = false,
 }: {
     appStoreLabel?: string;
     googlePlayLabel?: string;
     soonText?: string;
     className?: string;
+    opensDialog?: boolean;
 }) {
+    const [dialogPlatform, setDialogPlatform] = useState<MobilePlatform | null>(null);
+
+    const openFor = (platform: MobilePlatform) => (event: React.MouseEvent) => {
+        if (!opensDialog || isPhoneOrTablet()) return; // telefonda baglanti normal calisir
+        event.preventDefault();
+        setDialogPlatform(platform);
+    };
+
     return (
         <div className={cn("flex w-full flex-col gap-3 sm:flex-row", className)}>
-            <StoreButton icon={<AppleLogo className="h-5 w-5" />} label={appStoreLabel} href={APP_STORE_URL} />
+            <StoreButton icon={<AppleLogo className="h-5 w-5" />} label={appStoreLabel} href={APP_STORE_URL} onLinkClick={openFor("ios")} />
             {GOOGLE_PLAY_URL ? (
-                <StoreButton icon={<Play className="h-5 w-5" />} label={googlePlayLabel} href={GOOGLE_PLAY_URL} />
+                <StoreButton icon={<Play className="h-5 w-5" />} label={googlePlayLabel} href={GOOGLE_PLAY_URL} onLinkClick={openFor("android")} />
             ) : (
                 <StoreButton icon={<Play className="h-5 w-5" />} label={googlePlayLabel} soon={soonText} />
             )}
+            {opensDialog ? <MobileAppDialog platform={dialogPlatform} onClose={() => setDialogPlatform(null)} /> : null}
         </div>
     );
 }

@@ -19,6 +19,9 @@ namespace GGHub.Infrastructure.Services
 
     public sealed record AiText(string Text, string Model, int InputTokens, int OutputTokens);
 
+    /// <summary>Promptta anilan baska bir bot: kullanici adi + iliski/rol notu.</summary>
+    public sealed record AiPeer(string Username, string Note);
+
     /// <summary>
     /// Bot metinlerinin tek yazari: gorev tipine gore talimati kurar, AiLlmGateway'e gonderir,
     /// ciktiyi temizler. Karar (kime, ne zaman, hangi puan) motorda; burada yalnizca DIL var.
@@ -50,7 +53,9 @@ namespace GGHub.Infrastructure.Services
             - Siyaset, din, cinsellik, nefret söylemi, şiddet teşviki ve yasa dışı konulara girme; kibarca oyun konusuna dön.
             - Biri kendine zarar vermekten ya da ciddi bir sıkıntıdan bahsederse: nazik ol, yalnız olmadığını söyle ve bir yakınından ya da profesyonel destekten (acil durumda 112) yardım almasını öner. Oyun sohbetine zorlama.
             - Karşındaki kişi hangi dilde yazdıysa o dilde cevap ver; aksi halde Türkçe yaz.
-            - Kısa ve doğal yaz. Emoji en fazla bir tane. Hashtag, madde işareti, başlık ve markdown kullanma. Uzun tire (— ya da –) kullanma.
+            - Kısa ve doğal yaz, gerçek bir sohbet gibi. Cümle uzunluğunu değiştir. Emoji en fazla iki tane. Hashtag, madde işareti, başlık ve markdown kullanma. Uzun tire (— ya da –) kullanma.
+            - GGHub'da seninle birlikte başka AI karakterler de yaşıyor. Onlarla şakalaşabilir, hafifçe takılabilir, fikir ayrılığına düşebilirsin. Hakaret, küçümseme ve kaba dil yok; takılman her zaman sevimli kalsın.
+            - Birine seslenirken @kullaniciadi yaz (örnek: @retro_ai). Sana verilmeyen kullanıcı adlarını uydurma.
             - Yalnızca yazacağın metni ver. Açıklama, tırnak, "İşte cevabım" gibi giriş ekleme.
             """;
 
@@ -125,8 +130,12 @@ namespace GGHub.Infrastructure.Services
             return RunAsync(BaseRules(agent), new[] { new GeminiTurn("user", sb.ToString()) }, 200, 180, 0.9, ct);
         }
 
-        public Task<AiText?> WriteGamePostAsync(AiAgentIdentity agent, AiGameFacts game, string angle, CancellationToken ct)
+        public Task<AiText?> WriteGamePostAsync(
+            AiAgentIdentity agent, AiGameFacts game, string angle, CancellationToken ct, AiPeer? askPeer = null)
         {
+            var ending = askPeer is null
+                ? "Takipçilerinle sohbet başlatacak bir soru ya da görüşle bitir."
+                : $"Sonunda @{askPeer.Username} adlı AI arkadaşına seslenip fikrini sor. {askPeer.Note}";
             var prompt = $"""
                 GGHub akışına kısa bir gönderi yaz. Konu: {angle}
 
@@ -134,9 +143,78 @@ namespace GGHub.Infrastructure.Services
                 {Facts(game)}
 
                 Oyunun adını yazma; adının geçeceği yere tam olarak {GamePlaceholder} yaz (bir kez).
-                Takipçilerinle sohbet başlatacak bir soru ya da görüşle bitir. En fazla 150 karakter.
+                {ending} En fazla 150 karakter.
                 """;
             return RunAsync(BaseRules(agent), new[] { new GeminiTurn("user", prompt) }, 200, 170, 1.0, ct, requirePlaceholder: true);
+        }
+
+        /// <summary>
+        /// Bot sohbet sahnesinin kok gonderisi. Model muhataplarini @ ile anar; oyun varsa adinin
+        /// yerine yer tutucu yazar (motor dogru etiketi koyar).
+        /// </summary>
+        public Task<AiText?> WriteConversationOpeningAsync(
+            AiAgentIdentity agent, string brief, string? stance, IReadOnlyList<AiPeer> addressees,
+            AiGameFacts? game, bool isPoll, CancellationToken ct)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("GGHub'da diğer AI karakterlerle herkesin görebileceği bir sohbet başlatıyorsun.");
+            sb.AppendLine($"Sahne: {brief}");
+            if (!string.IsNullOrWhiteSpace(stance)) sb.AppendLine($"Senin tarafın: {stance}");
+            sb.AppendLine("Seslendiğin AI karakterler:");
+            foreach (var a in addressees) sb.AppendLine($"- @{a.Username}: {a.Note}");
+            if (game is not null)
+            {
+                sb.AppendLine();
+                sb.AppendLine("Oyun bilgisi:");
+                sb.AppendLine(Facts(game));
+                sb.AppendLine($"Oyunun adını yazma; adının geçeceği yere tam olarak {GamePlaceholder} yaz (bir kez).");
+            }
+            sb.AppendLine();
+            sb.AppendLine(isPoll
+                ? "Bu bir anket gönderisi: seçenekler ayrıca eklenecek, onları yazma. Kısa ve eğlenceli bir anket sorusu yaz, seslendiğin karakterleri @ ile an."
+                : "Seslendiğin karakterleri @ ile anarak sohbeti başlat. Merak uyandıran, cevap vermeye davet eden bir cümle kur.");
+            sb.AppendLine("En fazla 140 karakter.");
+
+            return RunAsync(BaseRules(agent), new[] { new GeminiTurn("user", sb.ToString()) }, 220, 150, 1.0, ct,
+                requirePlaceholder: game is not null && !isPoll);
+        }
+
+        /// <summary>
+        /// Acik bir sohbet sahnesinde botun sirasi. Butun sahneyi okur, son konusana @ ile cevap verir.
+        /// Son turda sohbeti baglar.
+        /// </summary>
+        public Task<AiText?> WriteConversationTurnAsync(
+            AiAgentIdentity agent, string brief, string? stance, string relationNote,
+            AiThreadLine root, IReadOnlyList<AiThreadLine> replies, string? addresseeUsername,
+            bool isFinal, CancellationToken ct)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("GGHub'da AI karakterlerin herkese açık sohbetindesin.");
+            sb.AppendLine($"Sahne: {brief}");
+            if (!string.IsNullOrWhiteSpace(stance)) sb.AppendLine($"Senin tarafın: {stance}");
+            if (!string.IsNullOrWhiteSpace(relationNote)) sb.AppendLine(relationNote);
+            sb.AppendLine();
+            sb.AppendLine($"Açılış, @{root.AuthorName}{(root.AuthorIsAi ? " (AI)" : "")}: \"{root.Text}\"");
+            foreach (var r in replies)
+            {
+                var who = r.FromAgent ? "sen" : $"@{r.AuthorName}{(r.AuthorIsAi ? " (AI)" : "")}";
+                sb.AppendLine($"- {who}: \"{r.Text}\"");
+            }
+            sb.AppendLine();
+            if (!string.IsNullOrWhiteSpace(addresseeUsername))
+            {
+                sb.AppendLine($"Sıra sende. @{addresseeUsername} adlı kişiye cevap ver ve onu @ ile an.");
+            }
+            else
+            {
+                sb.AppendLine("Sıra sende. Sohbete bir şey kat.");
+            }
+            sb.AppendLine(isFinal
+                ? "Bu sohbetteki son mesajın: tatlı bir kapanış yap. Anlaşabilir, ısrar edebilir ya da esprili bir uzlaşma önerebilirsin."
+                : "Kendini tekrar etme, yeni bir argüman, espri ya da soru ekle. Gerekirse itiraz et, ikna olursan bunu söyle.");
+            sb.AppendLine("En fazla 170 karakter.");
+
+            return RunAsync(BaseRules(agent), new[] { new GeminiTurn("user", sb.ToString()) }, 220, 175, 1.0, ct);
         }
 
         public Task<AiText?> WriteReviewAsync(AiAgentIdentity agent, AiGameFacts game, int rating, CancellationToken ct)
@@ -154,16 +232,39 @@ namespace GGHub.Infrastructure.Services
         }
 
         public Task<AiText?> WriteReviewCommentAsync(
-            AiAgentIdentity agent, string reviewAuthor, AiGameFacts game, int rating, string reviewText, CancellationToken ct)
+            AiAgentIdentity agent, string reviewAuthor, AiGameFacts game, int rating, string reviewText, CancellationToken ct,
+            string? peerNote = null, int? myRating = null)
         {
+            var extra = new StringBuilder();
+            if (!string.IsNullOrWhiteSpace(peerNote)) extra.AppendLine(peerNote);
+            if (myRating.HasValue) extra.AppendLine($"Sen bu oyuna daha önce 10 üzerinden {myRating} vermiştin.");
+
             var prompt = $"""
                 @{reviewAuthor}, {game.Name} için 10 üzerinden {rating} puan verip şu incelemeyi yazdı:
                 "{Trim(reviewText, 800)}"
 
                 Oyun bilgisi:
                 {Facts(game)}
+                {extra}
+                İncelemeye kısa bir yorum yaz: katıldığın ya da farklı düşündüğün bir noktayı belirt. En fazla 2 cümle.
+                """;
+            return RunAsync(BaseRules(agent), new[] { new GeminiTurn("user", prompt) }, 250, 300, 0.9, ct);
+        }
 
-                İncelemeye kısa, saygılı bir yorum yaz: katıldığın ya da farklı düşündüğün bir noktayı belirt. En fazla 2 cümle.
+        /// <summary>Botun kendi incelemesine gelen yoruma cevabi (yorum zincirinde tek seviye).</summary>
+        public Task<AiText?> WriteReviewCommentReplyAsync(
+            AiAgentIdentity agent, string commenter, string commentText, AiGameFacts game, int myRating,
+            string myReviewText, string? peerNote, CancellationToken ct)
+        {
+            var prompt = $"""
+                {game.Name} için 10 üzerinden {myRating} verip şu incelemeyi yazmıştın:
+                "{Trim(myReviewText, 500)}"
+
+                @{commenter} altına şu yorumu yazdı:
+                "{Trim(commentText, 400)}"
+                {peerNote}
+
+                Bu yoruma kısa bir cevap yaz. Katılabilir, itiraz edebilir ya da esprili bir karşılık verebilirsin. En fazla 2 cümle.
                 """;
             return RunAsync(BaseRules(agent), new[] { new GeminiTurn("user", prompt) }, 250, 300, 0.9, ct);
         }

@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AuthProvider } from "@core/contexts/auth-context";
 import { SignalRProvider } from "@core/contexts/signalr-context";
+import { AiConsentProvider } from "@core/components/other/ai-consent";
 import { Messages, translate } from "@/i18n";
 import { AppLocale } from "@/i18n/config";
 
@@ -101,7 +102,10 @@ export function Providers({ children, locale, messages }: { children: React.Reac
     return (
         <QueryClientProvider client={client}>
             <AuthProvider locale={locale}>
-                <SignalRProvider>{children}</SignalRProvider>
+                <SignalRProvider>
+                    {/* AI etkilesimi onay penceresi: axios interceptor bota yazma reddinde bunu acar. */}
+                    <AiConsentProvider>{children}</AiConsentProvider>
+                </SignalRProvider>
             </AuthProvider>
         </QueryClientProvider>
     );

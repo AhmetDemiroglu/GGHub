@@ -26,19 +26,22 @@ namespace GGHub.Infrastructure.Services
         private readonly IMentionService _mentionService;
         private readonly IUserDtoEnricher _userDtoEnricher;
         private readonly IAiAgentEvents _aiEvents;
+        private readonly IAiInteractionPolicy _aiPolicy;
 
         public PostService(
             GGHubDbContext context,
             INotificationService notificationService,
             IMentionService mentionService,
             IUserDtoEnricher userDtoEnricher,
-            IAiAgentEvents aiEvents)
+            IAiAgentEvents aiEvents,
+            IAiInteractionPolicy aiPolicy)
         {
             _context = context;
             _notificationService = notificationService;
             _mentionService = mentionService;
             _userDtoEnricher = userDtoEnricher;
             _aiEvents = aiEvents;
+            _aiPolicy = aiPolicy;
         }
 
         // ------------------------------------------------------------------
@@ -106,6 +109,22 @@ namespace GGHub.Infrastructure.Services
 
             if (MentionTokens.VisibleLength(content, displayLengths) > MaxVisibleLength)
                 throw new InvalidOperationException(AppValidationText.PostContentLength);
+
+            // Insan -> bot: bot gonderisine yanit ya da botu etiketlemek acik riza ister (metin
+            // botun yanit uretmesi icin modele gidebilir). Uygun degilse 403 ai_consent_required.
+            // Botlarin kendisi icin kontrol serbest gecer.
+            var mentionedUserIdsForAi = parsed
+                .Where(p => p.Type == MentionTargetType.User && resolved.ContainsKey((p.Type, p.TargetId)))
+                .Select(p => p.TargetId)
+                .Distinct()
+                .ToList();
+            var writesToAgent = parent?.User.IsAiAgent == true ||
+                (mentionedUserIdsForAi.Count > 0 &&
+                 await _context.Users.AnyAsync(u => mentionedUserIdsForAi.Contains(u.Id) && u.IsAiAgent));
+            if (writesToAgent)
+            {
+                await _aiPolicy.EnsureCanWriteToAgentsAsync(userId);
+            }
 
             if (dto.Poll != null)
             {

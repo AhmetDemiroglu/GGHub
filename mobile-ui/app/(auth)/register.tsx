@@ -186,7 +186,7 @@ export default function RegisterScreen() {
               {t.registerHaveAccount}{' '}
             </Text>
             <Link href="/(auth)/login" asChild>
-              <Text style={[styles.footerLink, { color: colors.primary }]}>
+              <Text style={StyleSheet.flatten([styles.footerLink, { color: colors.primary }])}>
                 {t.loginTitle}
               </Text>
             </Link>

@@ -1,6 +1,8 @@
+using GGHub.Application.Exceptions;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Specifications;
 using GGHub.Core.Utilities;
+using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,8 +28,26 @@ namespace GGHub.Infrastructure.Services
         public async Task<string?> GetBlockReasonAsync(int userId, CancellationToken cancellationToken = default)
         {
             var u = await LoadAsync(userId, cancellationToken);
-            if (u is null) return AiInteractionBlockReasons.OptedOut;
+            if (u is null) return AiInteractionBlockReasons.ConsentRequired;
             return AiInteractionRules.BlockReason(u.AllowAiInteraction, u.DateOfBirth, BirthdayCalendar.TodayInIstanbul());
+        }
+
+        public async Task EnsureCanWriteToAgentsAsync(int userId, CancellationToken cancellationToken = default)
+        {
+            var u = await LoadAsync(userId, cancellationToken);
+            if (u is { IsAiAgent: true }) return;
+
+            var reason = u is null
+                ? AiInteractionBlockReasons.ConsentRequired
+                : AiInteractionRules.BlockReason(u.AllowAiInteraction, u.DateOfBirth, BirthdayCalendar.TodayInIstanbul());
+            if (reason is null) return;
+
+            throw new AiConsentRequiredException(reason, AppText.Get(reason switch
+            {
+                AiInteractionBlockReasons.NeedsBirthDate => "ai.needsBirthDate",
+                AiInteractionBlockReasons.Underage => "ai.underage",
+                _ => "ai.consentRequired"
+            }));
         }
 
         private Task<UserFacts?> LoadAsync(int userId, CancellationToken cancellationToken)

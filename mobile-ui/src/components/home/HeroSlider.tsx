@@ -19,6 +19,10 @@ import { ScorePillRow } from '@/src/components/common/ScorePill';
 import { HorizontalScrollGuard } from '@/src/components/home/HorizontalScrollGuard';
 import * as haptics from '@/src/utils/haptics';
 import type { HomeGame } from '@/src/models/home';
+import { AiClubPromoCard } from '@/src/components/home/AiClubPromoCard';
+
+/** Ilk kart her zaman AI Kulubu tanitimi, ardindan oyunlar. */
+type HeroItem = { kind: 'ai' } | { kind: 'game'; game: HomeGame };
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ITEM_WIDTH = SCREEN_WIDTH - Spacing.lg * 2;
@@ -32,20 +36,24 @@ interface HeroSliderProps {
 export function HeroSlider({ games }: HeroSliderProps) {
   const { colors } = useTheme();
   const router = useRouter();
-  const flatListRef = useRef<FlatList<HomeGame>>(null);
+  const flatListRef = useRef<FlatList<HeroItem>>(null);
+  const items: HeroItem[] = React.useMemo(
+    () => [{ kind: 'ai' as const }, ...games.map((game) => ({ kind: 'game' as const, game }))],
+    [games],
+  );
   const [activeIndex, setActiveIndex] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   const startAutoScroll = useCallback(() => {
-    if (games.length <= 1) return;
+    if (items.length <= 1) return;
     intervalRef.current = setInterval(() => {
       setActiveIndex((prev) => {
-        const next = (prev + 1) % games.length;
+        const next = (prev + 1) % items.length;
         flatListRef.current?.scrollToIndex({ index: next, animated: true });
         return next;
       });
     }, AUTO_SCROLL_INTERVAL);
-  }, [games.length]);
+  }, [items.length]);
 
   const stopAutoScroll = useCallback(() => {
     if (intervalRef.current) {
@@ -72,7 +80,11 @@ export function HeroSlider({ games }: HeroSliderProps) {
   const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
 
   const renderItem = useCallback(
-    ({ item }: { item: HomeGame }) => {
+    ({ item: heroItem }: { item: HeroItem }) => {
+      if (heroItem.kind === 'ai') {
+        return <AiClubPromoCard width={ITEM_WIDTH} height={ITEM_HEIGHT} />;
+      }
+      const item = heroItem.game;
       const imageUri = getImageUrl(item.backgroundImage);
 
       return (
@@ -121,16 +133,15 @@ export function HeroSlider({ games }: HeroSliderProps) {
     [colors.surface, router],
   );
 
-  if (!games.length) return null;
 
   return (
     <View style={styles.container}>
       <HorizontalScrollGuard>
         <FlatList
           ref={flatListRef}
-          data={games}
+          data={items}
           renderItem={renderItem}
-          keyExtractor={(item) => `hero-${item.rawgId}`}
+          keyExtractor={(item) => (item.kind === 'ai' ? 'hero-ai-club' : `hero-${item.game.rawgId}`)}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
@@ -148,9 +159,9 @@ export function HeroSlider({ games }: HeroSliderProps) {
           })}
         />
       </HorizontalScrollGuard>
-      {games.length > 1 && (
+      {items.length > 1 && (
         <View style={styles.pagination}>
-          {games.map((_, index) => (
+          {items.map((_, index) => (
             <View
               key={index}
               style={[

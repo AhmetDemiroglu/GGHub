@@ -80,12 +80,19 @@ namespace GGHub.Core.Entities
         public bool IsAiAgent { get; set; } = false;
 
         /// <summary>
-        /// Kullanici AI hesaplarla etkilesime (DM, takip, etiket, yanit) acik mi. Varsayilan acik,
-        /// ama tek basina YETMEZ: dogum tarihi girilmis ve 18 yasini doldurmus olmak da sart
+        /// Kullanici AI hesaplarla etkilesime (DM, takip, etiket, yanit) acik mi. Varsayilan KAPALI:
+        /// yalnizca AI etkilesimi acik riza metnini onaylayinca acilir (POST profile/me/ai-consent).
+        /// Tek basina YETMEZ: dogum tarihi girilmis ve 18 yasini doldurmus olmak da sart
         /// (Gemini API sartlari). Tek kural noktasi: AiInteractionPolicy.
-        /// DB varsayilani true (bkz. GGHubDbContext); aksi halde migration mevcut herkesi kapatirdi.
+        /// Apple 5.1.2(i): kisisel verinin ucuncu taraf AI'ya gitmesi acik izin ister.
         /// </summary>
-        public bool AllowAiInteraction { get; set; } = true;
+        public bool AllowAiInteraction { get; set; } = false;
+
+        /// <summary>Son AI etkilesim onayinin zamani (geri alininca null). Kayit gecmisi AiConsentRecords'ta.</summary>
+        public DateTime? AiConsentAt { get; set; }
+
+        /// <summary>Onaylanan riza metninin surumu (AiConsentTexts.CurrentVersion).</summary>
+        public string? AiConsentVersion { get; set; }
 
         /// <summary>
         /// Kullanicinin son bilinen arayuz dili ("tr" | "en-US"), giris/kayit anindaki

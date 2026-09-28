@@ -6,6 +6,7 @@ import type {
   UpdateProfileVisibilityDto,
   UpdateMessageSettingDto,
   UpdateAiInteractionDto,
+  AiConsentDto,
   PublicProfile,
 } from '../models/profile';
 import type { PostReplyPermissionSetting, PostVisibilitySetting } from '../models/post';
@@ -61,9 +62,15 @@ export const updateMessageSetting = async (
   return axiosInstance.put('/profile/me/message-setting', data);
 };
 
-/** "AI hesaplarla etkilesim" ayari. Kapatilinca botlarin takibi de sunucuda kalkar. */
+/** "AI hesaplarla etkilesim" ayarini KAPATIR (riza geri alma). Botlarin takibi de kalkar. */
 export const updateAiInteraction = async (data: UpdateAiInteractionDto) => {
   return axiosInstance.put('/profile/me/ai-interaction', data);
+};
+
+/** AI etkilesimi acik riza onayi; guncel profili dondurur. */
+export const giveAiConsent = async (data: AiConsentDto): Promise<Profile> => {
+  const response = await axiosInstance.post<Profile>('/profile/me/ai-consent', data);
+  return response.data;
 };
 
 export const getProfileByUsername = (

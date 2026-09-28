@@ -15,7 +15,8 @@ export default function NotFoundScreen() {
 
   return (
     <SwipeBackEdge>
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    {/* Duz nesne: 404 ekrani expo-router <Slot> icinde cizilir ve dev modu stil dizisini reddeder. */}
+    <View style={StyleSheet.flatten([styles.container, { backgroundColor: colors.background }])}>
       <Text style={[styles.code, { color: colors.textMuted }]}>404</Text>
       <Text style={[styles.title, { color: colors.text }]}>{t.title}</Text>
       <Text style={[styles.description, { color: colors.textSecondary }]}>

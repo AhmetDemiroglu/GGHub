@@ -1,17 +1,26 @@
 "use client";
 
-import Link from "next/link";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Bot } from "lucide-react";
 import { toast } from "sonner";
 
-import { getMyProfile, updateAiInteraction } from "@/api/profile/profile.api";
+import { updateAiInteraction } from "@/api/profile/profile.api";
+import { useAiConsent } from "@/core/components/other/ai-consent";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/core/components/ui/alert-dialog";
 import { Label } from "@/core/components/ui/label";
 import { Switch } from "@/core/components/ui/switch";
-import { useI18n } from "@/core/contexts/locale-context";
-import { useLocalizedHref } from "@/core/hooks/use-localized-href";
+import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 import { cn } from "@/core/lib/utils";
-import type { AiInteractionBlockReason } from "@/models/profile/profile.model";
 
 interface AiInteractionSettingProps {
     className?: string;
@@ -20,44 +29,56 @@ interface AiInteractionSettingProps {
 }
 
 /**
- * "AI hesaplarla etkilesim" anahtari. Gizlilik ayarlarinda VE mesajlar ekraninda ayni bilesen.
+ * "AI hesaplarla etkilesim" ayari. Gizlilik ayarlarinda VE mesajlar ekraninda ayni bilesen.
  *
- * Dogum tarihi yoksa ya da 18 yas altindaysa anahtar PASIF: Gemini API sartlari geregi botlar
- * yalnizca 18+ ve dogum tarihini girmis kullanicilarla etkilesir. Kural sunucuda
- * (AiInteractionPolicy); burasi yalnizca durumu dogru gosterir.
+ * Varsayilan KAPALI. Acmak: anahtar onay penceresini acar (dogum tarihi + riza tiki), anahtar
+ * ancak sunucu onayi kaydedince acik gorunur. Kapatmak: onay sorulur, riza geri alinir, botlarin
+ * takibi kalkar. 18 yas alti kullanicida anahtar pasif. Kural sunucuda (AiInteractionPolicy).
  */
 export function AiInteractionSetting({ className, variant = "card" }: AiInteractionSettingProps) {
     const t = useI18n();
-    const localizeHref = useLocalizedHref();
+    const locale = useCurrentLocale();
     const queryClient = useQueryClient();
+    const { profile, open } = useAiConsent();
+    const [confirmOff, setConfirmOff] = useState(false);
 
-    const { data: profile } = useQuery({
-        queryKey: ["my-profile"],
-        queryFn: getMyProfile,
-        staleTime: 60 * 1000,
-    });
-
-    const { mutate, isPending } = useMutation({
-        mutationFn: (allow: boolean) => updateAiInteraction({ allow }),
+    const { mutate: turnOff, isPending } = useMutation({
+        mutationFn: () => updateAiInteraction({ allow: false, source: "web" }),
         onSuccess: () => {
-            toast.success(t("ai.updated"));
+            toast.success(t("ai.disabled"));
             queryClient.invalidateQueries({ queryKey: ["my-profile"] });
+            queryClient.invalidateQueries({ queryKey: ["profile"] });
         },
         onError: (error: Error) => toast.error(t("ai.updateError"), { description: error.message }),
     });
 
     if (!profile) return null;
 
-    const reason = (profile.aiInteractionBlockReason ?? null) as AiInteractionBlockReason | null;
-    // Yas/dogum tarihi engeli anahtari kilitler; "optedOut" yalnizca ayarin kapali oldugunu soyler.
-    const locked = reason === "needsBirthDate" || reason === "underage";
-    const checked = !locked && (profile.allowAiInteraction ?? true);
+    const reason = profile.aiInteractionBlockReason ?? null;
+    const underage = reason === "underage";
+    const isOn = !reason && profile.allowAiInteraction === true;
 
-    const note = reason === "needsBirthDate"
-        ? t("ai.needsBirthDate")
-        : reason === "underage"
-            ? t("ai.underage")
-            : null;
+    const consentDate = profile.aiConsentAt
+        ? new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric" }).format(new Date(profile.aiConsentAt))
+        : null;
+
+    const note = underage
+        ? t("ai.underage")
+        : isOn
+            ? consentDate
+                ? t("ai.onSince", { date: consentDate })
+                : null
+            : reason === "needsBirthDate"
+                ? t("ai.needsBirthDate")
+                : t("ai.consentRequired");
+
+    const handleChange = (next: boolean) => {
+        if (next) {
+            void open(reason === "needsBirthDate" ? "needsBirthDate" : "consentRequired");
+        } else {
+            setConfirmOff(true);
+        }
+    };
 
     return (
         <div
@@ -72,29 +93,34 @@ export function AiInteractionSetting({ className, variant = "card" }: AiInteract
                         <Bot className="size-4 text-violet-500" aria-hidden />
                         {t("ai.interactionTitle")}
                     </Label>
-                    {variant === "card" ? (
-                        <p className="text-sm text-muted-foreground">{t("ai.interactionDescription")}</p>
-                    ) : null}
+                    {variant === "card" ? <p className="text-sm text-muted-foreground">{t("ai.interactionDescription")}</p> : null}
                 </div>
                 <Switch
                     id={`ai-interaction-${variant}`}
-                    checked={checked}
-                    disabled={locked || isPending}
-                    onCheckedChange={(next) => mutate(next)}
+                    checked={isOn}
+                    disabled={underage || isPending}
+                    onCheckedChange={handleChange}
                     aria-label={t("ai.interactionSwitch")}
                     className="cursor-pointer"
                 />
             </div>
-            {note ? (
-                <p className="mt-2 text-xs text-muted-foreground">
-                    {note}{" "}
-                    {reason === "needsBirthDate" ? (
-                        <Link href={localizeHref("/profile")} className="font-medium text-primary hover:underline">
-                            {t("ai.addBirthDate")}
-                        </Link>
-                    ) : null}
-                </p>
-            ) : null}
+            {note ? <p className="mt-2 text-xs text-muted-foreground">{note}</p> : null}
+            {variant === "card" && isOn ? <p className="mt-1 text-xs text-muted-foreground">{t("ai.revokeHint")}</p> : null}
+
+            <AlertDialog open={confirmOff} onOpenChange={setConfirmOff}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{t("ai.disableTitle")}</AlertDialogTitle>
+                        <AlertDialogDescription>{t("ai.disableDescription")}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="cursor-pointer">{t("common.cancel")}</AlertDialogCancel>
+                        <AlertDialogAction className="cursor-pointer" onClick={() => turnOff()}>
+                            {t("ai.disableConfirm")}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

@@ -1,13 +1,14 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { AuthContext } from "@core/contexts/auth-context";
 import { defaultLocale, localeCookieName, localeStorageKey } from "@/i18n/config";
+import { AI_CONSENT_ERROR_CODE, AiConsentReason, requestAiConsent } from "@core/lib/ai-consent-bridge";
 
 type RefreshQueueItem = {
     resolve: (token: string) => void;
     reject: (error: unknown) => void;
 };
 
-type RetryableRequest = InternalAxiosRequestConfig & { _retry?: boolean };
+type RetryableRequest = InternalAxiosRequestConfig & { _retry?: boolean; _aiConsentRetry?: boolean };
 
 type RateLimitedAxiosError = AxiosError & {
     response?: AxiosError["response"] & {
@@ -81,6 +82,20 @@ axiosInstance.interceptors.response.use(
         }
 
         const originalRequest = error.config as RetryableRequest;
+
+        // Bota yazma denemesi rizasiz: onay penceresini ac, onaylanirsa istegi BIR kez tekrarla.
+        // Vazgecilirse hata "is kurali" olarak isaretlenir; global toast basilmaz.
+        const errorBody = error.response?.data as { code?: string; reason?: AiConsentReason } | undefined;
+        if (error.response?.status === 403 && errorBody?.code === AI_CONSENT_ERROR_CODE && originalRequest && !originalRequest._aiConsentRetry) {
+            const accepted = await requestAiConsent(errorBody.reason ?? "consentRequired");
+            if (accepted) {
+                originalRequest._aiConsentRetry = true;
+                return axiosInstance(originalRequest);
+            }
+            (error as AxiosError & { isBusinessError?: boolean }).isBusinessError = true;
+            return Promise.reject(error);
+        }
+
         const isSkipRefreshPath = skipRefreshPaths.some((path) => originalRequest.url?.includes(path));
 
         if (error.response?.status === 401 && !originalRequest._retry && !isSkipRefreshPath) {

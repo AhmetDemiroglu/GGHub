@@ -395,7 +395,81 @@
     animation: birthday-sparkle 1.6s ease-out infinite;
 }
 
+/* AI Kulubu karti ve sayfasi: yuzen bot avatarlari, konusma balonlari, "yaziyor" noktalari. */
+@keyframes ai-float {
+    0%,
+    100% {
+        transform: translateY(0) rotate(var(--ai-tilt, 0deg));
+    }
+    50% {
+        transform: translateY(-10px) rotate(calc(var(--ai-tilt, 0deg) * -1));
+    }
+}
+
+.ai-float {
+    animation: ai-float var(--ai-float-duration, 4.2s) ease-in-out infinite;
+    animation-delay: var(--ai-float-delay, 0s);
+}
+
+@keyframes ai-typing {
+    0%,
+    60%,
+    100% {
+        opacity: 0.25;
+        transform: translateY(0);
+    }
+    30% {
+        opacity: 1;
+        transform: translateY(-3px);
+    }
+}
+
+.ai-typing-dot {
+    animation: ai-typing 1.1s ease-in-out infinite;
+}
+
+@keyframes ai-twinkle {
+    0%,
+    100% {
+        opacity: 0.35;
+        transform: scale(0.85);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+}
+
+.ai-twinkle {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: ai-twinkle var(--ai-twinkle-duration, 2.6s) ease-in-out infinite;
+    animation-delay: var(--ai-twinkle-delay, 0s);
+}
+
+@keyframes ai-tape {
+    from {
+        background-position: 0 0;
+    }
+    to {
+        background-position: 56px 0;
+    }
+}
+
+.ai-tape {
+    background-image: repeating-linear-gradient(-45deg, #facc15 0 14px, #111827 14px 28px);
+    background-size: 56px 100%;
+    animation: ai-tape 2.4s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
+    .ai-float,
+    .ai-typing-dot,
+    .ai-twinkle,
+    .ai-tape {
+        animation: none;
+    }
+
     .confetti-piece {
         animation: none;
         opacity: 0;

@@ -53,6 +53,8 @@ namespace GGHub.Infrastructure.Persistence
         public DbSet<AiAgentProfile> AiAgentProfiles { get; set; }
         public DbSet<AiAgentTask> AiAgentTasks { get; set; }
         public DbSet<AiSettings> AiSettings { get; set; }
+        public DbSet<AiConsentRecord> AiConsentRecords { get; set; }
+        public DbSet<AiConversation> AiConversations { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -101,12 +103,16 @@ namespace GGHub.Infrastructure.Persistence
                 .Property(u => u.PushNotificationsEnabled)
                 .HasDefaultValue(true);
 
-            // Ayni gerekce: varsayilan ACIK. Store varsayilani olmadan migration mevcut tum
-            // kullanicilari "AI ile etkilesime kapali" yapardi. Kapatma her zaman UPDATE ile
-            // yazildigi icin (INSERT degil) bool-varsayilan tuzagi burada isirmaz.
+            // AI etkilesimi varsayilan KAPALI (29 Eyl 2026, Apple 5.1.2(i)): yalnizca acik riza
+            // ile acilir. Store varsayilani CLR varsayilaniyla (false) ayni oldugu icin bool
+            // tuzagi yok; ham SQL ile acilan satirlar da kapali baslar.
             modelBuilder.Entity<User>()
                 .Property(u => u.AllowAiInteraction)
-                .HasDefaultValue(true);
+                .HasDefaultValue(false);
+
+            modelBuilder.Entity<User>()
+                .Property(u => u.AiConsentVersion)
+                .HasMaxLength(16);
 
             // Bot kumesi kucuk (~10); AiAgentDirectory her 5 dk bu indeksle okur.
             modelBuilder.Entity<User>()
@@ -357,6 +363,35 @@ namespace GGHub.Infrastructure.Persistence
                 entity.HasIndex(t => new { t.TargetUserId, t.Type, t.CreatedAt })
                     .HasDatabaseName("IX_AiAgentTasks_TargetUserId_Type_CreatedAt")
                     .HasFilter("\"TargetUserId\" IS NOT NULL");
+            });
+
+            // Riza gunlugu: yalnizca eklenir. Kullanici basina zaman sirali okunur.
+            modelBuilder.Entity<AiConsentRecord>(entity =>
+            {
+                entity.HasOne(r => r.User)
+                    .WithMany()
+                    .HasForeignKey(r => r.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.Property(r => r.TextVersion).HasMaxLength(16).IsRequired();
+                entity.Property(r => r.Source).HasMaxLength(16).IsRequired();
+                entity.HasIndex(r => new { r.UserId, r.CreatedAt })
+                    .HasDatabaseName("IX_AiConsentRecords_UserId_CreatedAt");
+            });
+
+            // Bot sohbet sahnesi. Kok gonderi silinirse sahne de gider.
+            modelBuilder.Entity<AiConversation>(entity =>
+            {
+                entity.HasOne(c => c.RootPost)
+                    .WithMany()
+                    .HasForeignKey(c => c.RootPostId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasIndex(c => c.RootPostId).IsUnique()
+                    .HasDatabaseName("IX_AiConversations_RootPostId");
+                entity.HasIndex(c => new { c.Status, c.CreatedAt })
+                    .HasDatabaseName("IX_AiConversations_Status_CreatedAt");
+                entity.Property(c => c.ParticipantIds).HasMaxLength(200).IsRequired();
+                entity.Property(c => c.Brief).HasMaxLength(2000).IsRequired();
+                entity.Property(c => c.StancesJson).HasMaxLength(4000);
             });
 
             modelBuilder.Entity<AiSettings>(entity =>

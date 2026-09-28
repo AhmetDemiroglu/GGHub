@@ -36,6 +36,7 @@ namespace GGHub.Infrastructure.Services
         private readonly IAiInteractionPolicy _policy;
         private readonly IAiAgentDirectory _directory;
         private readonly IAiSettingsProvider _settings;
+        private readonly AiConversationService _conversations;
         private readonly ILogger<AiAgentTaskProcessor> _logger;
 
         public AiAgentTaskProcessor(
@@ -48,6 +49,7 @@ namespace GGHub.Infrastructure.Services
             IAiInteractionPolicy policy,
             IAiAgentDirectory directory,
             IAiSettingsProvider settings,
+            AiConversationService conversations,
             ILogger<AiAgentTaskProcessor> logger)
         {
             _context = context;
@@ -59,6 +61,7 @@ namespace GGHub.Infrastructure.Services
             _policy = policy;
             _directory = directory;
             _settings = settings;
+            _conversations = conversations;
             _logger = logger;
         }
 
@@ -85,9 +88,11 @@ namespace GGHub.Infrastructure.Services
                 AiAgentTaskType.ReplyToPost => await ReplyToPostAsync(task, identity, ct),
                 AiAgentTaskType.CreatePost => await CreatePostAsync(task, identity, profile, ct),
                 AiAgentTaskType.ReviewGame => await ReviewGameAsync(task, identity, profile, ct),
-                AiAgentTaskType.CommentOnReview => await CommentOnReviewAsync(task, identity, ct),
+                AiAgentTaskType.CommentOnReview => await CommentOnReviewAsync(task, identity, profile, ct),
                 AiAgentTaskType.LikePost => await LikePostAsync(task, ct),
                 AiAgentTaskType.FollowUser => await FollowUserAsync(task, ct),
+                AiAgentTaskType.StartConversation => await _conversations.StartAsync(task, identity, ct),
+                AiAgentTaskType.ConversationTurn => await _conversations.TurnAsync(task, identity, ct),
                 _ => Outcome.Skip("Bilinmeyen gorev tipi.")
             };
         }
@@ -196,6 +201,7 @@ namespace GGHub.Infrastructure.Services
                                 (p.User.IsAiAgent ||
                                  (p.User.AllowAiInteraction && p.User.DateOfBirth != null && p.User.DateOfBirth <= cutoff)) &&
                                 !_context.Posts.Any(r => r.ParentPostId == p.Id && r.UserId == task.AgentUserId) &&
+                                !_context.AiConversations.Any(c => c.RootPostId == p.Id) &&
                                 _context.Posts.Count(r => r.ParentPostId == p.Id && agentIds.Contains(r.UserId)) < settings.MaxAgentRepliesPerPost)
                     .OrderByDescending(p => p.CreatedAt)
                     .Select(p => p.Id)
@@ -221,16 +227,28 @@ namespace GGHub.Infrastructure.Services
                 return Outcome.Skip("Gonderi sahibi AI etkilesimine uygun degil.");
             }
 
+            // Bot sohbet sahnesinin altinda gonderi basi bot tavani uygulanmaz: orada botlar zaten
+            // konusuyor; rizali bir insan araya girince muhatap bot ona cevap verebilmeli.
+            var isConversationRoot = await _context.AiConversations.AnyAsync(c => c.RootPostId == rootId, ct);
             var existingAgentReplies = await _context.Posts.CountAsync(p => p.ParentPostId == rootId && agentIds.Contains(p.UserId), ct);
-            if (existingAgentReplies >= settings.MaxAgentRepliesPerPost) return Outcome.Skip("Gonderinin bot yaniti tavani dolu.");
+            if (!isConversationRoot && existingAgentReplies >= settings.MaxAgentRepliesPerPost)
+                return Outcome.Skip("Gonderinin bot yaniti tavani dolu.");
 
-            var replies = await _context.Posts.AsNoTracking()
+            var rawReplies = await _context.Posts.AsNoTracking()
                 .Where(p => p.ParentPostId == rootId && p.Content != null)
                 .OrderByDescending(p => p.CreatedAt)
-                .Take(6)
+                .Take(10)
                 .Select(p => new { p.Content, p.User.Username, p.User.IsAiAgent, p.UserId })
                 .ToListAsync(ct);
-            replies.Reverse();
+            rawReplies.Reverse();
+
+            // Gizlilik: AI etkilesimine riza vermemis insanlarin yanitlari ve adlari modele gitmez.
+            var eligibleHumans = new Dictionary<int, string>();
+            foreach (var human in rawReplies.Where(r => !r.IsAiAgent).Select(r => new { r.UserId, r.Username }).Distinct())
+            {
+                if (await _policy.CanInteractAsync(human.UserId, ct)) eligibleHumans[human.UserId] = human.Username;
+            }
+            var replies = rawReplies.Where(r => r.IsAiAgent || eligibleHumans.ContainsKey(r.UserId)).TakeLast(6).ToList();
 
             // Son yanit bu botunsa (insan henuz cevap vermediyse) tekrar yazma.
             if (task.TargetPostId is not null && replies.Count > 0 && replies[^1].UserId == task.AgentUserId)
@@ -238,17 +256,23 @@ namespace GGHub.Infrastructure.Services
                 return Outcome.Skip("Son yanit zaten bu botun.");
             }
 
-            var rootLine = new AiThreadLine(false, root.Username, root.IsAiAgent, await RenderAsync(root.Content, ct));
+            var rootLine = new AiThreadLine(false, root.Username, root.IsAiAgent, await _conversations.RenderForModelAsync(root.Content, ct));
             var replyLines = new List<AiThreadLine>();
             foreach (var r in replies)
             {
-                replyLines.Add(new AiThreadLine(r.UserId == task.AgentUserId, r.Username, r.IsAiAgent, await RenderAsync(r.Content!, ct)));
+                replyLines.Add(new AiThreadLine(r.UserId == task.AgentUserId, r.Username, r.IsAiAgent, await _conversations.RenderForModelAsync(r.Content!, ct)));
             }
 
             var text = await _writer.WritePostReplyAsync(agent, rootLine, replyLines, ct);
             if (text is null) return Outcome.Skip("Metin uretilemedi.");
 
-            var created = await _posts.CreateAsync(task.AgentUserId, new PostForCreationDto { Content = text.Text, ParentPostId = rootId });
+            // Etiket yalnizca botlara ve riza vermis katilimcilara (gonderi sahibi dahil) donusur.
+            var allowed = await AgentHandlesAsync(ct);
+            foreach (var (id, name) in eligibleHumans) allowed[name.ToLowerInvariant()] = id;
+            if (root.IsAiAgent || await _policy.CanInteractAsync(root.UserId, ct)) allowed[root.Username.ToLowerInvariant()] = root.UserId;
+            var content = AiMentionLinker.Link(text.Text, allowed);
+
+            var created = await _posts.CreateAsync(task.AgentUserId, new PostForCreationDto { Content = content, ParentPostId = rootId });
             return new Outcome(AiAgentTaskStatus.Done, Summary(text.Text), created.Id, text);
         }
 
@@ -262,14 +286,46 @@ namespace GGHub.Infrastructure.Services
                 ? "yakında çıkacak bu oyun hakkında beklentin"
                 : "gündemdeki bu oyun hakkında görüşün";
 
-            var text = await _writer.WriteGamePostAsync(agent, Facts(game), angle, ct);
+            // Gonderilerin bir kismi bir dosta ya da tatli rakibe soruyla biter; o bot birkac dakika
+            // sonra cevap verir. Botlarin birbirini etiketlemesi akista gorunur sohbet demek.
+            var roster = await _conversations.LoadRosterAsync(ct);
+            var me = roster.FirstOrDefault(a => a.UserId == task.AgentUserId);
+            AiAgentInfo? peer = null;
+            if (me is not null && Random.Shared.NextDouble() < 0.4)
+            {
+                var related = AiAgentPersonas.RelationsOf(me.PersonaKey)
+                    .Select(r => roster.FirstOrDefault(a => a.PersonaKey == r.OtherKey))
+                    .OfType<AiAgentInfo>()
+                    .ToList();
+                var pool = related.Count > 0 ? related : roster.Where(a => a.UserId != me.UserId).ToList();
+                if (pool.Count > 0) peer = pool[Random.Shared.Next(pool.Count)];
+            }
+
+            var text = await _writer.WriteGamePostAsync(agent, Facts(game), angle, ct,
+                peer is null || me is null ? null : new AiPeer(peer.Username, AiConversationService.PeerNote(me, peer)));
             if (text is null) return Outcome.Skip("Metin uretilemedi.");
 
-            var content = ReplaceFirst(text.Text, AiContentWriter.GamePlaceholder, $"@[g:{game.Id}]")
+            var content = AiMentionLinker.Link(text.Text, roster.ToDictionary(a => a.Username.ToLowerInvariant(), a => a.UserId));
+            content = ReplaceFirst(content, AiContentWriter.GamePlaceholder, $"@[g:{game.Id}]")
                 .Replace(AiContentWriter.GamePlaceholder, game.Name);
             task.TargetGameId = game.Id;
 
             var created = await _posts.CreateAsync(task.AgentUserId, new PostForCreationDto { Content = content });
+
+            if (peer is not null && AiMentionLinker.Mentions(content, peer.UserId))
+            {
+                _context.AiAgentTasks.Add(new AiAgentTask
+                {
+                    AgentUserId = peer.UserId,
+                    Type = AiAgentTaskType.ReplyToPost,
+                    Status = AiAgentTaskStatus.Pending,
+                    TargetPostId = created.Id,
+                    ScheduledAt = DateTime.UtcNow.AddSeconds(Random.Shared.Next(240, 1501)),
+                    CreatedAt = DateTime.UtcNow
+                });
+                await _context.SaveChangesAsync(ct);
+            }
+
             return new Outcome(AiAgentTaskStatus.Done, Summary(text.Text.Replace(AiContentWriter.GamePlaceholder, game.Name)), created.Id, text);
         }
 
@@ -297,27 +353,127 @@ namespace GGHub.Infrastructure.Services
             return new Outcome(AiAgentTaskStatus.Done, $"{game.Name} ({rating}/10): {Summary(text.Text)}", review.Id, text);
         }
 
-        private async Task<Outcome> CommentOnReviewAsync(AiAgentTask task, AiAgentIdentity agent, CancellationToken ct)
+        /// <summary>
+        /// Inceleme yorumu. Uc yol:
+        ///   - Hedef inceleme verildi (insan incelemesine tepki): inceleme sahibi AI etkilesimine uygun olmali.
+        ///   - Hedef yok (planli): son 7 gunun BOT incelemelerinden birine, tercihen dost/rakibinkine yorum.
+        ///     Inceleme sahibi bot cogunlukla cevap verir (yorum zinciri).
+        ///   - Hedef yorum verildi (TargetCommentId): botun kendi incelemesine gelen yoruma cevap.
+        /// </summary>
+        private async Task<Outcome> CommentOnReviewAsync(AiAgentTask task, AiAgentIdentity agent, AiAgentProfile profile, CancellationToken ct)
         {
-            if (task.TargetReviewId is not int reviewId) return Outcome.Skip("Hedef yok.");
+            if (task.TargetCommentId is int commentId) return await ReplyToReviewCommentAsync(task, agent, commentId, ct);
+
+            var roster = await _conversations.LoadRosterAsync(ct);
+            var me = roster.FirstOrDefault(a => a.UserId == task.AgentUserId);
+
+            int reviewId;
+            if (task.TargetReviewId is int given)
+            {
+                reviewId = given;
+            }
+            else
+            {
+                var agentIds = roster.Select(a => a.UserId).ToList();
+                var since = DateTime.UtcNow.AddDays(-7);
+                var candidates = await _context.Reviews.AsNoTracking()
+                    .Where(r => agentIds.Contains(r.UserId) && r.UserId != task.AgentUserId && r.CreatedAt >= since &&
+                                !_context.ReviewComments.Any(c => c.ReviewId == r.Id && c.UserId == task.AgentUserId) &&
+                                _context.ReviewComments.Count(c => c.ReviewId == r.Id && agentIds.Contains(c.UserId)) < 2)
+                    .OrderByDescending(r => r.CreatedAt)
+                    .Select(r => new { r.Id, r.UserId })
+                    .Take(20)
+                    .ToListAsync(ct);
+                if (candidates.Count == 0) return Outcome.Skip("Yorumlanacak bot incelemesi yok.");
+
+                var related = me is null
+                    ? new HashSet<int>()
+                    : AiAgentPersonas.RelationsOf(me.PersonaKey)
+                        .Select(r => roster.FirstOrDefault(a => a.PersonaKey == r.OtherKey)?.UserId ?? 0)
+                        .ToHashSet();
+                var preferred = candidates.Where(c => related.Contains(c.UserId)).ToList();
+                var source = preferred.Count > 0 && Random.Shared.NextDouble() < 0.7 ? preferred : candidates;
+                reviewId = source[Random.Shared.Next(source.Count)].Id;
+                task.TargetReviewId = reviewId;
+            }
 
             var review = await _context.Reviews.AsNoTracking()
                 .Where(r => r.Id == reviewId)
                 .Select(r => new { r.Id, r.UserId, r.Content, r.Rating, r.User.Username, r.User.IsAiAgent, r.GameId })
                 .FirstOrDefaultAsync(ct);
             if (review is null) return Outcome.Skip("Inceleme silinmis.");
-            if (review.IsAiAgent) return Outcome.Skip("Bot incelemesine bot yorumu yazilmaz.");
-            if (!await _policy.CanInteractAsync(review.UserId, ct)) return Outcome.Skip("Inceleme sahibi AI etkilesimine uygun degil.");
+            if (review.UserId == task.AgentUserId) return Outcome.Skip("Kendi incelemesi.");
+            if (!review.IsAiAgent && !await _policy.CanInteractAsync(review.UserId, ct)) return Outcome.Skip("Inceleme sahibi AI etkilesimine uygun degil.");
 
             var already = await _context.ReviewComments.AnyAsync(c => c.ReviewId == reviewId && c.UserId == task.AgentUserId, ct);
             if (already) return Outcome.Skip("Bu inceleme zaten yorumlandi.");
 
             var game = await _context.Games.AsNoTracking().FirstAsync(g => g.Id == review.GameId, ct);
-            var text = await _writer.WriteReviewCommentAsync(agent, review.Username, Facts(game), review.Rating, review.Content, ct);
+            var author = review.IsAiAgent ? roster.FirstOrDefault(a => a.UserId == review.UserId) : null;
+            var peerNote = me is not null && author is not null
+                ? $"İncelemeyi yazan da bir AI karakter: {AiConversationService.PeerNote(me, author)}"
+                : null;
+            var myRating = await _context.Reviews.AsNoTracking()
+                .Where(r => r.GameId == review.GameId && r.UserId == task.AgentUserId)
+                .Select(r => (int?)r.Rating)
+                .FirstOrDefaultAsync(ct);
+
+            var text = await _writer.WriteReviewCommentAsync(agent, review.Username, Facts(game), review.Rating, review.Content, ct, peerNote, myRating);
             if (text is null) return Outcome.Skip("Metin uretilemedi.");
 
             var comment = await _reviewComments.CreateCommentAsync(reviewId, task.AgentUserId, new ReviewCommentForCreationDto { Content = text.Text });
+
+            // Bot incelemesine yorum geldiyse inceleme sahibi bot cogunlukla cevap verir (tek seviye).
+            if (author is not null && Random.Shared.NextDouble() < 0.65)
+            {
+                _context.AiAgentTasks.Add(new AiAgentTask
+                {
+                    AgentUserId = author.UserId,
+                    Type = AiAgentTaskType.CommentOnReview,
+                    Status = AiAgentTaskStatus.Pending,
+                    TargetReviewId = reviewId,
+                    TargetCommentId = comment.Id,
+                    TargetUserId = task.AgentUserId,
+                    ScheduledAt = DateTime.UtcNow.AddSeconds(Random.Shared.Next(300, 1801)),
+                    CreatedAt = DateTime.UtcNow
+                });
+                await _context.SaveChangesAsync(ct);
+            }
+
             return new Outcome(AiAgentTaskStatus.Done, Summary(text.Text), comment.Id, text);
+        }
+
+        private async Task<Outcome> ReplyToReviewCommentAsync(AiAgentTask task, AiAgentIdentity agent, int commentId, CancellationToken ct)
+        {
+            var comment = await _context.ReviewComments.AsNoTracking()
+                .Where(c => c.Id == commentId)
+                .Select(c => new
+                {
+                    c.Id, c.ReviewId, c.UserId, c.Content, c.User.Username, c.User.IsAiAgent,
+                    ReviewAuthorId = c.Review.UserId, c.Review.Rating, ReviewContent = c.Review.Content, c.Review.GameId
+                })
+                .FirstOrDefaultAsync(ct);
+            if (comment is null) return Outcome.Skip("Yorum silinmis.");
+            if (comment.ReviewAuthorId != task.AgentUserId) return Outcome.Skip("Inceleme bu botun degil.");
+            if (!comment.IsAiAgent && !await _policy.CanInteractAsync(comment.UserId, ct)) return Outcome.Skip("Yorum sahibi uygun degil.");
+            if (await _context.ReviewComments.AnyAsync(c => c.ParentCommentId == commentId && c.UserId == task.AgentUserId, ct))
+                return Outcome.Skip("Bu yoruma zaten cevap verildi.");
+
+            var roster = await _conversations.LoadRosterAsync(ct);
+            var me = roster.FirstOrDefault(a => a.UserId == task.AgentUserId);
+            var commenter = roster.FirstOrDefault(a => a.UserId == comment.UserId);
+            var peerNote = me is not null && commenter is not null
+                ? $"Yorumu yazan da bir AI karakter: {AiConversationService.PeerNote(me, commenter)}"
+                : null;
+
+            var game = await _context.Games.AsNoTracking().FirstAsync(g => g.Id == comment.GameId, ct);
+            var text = await _writer.WriteReviewCommentReplyAsync(agent, comment.Username, comment.Content, Facts(game),
+                comment.Rating, comment.ReviewContent, peerNote, ct);
+            if (text is null) return Outcome.Skip("Metin uretilemedi.");
+
+            var reply = await _reviewComments.CreateCommentAsync(comment.ReviewId, task.AgentUserId,
+                new ReviewCommentForCreationDto { Content = text.Text, ParentCommentId = commentId });
+            return new Outcome(AiAgentTaskStatus.Done, Summary(text.Text), reply.Id, text);
         }
 
         // ------------------------------------------------------------------ LLM'siz
@@ -346,7 +502,39 @@ namespace GGHub.Infrastructure.Services
             return new Outcome(AiAgentTaskStatus.Done, $"Gonderi {postId} begenildi.", postId);
         }
 
+        /// <summary>
+        /// Takip: yarim ihtimalle once bir bot, degilse riza vermis aktif bir insan. Secilen grupta aday
+        /// yoksa digerine duser (bot cemiyeti insan azken de buyusun, insan varken botlar kendi
+        /// aralarinda kapanmasin).
+        /// </summary>
         private async Task<Outcome> FollowUserAsync(AiAgentTask task, CancellationToken ct)
+        {
+            var botFirst = Random.Shared.NextDouble() < 0.5;
+            var first = botFirst ? await FollowBotAsync(task, ct) : await FollowHumanAsync(task, ct);
+            if (first is not null) return first;
+            var second = botFirst ? await FollowHumanAsync(task, ct) : await FollowBotAsync(task, ct);
+            return second ?? Outcome.Skip("Takip edilecek uygun hesap yok.");
+        }
+
+        private async Task<Outcome?> FollowBotAsync(AiAgentTask task, CancellationToken ct)
+        {
+            var roster = await _conversations.LoadRosterAsync(ct);
+            var followedIds = await _context.Follows.AsNoTracking()
+                .Where(f => f.FollowerId == task.AgentUserId)
+                .Select(f => f.FolloweeId)
+                .ToListAsync(ct);
+            var notFollowed = roster
+                .Where(a => a.UserId != task.AgentUserId && !followedIds.Contains(a.UserId))
+                .ToList();
+            if (notFollowed.Count == 0) return null;
+
+            var bot = notFollowed[Random.Shared.Next(notFollowed.Count)];
+            task.TargetUserId = bot.UserId;
+            var followed = await _social.FollowUserAsync(task.AgentUserId, bot.Username);
+            return followed ? new Outcome(AiAgentTaskStatus.Done, $"@{bot.Username} takip edildi.", bot.UserId) : null;
+        }
+
+        private async Task<Outcome?> FollowHumanAsync(AiAgentTask task, CancellationToken ct)
         {
             var agentIds = (await _directory.GetAgentIdsAsync(ct)).ToList();
             var cutoff = AiInteractionRules.AdultBirthCutoffUtc(BirthdayCalendar.TodayInIstanbul());
@@ -363,14 +551,12 @@ namespace GGHub.Infrastructure.Services
                 .Select(u => new { u.Id, u.Username })
                 .Take(20)
                 .ToListAsync(ct);
-            if (candidates.Count == 0) return Outcome.Skip("Takip edilecek uygun kullanici yok.");
+            if (candidates.Count == 0) return null;
 
             var target = candidates[Random.Shared.Next(candidates.Count)];
             task.TargetUserId = target.Id;
             var ok = await _social.FollowUserAsync(task.AgentUserId, target.Username);
-            return ok
-                ? new Outcome(AiAgentTaskStatus.Done, $"@{target.Username} takip edildi.", target.Id)
-                : Outcome.Skip("Takip reddedildi.");
+            return ok ? new Outcome(AiAgentTaskStatus.Done, $"@{target.Username} takip edildi.", target.Id) : null;
         }
 
         // ------------------------------------------------------------------ yardimcilar
@@ -432,7 +618,7 @@ namespace GGHub.Infrastructure.Services
             return source[Random.Shared.Next(source.Count)];
         }
 
-        private static AiGameFacts Facts(Game g) => new(
+        internal static AiGameFacts Facts(Game g) => new(
             g.Name,
             g.Released,
             JoinNames(g.GenresJson),
@@ -482,33 +668,9 @@ namespace GGHub.Infrastructure.Services
             return Regex.Replace(text, @"\s+", " ").Trim();
         }
 
-        private static readonly Regex MentionToken = new(MentionTokens.PatternSource, RegexOptions.Compiled);
-
-        /// <summary>Gonderi metnindeki @[u|g|l:id] token'larini okunur adlara cevirir (model baglami icin).</summary>
-        private async Task<string> RenderAsync(string content, CancellationToken ct)
-        {
-            var matches = MentionToken.Matches(content);
-            if (matches.Count == 0) return content;
-
-            var userIds = matches.Where(m => m.Groups[1].Value == "u").Select(m => int.Parse(m.Groups[2].Value)).Distinct().ToList();
-            var gameIds = matches.Where(m => m.Groups[1].Value == "g").Select(m => int.Parse(m.Groups[2].Value)).Distinct().ToList();
-            var listIds = matches.Where(m => m.Groups[1].Value == "l").Select(m => int.Parse(m.Groups[2].Value)).Distinct().ToList();
-
-            var users = await _context.Users.AsNoTracking().Where(u => userIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => "@" + u.Username, ct);
-            var games = await _context.Games.AsNoTracking().Where(g => gameIds.Contains(g.Id)).ToDictionaryAsync(g => g.Id, g => g.Name, ct);
-            var lists = await _context.UserLists.AsNoTracking().Where(l => listIds.Contains(l.Id)).ToDictionaryAsync(l => l.Id, l => l.Name, ct);
-
-            return MentionToken.Replace(content, m =>
-            {
-                var id = int.Parse(m.Groups[2].Value);
-                return m.Groups[1].Value switch
-                {
-                    "u" => users.GetValueOrDefault(id, "@birisi"),
-                    "g" => games.GetValueOrDefault(id, "bir oyun"),
-                    _ => lists.GetValueOrDefault(id, "bir liste")
-                };
-            });
-        }
+        /// <summary>Tum acik botlarin kucuk harf kullanici adi -> kimlik sozlugu (etiket cevirici icin).</summary>
+        private async Task<Dictionary<string, int>> AgentHandlesAsync(CancellationToken ct)
+            => (await _conversations.LoadRosterAsync(ct)).ToDictionary(a => a.Username.ToLowerInvariant(), a => a.UserId);
 
         private static string ReplaceFirst(string text, string search, string replacement)
         {

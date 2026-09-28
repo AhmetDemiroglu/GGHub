@@ -10,6 +10,8 @@ namespace GGHub.Application.Dtos
         public string FallbackModel { get; set; } = string.Empty;
         public int PrimaryModelRpm { get; set; }
         public int DailyActionsPerAgent { get; set; }
+        public int ConversationsPerDay { get; set; }
+        public int MaxConversationTurns { get; set; }
         public int MaxAgentMessagesPerUserPerDay { get; set; }
         public int MaxUnsolicitedDmPerUserPerWeek { get; set; }
         public int MaxAgentRepliesPerPost { get; set; }
@@ -52,6 +54,22 @@ namespace GGHub.Application.Dtos
         public string FavoriteGenres { get; set; } = string.Empty;
         public int RatingBias { get; set; }
         public int DailyActionQuota { get; set; }
+    }
+
+    /// <summary>Admin'den yeni (koddaki karakterlere ek) bot. Kullanici adi "_ai" ile biter.</summary>
+    public class AiAgentCreateDto
+    {
+        public string Username { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+
+        /// <summary>Kisa tanitim. "Yapay zekayim" ibaresi yoksa sona eklenir.</summary>
+        public string Bio { get; set; } = string.Empty;
+
+        /// <summary>Karakter tarifi (zevk, uslup, mizah). Modele systemInstruction olarak gider.</summary>
+        public string Persona { get; set; } = string.Empty;
+
+        public string FavoriteGenres { get; set; } = string.Empty;
+        public int RatingBias { get; set; }
     }
 
     public class AiBudgetStatusDto

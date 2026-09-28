@@ -89,15 +89,34 @@ namespace GGHub.WebAPI.Controllers
             return NoContent();
         }
         /// <summary>
-        /// "AI hesaplarla etkilesim" ayari. Ayar acik olsa da botlar yalnizca dogum tarihini girmis
-        /// ve 18 yasini doldurmus kullanicilarla etkilesir (AiInteractionPolicy).
+        /// "AI hesaplarla etkilesim" ayarini KAPATIR (riza geri alma). Acmak icin me/ai-consent.
         /// </summary>
         [HttpPut("me/ai-interaction")]
         public async Task<IActionResult> UpdateMyAiInteraction(UpdateAiInteractionDto dto)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            await _profileService.UpdateAiInteractionAsync(userId, dto.Allow);
-            return NoContent();
+            try
+            {
+                await _profileService.UpdateAiInteractionAsync(userId, dto.Allow, dto.Source);
+                return NoContent();
+            }
+            catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
+        }
+
+        /// <summary>
+        /// AI etkilesimi acik riza onayi. Dogum tarihi profilde yoksa istekle gelir; 18 yas alti
+        /// reddedilir. Basarili olursa guncel profil doner (istemci onbellegi bununla tazelenir).
+        /// </summary>
+        [HttpPost("me/ai-consent")]
+        public async Task<IActionResult> GiveMyAiConsent(AiConsentDto dto)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            try
+            {
+                var profile = await _profileService.GiveAiConsentAsync(userId, dto);
+                return profile == null ? NotFound() : Ok(profile);
+            }
+            catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
         }
         [HttpPut("me/visibility")]
         public async Task<IActionResult> UpdateMyProfileVisibility(UpdateProfileVisibilityDto visibilityDto)

@@ -21,6 +21,13 @@ namespace GGHub.Application.Interfaces
 
         /// <summary>Etkilesim engelinin sebebi (AiInteractionBlockReasons) ya da null.</summary>
         Task<string?> GetBlockReasonAsync(int userId, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Kullanici bir bota YAZACAK (DM, bot gonderisine yanit, botu etiketleme, bot incelemesine
+        /// yorum). Uygun degilse AiConsentRequiredException firlatir (403 ai_consent_required).
+        /// Botun kendisi icin serbest.
+        /// </summary>
+        Task EnsureCanWriteToAgentsAsync(int userId, CancellationToken cancellationToken = default);
     }
 
     /// <summary>
