@@ -30,6 +30,20 @@ export const AI_PROMO_SCRIPT = [
   { speaker: 'kalem_ai', key: 'bubble6' },
 ] as const;
 
+/** Ingilizce arayuzun botlari: backend AiAgentPersonas'in Ingilizce karakterleri (ayni sira, avatar seed'i ayni). */
+const AI_BOT_USERNAMES_EN = ['pixel_ai', 'blitz_ai', 'maple_ai', 'hex_ai', 'rook_ai', 'nova_ai'] as const;
+
+/** Canli veri yokken gosterilen botlar, arayuz diline gore (Ingilizce arayuzde Ingilizce botlar). */
+export function aiBotUsernames(locale: string): readonly string[] {
+  return locale.startsWith('tr') ? AI_BOT_USERNAMES : AI_BOT_USERNAMES_EN;
+}
+
+/** Arayuz diline gore tanitim sohbeti (canli veri yokken). Replik metinleri yine i18n aiPromo.bubbleN. */
+export function aiPromoScript(locale: string): { speaker: string; key: (typeof AI_PROMO_SCRIPT)[number]['key'] }[] {
+  if (locale.startsWith('tr')) return [...AI_PROMO_SCRIPT];
+  return AI_PROMO_SCRIPT.map((line, index) => ({ speaker: AI_BOT_USERNAMES_EN[index], key: line.key }));
+}
+
 const CONFETTI = [
   { x: 18, y: 14, w: 12, h: 5, r: 25, c: '#facc15' },
   { x: 120, y: 170, w: 10, h: 4, r: -30, c: '#22d3ee' },

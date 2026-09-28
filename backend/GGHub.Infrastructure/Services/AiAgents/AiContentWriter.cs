@@ -59,7 +59,10 @@ namespace GGHub.Infrastructure.Services
             - Biri kendine zarar vermekten ya da ciddi bir sıkıntıdan bahsederse: nazik ol, yalnız olmadığını söyle ve bir yakınından ya da profesyonel destekten (acil durumda 112) yardım almasını öner. Oyun sohbetine zorlama.
             - Çıktı dili: {AiLanguage.ModelName(lang)}. Yazdığın metnin tamamı bu dilde olsun; bu talimatların Türkçe olması çıktı dilini değiştirmez. (Output language: {AiLanguage.ModelName(lang)}.)
             - Kısa ve doğal yaz, gerçek bir sohbet gibi. Cümle uzunluğunu değiştir. Emoji en fazla iki tane. Hashtag, madde işareti, başlık ve markdown kullanma. Uzun tire (— ya da –) kullanma.
-            - GGHub'da seninle birlikte başka AI karakterler de yaşıyor. Onlarla şakalaşabilir, hafifçe takılabilir, fikir ayrılığına düşebilirsin. Hakaret, küçümseme ve kaba dil yok; takılman her zaman sevimli kalsın.
+            - GGHub'da seninle birlikte başka AI karakterler de yaşıyor ve aranızda gerçek fikir ayrılıkları var. Kendi zevkini savun, karşı tarafın argümanıyla ve zevkiyle açıkça dalga geç, alaycı ol, kolay kolay geri adım atma; uzlaşmak zorunda değilsin. Uysal ve yumuşak olma ama sevimsiz de olma: keskin ve zeki.
+            - Sınır kesin: hedef her zaman fikir ve zevktir, kişi değil. Küfür, hakaret, aşağılama, nefret söylemi ve kimlik (cinsiyet, köken, din, engel) üzerinden laf yok.
+            - İnsan kullanıcılara karşı her zaman sıcak ve saygılısın; sert takılma ve alay yalnızca AI karakterler arasında.
+            - Her sohbette aynı kalıbı tekrar etme: girişini, cümle yapını ve kapanışını değiştir.
             - Birine seslenirken @kullaniciadi yaz (örnek: @{(AiLanguage.Normalize(lang) == AiLanguage.En ? "pixel_ai" : "retro_ai")}). Sana verilmeyen kullanıcı adlarını uydurma.
             - Yalnızca yazacağın metni ver. Açıklama, tırnak, "İşte cevabım" gibi giriş ekleme.
             """;
@@ -159,12 +162,13 @@ namespace GGHub.Infrastructure.Services
         /// yerine yer tutucu yazar (motor dogru etiketi koyar).
         /// </summary>
         public Task<AiText?> WriteConversationOpeningAsync(
-            AiAgentIdentity agent, string brief, string? stance, IReadOnlyList<AiPeer> addressees,
+            AiAgentIdentity agent, string brief, string tone, string? stance, IReadOnlyList<AiPeer> addressees,
             AiGameFacts? game, bool isPoll, CancellationToken ct)
         {
             var sb = new StringBuilder();
             sb.AppendLine("GGHub'da diğer AI karakterlerle herkesin görebileceği bir sohbet başlatıyorsun.");
             sb.AppendLine($"Sahne: {brief}");
+            sb.AppendLine($"Sahnenin tonu: {tone}");
             if (!string.IsNullOrWhiteSpace(stance)) sb.AppendLine($"Senin tarafın: {stance}");
             sb.AppendLine("Seslendiğin AI karakterler:");
             foreach (var a in addressees) sb.AppendLine($"- @{a.Username}: {a.Note}");
@@ -178,7 +182,7 @@ namespace GGHub.Infrastructure.Services
             sb.AppendLine();
             sb.AppendLine(isPoll
                 ? "Bu bir anket gönderisi: seçenekler ayrıca eklenecek, onları yazma. Kısa ve eğlenceli bir anket sorusu yaz, seslendiğin karakterleri @ ile an."
-                : "Seslendiğin karakterleri @ ile anarak sohbeti başlat. Merak uyandıran, cevap vermeye davet eden bir cümle kur.");
+                : "Seslendiğin karakterleri @ ile anarak sohbeti başlat. İddialı ve kışkırtıcı bir açılış yap: karşı tarafı cevap vermeye mecbur bırak.");
             sb.AppendLine("En fazla 140 karakter.");
 
             return RunAsync(BaseRules(agent, agent.Language), new[] { new GeminiTurn("user", sb.ToString()) }, agent.Language, 220, 150, 1.0, ct,
@@ -187,16 +191,18 @@ namespace GGHub.Infrastructure.Services
 
         /// <summary>
         /// Acik bir sohbet sahnesinde botun sirasi. Butun sahneyi okur, son konusana @ ile cevap verir.
-        /// Son turda sohbeti baglar.
+        /// Ton, hamle ve (son turda) kapanis tarzi sahne dramaturjisinden gelir (AiSceneDrama):
+        /// her sahne farkli akar, sonu onceden belli degildir.
         /// </summary>
         public Task<AiText?> WriteConversationTurnAsync(
             AiAgentIdentity agent, string brief, string? stance, string relationNote,
             AiThreadLine root, IReadOnlyList<AiThreadLine> replies, string? addresseeUsername,
-            bool isFinal, string lang, CancellationToken ct)
+            bool isFinal, AiSceneDirection direction, string lang, CancellationToken ct)
         {
             var sb = new StringBuilder();
             sb.AppendLine("GGHub'da AI karakterlerin herkese açık sohbetindesin.");
             sb.AppendLine($"Sahne: {brief}");
+            sb.AppendLine($"Sahnenin tonu: {direction.Tone}");
             if (!string.IsNullOrWhiteSpace(stance)) sb.AppendLine($"Senin tarafın: {stance}");
             if (!string.IsNullOrWhiteSpace(relationNote)) sb.AppendLine(relationNote);
             sb.AppendLine();
@@ -215,9 +221,9 @@ namespace GGHub.Infrastructure.Services
             {
                 sb.AppendLine("Sıra sende. Sohbete bir şey kat.");
             }
-            sb.AppendLine(isFinal
-                ? "Bu sohbetteki son mesajın: tatlı bir kapanış yap. Anlaşabilir, ısrar edebilir ya da esprili bir uzlaşma önerebilirsin."
-                : "Kendini tekrar etme, yeni bir argüman, espri ya da soru ekle. Gerekirse itiraz et, ikna olursan bunu söyle.");
+            sb.AppendLine(isFinal && direction.Ending is not null
+                ? $"Bu sohbetteki son mesajın. {direction.Ending}"
+                : $"Hamlen: {direction.Move} Kendini ve önceki mesajları tekrar etme.");
             sb.AppendLine("En fazla 170 karakter.");
 
             return RunAsync(BaseRules(agent, lang), new[] { new GeminiTurn("user", sb.ToString()) }, lang, 220, 175, 1.0, ct);

@@ -1,6 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { AuthContext } from "@core/contexts/auth-context";
-import { defaultLocale, localeCookieName, localeStorageKey } from "@/i18n/config";
+import { getClientLocale } from "@core/lib/client-locale";
 import { AI_CONSENT_ERROR_CODE, AiConsentReason, requestAiConsent } from "@core/lib/ai-consent-bridge";
 
 type RefreshQueueItem = {
@@ -32,21 +32,6 @@ export function setAuthContextRef(context: React.ContextType<typeof AuthContext>
 let isRefreshing = false;
 let failedQueue: RefreshQueueItem[] = [];
 
-const getBrowserLocale = () => {
-    if (typeof window === "undefined") {
-        return defaultLocale;
-    }
-
-    return (
-        localStorage.getItem(localeStorageKey) ||
-        document.cookie
-            .split("; ")
-            .find((item) => item.startsWith(`${localeCookieName}=`))
-            ?.split("=")[1] ||
-        defaultLocale
-    );
-};
-
 const processQueue = (error: unknown, token: string | null = null) => {
     failedQueue.forEach((pending) => {
         if (error) {
@@ -66,7 +51,8 @@ axiosInstance.interceptors.request.use(
             config.headers.Authorization = `Bearer ${accessToken}`;
         }
 
-        config.headers["Accept-Language"] = getBrowserLocale();
+        // Ekranda gorunen dil (URL yolu) once: sunucu bot/kulup verisini bu dile gore suzer.
+        config.headers["Accept-Language"] = getClientLocale();
         return config;
     },
     (error: AxiosError) => Promise.reject(error)

@@ -107,11 +107,19 @@ namespace GGHub.Infrastructure.Services
                 }
             }
 
-            // Sahne dil grubunda kurulur: tek botu kalan grup ev sahibi olamaz. Kalanlardan duz rastgele
-            // secim, ev sahibini gruplardan bot sayisiyla orantili verir (10 TR + 4 EN: ~%29 EN sahne).
-            var hosts = agents.GroupBy(a => a.Language).Where(g => g.Count() >= 2).SelectMany(g => g).Select(a => a.UserId).ToList();
-            planned += await PlanConversationsAsync(hosts, settings.ConversationsPerDay,
-                dayStartUtc, remainingActiveMinutes, intervalMinutes, ct);
+            // Sahne dil grubunda kurulur, gunluk sahne butcesi de gruplara bot sayisiyla orantili
+            // bolunur (10 TR + 4 EN, 8 sahne: 6 + 2). Ortak butce olsaydi gun icinde erken uyanan grup
+            // hepsini harcar, oteki grubun izleyicisi bos "canli" listesi gorurdu. Tek botu kalan grup
+            // sahne kuramaz (sahne en az 2 bot ister).
+            await _conversations.AbandonStaleAsync(ct);
+            var groups = agents.GroupBy(a => a.Language).Where(g => g.Count() >= 2).ToList();
+            var groupBots = groups.Sum(g => g.Count());
+            foreach (var group in groups)
+            {
+                var perDay = Math.Max(1, (int)Math.Round(settings.ConversationsPerDay * group.Count() / (double)groupBots));
+                planned += await PlanConversationsAsync(group.Select(a => a.UserId).ToList(),
+                    settings.ConversationsPerDay > 0 ? perDay : 0, dayStartUtc, remainingActiveMinutes, intervalMinutes, ct);
+            }
 
             if (planned > 0)
             {
@@ -122,18 +130,17 @@ namespace GGHub.Infrastructure.Services
         }
 
         /// <summary>
-        /// Bot sohbet sahneleri: gunluk hedefi (ConversationsPerDay) aktif pencereye yayar. Ev sahibi
-        /// aday listesinden rastgele bir bot; sahnenin kendisi (konu, katilimcilar) gorev islenirken
-        /// ev sahibinin dil grubundan secilir.
+        /// Bir dil grubunun sahneleri: grubun gunluk payini (perDay) aktif pencereye yayar. Ev sahibi
+        /// gruptan rastgele bir bot; sahnenin kendisi (konu, katilimcilar) gorev islenirken ev
+        /// sahibinin dil grubundan secilir.
         /// </summary>
         private async Task<int> PlanConversationsAsync(
             List<int> agentIds, int perDay, DateTime dayStartUtc, int remainingActiveMinutes, int intervalMinutes, CancellationToken ct)
         {
-            await _conversations.AbandonStaleAsync(ct);
             if (perDay <= 0 || agentIds.Count < 2) return 0;
 
             var startedToday = await _context.AiAgentTasks.CountAsync(t =>
-                t.Type == AiAgentTaskType.StartConversation && t.CreatedAt >= dayStartUtc, ct);
+                t.Type == AiAgentTaskType.StartConversation && t.CreatedAt >= dayStartUtc && agentIds.Contains(t.AgentUserId), ct);
             var remaining = perDay - startedToday;
             if (remaining <= 0) return 0;
 

@@ -505,7 +505,7 @@ namespace GGHub.Infrastructure.Services
             // Ag disi kaynaklar (zevk, ortak takip, trend, taban) yazar suzgecsiz calisabiliyor: izleyicinin
             // arayuz dilinde olmayan botlarin kartlari burada elenir. Takip edilen botlar ag icinde, kalir.
             var otherLanguageBots = await OtherLanguageAgentIdsAsync();
-            candidates.RemoveAll(c => sourceOf[c.Dto] != DiscoverSource.InNetwork &&
+            candidates.RemoveAll(c => sourceOf.TryGetValue(c.Dto, out var source) && source != DiscoverSource.InNetwork &&
                                       c.Dto.Actor?.Id is int actorId && otherLanguageBots.Contains(actorId));
 
             return await FinalizeAsync(candidates, currentUserId, limit, mutualIds, new DiscoverContext(taste, sourceOf, followingIds.ToHashSet()));

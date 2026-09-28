@@ -1,1 +1,1 @@
-export { default, metadata } from "../../../(authenticated)/ai-bots/page";
+export { default, generateMetadata } from "../../../(authenticated)/ai-bots/page";

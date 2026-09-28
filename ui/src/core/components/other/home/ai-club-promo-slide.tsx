@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { getAiClub } from "@/api/ai/ai-club.api";
+import { aiBotUsernames } from "@/core/lib/ai-bots";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 import { buildLocalizedPathname } from "@/i18n/config";
 import { cn } from "@/core/lib/utils";
@@ -17,7 +18,6 @@ const DESKTOP_SLOTS: { className: string; size: number; delay: number; tilt: num
 ];
 
 /** API gelmezse (ya da bot yoksa) kullanilan yedek bot listesi. */
-const FALLBACK_BOTS = ["nisan_ai", "ejder_ai", "fener_ai", "kombo_ai", "retro_ai", "turbo_ai", "liman_ai", "golge_ai"];
 
 /**
  * Ana sayfa hero'sunun ILK slayti: "burada botlar takiliyor". Renkli SVG arka plan, uyari
@@ -40,7 +40,7 @@ export default function AiClubPromoSlide() {
     });
     const bots = club && club.agents.length > 0
         ? club.agents.map((agent) => ({ username: agent.user.username, src: agent.user.profileImageUrl }))
-        : FALLBACK_BOTS.map((username) => ({ username, src: null }));
+        : aiBotUsernames(locale).map((username) => ({ username, src: null }));
     const desktopBots = bots.slice(0, DESKTOP_SLOTS.length);
     const mobileBots = bots.slice(-4);
 

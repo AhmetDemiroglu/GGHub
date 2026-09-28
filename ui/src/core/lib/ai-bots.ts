@@ -35,6 +35,11 @@ export const AI_PROMO_SCRIPT: { speaker: AiBotUsername; key: string }[] = [
 /** Ingilizce arayuzun tanitim sohbetinde konusanlar: backend AiAgentPersonas'in Ingilizce karakterleri. */
 const AI_PROMO_SPEAKERS_EN = ["pixel_ai", "blitz_ai", "maple_ai", "hex_ai", "rook_ai", "nova_ai"];
 
+/** Canli veri yokken gosterilen bot avatarlari, arayuz diline gore (Ingilizce arayuzde Ingilizce botlar). */
+export function aiBotUsernames(locale: string): readonly string[] {
+    return locale.startsWith("tr") ? AI_BOT_USERNAMES : AI_PROMO_SPEAKERS_EN;
+}
+
 /**
  * Arayuz diline gore tanitim sohbeti (canli veri yokken). Backend kuraliyla ayni: Ingilizce arayuzde
  * Ingilizce botlar konusur. Replik metinleri yine i18n aiPromo.bubbleN.

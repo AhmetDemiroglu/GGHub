@@ -93,10 +93,10 @@ namespace GGHub.Infrastructure.Services
             var interest = AiAgentPersonas.Interest(other.PersonaKey);
             var who = string.IsNullOrWhiteSpace(interest) ? other.DisplayName : $"{other.DisplayName} ({interest})";
             var rel = AiAgentPersonas.Between(self.PersonaKey, other.PersonaKey);
-            if (rel is null) return $"{who}. Aranız iyi, ara sıra takılırsınız.";
+            if (rel is null) return $"{who}. Aranız fena değil ama fikir ayrılığında kimse geri adım atmaz.";
             return rel.Value.Rival
-                ? $"{who}. Tatlı rakibin: \"{rel.Value.Axis}\" konusunda hep atışırsınız."
-                : $"{who}. Yakın arkadaşın, ortak noktanız: {rel.Value.Axis}.";
+                ? $"{who}. Ezeli rakibin: \"{rel.Value.Axis}\" konusunda hep kapışırsınız ve ikiniz de haklı olduğunuza eminsiniz."
+                : $"{who}. Yakın arkadaşın, ortak noktanız: {rel.Value.Axis}. Arkadaş da olsanız takılmaktan geri durmazsın.";
         }
 
         /// <summary>
@@ -193,9 +193,15 @@ namespace GGHub.Infrastructure.Services
 
             var addressees = plan.Participants.Where(p => p.UserId != host.UserId).ToList();
             var isPoll = plan.Kind == AiConversationKind.Plan;
+
+            // Dramaturji: ton ve kapanis sahne acilirken cekilir, turlar boyunca sabit (bkz. AiSceneDrama).
+            var stances = new Dictionary<string, string>(plan.Stances) { [AiSceneDrama.ToneKey] = AiSceneDrama.PickTone() };
+            if (AiSceneDrama.PickEnding(plan.Kind) is string ending) stances[AiSceneDrama.EndingKey] = ending;
+
             var text = await _writer.WriteConversationOpeningAsync(
                 identity,
                 plan.Brief,
+                stances[AiSceneDrama.ToneKey],
                 plan.Stances.GetValueOrDefault(host.UserId.ToString()),
                 addressees.Select(a => new AiPeer(a.Username, PeerNote(host, a))).ToList(),
                 plan.Game is null ? null : AiAgentTaskProcessor.Facts(plan.Game, host.Language),
@@ -225,7 +231,6 @@ namespace GGHub.Infrastructure.Services
 
             var created = await _posts.CreateAsync(host.UserId, dto);
 
-            var stances = new Dictionary<string, string>(plan.Stances);
             if (plan.PollGames is not null) stances["options"] = string.Join(",", plan.PollGames.Select(g => g.Id));
 
             var now = DateTime.UtcNow;
@@ -308,13 +313,13 @@ namespace GGHub.Infrastructure.Services
                     var stances = new Dictionary<string, string>
                     {
                         [host.UserId.ToString()] = $"Sen bu oyuna {pick.Mine}/10 verdin. @{other.Username} ise {pick.Other}/10 verdi; sen onun puanını {(pick.Mine > pick.Other ? "fazla düşük" : "fazla yüksek")} buluyorsun ve bunu ona açıkça söylüyorsun.",
-                        [other.UserId.ToString()] = $"Sen bu oyuna {pick.Other}/10 verdin ve puanının arkasındasın. @{host.Username} ile aynı fikirde değilsin; çok ikna edici bir argüman gelirse biraz yumuşayabilirsin."
+                        [other.UserId.ToString()] = $"Sen bu oyuna {pick.Other}/10 verdin ve puanının arkasındasın. @{host.Username} ile aynı fikirde değilsin; onun puanını gülünç buluyorsun ve bunu saklamıyorsun."
                     };
                     var referee = PickThird(host, roster, participants, preferFriendOf: other);
                     if (referee is not null && Random.Shared.NextDouble() < 0.45)
                     {
                         participants.Add(referee);
-                        stances[referee.UserId.ToString()] = "İkisinin arasına hakem gibi giriyorsun ama kendi zevkine göre bir tarafa hafifçe kayıyorsun.";
+                        stances[referee.UserId.ToString()] = "İkisinin arasına hakem gibi giriyorsun ama tarafsız değilsin: birine yandaş çıkıp öbürüne laf sokuyorsun.";
                     }
                     return new ScenePlan(AiConversationKind.Debate, participants, game,
                         $"{host.DisplayName} ile {other.DisplayName} aynı oyuna çok farklı puan verdi ({pick.Mine}/10 ve {pick.Other}/10) ve bunu tartışıyorlar.",
@@ -387,7 +392,7 @@ namespace GGHub.Infrastructure.Services
                 $"{host.DisplayName}, AI arkadaşlarıyla bu dönem hangi oyunu birlikte takip edeceklerini planlıyor ve anket açtı. Seçenekler: {names}. Herkes bir oyun seçip gerekçesini söyleyecek, sonda {host.DisplayName} sonucu duyuracak.",
                 new Dictionary<string, string>
                 {
-                    [host.UserId.ToString()] = "Anketi sen açıyorsun: arkadaşlarını oy vermeye çağır, biraz da kendi favorini ima et."
+                    [host.UserId.ToString()] = "Anketi sen açıyorsun: arkadaşlarını oy vermeye çağır, kendi favorini dayat, öbür seçenekleri hafifçe küçümse."
                 },
                 Math.Max(3, turns), games);
         }
@@ -408,14 +413,14 @@ namespace GGHub.Infrastructure.Services
                 var participants = new List<AiAgentInfo> { host, expert };
                 var stances = new Dictionary<string, string>
                 {
-                    [host.UserId.ToString()] = $"Bu oyunun türü senin alanın değil. Merak ediyorsun, biraz da şüphecisin; @{expert.Username} konunun uzmanı olduğu için ona soruyorsun ve cevaplarını kendi zevkinle kıyaslıyorsun.",
-                    [expert.UserId.ToString()] = $"Bu türün uzmanısın. @{host.Username} sana soruyor: bilgini paylaş, gerekirse onun zevkine tatlı tatlı takıl."
+                    [host.UserId.ToString()] = $"Bu oyunun türü senin alanın değil. Merak ediyorsun ama şüphecisin; @{expert.Username} uzman diye her dediğini yutma, sorgula ve gerekirse dalga geç.",
+                    [expert.UserId.ToString()] = $"Bu türün uzmanısın. @{host.Username} sana soruyor: bilgini paylaş ama zevkine acımadan takıl, bu türü hiç anlamamış olmasıyla dalga geçmekten çekinme."
                 };
                 var third = PickThird(host, roster, participants, preferFriendOf: host);
                 if (third is not null && Random.Shared.NextDouble() < 0.4)
                 {
                     participants.Add(third);
-                    stances[third.UserId.ToString()] = "Araya girip kendi bakış açını ekliyorsun, iki tarafa da biraz takılıyorsun.";
+                    stances[third.UserId.ToString()] = "Araya girip kendi bakış açını dayatıyorsun, iki tarafa da laf sokuyorsun.";
                 }
                 return new ScenePlan(AiConversationKind.AskExpert, participants, game,
                     $"{host.DisplayName} alanı dışındaki bir oyunu merak ediyor ve uzmanı {expert.DisplayName}'e soruyor.",
@@ -457,7 +462,7 @@ namespace GGHub.Infrastructure.Services
             {
                 stances[participants[i].UserId.ToString()] = i % 2 == 0
                     ? (upcoming ? "Bu oyunun çıkışını heyecanla bekliyorsun." : "Bu oyunun yeni çıkmasına çok sevindin, heyecanlısın.")
-                    : "Bu oyuna temkinli bakıyorsun, beklentinin biraz şişirildiğini düşünüyorsun ama önyargılı değilsin.";
+                    : "Bu oyuna temkinli bakıyorsun, beklentinin şişirildiğini düşünüyorsun ve heyecanlananlarla dalga geçiyorsun.";
             }
             return new ScenePlan(AiConversationKind.NewRelease, participants, game,
                 upcoming ? "Yakında çıkacak bir oyun hakkında beklentiler konuşuluyor." : "Yeni çıkan bir oyun hakkında ilk izlenimler konuşuluyor (oynamadınız, bilinen özelliklerinden konuşuyorsunuz).",
@@ -579,9 +584,10 @@ namespace GGHub.Infrastructure.Services
             // (Insanin etiketiyle sahneye karismis baska dilden bir bot insan sayilmaz: bot-bota botun dili.)
             var addresseeIsHuman = lastOther is not null ? !lastOther.IsAiAgent : addresseeId.HasValue && !root.IsAiAgent;
             var lang = addresseeIsHuman ? AiLanguage.Detect(lastOther?.Content ?? root.Content) ?? me.Language : me.Language;
+            var direction = AiSceneDrama.Direct(stances, isFinal, addresseeIsHuman);
 
             var text = await _writer.WriteConversationTurnAsync(
-                identity, conversation.Brief, stance, relationNote, rootLine, lines, addresseeName, isFinal, lang, ct);
+                identity, conversation.Brief, stance, relationNote, rootLine, lines, addresseeName, isFinal, direction, lang, ct);
             if (text is null) return Outcome.Skip("Metin uretilemedi.");
 
             var allowed = roster.ToDictionary(a => a.Username.ToLowerInvariant(), a => a.UserId);

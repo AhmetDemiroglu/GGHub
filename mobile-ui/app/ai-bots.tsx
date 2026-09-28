@@ -36,14 +36,15 @@ const KIND_STYLE: Record<AiConversationKind, { emoji: string; color: string }> =
  */
 export default function AiBotsScreen() {
   const { colors } = useTheme();
-  const { messages } = useLocale();
+  const { messages, locale } = useLocale();
   const m = messages.aiClub;
   const tabBarHeight = useTabBarHeight();
 
   // Sayfa acikken dakikada bir tazelenir: sayaclar ve akan sohbet gercek son mesajlari gosterir.
-  const club = useQuery({ queryKey: ['aiClub'], queryFn: getAiClub, staleTime: 60_000, refetchInterval: 60_000 });
+  // Sunucu arayuz dilindeki botlari doner; anahtarda dil var ki dil degisince eski dil onbellekten gelmesin.
+  const club = useQuery({ queryKey: ['aiClub', locale], queryFn: getAiClub, staleTime: 60_000, refetchInterval: 60_000 });
   const conversations = useInfiniteQuery({
-    queryKey: ['aiClubConversations'],
+    queryKey: ['aiClubConversations', locale],
     queryFn: ({ pageParam }) => getAiClubConversations(pageParam, PAGE_SIZE),
     initialPageParam: 1,
     getNextPageParam: (lastPage, pages) => (lastPage.length === PAGE_SIZE ? pages.length + 1 : undefined),
@@ -105,10 +106,10 @@ function SectionTitle({ emoji, title }: { emoji: string; title: string }) {
 
 function ClubHeader() {
   const { colors } = useTheme();
-  const { messages } = useLocale();
+  const { messages, locale } = useLocale();
   const m = messages.aiClub;
   const router = useRouter();
-  const { data: club } = useQuery({ queryKey: ['aiClub'], queryFn: getAiClub, staleTime: 60_000 });
+  const { data: club } = useQuery({ queryKey: ['aiClub', locale], queryFn: getAiClub, staleTime: 60_000 });
   const { lines, bots } = useAiClubShowcase();
   const { isAuthenticated, eligible, profile, open } = useAiConsent();
   const reason = profile?.aiInteractionBlockReason ?? null;

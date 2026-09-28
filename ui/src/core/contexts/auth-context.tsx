@@ -5,7 +5,8 @@ import { jwtDecode } from "jwt-decode";
 import { useQueryClient } from "@tanstack/react-query";
 import { AuthenticatedUser } from "@/models/auth/auth.model";
 import { setAuthContextRef } from "@core/lib/axios";
-import { AppLocale, localeStorageKey } from "@/i18n/config";
+import { AppLocale } from "@/i18n/config";
+import { getClientLocale } from "@core/lib/client-locale";
 
 interface DecodedToken {
     nameid: string;
@@ -105,7 +106,7 @@ export function AuthProvider({ children, locale }: { children: ReactNode; locale
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "Accept-Language": localStorage.getItem(localeStorageKey) || locale,
+                    "Accept-Language": getClientLocale() || locale,
                 },
                 body: JSON.stringify({ refreshToken }),
             });
