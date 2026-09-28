@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import Animated, {
   runOnJS,
@@ -20,7 +20,7 @@ import * as haptics from '@/src/utils/haptics';
  * RN Modal ICINDE kullanma (iOS Fabric + Reanimated crash'i, bkz. ConfirmDialog notu).
  */
 
-const HEIGHT = 170;
+const HEIGHT = 200;
 const GROUND = 28; // alt cizginin yuksekligi
 const DINO_X = 24;
 const DINO_W = 34;
@@ -78,7 +78,12 @@ interface DinoRunnerProps {
   onGameOver?: (score: number) => void;
 }
 
-export function DinoRunner({ onGameOver }: DinoRunnerProps) {
+/** Dis kapsayici (BlockedScreen) bos alana dokunusu da oyuna iletsin diye. */
+export interface DinoRunnerHandle {
+  tap: () => void;
+}
+
+export const DinoRunner = forwardRef<DinoRunnerHandle, DinoRunnerProps>(function DinoRunner({ onGameOver }, ref) {
   const { colors } = useTheme();
   const { messages } = useLocale();
   const m = messages.appRelease.game;
@@ -206,6 +211,8 @@ export function DinoRunner({ onGameOver }: DinoRunnerProps) {
     }
   };
 
+  useImperativeHandle(ref, () => ({ tap: onTap }));
+
   const dinoStyle = useAnimatedStyle(() => ({ transform: [{ translateY: -dinoY.value }] }));
   const cactus1Style = useAnimatedStyle(() => ({
     transform: [{ translateX: cactus1X.value }, { scaleY: cactus1H.value }],
@@ -250,7 +257,7 @@ export function DinoRunner({ onGameOver }: DinoRunnerProps) {
       ) : null}
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   area: {
