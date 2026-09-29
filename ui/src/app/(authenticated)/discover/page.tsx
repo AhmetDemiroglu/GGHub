@@ -214,8 +214,8 @@ function DiscoverPageContent() {
                 <div className="py-12 text-center text-muted-foreground">{t("discover.noGames")}</div>
             ) : (
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {items.map((game) => (
-                        <GameCard key={game.rawgId} game={game} />
+                    {items.map((game, index) => (
+                        <GameCard key={game.rawgId} game={game} eager={index < 4} />
                     ))}
                 </div>
             )}

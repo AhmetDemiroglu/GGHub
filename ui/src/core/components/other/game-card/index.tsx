@@ -13,8 +13,13 @@ import { toast } from "sonner";
 import { useAuth } from "@/core/hooks/use-auth";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 import { buildLocalizedPathname } from "@/i18n/config";
+import { getGameImageUrl } from "@/core/lib/get-image-url";
 
-export const GameCard = memo(function GameCard({ game }: { game: Game }) {
+/**
+ * eager: ilk satirdaki kartlar (ekranin ustu) hemen iner, gerisi gorunurken. Onceden 12 ile 40
+ * kartin hepsi orijinal boyutta ve hemen iniyordu (Kesfet'te 18.5 MB, gerekce get-image-url.ts).
+ */
+export const GameCard = memo(function GameCard({ game, eager = false }: { game: Game; eager?: boolean }) {
     const { isAuthenticated } = useAuth();
     const locale = useCurrentLocale();
     const t = useI18n();
@@ -57,7 +62,13 @@ export const GameCard = memo(function GameCard({ game }: { game: Game }) {
                 <Link href={gameUrl} className="block h-full">
                     <div className="bg-card rounded-lg cursor-pointer overflow-hidden h-full flex flex-col text-foreground border border-border hover:border-primary/50 transition-colors duration-300">
                         <div className="aspect-video relative overflow-hidden">
-                            <img src={game.backgroundImage ?? placeHolder2.src} alt={game.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
+                            <img
+                                src={getGameImageUrl(game.backgroundImage, 640) ?? placeHolder2.src}
+                                alt={game.name}
+                                loading={eager ? "eager" : "lazy"}
+                                decoding="async"
+                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                            />
                             <div className="absolute inset-0 bg-linear-to-t from-card via-card/10 to-transparent" />
                         </div>
 

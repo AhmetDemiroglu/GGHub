@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/core/components/ui/c
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
 import { Badge } from "@/core/components/ui/badge";
 import { TrendingUp, Trophy, Star, Crown } from "lucide-react";
-import { getImageUrl } from "@/core/lib/get-image-url";
+import { getGameImageUrl, getImageUrl } from "@/core/lib/get-image-url";
 import { UserLink } from "@/core/components/base/user-link";
 import { ScrollArea } from "@/core/components/ui/scroll-area";
 import { useI18n } from "@/core/contexts/locale-context";
@@ -36,7 +36,7 @@ export default function HomeBentoGrid({ trending, leaders }: HomeBentoGridProps)
                             <Card className="h-full border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                                 <div className="relative aspect-3/4 w-full overflow-hidden">
                                     <Image
-                                        src={getImageUrl(game.backgroundImage) || "/assets/placeholder-game.jpg"}
+                                        src={getGameImageUrl(game.backgroundImage, 640) || "/assets/placeholder-game.jpg"}
                                         alt={game.name}
                                         fill
                                         className="object-cover transition-transform duration-500 group-hover:scale-110"

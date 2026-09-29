@@ -6,7 +6,7 @@ import { Crown, Flame, Star, Trophy } from "lucide-react";
 import { HomeGame, LeaderboardUser } from "@/models/home/home.model";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 import { buildLocalizedPathname } from "@/i18n/config";
-import { getImageUrl } from "@/core/lib/get-image-url";
+import { getGameImageUrl, getImageUrl } from "@/core/lib/get-image-url";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
 
 interface HomeMobileRailsProps {
@@ -45,7 +45,7 @@ export default function HomeMobileRails({ trending, leaders }: HomeMobileRailsPr
                             >
                                 <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl border border-border/50 shadow-sm">
                                     <Image
-                                        src={getImageUrl(game.backgroundImage) || "/assets/placeholder-game.jpg"}
+                                        src={getGameImageUrl(game.backgroundImage, 420) || "/assets/placeholder-game.jpg"}
                                         alt={game.name}
                                         fill
                                         className="object-cover transition-transform duration-300 group-hover:scale-105"

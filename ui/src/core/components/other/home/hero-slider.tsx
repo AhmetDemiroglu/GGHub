@@ -9,7 +9,7 @@ import { agendaApi } from "@/api/agenda/agenda.api";
 import type { Game } from "@/models/gaming/game.model";
 import { HomeGame } from "@/models/home/home.model";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
-import { getImageUrl } from "@/core/lib/get-image-url";
+import { getGameImageUrl } from "@/core/lib/get-image-url";
 import { buildLocalizedPathname } from "@/i18n/config";
 import { Button } from "@/core/components/ui/button";
 import { Carousel, CarouselApi, CarouselContent, CarouselItem } from "@/core/components/ui/carousel";
@@ -215,7 +215,7 @@ export default function HeroSlider({ games = [] }: HeroSliderProps) {
                                                             <div className="relative aspect-[3/4]">
                                                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                                                 <img
-                                                                    src={getImageUrl(game.backgroundImage) || "/assets/placeholder-game.jpg"}
+                                                                    src={getGameImageUrl(game.backgroundImage, 420) || "/assets/placeholder-game.jpg"}
                                                                     alt={game.name}
                                                                     className="absolute inset-0 h-full w-full object-cover"
                                                                     loading="lazy"
@@ -320,7 +320,7 @@ export default function HeroSlider({ games = [] }: HeroSliderProps) {
                                     {/* Tam kanlı keskin görsel + sinematik zoom */}
                                     <div className="absolute inset-0 z-0 overflow-hidden">
                                         <Image
-                                            src={getImageUrl(game.backgroundImage) || "/assets/placeholder-game.jpg"}
+                                            src={getGameImageUrl(game.backgroundImage, 1280) || "/assets/placeholder-game.jpg"}
                                             alt={game.name}
                                             fill
                                             className={`object-cover ${isActive ? "hero-kenburns" : "scale-[1.02]"}`}

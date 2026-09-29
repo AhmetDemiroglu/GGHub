@@ -14,7 +14,12 @@ import SiteAnalyticsListener from "./site-analytics-listener";
 import "./globals.css";
 
 // latin-ext olmadan Türkçe ğ/ş/İ glifleri fallback font'tan çiziliyordu.
-const inter = Inter({ subsets: ["latin", "latin-ext"] });
+// display "optional": font ilk boyaya yetismezse o sayfa yuklemesi metrik uyumlu yedek fontla
+// kalir, degisim (swap) olmaz. Onceki "swap" ile Lighthouse LCP'yi font degisim anina tasiyordu:
+// Inter Black yedekten genis, hero basligi bir satir buyuyor ve Chrome yeni LCP girdisi
+// yaziyordu; o yeniden boyama da hydration yuzunden 3 sn gecikiyordu (LCP 4.4 sn, FCP 1.4 sn).
+// Font onbellege girdikten sonra (ikinci sayfadan itibaren) Inter ilk boyada gelir.
+const inter = Inter({ subsets: ["latin", "latin-ext"], display: "optional" });
 const siteUrl = "https://gghub.social";
 const socialImage = "/og/gghub-social-v2.png";
 
@@ -50,14 +55,9 @@ export const metadata: Metadata = {
         "game reviews",
         "game lists",
     ],
-    alternates: {
-        canonical: "/",
-        languages: {
-            tr: "/tr",
-            "en-US": "/en-US",
-            "x-default": "/en-US",
-        },
-    },
+    // alternates BILEREK yok: kok layout'ta canonical "/" tanimlamak, kendi canonical'ini
+    // yazmayan HER sayfaya (Kesfet, oyun detayi...) "canonical = ana sayfa" dedirtiyordu
+    // (Lighthouse SEO: "Points to the domain's root URL"). Ana sayfa kendi alternates'ini kurar.
     robots: {
         index: true,
         follow: true,

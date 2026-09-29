@@ -6,7 +6,7 @@ import { Crown, Flame, Star, Trophy } from "lucide-react";
 import { HomeGame, LeaderboardUser } from "@/models/home/home.model";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 import { buildLocalizedPathname } from "@/i18n/config";
-import { getImageUrl } from "@/core/lib/get-image-url";
+import { getGameImageUrl, getImageUrl } from "@/core/lib/get-image-url";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
 import { Badge } from "@/core/components/ui/badge";
 
@@ -38,7 +38,7 @@ export default function HomeRightSidebar({ trending, leaders }: HomeRightSidebar
                             </span>
                             <div className="relative h-10 w-8 shrink-0 overflow-hidden rounded">
                                 <Image
-                                    src={getImageUrl(game.backgroundImage) || "/assets/placeholder-game.jpg"}
+                                    src={getGameImageUrl(game.backgroundImage, 420) || "/assets/placeholder-game.jpg"}
                                     alt={game.name}
                                     fill
                                     className="object-cover"

@@ -14,7 +14,7 @@ import { PlatformIcons } from "@/core/components/other/platform-icons";
 import { IgdbLogo } from "@/core/components/other/igdb-logo";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 import { buildLocalizedPathname } from "@/i18n/config";
-import { getImageUrl } from "@/core/lib/get-image-url";
+import { getGameImageUrl } from "@/core/lib/get-image-url";
 
 interface AgendaViewProps {
     initialContent: AgendaContent | null;
@@ -170,7 +170,7 @@ export const AgendaView = ({ initialContent, initialYear, initialMonth }: Agenda
             <div className="relative aspect-video overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                    src={getImageUrl(game.backgroundImage) || "/assets/placeholder-game.jpg"}
+                    src={getGameImageUrl(game.backgroundImage, 640) || "/assets/placeholder-game.jpg"}
                     alt={game.name}
                     className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     loading="lazy"
@@ -214,7 +214,7 @@ export const AgendaView = ({ initialContent, initialYear, initialMonth }: Agenda
         >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-                src={getImageUrl(game.backgroundImage) || "/assets/placeholder-game.jpg"}
+                src={getGameImageUrl(game.backgroundImage, 640) || "/assets/placeholder-game.jpg"}
                 alt={game.name}
                 className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
             />
