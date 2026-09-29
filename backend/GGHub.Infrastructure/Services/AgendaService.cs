@@ -194,7 +194,10 @@ namespace GGHub.Infrastructure.Services
         private static List<GameDto> PickHighlights(
             List<AgendaRow> releasedGames, List<AgendaRow> upcomingGames, bool isYearView, string today, int year)
         {
-            const int highlightCount = 6;
+            // Ay gorunumunde 18'e kadar: sayfa ilk 6'yi gosterir, gerisi "daha fazla" ile acilir
+            // (Eylul 2026 gibi yogun bir ayda 6 kart az kaliyordu). Yil gorunumu ana sayfa
+            // kolajini besler ve orada 5 kart var; 6 yeterli.
+            var highlightCount = isYearView ? 6 : 18;
 
             // Yil gorunumu ana sayfadaki kolaji besler: butun yilin degil, SU ANIN gundemi.
             // Son 45 gunde cikanlar + yaklasanlar.

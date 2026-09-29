@@ -429,6 +429,8 @@ export const trMessages = {
         searchResults: "Arama sonuçları",
         searchHint: "Tüm aylarda ve tarihi belli olmayanlarda aranır",
         searchEmpty: "Bu isimle bir oyun bulunamadı.",
+        highlightsMore: "Daha fazla öne çıkan göster ({count})",
+        highlightsLess: "Daha az göster",
     },
     notFound: {
         badge: "Aradığın sayfa bulunamadı",

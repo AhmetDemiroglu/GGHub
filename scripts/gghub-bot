@@ -6,6 +6,8 @@
 #   gghub-bot status    -> calisiyor mu + bu ayki Gemini harcamasi + kalan kuyruk
 #   gghub-bot logs      -> canli log
 #   gghub-bot update    -> repodan yeniden derle + kur + yeniden baslat
+#   gghub-bot autoupdate -> origin/main'de backend degistiyse yeniden derle + kur
+#                           (git hook'u her push/pull'da kendisi cagirir; bkz. scripts/install-hooks)
 #   gghub-bot uninstall -> TAMAMEN kaldir: durdur + acilista baslatmayi iptal + dosyalari sil
 #
 # Bot NEDEN burada calisiyor: Railway'de 7/24 donen bir crawler prod container'inda CPU yakiyor
@@ -21,6 +23,12 @@ CONFIG="$BOT_HOME/appsettings.json"
 LABEL="social.gghub.bot"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 DOTNET="$HOME/.dotnet/dotnet"
+
+# Otomatik guncelleme (bkz. cmd_autoupdate). Derleme alani KIOXIA'da: Mac diskine derleme
+# ciktisi yazilmaz.
+UPDATE_STAMP="$BOT_HOME/built-backend-tree"
+UPDATE_LOG="$LOG_DIR/autoupdate.log"
+BUILD_ROOT="${GGHUB_BOT_BUILD_ROOT:-/Volumes/KIOXIA/_caches/gghub-bot-build}"
 
 # Repo yolu: bu script repo icinde durdugu icin kendi konumundan turetiliyor.
 SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -213,6 +221,8 @@ cmd_uninstall() {
   # Sureci launchctl kacirirsa diye ikinci emniyet
   pkill -f "$APP_DIR/GGHub.Worker" 2>/dev/null || true
 
+  rm -f "$UPDATE_STAMP"
+
   [ -f "$PLIST" ] && { rm -f "$PLIST"; c_grn "Silindi: $PLIST"; }
   [ -d "$APP_DIR" ] && { rm -rf "$APP_DIR"; c_grn "Silindi: $APP_DIR"; }
 
@@ -222,6 +232,120 @@ cmd_uninstall() {
   c_dim "Onlari da silmek icin:  rm -rf $BOT_HOME"
   c_dim "Geri kurmak icin:       ./scripts/gghub-bot install"
   echo
+}
+
+# ---------------------------------------------------------------------------------------------
+# Otomatik guncelleme
+#
+# NEDEN: bot, repodaki kodun DERLENMIS bir kopyasini calistirir. main'e push edilen yeni backend
+# kodu bu kopyaya kendiliginden ulasmiyordu; 29 Eyl 2026'da push'tan sonra bot eski surumde kaldi,
+# yeni hype job'i hic calismadi ve gundem vitrini bozuk gorundu.
+#
+# TETIKLEYICI: git'in reference-transaction hook'u (scripts/install-hooks kurar). Bu Mac'te
+# origin/main her degistiginde (push VEYA pull/fetch) arka planda "autoupdate" baslatir.
+# Zamanlanmis bir LaunchAgent DENENDI ve CALISMADI: macOS arka plan servislerinin harici diske
+# erisimini engelliyor ("Unable to read current working directory: Operation not permitted").
+# Hook'tan baslayan surec ise push'u yapan uygulamanin (Terminal, VS Code, Claude) disk iznini
+# tasir, KIOXIA'yi okuyabilir.
+#
+# ADIMLAR:
+#   1. Kaynak YEREL CALISMA AGACI DEGIL origin/main'dir: yerelde yarim kalmis, push edilmemis
+#      degisiklikler prod'a yazan bota asla girmemeli. Railway de origin/main'i calistirir.
+#   2. origin/main'deki backend/ agacinin hash'i son kurulumla ayniysa hicbir sey yapilmaz
+#      (yalnizca ui/ veya mobile-ui/ degisen push'lar botu yeniden baslatmaz).
+#   3. Degistiyse backend/ KIOXIA'daki derleme alanina cikarilir ve orada derlenir.
+#   4. Yeni derleme "--check-schema" ile sinanir. Railway yeni migration'i henuz uygulamadiysa
+#      eski bot calismaya devam eder; 30 sn arayla 25 dakikaya kadar beklenir.
+#   5. Gecerse bot durdurulur, yeni derleme kurulur, bot yeniden baslatilir.
+# ---------------------------------------------------------------------------------------------
+
+log_update() {
+  mkdir -p "$LOG_DIR"
+  printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$UPDATE_LOG"
+}
+
+cmd_autoupdate() {
+  local fetch=1
+  [ "${1:-}" = "--no-fetch" ] && fetch=0
+
+  # Iki guncelleme ust uste binmesin (arka arkaya iki push). Kilit degiskeni GLOBAL: EXIT
+  # trap'i fonksiyon dondukten sonra calisir ve set -u altinda local degisken orada tanimsizdir.
+  AUTOUPDATE_LOCK="$BOT_HOME/autoupdate.lock"
+  if ! mkdir "$AUTOUPDATE_LOCK" 2>/dev/null; then
+    # 1 saatten eski kilit onceki kosunun coktugunu gosterir; birak.
+    if [ -n "$(find "$AUTOUPDATE_LOCK" -maxdepth 0 -mmin +60 2>/dev/null)" ]; then
+      rm -rf "$AUTOUPDATE_LOCK"; mkdir "$AUTOUPDATE_LOCK" || return 0
+    else
+      log_update "Baska bir guncelleme suruyor, bu tetikleme atlandi."
+      return 0
+    fi
+  fi
+  trap 'rm -rf "$AUTOUPDATE_LOCK"' EXIT
+
+  [ -x "$APP_DIR/GGHub.Worker" ] || return 0      # bot bu makinede kurulu degil
+  [ -d "$REPO_ROOT/.git" ] || return 0
+  [ -x "$DOTNET" ] || { log_update "dotnet yok: $DOTNET"; return 0; }
+
+  if [ "$fetch" -eq 1 ] && ! git -C "$REPO_ROOT" fetch -q origin main 2>>"$UPDATE_LOG"; then
+    log_update "git fetch basarisiz."
+    return 0
+  fi
+
+  local commit tree built
+  commit="$(git -C "$REPO_ROOT" rev-parse --short origin/main)"
+  tree="$(git -C "$REPO_ROOT" rev-parse origin/main:backend)"
+  built="$(awk '{print $1}' "$UPDATE_STAMP" 2>/dev/null || true)"
+  if [ "$tree" = "$built" ]; then
+    [ "$fetch" -eq 1 ] && c_grn "Bot zaten guncel (origin/main $commit)."
+    return 0
+  fi
+
+  log_update "backend degisti (origin/main $commit), derleniyor..."
+
+  local src="$BUILD_ROOT/src" out="$BUILD_ROOT/app"
+  rm -rf "$src" "$out"
+  mkdir -p "$src"
+  if ! git -C "$REPO_ROOT" archive origin/main backend | tar -x -C "$src"; then
+    log_update "git archive basarisiz."
+    return 0
+  fi
+
+  if ! DOTNET_ROOT="$HOME/.dotnet" "$DOTNET" publish "$src/backend/GGHub.Worker/GGHub.Worker.csproj" \
+      -c Release -o "$out" --nologo -v quiet -clp:ErrorsOnly >>"$UPDATE_LOG" 2>&1; then
+    log_update "DERLEME HATASI ($commit). Bot eski surumle calismaya devam ediyor."
+    return 0
+  fi
+
+  # Sema kapisi. Push'tan hemen sonra Railway henuz deploy etmemis olabilir.
+  local schema="" attempt
+  for attempt in $(seq 1 50); do
+    if schema="$(DOTNET_ROOT="$HOME/.dotnet" GGHUB_BOT_HOME="$BOT_HOME" DOTNET_ENVIRONMENT=Production \
+        "$out/GGHub.Worker" --check-schema 2>/dev/null | tail -1)"; then
+      break
+    fi
+    # DIKKAT: macOS'un bash 3.2'si "${x:-...}" icindeki kesme isaretini tirnak baslangici sayiyor
+    # ve scriptin geri kalanini yutuyor; bu yuzden bos deger ayri bir satirda veriliyor.
+    [ -n "$schema" ] || schema="DB ulasilamadi"
+    [ "$attempt" -eq 1 ] && log_update "Railway bekleniyor: $schema"
+    [ "$attempt" -eq 50 ] && { log_update "25 dk icinde sema hazir olmadi, vazgecildi. Elle: gghub-bot autoupdate"; return 0; }
+    sleep 30
+  done
+
+  local was_running=0
+  is_loaded && was_running=1
+  [ "$was_running" -eq 1 ] && launchctl unload "$PLIST" 2>/dev/null
+
+  rm -rf "$APP_DIR.new" "$APP_DIR.old"
+  cp -R "$out" "$APP_DIR.new"
+  [ -d "$APP_DIR" ] && mv "$APP_DIR" "$APP_DIR.old"
+  mv "$APP_DIR.new" "$APP_DIR"
+  rm -rf "$APP_DIR.old"
+
+  [ "$was_running" -eq 1 ] && launchctl load "$PLIST"
+  echo "$tree $commit" > "$UPDATE_STAMP"
+  log_update "Kuruldu: origin/main $commit. Bot $([ "$was_running" -eq 1 ] && echo 'yeniden baslatildi' || echo 'durmus durumdaydi, baslatilmadi')."
+  [ "$fetch" -eq 1 ] && c_grn "Kuruldu: origin/main $commit"
+  return 0
 }
 
 cmd_logs() {
@@ -248,6 +372,12 @@ cmd_status() {
   echo "Kurulum : $APP_DIR"
   echo "Ayarlar : $CONFIG"
   echo "Loglar  : $LOG_DIR"
+  if [ -x "$REPO_ROOT/.git/hooks/reference-transaction" ]; then
+    echo "Guncelle: otomatik, her push/pull sonrasi (kurulu surum: $(awk '{print $2}' "$UPDATE_STAMP" 2>/dev/null || echo '-'))"
+    [ -f "$UPDATE_LOG" ] && echo "          son: $(tail -1 "$UPDATE_LOG")"
+  else
+    c_ylw "Guncelle: ELLE (otomatik icin bir kez: scripts/install-hooks)"
+  fi
   echo
 
   # Ilerleme ve harcama ozetini worker'in kendisine sorduruyoruz (--status: okur, basar, cikar;
@@ -268,6 +398,7 @@ case "${1:-}" in
   stop)      cmd_stop ;;
   restart)   cmd_restart ;;
   update)    cmd_update ;;
+  autoupdate) shift; cmd_autoupdate "$@" ;;
   status)    cmd_status ;;
   logs)      cmd_logs ;;
   uninstall) cmd_uninstall ;;
@@ -282,6 +413,8 @@ Kullanim: gghub-bot <komut>
   start       Durmus botu baslat
   restart     Durdur ve baslat
   update      Repodan yeniden derle, kur, yeniden baslat
+  autoupdate  origin/main'de backend degistiyse derle, kur, yeniden baslat
+              (normalde git hook'u her push/pull'da kendisi calistirir)
   uninstall   TAMAMEN kaldir: durdur + acilis kaydini sil + dosyalari sil
 
 USAGE

@@ -428,6 +428,8 @@ export const enUSMessages = {
         searchResults: "Search results",
         searchHint: "Searches every month and unannounced dates",
         searchEmpty: "No game found with this name.",
+        highlightsMore: "Show more highlights ({count})",
+        highlightsLess: "Show less",
     },
     notFound: {
         badge: "The page you were looking for could not be found",
