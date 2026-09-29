@@ -60,7 +60,7 @@ export function isPhoneOrTablet() {
     return /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
 }
 
-const PlatformGlyph = ({ platform, className }: { platform: MobilePlatform; className?: string }) => (
+export const PlatformGlyph = ({ platform, className }: { platform: MobilePlatform; className?: string }) => (
     <svg viewBox="0 0 24 24" className={className} aria-hidden="true" focusable="false">
         {platform === "ios" ? <path fill="currentColor" d={APPLE_PATH} /> : PLAY_LOGO}
     </svg>

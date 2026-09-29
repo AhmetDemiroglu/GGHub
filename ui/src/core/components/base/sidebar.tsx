@@ -8,12 +8,8 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/en";
 import "dayjs/locale/tr";
-import { useQueryClient } from "@tanstack/react-query";
 import {
     Bot,
-    AtSign,
-    Bell,
-    Cake,
     CalendarDays,
     Crown,
     FileText,
@@ -25,18 +21,12 @@ import {
     List,
     LogIn,
     LogOut,
-    Heart,
     Mail,
     Menu,
     MessageSquare,
-    Reply,
     PanelLeftClose,
     PanelLeftOpen,
-    Repeat2,
-    Search,
     Settings,
-    Star,
-    ThumbsUp,
     User,
     UserPlus,
 } from "lucide-react";
@@ -45,12 +35,13 @@ import { toast } from "sonner";
 import logoSrc from "@core/assets/logo.png";
 import { useAuth } from "@core/hooks/use-auth";
 import { useSidebar } from "@/core/contexts/sidebar-context";
+<<<<<<< HEAD
 import { useNavigationData, useNotifications, useRecentMessages } from "@/core/hooks/use-navigation-data";
+=======
+import { useMediaQuery } from "@/core/hooks/use-media-query";
+import { useNavigationData, useRecentMessages } from "@/core/hooks/use-navigation-data";
+>>>>>>> origin/claude/great-tesla-etsso4
 import { getImageUrl } from "@/core/lib/get-image-url";
-import { displayName } from "@/core/lib/display-name";
-import { cn } from "@/core/lib/utils";
-import { markAllNotificationsAsRead, markNotificationAsRead } from "@/api/notifications/notifications.api";
-import { NotificationType, type NotificationDto } from "@/models/notifications/notification.model";
 import { UserLink } from "@/core/components/base/user-link";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
@@ -62,7 +53,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/core/components/ui/po
 import { Separator } from "@/core/components/ui/separator";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/core/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/core/components/ui/tooltip";
-import { CommandSearch } from "@/core/components/other/search/command-search";
 import { LanguageSwitcher } from "@/core/components/base/language-switcher";
 import { ThemeToggleButton } from "@/core/components/base/theme-toggle-button";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
@@ -70,75 +60,13 @@ import { useLocalizedHref } from "@/core/hooks/use-localized-href";
 
 dayjs.extend(relativeTime);
 
-// ─── Notification icon map ───────────────────────────────────────────────────
-type IconComponent = React.ComponentType<{ className?: string }>;
-
-/** Tur basina ikon + renk. Avatar rozetinde ve aktoru olmayan bildirimlerde ayni kaynak kullanilir. */
-const notificationIconMeta = (type: NotificationType): { Icon: IconComponent; color: string } => {
-    switch (type) {
-        case NotificationType.Follow:
-            return { Icon: UserPlus, color: "text-blue-500" };
-        case NotificationType.ListFollow:
-            return { Icon: List, color: "text-green-500" };
-        case NotificationType.Review:
-            return { Icon: Star, color: "text-yellow-500" };
-        case NotificationType.ListComment:
-            return { Icon: MessageSquare, color: "text-sky-500" };
-        case NotificationType.CommentReply:
-            return { Icon: Reply, color: "text-teal-500" };
-        case NotificationType.CommentLike:
-            return { Icon: Heart, color: "text-red-500" };
-        case NotificationType.ListRating:
-            return { Icon: Star, color: "text-amber-500" };
-        case NotificationType.ReviewComment:
-            return { Icon: MessageSquare, color: "text-indigo-500" };
-        case NotificationType.ReviewCommentReply:
-            return { Icon: Reply, color: "text-violet-500" };
-        case NotificationType.ReviewCommentLike:
-            return { Icon: ThumbsUp, color: "text-pink-500" };
-        case NotificationType.Mention:
-            return { Icon: AtSign, color: "text-orange-500" };
-        case NotificationType.PostLike:
-            return { Icon: Heart, color: "text-rose-500" };
-        case NotificationType.PostReply:
-            return { Icon: MessageSquare, color: "text-sky-500" };
-        case NotificationType.PostRepost:
-            return { Icon: Repeat2, color: "text-emerald-500" };
-        case NotificationType.Birthday:
-            return { Icon: Cake, color: "text-fuchsia-500" };
-        default:
-            return { Icon: Bell, color: "text-muted-foreground" };
-    }
-};
-
-/**
- * Bildirim metni. Backend mesaji okuyucunun dilinde TAM cumle uretir ve basina aktorun
- * gorunen adini koyar. Ad basta ise kalin + link yapilir, degilse mesaj duz basilir.
- * Eslesmezse sessizce duz metne duser; asla patlamaz.
- */
-function NotificationMessage({ notification, onNavigate }: { notification: NotificationDto; onNavigate?: () => void }) {
-    const actor = notification.actor;
-    const name = actor ? displayName(actor) : "";
-
-    if (!actor || !name || !notification.message.startsWith(name)) {
-        return <p className="text-sm">{notification.message}</p>;
-    }
-
-    return (
-        <p className="text-sm">
-            {/* z-20: satiri kaplayan link'in USTUNDE kalip kendi tiklamasini almali. */}
-            <UserLink user={actor} variant="name" className="relative z-20 font-semibold hover:underline" onNavigate={onNavigate} />
-            {notification.message.slice(name.length)}
-        </p>
-    );
-}
-
 // ─── Sidebar Trigger (hamburger button for mobile) ───────────────────────────
 export function SidebarTrigger() {
     const { setMobileOpen } = useSidebar();
-    const { unreadNotifCount, unreadMsgCount } = useNavigationData();
+    const { unreadMsgCount } = useNavigationData();
     const t = useI18n();
-    const hasUnread = !!(unreadNotifCount?.count || unreadMsgCount?.count);
+    // Bildirim zili ust cubukta; menu noktasi yalniz okunmamis mesaji soyler.
+    const hasUnread = !!unreadMsgCount?.count;
 
     return (
         // aria-label şart: içinde yalnızca bir ikon var, metin yok. Bu buton olmadan
@@ -175,6 +103,7 @@ export function Sidebar() {
                 </SheetContent>
             </Sheet>
 
+<<<<<<< HEAD
             <aside
                 data-collapsed={isCollapsed}
                 className={`relative hidden h-full shrink-0 flex-col border-r border-border/40 bg-background/95 backdrop-blur-sm transition-[width] duration-300 ease-in-out md:flex ${isCollapsed ? "w-[72px]" : "w-60"} overflow-hidden`}
@@ -182,6 +111,15 @@ export function Sidebar() {
                 <SidebarInner isMobile={false} />
             </aside>
         </>
+=======
+    return (
+        <aside
+            data-collapsed={isCollapsed}
+            className={`relative flex h-full shrink-0 flex-col border-r border-border/40 bg-background/95 pt-(--topbar-h) backdrop-blur-sm transition-[width] duration-300 ease-in-out ${isCollapsed ? "w-[72px]" : "w-60"} overflow-hidden`}
+        >
+            {sidebarContent}
+        </aside>
+>>>>>>> origin/claude/great-tesla-etsso4
     );
 }
 
@@ -193,14 +131,11 @@ function SidebarInner({ isMobile }: { isMobile: boolean }) {
     const localizeHref = useLocalizedHref();
     const { isCollapsed, toggleCollapsed, setMobileOpen } = useSidebar();
     const { isAuthenticated, user, logout } = useAuth();
-    const { unreadNotifCount, unreadMsgCount, profile } = useNavigationData();
-    const queryClient = useQueryClient();
+    const { unreadMsgCount, profile } = useNavigationData();
 
-    const [notificationOpen, setNotificationOpen] = useState(false);
     const [messagesOpen, setMessagesOpen] = useState(false);
     const [logoutOpen, setLogoutOpen] = useState(false);
 
-    const { data: notifications } = useNotifications(notificationOpen);
     const { data: recentMessages } = useRecentMessages(messagesOpen);
 
     // Collapsed state is always false on mobile (always expanded)
@@ -214,29 +149,6 @@ function SidebarInner({ isMobile }: { isMobile: boolean }) {
         logout();
         toast.info(t("nav.logoutSuccess"));
         if (isMobile) setMobileOpen(false);
-    };
-
-    // Popover acilinca hepsini okundu isaretle. BILEREK boyle: X/Instagram deseni.
-    const handleNotificationOpen = (open: boolean) => {
-        setNotificationOpen(open);
-        if (open && unreadNotifCount && unreadNotifCount.count > 0) {
-            markAllNotificationsAsRead()
-                .then(() => {
-                    queryClient.invalidateQueries({ queryKey: ["unread-notification-count"] });
-                    queryClient.invalidateQueries({ queryKey: ["notifications"] });
-                })
-                .catch(() => undefined);
-        }
-    };
-
-    /** Tek bildirime tiklanınca da okundu isaretle (best-effort; hata akisi bozmaz). */
-    const handleNotificationClick = (notification: NotificationDto) => {
-        markNotificationAsRead(notification.id)
-            .then(() => {
-                queryClient.invalidateQueries({ queryKey: ["notifications"] });
-                queryClient.invalidateQueries({ queryKey: ["unread-notification-count"] });
-            })
-            .catch(() => undefined);
     };
 
     const isActive = (href: string) => {
@@ -266,17 +178,15 @@ function SidebarInner({ isMobile }: { isMobile: boolean }) {
 
     return (
         <div className="flex h-full flex-col" data-collapsed={collapsed}>
-            {/* ── Header: Logo ────────────────────────────────────────────── */}
-            <div className={`flex items-center border-b border-border/40 ${collapsed ? "justify-center px-2 py-3" : "px-4 py-3"}`}>
-                <Link href={localizeHref("/")} className="flex shrink-0 items-center" onClick={onLinkClick}>
-                    <Image src={logoSrc} alt="GGHub" width={35} height={22} priority className={collapsed ? "h-5 w-auto" : "h-7 w-auto"} />
-                </Link>
-            </div>
-
-            {/* ── Search ──────────────────────────────────────────────────── */}
-            <div className="border-b border-border/40 px-2 py-1">
-                <CommandSearch variant="sidebar" collapsed={collapsed} />
-            </div>
+            {/* Logo ve arama ust cubukta. Mobil cekmece ust cubugun ustune acildigi icin
+                kimlik olarak kucuk bir logo satiri tasir; masaustunde cubuk altindan baslar. */}
+            {isMobile ? (
+                <div className="flex items-center border-b border-border/40 px-4 py-3">
+                    <Link href={localizeHref("/")} className="flex shrink-0 items-center" onClick={onLinkClick}>
+                        <Image src={logoSrc} alt="GGHub" width={35} height={22} className="h-6 w-auto" />
+                    </Link>
+                </div>
+            ) : null}
 
             {/* ── Main Navigation ────────────────────────────────────────── */}
             <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-3">
@@ -297,83 +207,12 @@ function SidebarInner({ isMobile }: { isMobile: boolean }) {
                     />
                 )}
 
-                {/* ── Notifications ──────────────────────────────────────── */}
+                {/* ── Messages + admin ───────────────────────────────────── */}
                 {isAuthenticated && (
                     <>
                         <div className="sidebar-section py-1">
                             <Separator className="my-1" />
                         </div>
-
-                        {/* Notifications popover */}
-                        <Popover open={notificationOpen} onOpenChange={handleNotificationOpen}>
-                            <PopoverTrigger asChild>
-                                <NavButton label={t("nav.notifications")} icon={Bell} collapsed={collapsed} badge={unreadNotifCount?.count} />
-                            </PopoverTrigger>
-                            <PopoverContent className="w-80 p-0" side={isMobile ? "bottom" : "right"} align="start">
-                                <div className="border-b p-3">
-                                    <h3 className="font-semibold">{t("nav.notificationsTitle")}</h3>
-                                </div>
-                                <div className="max-h-80 overflow-y-auto">
-                                    {notifications?.filter((n) => n.type !== NotificationType.Message).length ? (
-                                        notifications
-                                            .filter((n) => n.type !== NotificationType.Message)
-                                            .map((notification) => {
-                                                const { Icon, color } = notificationIconMeta(notification.type);
-                                                const closePopover = () => {
-                                                    setNotificationOpen(false);
-                                                    onLinkClick();
-                                                };
-
-                                                return (
-                                                    // Satiri kaplayan link deseni: profil linkini ic ice <a> yapmadan
-                                                    // hem satirin tamami hem de avatar/ad ayri ayri tiklanabilir kalir.
-                                                    <div
-                                                        key={notification.id}
-                                                        className={`relative border-b p-3 hover:bg-accent ${!notification.isRead ? "bg-accent/50" : ""}`}
-                                                    >
-                                                        {notification.link && (
-                                                            <Link
-                                                                href={localizeHref(notification.link)}
-                                                                className="absolute inset-0 z-10 cursor-pointer"
-                                                                aria-label={notification.message}
-                                                                onClick={() => {
-                                                                    handleNotificationClick(notification);
-                                                                    closePopover();
-                                                                }}
-                                                            />
-                                                        )}
-                                                        <div className="flex items-start gap-3">
-                                                            {notification.actor ? (
-                                                                <div className="relative z-20 shrink-0">
-                                                                    <UserLink
-                                                                        user={notification.actor}
-                                                                        variant="avatar"
-                                                                        avatarClassName="h-9 w-9"
-                                                                        onNavigate={closePopover}
-                                                                    />
-                                                                    {/* Dekoratif rozet: pointer-events-none olmasa avatarin kosesinde olu tiklama alani olurdu. */}
-                                                                    <span className="pointer-events-none absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-background ring-1 ring-border">
-                                                                        <Icon className={cn("h-2.5 w-2.5", color)} />
-                                                                    </span>
-                                                                </div>
-                                                            ) : (
-                                                                // Eski satirlar / silinmis hesaplar: aktor yok, genel ikona duseriz.
-                                                                <Icon className={cn("h-5 w-5 shrink-0", color)} />
-                                                            )}
-                                                            <div className="min-w-0 flex-1">
-                                                                <NotificationMessage notification={notification} onNavigate={closePopover} />
-                                                                <p className="mt-1 text-xs text-muted-foreground">{dayjs(notification.createdAt).fromNow()}</p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })
-                                    ) : (
-                                        <div className="p-8 text-center text-sm text-muted-foreground">{t("nav.noNotifications")}</div>
-                                    )}
-                                </div>
-                            </PopoverContent>
-                        </Popover>
 
                         {/* Messages popover (desktop sidebar) */}
                         {!isMobile && (
@@ -381,11 +220,11 @@ function SidebarInner({ isMobile }: { isMobile: boolean }) {
                                 <PopoverTrigger asChild>
                                     <NavButton label={t("nav.messages")} icon={Mail} collapsed={collapsed} badge={unreadMsgCount?.count} />
                                 </PopoverTrigger>
-                                <PopoverContent className="w-80 p-0" side="right" align="start">
+                                <PopoverContent className="w-80 overflow-hidden rounded-2xl p-0" side="right" align="start" collisionPadding={12}>
                                     <div className="border-b p-3">
                                         <h3 className="font-semibold">{t("nav.messagesTitle")}</h3>
                                     </div>
-                                    <div className="max-h-80 overflow-y-auto">
+                                    <div className="max-h-[min(60vh,20rem)] overflow-y-auto">
                                         {recentMessages?.length ? (
                                             recentMessages.slice(0, 5).map((conversation) => {
                                                 // ConversationDto ad/soyad tasimiyor; displayName() username'e duser.
