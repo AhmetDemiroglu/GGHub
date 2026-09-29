@@ -35,12 +35,7 @@ import { toast } from "sonner";
 import logoSrc from "@core/assets/logo.png";
 import { useAuth } from "@core/hooks/use-auth";
 import { useSidebar } from "@/core/contexts/sidebar-context";
-<<<<<<< HEAD
-import { useNavigationData, useNotifications, useRecentMessages } from "@/core/hooks/use-navigation-data";
-=======
-import { useMediaQuery } from "@/core/hooks/use-media-query";
 import { useNavigationData, useRecentMessages } from "@/core/hooks/use-navigation-data";
->>>>>>> origin/claude/great-tesla-etsso4
 import { getImageUrl } from "@/core/lib/get-image-url";
 import { UserLink } from "@/core/components/base/user-link";
 
@@ -103,23 +98,14 @@ export function Sidebar() {
                 </SheetContent>
             </Sheet>
 
-<<<<<<< HEAD
+            {/* pt-(--topbar-h): ust cubuk icerigin USTUNDE (absolute) durur, kenar cubugu onun altindan baslar. */}
             <aside
                 data-collapsed={isCollapsed}
-                className={`relative hidden h-full shrink-0 flex-col border-r border-border/40 bg-background/95 backdrop-blur-sm transition-[width] duration-300 ease-in-out md:flex ${isCollapsed ? "w-[72px]" : "w-60"} overflow-hidden`}
+                className={`relative hidden h-full shrink-0 flex-col border-r border-border/40 bg-background/95 pt-(--topbar-h) backdrop-blur-sm transition-[width] duration-300 ease-in-out md:flex ${isCollapsed ? "w-[72px]" : "w-60"} overflow-hidden`}
             >
                 <SidebarInner isMobile={false} />
             </aside>
         </>
-=======
-    return (
-        <aside
-            data-collapsed={isCollapsed}
-            className={`relative flex h-full shrink-0 flex-col border-r border-border/40 bg-background/95 pt-(--topbar-h) backdrop-blur-sm transition-[width] duration-300 ease-in-out ${isCollapsed ? "w-[72px]" : "w-60"} overflow-hidden`}
-        >
-            {sidebarContent}
-        </aside>
->>>>>>> origin/claude/great-tesla-etsso4
     );
 }
 
