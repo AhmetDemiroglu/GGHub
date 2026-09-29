@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import HomeView from "@/core/components/other/home/home-view";
+import HomeStreamingFallback from "@/core/components/other/home/home-streaming-fallback";
 import { getHomeContentServer } from "@/api/home/home.server";
 import { getMessages } from "@/i18n";
 import { resolveLocaleFromCookies } from "@/i18n/server";
@@ -64,17 +66,27 @@ export async function generateMetadata(): Promise<Metadata> {
  * fetch ediyordu: HTML yalnızca iskelet geliyor, LCP görseli JS indirilip hydrate olduktan
  * ve API cevabı geldikten SONRA istenmeye başlıyordu (Lighthouse'ta LCP 9.2 sn).
  *
+ * API beklemesi sayfanin KENDI Suspense sinirinda (HomeContent): kabuk ve veri gerektirmeyen
+ * promo slayti (HomeStreamingFallback) hemen iner, veriye bagli kisim akisla gelir. Await
+ * sayfanin en ustunde oldugunda LCP metni bile API cevabini bekliyordu (gerekce fallback'te).
+ *
  * `params` opsiyonel: bu bileşen hem prefix'siz ağaçta (`/`) hem de `[locale]` sarmalayıcısı
  * üzerinden çalışıyor. `[locale]` altındayken dil URL'den, değilken cookie'den okunur.
  */
 export default async function HomePage({ params }: { params?: Promise<{ locale?: string }> }) {
     const routeLocale = (await params)?.locale;
     const locale: AppLocale = routeLocale && isLocale(routeLocale) ? routeLocale : await resolveLocaleFromCookies();
-    const initialContent = await getHomeContentServer(locale);
 
     return (
         <div className="container mx-auto max-w-[1600px] p-4 md:p-6">
-            <HomeView initialContent={initialContent} />
+            <Suspense fallback={<HomeStreamingFallback />}>
+                <HomeContent locale={locale} />
+            </Suspense>
         </div>
     );
+}
+
+async function HomeContent({ locale }: { locale: AppLocale }) {
+    const initialContent = await getHomeContentServer(locale);
+    return <HomeView initialContent={initialContent} />;
 }

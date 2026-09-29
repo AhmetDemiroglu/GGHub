@@ -96,8 +96,11 @@ export default function HomeView({ initialContent = null }: { initialContent?: H
         );
     }
 
+    // fade-in YOK: icerik akisla gelip fallback'teki promo slaytinin yerine oturuyor; 500 ms
+    // opacity 0'dan baslamak hero'yu bir an bosaltirdi. Lighthouse ayrica bu animasyonu
+    // "non-composited" (filter) diye isaretliyordu.
     return (
-        <div className="animate-in space-y-5 pb-10 fade-in duration-500">
+        <div className="space-y-5 pb-10">
             <section>
                 <HeroSlider games={content.heroGames} />
             </section>
