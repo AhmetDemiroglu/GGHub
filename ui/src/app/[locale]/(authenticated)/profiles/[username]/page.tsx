@@ -1,1 +1,1 @@
-export { default } from "../../../../(authenticated)/profiles/[username]/page";
+export { default, generateMetadata } from "../../../../(authenticated)/profiles/[username]/page";

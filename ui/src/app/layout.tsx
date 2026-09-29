@@ -8,7 +8,12 @@ import { Providers } from "@core/components/base/providers";
 import { LocaleProvider } from "@/core/contexts/locale-context";
 import { Toaster } from "@/core/components/ui/sonner";
 import { getMessages } from "@/i18n";
-import { resolveLocaleFromCookies } from "@/i18n/server";
+import { resolveServerLocale } from "@/i18n/server";
+import { seoCopy } from "@/core/seo/copy";
+import { toOgLocale } from "@/core/seo/metadata";
+import { APP_STORE_ID, DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/core/seo/site";
+import { ANDROID_PACKAGE } from "@/core/lib/store-links";
+import { JsonLd, mobileApplicationJsonLd, organizationJsonLd, webSiteJsonLd } from "@/core/seo/json-ld";
 import GAListener from "./ga-listener";
 import SiteAnalyticsListener from "./site-analytics-listener";
 import "./globals.css";
@@ -20,8 +25,6 @@ import "./globals.css";
 // yaziyordu; o yeniden boyama da hydration yuzunden 3 sn gecikiyordu (LCP 4.4 sn, FCP 1.4 sn).
 // Font onbellege girdikten sonra (ikinci sayfadan itibaren) Inter ilk boyada gelir.
 const inter = Inter({ subsets: ["latin", "latin-ext"], display: "optional" });
-const siteUrl = "https://gghub.social";
-const socialImage = "/og/gghub-social-v2.png";
 
 // İlk boyamadan hemen sonra bu origin'lere istek gidiyor; TLS el sıkışmasını öne çekmek
 // Lighthouse ölçümünde ~440 ms kazandırıyor.
@@ -33,75 +36,97 @@ const apiOrigin = (() => {
     }
 })();
 
-export const metadata: Metadata = {
-    metadataBase: new URL(siteUrl),
-    title: {
-        default: "GGHub | Oyuncu Sosyal Platformu",
-        template: "%s",
-    },
-    description: "Oyunları keşfet, puanla, listeler oluştur ve oyuncu topluluğuna katıl.",
-    applicationName: "GGHub",
-    authors: [{ name: "GGHub", url: siteUrl }],
-    creator: "GGHub",
-    publisher: "GGHub",
-    keywords: [
-        "GGHub",
-        "oyuncu sosyal platformu",
-        "oyun keşfet",
-        "oyun incelemeleri",
-        "oyun listeleri",
-        "oyuncu profili",
-        "gaming social platform",
-        "game reviews",
-        "game lists",
-    ],
-    // alternates BILEREK yok: kok layout'ta canonical "/" tanimlamak, kendi canonical'ini
-    // yazmayan HER sayfaya (Kesfet, oyun detayi...) "canonical = ana sayfa" dedirtiyordu
-    // (Lighthouse SEO: "Points to the domain's root URL"). Ana sayfa kendi alternates'ini kurar.
-    robots: {
-        index: true,
-        follow: true,
-        googleBot: {
+/**
+ * Kok metadata dile gore uretilir (baslik, aciklama, OG dili). alternates BILEREK yok: kok
+ * layout'ta canonical "/" tanimlamak, kendi canonical'ini yazmayan HER sayfaya "canonical =
+ * ana sayfa" dedirtiyordu (Lighthouse SEO: "Points to the domain's root URL"). Her herkese
+ * acik sayfa kendi canonical + hreflang'ini core/seo/metadata.ts uzerinden kurar.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+    const locale = await resolveServerLocale();
+    const title = seoCopy(locale, "siteTitle");
+    const description = seoCopy(locale, "siteDescription");
+
+    return {
+        metadataBase: new URL(SITE_URL),
+        title: {
+            default: title,
+            template: "%s",
+        },
+        description,
+        applicationName: SITE_NAME,
+        authors: [{ name: SITE_NAME, url: SITE_URL }],
+        creator: SITE_NAME,
+        publisher: SITE_NAME,
+        keywords: [
+            "GGHub",
+            "oyuncu sosyal platformu",
+            "oyun keşfet",
+            "oyun incelemeleri",
+            "oyun listeleri",
+            "oyun çıkış takvimi",
+            "oyuncu profili",
+            "gaming social platform",
+            "game reviews",
+            "game lists",
+            "game release calendar",
+        ],
+        // Google Search Console "HTML etiketi" dogrulamasi. Vercel'de NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+        // tanimlanmadiysa etiket hic basilmaz (DNS/GA ile dogrulandiysa gerekmez).
+        verification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION } : undefined,
+        robots: {
             index: true,
             follow: true,
-            "max-image-preview": "large",
-            "max-snippet": -1,
-            "max-video-preview": -1,
-        },
-    },
-    icons: {
-        icon: "/favicon.ico",
-        shortcut: "/favicon.ico",
-    },
-    openGraph: {
-        type: "website",
-        url: siteUrl,
-        siteName: "GGHub",
-        locale: "en_US",
-        alternateLocale: ["tr_TR"],
-        title: "GGHub | Where Gaming Lives",
-        description: "Discover games, rate what you play, create lists, and connect with the gaming community.",
-        images: [
-            {
-                url: socialImage,
-                width: 1200,
-                height: 630,
-                alt: "GGHub oyuncu sosyal platformu",
-                type: "image/png",
+            googleBot: {
+                index: true,
+                follow: true,
+                "max-image-preview": "large",
+                "max-snippet": -1,
+                "max-video-preview": -1,
             },
-        ],
-    },
-    twitter: {
-        card: "summary_large_image",
-        title: "GGHub | The Social Platform for Gamers",
-        description: "Discover games, rate what you play, create lists, and connect with the gaming community.",
-        images: [socialImage],
-    },
-    category: "gaming",
-};
+        },
+        icons: {
+            icon: "/favicon.ico",
+            shortcut: "/favicon.ico",
+        },
+        // iOS Safari "Smart App Banner": magaza sayfasina gitmeden uygulamayi acar/indirir.
+        itunes: { appId: APP_STORE_ID },
+        // Facebook/Meta App Links: paylasilan baglanti uygulama yukluyse uygulamada acilir.
+        appLinks: {
+            ios: { url: "gghub://", app_store_id: APP_STORE_ID, app_name: SITE_NAME },
+            android: { package: ANDROID_PACKAGE, url: "gghub://", app_name: SITE_NAME },
+        },
+        formatDetection: { telephone: false },
+        openGraph: {
+            type: "website",
+            url: SITE_URL,
+            siteName: SITE_NAME,
+            locale: toOgLocale(locale),
+            alternateLocale: [locale === "tr" ? "en_US" : "tr_TR"],
+            title,
+            description,
+            images: [
+                {
+                    url: DEFAULT_OG_IMAGE,
+                    width: 1200,
+                    height: 630,
+                    alt: title,
+                    type: "image/png",
+                },
+            ],
+        },
+        twitter: {
+            card: "summary_large_image",
+            title,
+            description,
+            images: [DEFAULT_OG_IMAGE],
+        },
+        category: "gaming",
+    };
+}
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-    const locale = await resolveLocaleFromCookies();
+    const locale = await resolveServerLocale();
     const messages = getMessages(locale);
     const gaId = process.env.NEXT_PUBLIC_GA_ID;
     // Microsoft Clarity KALDIRILDI (29 Eyl 2026, Ahmet): site ici davranis olcumu artik kendi
@@ -137,6 +162,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
             </head>
             <body className={inter.className}>
+                {/* Site geneli yapisal veri: kurulus, site (arama eylemi) ve mobil uygulama.
+                    Sayfaya ozel semalar (oyun, inceleme, profil...) sayfanin kendisinde. */}
+                <JsonLd data={[organizationJsonLd(), webSiteJsonLd(locale), mobileApplicationJsonLd()]} />
                 <Suspense fallback={null}>
                     <GAListener />
                 </Suspense>

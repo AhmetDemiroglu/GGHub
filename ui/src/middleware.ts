@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { buildLocalizedPathname, countryToLocale, defaultLocale, isLocale, localeCookieName, localeManualCookieName, normalizeLocale, parseAcceptLanguage } from "@/i18n/config";
+import { buildLocalizedPathname, countryToLocale, defaultLocale, isLocale, localeCookieName, localeHeaderName, localeManualCookieName, normalizeLocale, parseAcceptLanguage } from "@/i18n/config";
 
 const publicFilePattern = /\.(.*)$/;
 
@@ -37,6 +37,12 @@ const resolveLocale = (request: NextRequest) => {
     return defaultLocale;
 };
 
+const withLocaleHeader = (request: NextRequest, locale: string) => {
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set(localeHeaderName, locale);
+    return requestHeaders;
+};
+
 export function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
@@ -55,7 +61,9 @@ export function middleware(request: NextRequest) {
     const pathnameLocale = pathname.split("/").filter(Boolean)[0];
 
     if (pathnameLocale && isLocale(pathnameLocale)) {
-        const response = NextResponse.next();
+        // Dil, ISTEK basligina da yazilir: sunucu bilesenleri ilk ziyarette bile dogru dili gorsun
+        // (cerez yalniz yanita gider; gerekce i18n/config.ts localeHeaderName).
+        const response = NextResponse.next({ request: { headers: withLocaleHeader(request, pathnameLocale) } });
         response.cookies.set(localeCookieName, pathnameLocale, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
         return response;
     }
@@ -72,7 +80,9 @@ export function middleware(request: NextRequest) {
     // Türkçe çözümlenen ziyaretçi eskisi gibi /tr'ye yönlendirilmeye devam ediyor, çünkü
     // dilin URL'de görünmesi paylaşılabilirlik açısından önemli.
     const response =
-        pathname === "/" && locale === defaultLocale ? NextResponse.rewrite(targetUrl) : NextResponse.redirect(targetUrl);
+        pathname === "/" && locale === defaultLocale
+            ? NextResponse.rewrite(targetUrl, { request: { headers: withLocaleHeader(request, locale) } })
+            : NextResponse.redirect(targetUrl);
 
     response.cookies.set(localeCookieName, locale, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
     return response;

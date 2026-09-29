@@ -4,15 +4,14 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { MentionText, MENTION_PATTERN_SOURCE } from "@/core/components/base/mention-text";
+import { MENTION_TOKEN_PATTERN_SOURCE } from "@/core/lib/mention-tokens";
 import { useLocalizedHref } from "@/core/hooks/use-localized-href";
 import { cn } from "@/core/lib/utils";
 import { MentionTargetType, type PostMention } from "@/models/post/post.model";
 
-/**
- * Gonderi metnindeki TIPLI etiket token'i. Backend'deki
- * GGHub.Core/Specifications/MentionTokens.PatternSource ile AYNI olmali.
- */
-export const MENTION_TOKEN_PATTERN_SOURCE = "@\\[(u|g|l):(\\d{1,10})\\]";
+// Token deseni sunucuda da (metadata, JSON-LD) kullanildigi icin core/lib'de yasar;
+// buradaki export mevcut import'lari kirmamak icin korunuyor.
+export { MENTION_TOKEN_PATTERN_SOURCE };
 
 const PREFIX_TO_TYPE: Record<string, MentionTargetType> = {
     u: MentionTargetType.User,

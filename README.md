@@ -228,6 +228,8 @@ Yerel HTTPS sertifikasına güven vermek gerekirse `dotnet dev-certs https --tru
 NEXT_PUBLIC_API_BASE_URL=https://localhost:7263
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=
 NEXT_PUBLIC_APPLE_SERVICES_ID=
+# İsteğe bağlı: Google Search Console "HTML etiketi" doğrulama kodu (yalnızca üretimde gerekir).
+NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=
 ```
 
 Ardından:

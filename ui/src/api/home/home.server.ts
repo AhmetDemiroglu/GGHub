@@ -1,52 +1,22 @@
 import { HomeContent } from "@/models/home/home.model";
 import { AppLocale } from "@/i18n/config";
+import { serverGet } from "@/api/server-fetch";
 
 /**
- * Ana sayfa içeriğini sunucuda çeker.
+ * Ana sayfa icerigini sunucuda ceker (ortak gerekce ve zaman asimi: api/server-fetch.ts).
  *
- * Neden ayrı bir dosya: `axiosInstance` tarayıcıya bağlı (localStorage'dan token okuyan
- * interceptor'lar, refresh kuyruğu). Sunucuda düz `fetch` kullanmak hem daha hafif hem de
- * Next'in Data Cache'ini kullanabilmemizi sağlıyor.
- *
- * `/home/content` [AllowAnonymous] ve yanıtı yalnızca Accept-Language'e göre değişiyor
- * (HomeService `currentUserId` parametresini almasına rağmen kullanmıyor), bu yüzden dil
- * başına tek bir önbellek girdisi herkes için doğru.
+ * `/home/content` [AllowAnonymous] ve yaniti yalnizca Accept-Language'e gore degisiyor
+ * (HomeService `currentUserId` parametresini almasina ragmen kullanmiyor), bu yuzden dil
+ * basina tek bir onbellek girdisi herkes icin dogru.
  */
 const REVALIDATE_SECONDS = 300;
 
-/**
- * Sunucu tarafi fetch'in ust siniri. Onceden sinir YOKTU: API soguk ya da yavassa Vercel
- * fonksiyonu cevabi bekliyor, loading iskeleti (ya da /tr'de bos sayfa) o kadar suruyordu.
- * Sure dolunca null doner, HomeView istemcide kendi istegini yapar; sayfa en gec 5 sn'de
- * iskeletten cikar. Data Cache dolu oldugunda bu yol hic islemez.
- */
-const SERVER_FETCH_TIMEOUT_MS = 5000;
-
 export async function getHomeContentServer(locale: AppLocale): Promise<HomeContent | null> {
-    // API_BASE_URL (sunucuya ozel) once: NEXT_PUBLIC_* degerleri derleme aninda gomulur, calisma
-    // aninda degistirilemez. Sunucu tarafi fetch'i ic ag adresine ya da lokal sahte API'ye
-    // yonlendirebilmek icin ayni desen /api/track proxy'siyle paylasilir.
-    const baseUrl = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL;
-    if (!baseUrl) return null;
-
-    try {
-        const response = await fetch(`${baseUrl}/api/home/content`, {
-            headers: { "Accept-Language": locale },
-            next: { revalidate: REVALIDATE_SECONDS, tags: [`home-content-${locale}`] },
-            signal: AbortSignal.timeout(SERVER_FETCH_TIMEOUT_MS),
-        });
-
-        if (!response.ok) {
-            // Vercel fonksiyon loglarinda gorunsun: sunucu tarafi fetch neden dustu?
-            console.error(`[home.server] ${response.status} ${response.statusText} from API`);
-            return null;
-        }
-
-        return (await response.json()) as HomeContent;
-    } catch (error) {
-        // API erişilemezse sayfayı düşürme: HomeView istemcide kendi isteğini yapıp
-        // skeleton'dan devam eder, yani eski davranışa geri düşülür.
-        console.error("[home.server] fetch failed:", error instanceof Error ? `${error.name}: ${error.message}` : error);
-        return null;
-    }
+    const { data } = await serverGet<HomeContent>("/api/home/content", {
+        locale,
+        revalidate: REVALIDATE_SECONDS,
+        tags: [`home-content-${locale}`],
+    });
+    // API erisilemezse sayfayi dusurme: HomeView istemcide kendi istegini yapip skeleton'dan devam eder.
+    return data;
 }

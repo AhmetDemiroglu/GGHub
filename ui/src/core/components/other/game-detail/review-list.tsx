@@ -1,8 +1,9 @@
 import { getGameReviews, voteReview, deleteReview, updateReview } from "@/api/review/review.api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, MessageSquare, Plus, Search, SortAsc } from "lucide-react";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
+import type { Review } from "@/models/review/review.model";
 import { ReviewCard } from "./review-card";
 import { useAuth } from "@/core/hooks/use-auth";
 import { Input } from "@core/components/ui/input";
@@ -13,10 +14,12 @@ interface ReviewListProps {
     gameId: number;
     gameName: string;
     gameSlug: string;
+    /** Sunucuda anonim cekilen incelemeler (page.tsx): ilk HTML'de cizilir. */
+    initialReviews?: Review[] | null;
     onAddReview?: () => void;
 }
 
-export const ReviewList = ({ gameId, gameName, gameSlug, onAddReview }: ReviewListProps) => {
+export const ReviewList = ({ gameId, gameName, gameSlug, initialReviews = null, onAddReview }: ReviewListProps) => {
     const queryClient = useQueryClient();
     const t = useI18n();
     const { isAuthenticated } = useAuth();
@@ -26,7 +29,16 @@ export const ReviewList = ({ gameId, gameName, gameSlug, onAddReview }: ReviewLi
     const { data: reviews, isLoading } = useQuery({
         queryKey: ["game-reviews", gameId],
         queryFn: () => getGameReviews(gameId),
+        initialData: initialReviews ?? undefined,
     });
+
+    // Sunucu verisi anonimdir: kullanicinin kendi oyu (currentUserVote) icinde yok. Kimlik
+    // cozulunce bir kez tazelenir; anonim ziyaretci sunucu verisiyle kalir, ek istek atmaz.
+    useEffect(() => {
+        if (isAuthenticated && initialReviews) {
+            queryClient.invalidateQueries({ queryKey: ["game-reviews", gameId] });
+        }
+    }, [isAuthenticated, initialReviews, gameId, queryClient]);
 
     const { mutate: submitVote } = useMutation({
         mutationFn: ({ reviewId, value }: { reviewId: number; value: number }) => voteReview(reviewId, { value }),

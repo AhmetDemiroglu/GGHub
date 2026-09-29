@@ -1,1 +1,1 @@
-export { default } from "../../../(authenticated)/lists/page";
+export { default, generateMetadata } from "../../../(authenticated)/lists/page";

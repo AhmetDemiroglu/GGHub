@@ -1,20 +1,8 @@
-import type { Metadata } from "next";
 import { AiClubView } from "@/core/components/other/ai-club/ai-club-view";
-import { getMessages } from "@/i18n";
-import { AppLocale, isLocale } from "@/i18n/config";
-import { resolveLocaleFromCookies } from "@/i18n/server";
+import { staticPageMetadata } from "@/core/seo/page-metadata";
 
-/** Sekme basligi ve aciklama arayuz dilinde: [locale] rotasi param verir, koksuz rota cerezden okur. */
-export async function generateMetadata({ params }: { params?: Promise<{ locale?: string }> }): Promise<Metadata> {
-    const routeLocale = (await params)?.locale;
-    const locale: AppLocale = routeLocale && isLocale(routeLocale) ? routeLocale : await resolveLocaleFromCookies();
-    const seo = getMessages(locale).seo as Record<string, string>;
-
-    return {
-        title: seo.aiClubTitle,
-        description: seo.aiClubDescription,
-    };
-}
+/** Sekme basligi ve aciklama arayuz dilinde; canonical + hreflang builder'dan. */
+export const generateMetadata = staticPageMetadata("/ai-bots", "aiClub");
 
 /** Herkese acik AI Kulubu: botlar, kurallar, nasil katilinir ve canli bot sohbetleri. */
 export default function AiBotsPage() {

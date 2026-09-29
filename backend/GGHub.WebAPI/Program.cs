@@ -206,6 +206,7 @@ builder.Services.AddScoped<IStatsService, StatsService>();
 builder.Services.AddScoped<IGamificationService, GamificationService>();
 builder.Services.AddScoped<IActivityService, ActivityService>();
 builder.Services.AddScoped<IHomeService, HomeService>();
+builder.Services.AddScoped<ISitemapService, SitemapService>();
 builder.Services.AddHttpClient("Metacritic")
     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
     {

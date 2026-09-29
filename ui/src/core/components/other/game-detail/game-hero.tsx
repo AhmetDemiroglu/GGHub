@@ -13,6 +13,8 @@ import { getMyReview } from "@/api/review/review.api";
 import { FavoriteButton } from "./favorite-button";
 import { AdminGameRefreshButton } from "./admin-game-refresh-button";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
+import { getDateLocaleCode } from "@/i18n/config";
+import placeHolder2 from "@core/assets/placeholder2.png";
 
 interface GameHeroProps {
     game: Game;
@@ -83,13 +85,15 @@ export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
         }
     };
 
-    const releaseDate = game.released ? new Date(game.released).toLocaleDateString("tr-TR", { month: "long", day: "numeric", year: "numeric" }) : null;
+    // Tarih arayuz dilinde: Ingilizce sayfada "14 Mart 2024" yaziyordu.
+    const releaseDate = game.released ? new Date(game.released).toLocaleDateString(getDateLocaleCode(locale), { month: "long", day: "numeric", year: "numeric" }) : null;
 
     return (
         <div className="relative w-full min-h-[550px] overflow-hidden rounded-3xl shadow-2xl bg-background border border-white/5">
             <div
                 className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-1000 hover:scale-105"
-                style={{ backgroundImage: `url(${game.backgroundImage || "/placeholder-game.jpg"})` }}
+                // /placeholder-game.jpg diye bir dosya yoktu (404); yedek gorsel diger kartlarla ayni.
+                style={{ backgroundImage: `url(${game.backgroundImage || placeHolder2.src})` }}
             >
                 <div className="absolute inset-0 bg-linear-to-t from-background via-background/90 via-30% to-transparent" />
                 <div className="absolute inset-0 bg-linear-to-r from-background via-background/50 to-transparent" />

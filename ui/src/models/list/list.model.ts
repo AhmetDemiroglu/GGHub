@@ -90,6 +90,8 @@ export interface UserListDetail {
     visibility: ListVisibilitySetting;
     category: ListCategory;
     updatedAt: string;
+    /** Backend UserListDetailDto.GameCount aynasi (games dizisi uzunluguyla ayni). */
+    gameCount: number;
     followerCount: number;
     averageRating: number;
     ratingCount: number;

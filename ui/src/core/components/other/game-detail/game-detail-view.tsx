@@ -15,12 +15,17 @@ import { toast } from "sonner";
 import { getMyReview } from "@/api/review/review.api";
 import { GameSimilarSlider } from "@/core/components/other/game-detail/game-similar-slider";
 import { Button } from "@/core/components/ui/button";
+import type { Game } from "@/models/gaming/game.model";
+import type { Review } from "@/models/review/review.model";
 
 interface GameDetailViewProps {
     idOrSlug: string;
+    /** Sunucuda cekilen oyun (page.tsx). null: API'ye ulasilamadi, istemci kendi istegini atar. */
+    initialGame?: Game | null;
+    initialReviews?: Review[] | null;
 }
 
-export const GameDetailView = ({ idOrSlug }: GameDetailViewProps) => {
+export const GameDetailView = ({ idOrSlug, initialGame = null, initialReviews = null }: GameDetailViewProps) => {
     const [isReviewDialogOpen, setIsReviewDialogOpen] = React.useState(false);
     const { isAuthenticated } = useAuth();
     const t = useI18n();
@@ -37,6 +42,9 @@ export const GameDetailView = ({ idOrSlug }: GameDetailViewProps) => {
         queryKey: ["game", idOrSlug],
         queryFn: () => gameApi.getById(idOrSlug),
         enabled: !!idOrSlug,
+        // Sunucudan gelen oyun ilk HTML'de cizilir; yanit kullaniciya gore degismedigi icin
+        // (istek listesi/favori ayri sorgular) herkes icin ayni veri gecerli, yeniden istenmez.
+        initialData: initialGame ?? undefined,
         // Hata durumu bu sayfada kendi ekranıyla gösteriliyor; global toast çift bildirim olur.
         meta: { suppressGlobalToast: true },
         retry: 1,
@@ -92,6 +100,7 @@ export const GameDetailView = ({ idOrSlug }: GameDetailViewProps) => {
                                 gameId={game.rawgId}
                                 gameName={game.name}
                                 gameSlug={game.slug}
+                                initialReviews={initialReviews}
                                 onAddReview={handleOpenReviewModal}
                             />
                         </div>

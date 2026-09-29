@@ -6,6 +6,14 @@ export const defaultLocale: AppLocale = "en-US";
 export const localeCookieName = "gghub-locale";
 export const localeManualCookieName = "gghub-locale-manual";
 export const localeStorageKey = "gghub-locale";
+/**
+ * Middleware'in her sayfa istegine ekledigi baslik: URL'den (ya da yonlendirmeden) cozulen dil.
+ * Sunucu bilesenleri dili once buradan okur. Cerez tek basina yetmiyordu: /tr/... ilk kez
+ * ziyaret edildiginde cerez yalniz YANITA yaziliyor, istekte yok; kok layout <html lang> ve
+ * mesaj paketini en-US olarak uretiyordu (Googlebot/AI tarayicilari icin Turkce sayfa Ingilizce
+ * geliyordu, istemci hydration sonrasi duzeltiyordu).
+ */
+export const localeHeaderName = "x-gghub-locale";
 
 export const countryToLocale = (countryCode?: string | null): AppLocale => {
     return countryCode?.toUpperCase() === "TR" ? "tr" : "en-US";

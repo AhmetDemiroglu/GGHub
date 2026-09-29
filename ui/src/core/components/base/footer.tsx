@@ -8,6 +8,7 @@ import { FaInstagram, FaXTwitter } from "react-icons/fa6";
 import logoSrc2 from "@core/assets/logo2.png";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 import { buildLocalizedPathname } from "@/i18n/config";
+import { APP_STORE_URL, GOOGLE_PLAY_URL } from "@/core/lib/store-links";
 
 // Yalnızca footer'daki dekoratif slogan için. preload:false olmadan next/font bunu <head>'e
 // preload olarak koyuyor ve LCP ile öncelik yarışıyordu; footer ekranın çok altında.
@@ -35,12 +36,37 @@ export function Footer() {
                                 <p className={`text-lg font-medium tracking-tight text-foreground/40 ${font.className}`}>{t("footer.tagline")}</p>
                                 <p className="text-[11px] uppercase tracking-wide text-muted-foreground/30">{t("footer.version")}</p>
                             </div>
-                            <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 md:gap-12 lg:gap-16">
+                            <div className="grid grid-cols-2 gap-8 sm:grid-cols-4 md:gap-12 lg:gap-16">
+                                {/* Kesfet sutunu: ana icerik sayfalari her sayfadan link alsin (ic baglanti / tarama).
+                                    Onceden yalnizca kenar cubugu (istemci) baglantiliydi. */}
+                                <div className="flex flex-col gap-3">
+                                    <h3 className="text-[11px] font-medium uppercase tracking-[0.3em] text-muted-foreground/60">{t("footer.explore")}</h3>
+                                    <div className="flex flex-col gap-0.5">
+                                        <Link href={buildLocalizedPathname("/discover", locale)} className="w-fit py-1 text-sm text-foreground/80 transition-colors hover:text-primary">
+                                            {t("nav.discover")}
+                                        </Link>
+                                        <Link href={buildLocalizedPathname("/lists", locale)} className="w-fit py-1 text-sm text-foreground/80 transition-colors hover:text-primary">
+                                            {t("nav.lists")}
+                                        </Link>
+                                        <Link href={buildLocalizedPathname("/agenda", locale)} className="w-fit py-1 text-sm text-foreground/80 transition-colors hover:text-primary">
+                                            {t("nav.agenda")}
+                                        </Link>
+                                        <Link href={buildLocalizedPathname("/ai-bots", locale)} className="w-fit py-1 text-sm text-foreground/80 transition-colors hover:text-primary">
+                                            {t("nav.aiClub")}
+                                        </Link>
+                                        <Link href="/download-app" className="w-fit py-1 text-sm text-foreground/80 transition-colors hover:text-primary">
+                                            {t("footer.downloadApp")}
+                                        </Link>
+                                    </div>
+                                </div>
                                 <div className="flex flex-col gap-3">
                                     <h3 className="text-[11px] font-medium uppercase tracking-[0.3em] text-muted-foreground/60">{t("footer.company")}</h3>
                                     <div className="flex flex-col gap-0.5">
                                         <Link href={buildLocalizedPathname("/about", locale)} className="w-fit py-1 text-sm text-foreground/80 transition-colors hover:text-primary">
                                             {t("footer.about")}
+                                        </Link>
+                                        <Link href={buildLocalizedPathname("/support", locale)} className="w-fit py-1 text-sm text-foreground/80 transition-colors hover:text-primary">
+                                            {t("footer.support")}
                                         </Link>
                                         <a
                                             href="mailto:info@gghub.social"
@@ -88,6 +114,16 @@ export function Footer() {
                                         >
                                             <FaInstagram className="h-4 w-4" />
                                         </button>
+                                    </div>
+                                    <div className="flex flex-col gap-0.5">
+                                        <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" className="w-fit py-1 text-sm text-foreground/80 transition-colors hover:text-primary">
+                                            {t("footer.appStore")}
+                                        </a>
+                                        {GOOGLE_PLAY_URL ? (
+                                            <a href={GOOGLE_PLAY_URL} target="_blank" rel="noopener noreferrer" className="w-fit py-1 text-sm text-foreground/80 transition-colors hover:text-primary">
+                                                {t("footer.googlePlay")}
+                                            </a>
+                                        ) : null}
                                     </div>
                                 </div>
                             </div>

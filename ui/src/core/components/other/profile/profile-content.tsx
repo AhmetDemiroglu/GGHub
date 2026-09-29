@@ -1,7 +1,9 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getProfileByUsername } from "@/api/profile/profile.api";
+import type { PublicProfile } from "@/models/profile/profile.model";
 import ProfileHeader from "./profile-header";
 import ProfileReviews from "./profile-reviews";
 import { useAuth } from "@core/hooks/use-auth";
@@ -14,10 +16,13 @@ import ProfilePosts from "./profile-posts";
 
 interface ProfileContentProps {
     username: string;
+    /** Sunucuda anonim cekilen profil (page.tsx). Public olmayan profilde null: istemci yetkiyle dener. */
+    initialProfile?: PublicProfile | null;
 }
 
-export default function ProfileContent({ username }: ProfileContentProps) {
+export default function ProfileContent({ username, initialProfile = null }: ProfileContentProps) {
     const { user } = useAuth();
+    const queryClient = useQueryClient();
 
     const {
         data: profile,
@@ -27,7 +32,16 @@ export default function ProfileContent({ username }: ProfileContentProps) {
         queryKey: ["profile", username],
         queryFn: () => getProfileByUsername(username),
         enabled: !!username,
+        // Sunucudan gelen profil ilk HTML'de cizilir.
+        initialData: initialProfile ?? undefined,
     });
+
+    // Sunucu verisi anonimdir: isFollowing/isFollowedBy/engel bilgisi yok. Kimlik cozulunce tazelenir.
+    useEffect(() => {
+        if (user && initialProfile) {
+            queryClient.invalidateQueries({ queryKey: ["profile", username] });
+        }
+    }, [user, initialProfile, username, queryClient]);
 
     const isOwnProfile = user?.username === username;
 
