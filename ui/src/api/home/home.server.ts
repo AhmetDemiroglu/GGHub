@@ -23,7 +23,10 @@ const REVALIDATE_SECONDS = 300;
 const SERVER_FETCH_TIMEOUT_MS = 5000;
 
 export async function getHomeContentServer(locale: AppLocale): Promise<HomeContent | null> {
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+    // API_BASE_URL (sunucuya ozel) once: NEXT_PUBLIC_* degerleri derleme aninda gomulur, calisma
+    // aninda degistirilemez. Sunucu tarafi fetch'i ic ag adresine ya da lokal sahte API'ye
+    // yonlendirebilmek icin ayni desen /api/track proxy'siyle paylasilir.
+    const baseUrl = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL;
     if (!baseUrl) return null;
 
     try {
