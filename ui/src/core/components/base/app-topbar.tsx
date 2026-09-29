@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -15,79 +15,38 @@ import { GlassSurface } from "@/core/components/base/glass-surface";
 import { TopbarSearch } from "@/core/components/base/topbar-search";
 import { NotificationsMenu } from "@/core/components/base/notifications-menu";
 import { AppDownloadBadge } from "@/core/components/base/app-download-badge";
+import { APP_SCROLL_ID, useTopbarMotion, type TopbarRefs } from "@/core/components/base/topbar-motion";
 
-/** Kaydirma kabinin id'si; layout'taki <main> bunu tasir (pencere degil, main kayar). */
-export const APP_SCROLL_ID = "app-main";
-
-// Histerezis: esik etrafinda titremesin. Kopma 44px'te, geri yapisma 8px'te.
-const DETACH_AT = 44;
-const ATTACH_AT = 8;
-
-interface TopbarMotion {
-    /** Cubuk ust kenardan kopmus, kapsul halinde. */
-    floating: boolean;
-    /** Kopmadan onceki gerilme: 0 (yapisik) .. 1 (kopma esigi). Kaydirmaya kilitli. */
-    stretch: number;
-    /** Kaydirma kabinin dikey kaydirma cubugu genisligi (px); cubuk onun ustune binmez. */
-    scrollbar: number;
-}
-
-/**
- * Kaydirma kabini izler. Ilk 44px'te cubuk yapisik kalir ama asagi dogru gerilir (zar gibi);
- * esik asilinca kopar ve kapsule donusur. Geri donus 8px'te: esik etrafinda titreme olmaz.
- */
-function useTopbarMotion(): TopbarMotion {
-    const pathname = usePathname();
-    const [motion, setMotion] = useState<TopbarMotion>({ floating: false, stretch: 0, scrollbar: 0 });
-
-    useEffect(() => {
-        const main = document.getElementById(APP_SCROLL_ID);
-        if (!main) return;
-
-        let frame = 0;
-        const update = () => {
-            frame = 0;
-            const top = main.scrollTop;
-            const scrollbar = main.offsetWidth - main.clientWidth;
-            setMotion((current) => {
-                const floating = current.floating ? top > ATTACH_AT : top > DETACH_AT;
-                const stretch = floating ? 0 : Math.min(top / DETACH_AT, 1);
-                if (floating === current.floating && stretch === current.stretch && scrollbar === current.scrollbar) return current;
-                return { floating, stretch, scrollbar };
-            });
-        };
-        const schedule = () => {
-            if (!frame) frame = requestAnimationFrame(update);
-        };
-
-        update();
-        main.addEventListener("scroll", schedule, { passive: true });
-        // Kaydirma cubugu icerikle gelip gidebilir (kisa sayfa / uzun sayfa).
-        const observer = new ResizeObserver(schedule);
-        observer.observe(main);
-        return () => {
-            main.removeEventListener("scroll", schedule);
-            observer.disconnect();
-            if (frame) cancelAnimationFrame(frame);
-        };
-    }, [pathname]);
-
-    return motion;
-}
+export { APP_SCROLL_ID };
 
 /**
  * Ust cubuk. Sayfanin en ustunde duz ve tek parca durur (sidebar yokmus gibi); icerik
- * kaydirilinca once asagi dogru gerilir, sonra ust kenardan kopup cam kapsule donusur
- * (koreografi globals.css: .topbar-shell, ::after zar, .topbar-neck, topbar-snap).
- * Logo, arama, mobil uygulama rozeti ve bildirimler burada; kenar cubugu altindan baslar.
+ * kaydirilinca cekilir: ilk 44px'te alt kenari zar gibi asagi uzar, esikte kopup cam kapsule
+ * donusur. Kaydirma hizi cubugu surekli ceker ve isaretcinin bulundugu noktada esnetir; birakinca
+ * yay sonumuyle yerine oturur (fizik: topbar-motion.ts, siluet: topbar-outline.ts, CSS: globals.css).
+ *
+ * Katmanlar: govde (skin + cam kapsul + SVG rim; hepsi esnek siluetle kirpilir) ve ustunde
+ * kirpilmayan icerik kutusu (arama acilir listesi cubugun altina tasar, kirpilmamali).
  */
 export function AppTopbar() {
     const t = useI18n();
     const localizeHref = useLocalizedHref();
     const pathname = usePathname();
     const { isAuthenticated } = useAuth();
-    const { floating, stretch, scrollbar } = useTopbarMotion();
     const [mobileSearch, setMobileSearch] = useState(false);
+    const rimGradientId = `topbarRim${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
+
+    const refs = useRef<TopbarRefs>({
+        body: React.createRef<HTMLDivElement>(),
+        skinSolid: React.createRef<HTMLDivElement>(),
+        skinGlass: React.createRef<HTMLDivElement>(),
+        capsule: React.createRef<HTMLDivElement>(),
+        content: React.createRef<HTMLDivElement>(),
+        rimSvg: React.createRef<SVGSVGElement>(),
+        rimGlass: React.createRef<SVGPathElement>(),
+        rimLine: React.createRef<SVGPathElement>(),
+    }).current;
+    const { floating, scrollbar } = useTopbarMotion(refs);
 
     // Sayfa degisince mobil arama modu kapanir.
     useEffect(() => setMobileSearch(false), [pathname]);
@@ -95,15 +54,37 @@ export function AppTopbar() {
     return (
         <header
             data-floating={floating}
-            style={{ "--stretch": stretch, "--topbar-sb": `${scrollbar}px` } as React.CSSProperties}
+            style={{ "--topbar-sb": `${scrollbar}px` } as React.CSSProperties}
             className="pointer-events-none absolute left-0 right-(--topbar-sb) top-0 z-40 h-(--topbar-h)"
         >
             {/* Kopma ani: ust kenarda kalan iz cizgisi ve kapsulu bir an ust kenara baglayan boyun. */}
             <span aria-hidden className="topbar-edge" />
             <span aria-hidden className="topbar-neck" />
-            <div className="topbar-shell pointer-events-auto">
-                <GlassSurface active={floating} />
 
+            {/* Govde: esnek siluet. Alt payi (--topbar-reserve) sarkma icin; kirpma her katmanda ayri ayri. */}
+            <div ref={refs.body} aria-hidden className="topbar-body">
+                <div ref={refs.skinSolid} className="topbar-skin topbar-skin-solid" />
+                <div ref={refs.skinGlass} className="topbar-skin topbar-skin-glass" />
+                <div ref={refs.capsule} className="topbar-geo topbar-capsule">
+                    <GlassSurface active={floating} />
+                </div>
+                <svg ref={refs.rimSvg} className="topbar-rim" focusable="false">
+                    <defs>
+                        {/* CSS rim'in (glass-shine::before) birebir karsiligi: ustte keskin isik, altta yumusak. */}
+                        <linearGradient id={rimGradientId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0" style={{ stopColor: "var(--glass-rim)" }} />
+                            <stop offset="0.3" style={{ stopColor: "var(--glass-rim-soft)" }} />
+                            <stop offset="0.55" style={{ stopColor: "rgba(255, 255, 255, 0.05)" }} />
+                            <stop offset="1" style={{ stopColor: "var(--glass-rim-soft)" }} />
+                        </linearGradient>
+                    </defs>
+                    <path ref={refs.rimGlass} className="topbar-rim-glass" stroke={`url(#${rimGradientId})`} />
+                    <path ref={refs.rimLine} className="topbar-rim-line" />
+                </svg>
+            </div>
+
+            {/* Icerik: kapsulle ayni koreografi (topbar-geo) ama kirpilmaz; tiklamalar burada. */}
+            <div ref={refs.content} className="topbar-geo topbar-content">
                 <div className="relative z-10 flex h-full items-center gap-2 px-3 md:gap-4 md:px-4">
                     {mobileSearch ? (
                         /* Mobil arama modu: cubuk tamamen aramaya ayrilir. */
