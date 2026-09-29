@@ -8,7 +8,8 @@ import type { PaginatedResponse } from "@/models/system/api.model";
 import type { TopUser, TopList, TopGame } from "@/models/analytics/analytics.model";
 import { ReportStatus } from "@/models/report/report.model";
 import Link from "next/link";
-import { Activity, Clock, LogIn, Users, ShieldAlert, Library, Star } from "lucide-react";
+import { Activity, Bug, Clock, LogIn, Users, ShieldAlert, Library, Star } from "lucide-react";
+import { getErrorSummary } from "@/api/admin/error-log.api";
 import { siteAnalyticsApi } from "@/api/site-analytics/site-analytics.api";
 import { fmtDuration, fmtInt } from "@/core/components/admin/metric-bar-table";
 import { buildLocalizedPathname } from "@/i18n/config";
@@ -32,6 +33,13 @@ export default function DashboardPage() {
     const { data: trafficToday } = useQuery({
         queryKey: ["site-analytics", "summary", "dashboard", today],
         queryFn: async () => (await siteAnalyticsApi.summary({ startDate: today, endDate: today })).data,
+        refetchInterval: 60_000,
+    });
+
+    // Acik hatalar: menudeki rozetle ayni sorgu anahtari (tek istek). Kartlari bekletmez.
+    const { data: errorSummary } = useQuery({
+        queryKey: ["adminErrorSummary"],
+        queryFn: async () => (await getErrorSummary()).data,
         refetchInterval: 60_000,
     });
 
@@ -108,7 +116,15 @@ export default function DashboardPage() {
                 <p className="text-muted-foreground">{t("admin.dashboardDescription")}</p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                <Link href={buildLocalizedPathname("/errors", locale)} className="rounded-xl transition-opacity hover:opacity-80">
+                    <StatsCard
+                        title={t("admin.errors.openCard")}
+                        value={fmtInt(errorSummary?.openGroups)}
+                        icon={Bug}
+                        description={t("admin.errors.openCardNote").replace("{count}", fmtInt(errorSummary?.newGroupsLast24h))}
+                    />
+                </Link>
                 <StatsCard
                     title={t("admin.totalUsers")}
                     value={statsData?.totalUsers ?? 0}

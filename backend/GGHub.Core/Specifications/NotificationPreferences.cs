@@ -18,13 +18,17 @@ namespace GGHub.Core.Specifications
         ///
         /// Doğum günü kapsam dışı: yılda bir kez gelir, aktörü yoktur ve kullanıcıyı rahatsız
         /// eden bir gürültü kaynağı değil; kapatılabilir yapmak ayarı gereksiz kalabalıklaştırır.
+        ///
+        /// Sistem uyarısı (SystemAlert) da kapsam dışı: yalnızca adminlere gider, sıradan
+        /// kullanıcının ayarlar ekranında görünmemeli.
         /// </summary>
         public static readonly IReadOnlyList<NotificationType> Configurable =
             Enum.GetValues<NotificationType>()
-                .Where(type => type != NotificationType.Birthday)
+                .Where(IsConfigurable)
                 .ToArray();
 
         /// <summary>Tip kullanıcı tercihine tabi mi? Değilse bildirim her zaman gönderilir.</summary>
-        public static bool IsConfigurable(NotificationType type) => type != NotificationType.Birthday;
+        public static bool IsConfigurable(NotificationType type) =>
+            type != NotificationType.Birthday && type != NotificationType.SystemAlert;
     }
 }

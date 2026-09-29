@@ -1,11 +1,14 @@
 ﻿using Amazon.S3;
 using GGHub.Application.Interfaces;
+using GGHub.Infrastructure.Logging;
 using GGHub.Infrastructure.Persistence;
 using GGHub.Infrastructure.Persistence.Seeders;
 using GGHub.Infrastructure.Services;
 using GGHub.Infrastructure.Settings;
 using GGHub.WebAPI.Filters;
 using GGHub.WebAPI.Hubs;
+using GGHub.WebAPI.Logging;
+using GGHub.WebAPI.Middleware;
 using GGHub.WebAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -25,8 +28,18 @@ using System.Security.Claims;
 
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Host.UseSerilog((context, configuration) =>
+// Hata kaydi (admin paneli /errors). Kuyruk + sink Serilog'dan ONCE kayitli olmali: sink,
+// logger kurulurken servis saglayicidan cozulur. ErrorLog:Enabled yazili degilse yalnizca
+// Production'da acilir (localdeki backend canli DB'ye bagli; gelistirme hatalari canli
+// tabloya yazilmasin).
+builder.Services.Configure<ErrorLogOptions>(builder.Configuration.GetSection("ErrorLog"));
+builder.Services.PostConfigure<ErrorLogOptions>(options => options.Enabled ??= builder.Environment.IsProduction());
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<ErrorLogQueue>();
+builder.Services.AddSingleton<ErrorLogSink>();
+builder.Host.UseSerilog((context, services, configuration) =>
     configuration.ReadFrom.Configuration(context.Configuration)
+        .WriteTo.Sink(services.GetRequiredService<ErrorLogSink>())
 );
 
 var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
@@ -177,6 +190,10 @@ builder.Services.AddHostedService<DownloadEventRetentionJob>();
 // Maliyet gunde birkac kez tek bir dar seq scan; Enabled bayragi job'in icinde
 // kontrol ediliyor ve varsayilani false.
 builder.Services.AddHostedService<BirthdayGreetingJob>();
+// Besinci mesru istisna: hata kaydi yazicisi. Prod'daki hatalari yazmak icin prod'da calismak
+// ZORUNDA. Hata olmadikca bos bekler (kuyruk), CPU maliyeti yok.
+builder.Services.AddScoped<IErrorLogService, ErrorLogService>();
+builder.Services.AddHostedService<ErrorLogWriter>();
 // Dorduncu mesru istisna: AI bot motoru. Kullaniciya DM atan, gonderisine yanit veren bir is
 // prod'da calismak ZORUNDA (SignalR ve push yalnizca WebAPI'den gider). Iki kapi: host kapisi
 // AiAgents:HostEnabled (varsayilan false, yalnizca Railway env'de true; localdeki backend canli
@@ -541,6 +558,10 @@ if (app.Environment.IsProduction())
 app.UseForwardedHeaders();
 
 app.UseSerilogRequestLogging();
+
+// Istek logunun ICINDE, diger her seyin DISINDA: yakalanmamis exception burada kayda girer
+// ve 500 govdesi buradan doner. CORS basliklari yanit baslarken eklendigi icin bu yanit da tasir.
+app.UseMiddleware<ErrorCaptureMiddleware>();
 
 if (app.Environment.IsProduction())
 {

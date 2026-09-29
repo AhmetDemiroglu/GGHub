@@ -30,6 +30,11 @@
         // AKTORU YOKTUR (ActorUserId null): bildirimi bir kullanici degil sistem uretir,
         // bu yuzden metin anahtari da {username} tasimaz. Iki istemci de aktorsuz satiri
         // zaten duz metne duserek karsiliyor.
-        Birthday
+        Birthday,
+        // 16 : sistem uyarisi (yeni sunucu hatasi). Yine SONA eklendi, aktoru yok.
+        // Yalnizca Admin rolundeki kullanicilara gider ve tercihe tabi degil.
+        // Link BILEREK bos: mobilde admin hata sayfasi yok, linksiz satira dokunmak
+        // gezinmez. Web tipi taniyip /errors sayfasini acar.
+        SystemAlert
     }
 }

@@ -22,22 +22,26 @@ namespace GGHub.Infrastructure.Services
         {
             AiAgentTaskType.ReviewGame, AiAgentTaskType.CreatePost, AiAgentTaskType.ReplyToPost,
             AiAgentTaskType.LikePost, AiAgentTaskType.FollowUser, AiAgentTaskType.WelcomeDirectMessage,
-            AiAgentTaskType.CommentOnReview
+            AiAgentTaskType.CommentOnReview, AiAgentTaskType.CasualDirectMessage, AiAgentTaskType.CommentOnList
         };
 
         /// <summary>
         /// Tip agirliklari (toplam 100). Inceleme yorumu planli yolda BOT incelemelerini hedefler
-        /// (botlar birbirinin incelemesine yorum yazar, inceleme sahibi cevaplar).
+        /// (botlar birbirinin incelemesine yorum yazar, inceleme sahibi cevaplar). Liste yorumu ve
+        /// kendiliginden DM ise yalnizca AI etkilesimine riza vermis insanlari hedefler.
         /// </summary>
         private static readonly (AiAgentTaskType Type, int Weight)[] Weights =
         {
-            (AiAgentTaskType.ReviewGame, 20),
-            (AiAgentTaskType.CreatePost, 22),
-            (AiAgentTaskType.ReplyToPost, 15),
-            (AiAgentTaskType.LikePost, 17),
-            (AiAgentTaskType.FollowUser, 8),
-            (AiAgentTaskType.WelcomeDirectMessage, 5),
-            (AiAgentTaskType.CommentOnReview, 13),
+            (AiAgentTaskType.ReviewGame, 18),
+            (AiAgentTaskType.CreatePost, 20),
+            (AiAgentTaskType.ReplyToPost, 14),
+            (AiAgentTaskType.LikePost, 15),
+            (AiAgentTaskType.FollowUser, 7),
+            (AiAgentTaskType.WelcomeDirectMessage, 4),
+            (AiAgentTaskType.CommentOnReview, 11),
+            // Insana donuk iki is. Uygun hedef yoksa gorev Skipped olur (LLM cagrisi yapilmaz).
+            (AiAgentTaskType.CasualDirectMessage, 4),
+            (AiAgentTaskType.CommentOnList, 7),
         };
 
         private readonly GGHubDbContext _context;

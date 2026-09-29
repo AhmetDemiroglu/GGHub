@@ -3,7 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, AlertCircle, ArrowLeftToLine, Bot, LayoutDashboard, Map, Megaphone, Smartphone, Users } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { getErrorSummary } from "@/api/admin/error-log.api";
+import { Activity, AlertCircle, ArrowLeftToLine, Bot, Bug, LayoutDashboard, Map, Megaphone, Smartphone, Users } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@core/components/ui/avatar";
 import { buttonVariants } from "@core/components/ui/button";
 import { cn } from "@core/lib/utils";
@@ -22,10 +24,19 @@ export const AdminSidebarNav = ({ user, onLinkClick }: AdminSidebarNavProps) => 
     const t = useI18n();
     const locale = useCurrentLocale();
     const pathname = stripLocaleFromPathname(usePathname() || "/");
-    const navItems = [
+    // Acik hata sayisi: menude rozet. Dakikada bir tazelenir; yuklenemezse rozet cikmaz.
+    const { data: errorSummary } = useQuery({
+        queryKey: ["adminErrorSummary"],
+        queryFn: async () => (await getErrorSummary()).data,
+        refetchInterval: 60_000,
+    });
+    const openErrors = errorSummary?.openGroups ?? 0;
+
+    const navItems: { title: string; href: string; icon: React.ElementType; badge?: number }[] = [
         { title: t("admin.dashboard"), href: "/dashboard", icon: LayoutDashboard },
         { title: t("admin.users"), href: "/users", icon: Users },
         { title: t("admin.reports"), href: "/reports", icon: AlertCircle },
+        { title: t("admin.errorLogs"), href: "/errors", icon: Bug, badge: openErrors },
         { title: t("admin.trafficAnalytics"), href: "/traffic", icon: Activity },
         { title: t("admin.behaviorAnalytics"), href: "/behavior", icon: Map },
         { title: t("admin.campaignAnalytics"), href: "/download-analytics", icon: Megaphone },
@@ -62,6 +73,11 @@ export const AdminSidebarNav = ({ user, onLinkClick }: AdminSidebarNavProps) => 
                     return (
                         <Link key={item.href} href={href} className={cn(buttonVariants({ variant: isActive ? "secondary" : "ghost" }), "justify-start gap-2")} onClick={onLinkClick}>
                             <item.icon className="h-4 w-4" /> {item.title}
+                            {item.badge ? (
+                                <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[11px] font-bold leading-none text-white">
+                                    {item.badge > 99 ? "99+" : item.badge}
+                                </span>
+                            ) : null}
                         </Link>
                     );
                 })}

@@ -15,7 +15,7 @@ namespace GGHub.Infrastructure.Services
     /// <summary>
     /// Tek bir bot gorevini isler. Hedef secimi (planli gorevlerde), baglam toplama, metin uretimi
     /// ve yazma burada. Yazma daima MEVCUT servislerden gecer (PostService, SocialService,
-    /// ReviewService, ReviewCommentService): gorunurluk, yanit izni, engel, bildirim, SignalR ve
+    /// ReviewService, ReviewCommentService, UserListCommentService): gorunurluk, yanit izni, engel, bildirim, SignalR ve
     /// push kurallari insan kullanicilarla birebir ayni isler.
     ///
     /// Sonuc: Done (yazildi), Skipped (uygun hedef yok, kural engelledi) ya da istisna (motor
@@ -35,6 +35,7 @@ namespace GGHub.Infrastructure.Services
         private readonly ISocialService _social;
         private readonly IReviewService _reviews;
         private readonly IReviewCommentService _reviewComments;
+        private readonly IUserListCommentService _listComments;
         private readonly AiContentWriter _writer;
         private readonly IAiInteractionPolicy _policy;
         private readonly IAiAgentDirectory _directory;
@@ -49,6 +50,7 @@ namespace GGHub.Infrastructure.Services
             ISocialService social,
             IReviewService reviews,
             IReviewCommentService reviewComments,
+            IUserListCommentService listComments,
             AiContentWriter writer,
             IAiInteractionPolicy policy,
             IAiAgentDirectory directory,
@@ -62,6 +64,7 @@ namespace GGHub.Infrastructure.Services
             _social = social;
             _reviews = reviews;
             _reviewComments = reviewComments;
+            _listComments = listComments;
             _writer = writer;
             _policy = policy;
             _directory = directory;
@@ -100,6 +103,8 @@ namespace GGHub.Infrastructure.Services
                 AiAgentTaskType.FollowUser => await FollowHumanAsync(task, identity, ct),
                 AiAgentTaskType.StartConversation => await _conversations.StartAsync(task, identity, ct),
                 AiAgentTaskType.ConversationTurn => await _conversations.TurnAsync(task, identity, ct),
+                AiAgentTaskType.CasualDirectMessage => await CasualMessageAsync(task, identity, ct),
+                AiAgentTaskType.CommentOnList => await CommentOnListAsync(task, identity, ct),
                 _ => Outcome.Skip("Bilinmeyen gorev tipi.")
             };
         }
@@ -171,7 +176,9 @@ namespace GGHub.Infrastructure.Services
                             !_context.Messages.Any(m => m.RecipientId == u.Id && agentIds.Contains(m.SenderId)) &&
                             !_context.UserBlocks.Any(b => (b.BlockerId == u.Id && agentIds.Contains(b.BlockedId))))
                 .Where(u => _context.AiAgentTasks.Count(t =>
-                    t.TargetUserId == u.Id && t.Type == AiAgentTaskType.WelcomeDirectMessage && t.CreatedAt >= weekAgo &&
+                    t.TargetUserId == u.Id &&
+                    (t.Type == AiAgentTaskType.WelcomeDirectMessage || t.Type == AiAgentTaskType.CasualDirectMessage) &&
+                    t.CreatedAt >= weekAgo &&
                     t.Status == AiAgentTaskStatus.Done) < settings.MaxUnsolicitedDmPerUserPerWeek)
                 .OrderBy(u => u.CreatedAt)
                 .Select(u => new { u.Id, u.Username })
@@ -196,6 +203,281 @@ namespace GGHub.Infrastructure.Services
 
             var sent = await _social.SendMessageAsync(task.AgentUserId, new MessageForCreationDto { RecipientUsername = target.Username, Content = text.Text });
             return new Outcome(AiAgentTaskStatus.Done, Summary(text.Text), sent?.Id, text);
+        }
+
+        /// <summary>
+        /// Kendiliginden DM: hos geldinin aksine eski kullaniciya ve daha once botla yazismis
+        /// kullaniciya da gider. Frenler: haftalik tavan (hos geldin ile ortak), gunluk bot mesaji
+        /// tavani ve "ust uste yazma yok" (bu botun son mesaji cevapsizsa 7 gun ayni kisiye yazmaz).
+        /// </summary>
+        private async Task<Outcome> CasualMessageAsync(AiAgentTask task, AiAgentIdentity agent, CancellationToken ct)
+        {
+            var settings = await _settings.GetAsync(ct);
+            if (settings.MaxUnsolicitedDmPerUserPerWeek <= 0) return Outcome.Skip("Kendiliginden DM kapali (haftalik tavan 0).");
+
+            var agentId = task.AgentUserId;
+            var cutoff = AiInteractionRules.AdultBirthCutoffUtc(BirthdayCalendar.TodayInIstanbul());
+            var weekAgo = DateTime.UtcNow.AddDays(-7);
+            var wantsTr = agent.Language == AiLanguage.Tr;
+
+            // Bot ilk yazdigi icin dil kullanicinin arayuz tercihinden (hos geldin ile ayni kural).
+            var candidates = await _context.Users.AsNoTracking()
+                .Where(u => !u.IsAiAgent && !u.IsSeeded && !u.IsDeleted && !u.IsBanned &&
+                            u.AllowAiInteraction && u.DateOfBirth != null && u.DateOfBirth <= cutoff &&
+                            (wantsTr
+                                ? u.PreferredLocale == null || u.PreferredLocale.StartsWith("tr")
+                                : u.PreferredLocale != null && !u.PreferredLocale.StartsWith("tr")) &&
+                            u.MessageSetting == MessagePrivacySetting.Everyone &&
+                            !_context.UserBlocks.Any(b => b.BlockerId == u.Id && b.BlockedId == agentId) &&
+                            // Bu botun cevapsiz kalmis yakin tarihli mesaji varsa ust uste yazma.
+                            !_context.Messages.Any(m => m.SenderId == agentId && m.RecipientId == u.Id && m.SentAt >= weekAgo &&
+                                !_context.Messages.Any(r => r.SenderId == u.Id && r.RecipientId == agentId && r.SentAt > m.SentAt)) &&
+                            // Bu bota cevap bekleyen DM'i varsa onu ReplyToDirectMessage halleder.
+                            !_context.AiAgentTasks.Any(t => t.AgentUserId == agentId && t.TargetUserId == u.Id &&
+                                t.Type == AiAgentTaskType.ReplyToDirectMessage &&
+                                (t.Status == AiAgentTaskStatus.Pending || t.Status == AiAgentTaskStatus.Running)))
+                .Where(u => _context.AiAgentTasks.Count(t =>
+                    t.TargetUserId == u.Id &&
+                    (t.Type == AiAgentTaskType.WelcomeDirectMessage || t.Type == AiAgentTaskType.CasualDirectMessage) &&
+                    t.CreatedAt >= weekAgo &&
+                    t.Status == AiAgentTaskStatus.Done) < settings.MaxUnsolicitedDmPerUserPerWeek)
+                .OrderByDescending(u => u.UpdatedAt)
+                .Select(u => new { u.Id, u.Username })
+                .Take(30)
+                .ToListAsync(ct);
+            if (candidates.Count == 0) return Outcome.Skip("Kendiliginden DM icin uygun kullanici yok.");
+
+            var target = candidates[Random.Shared.Next(candidates.Count)];
+            if (!await _policy.CanInteractAsync(target.Id, ct)) return Outcome.Skip("Kullanici uygun degil.");
+            if (!await UnderDailyMessageCapAsync(target.Id, ct)) return Outcome.Skip("Kullanicinin gunluk bot mesaji tavani doldu.");
+
+            task.TargetUserId = target.Id;
+
+            var firstContact = !await _context.Messages.AnyAsync(m =>
+                (m.SenderId == agentId && m.RecipientId == target.Id) || (m.SenderId == target.Id && m.RecipientId == agentId), ct);
+            var hook = await CasualHookAsync(target.Id, ct);
+
+            var text = await _writer.WriteCasualMessageAsync(agent, target.Username, hook, firstContact, agent.Language, ct);
+            if (text is null) return Outcome.Skip("Metin uretilemedi.");
+
+            // Model yazarken riza geri alinmis olabilir.
+            if (!await _policy.CanInteractAsync(target.Id, ct)) return Outcome.Skip("Kullanici uygun degil.");
+
+            var sent = await _social.SendMessageAsync(agentId, new MessageForCreationDto { RecipientUsername = target.Username, Content = text.Text });
+            return new Outcome(AiAgentTaskStatus.Done, Summary(text.Text), sent?.Id, text);
+        }
+
+        /// <summary>
+        /// Kendiliginden DM'in konusu: kullanicinin en yeni incelemesi ya da herkese acik listesi
+        /// (hangisi yeniyse). Yalnizca oyun adi, puan ve liste adi gider; kullanicinin yazdigi
+        /// serbest metin (inceleme, gonderi) modele TASINMAZ.
+        /// </summary>
+        private async Task<string?> CasualHookAsync(int userId, CancellationToken ct)
+        {
+            var review = await _context.Reviews.AsNoTracking()
+                .Where(r => r.UserId == userId)
+                .OrderByDescending(r => r.CreatedAt)
+                .Select(r => new { r.CreatedAt, r.Rating, GameName = r.Game.Name })
+                .FirstOrDefaultAsync(ct);
+
+            var list = await _context.UserLists.AsNoTracking()
+                .Where(l => l.UserId == userId && l.Type == UserListType.Custom && l.Visibility == ListVisibilitySetting.Public &&
+                            l.UserListGames.Any())
+                .OrderByDescending(l => l.UpdatedAt)
+                .Select(l => new
+                {
+                    l.UpdatedAt,
+                    l.Name,
+                    Games = l.UserListGames.OrderByDescending(g => g.AddedAt).Select(g => g.Game.Name).Take(4).ToList()
+                })
+                .FirstOrDefaultAsync(ct);
+
+            if (review is null && list is null) return null;
+            if (list is null || (review is not null && review.CreatedAt >= list.UpdatedAt))
+            {
+                return $"{review!.GameName} oyununa 10 üzerinden {review.Rating} puan verip inceleme yazdı.";
+            }
+            return $"\"{list.Name}\" adlı bir oyun listesi var, içinde şunlar bulunuyor: {string.Join(", ", list.Games)}.";
+        }
+
+        // ------------------------------------------------------------------ Liste
+
+        /// <summary>Promptta listeden en fazla kac oyun adi gecer.</summary>
+        private const int MaxListGamesInPrompt = 12;
+
+        /// <summary>Bir listenin altinda en fazla kac bot KOK yorumu olur.</summary>
+        private const int MaxAgentCommentsPerList = 2;
+
+        /// <summary>
+        /// Yanit en fazla bu derinlikte yazilir (kok = 0). GetCommentsForListAsync agaci bu
+        /// derinlige kadar yukler; daha derine yazilan yanit hicbir istemcide gorunmezdi.
+        /// </summary>
+        private const int MaxListCommentDepth = 3;
+
+        private async Task<Outcome> CommentOnListAsync(AiAgentTask task, AiAgentIdentity agent, CancellationToken ct)
+        {
+            if (task.TargetCommentId is int commentId) return await ReplyToListCommentAsync(task, agent, commentId, ct);
+
+            var agentId = task.AgentUserId;
+            var agentIds = (await _directory.GetAgentIdsAsync(ct)).ToList();
+
+            int listId;
+            if (task.TargetListId is int given)
+            {
+                listId = given;
+            }
+            else
+            {
+                // Planli yol: AI etkilesimine riza vermis insanlarin herkese acik, yeterince dolu listeleri.
+                var cutoff = AiInteractionRules.AdultBirthCutoffUtc(BirthdayCalendar.TodayInIstanbul());
+                var since = DateTime.UtcNow.AddDays(-90);
+                var candidates = await _context.UserLists.AsNoTracking()
+                    .Where(l => l.Type == UserListType.Custom && l.Visibility == ListVisibilitySetting.Public &&
+                                l.UpdatedAt >= since &&
+                                l.UserListGames.Count() >= AiAgentEvents.MinGamesForListComment &&
+                                !l.User.IsAiAgent && !l.User.IsSeeded && !l.User.IsDeleted && !l.User.IsBanned &&
+                                l.User.ProfileVisibility == ProfileVisibilitySetting.Public &&
+                                l.User.AllowAiInteraction && l.User.DateOfBirth != null && l.User.DateOfBirth <= cutoff &&
+                                !_context.UserBlocks.Any(b => b.BlockerId == l.UserId && b.BlockedId == agentId) &&
+                                !_context.UserListComments.Any(c => c.UserListId == l.Id && c.UserId == agentId) &&
+                                _context.UserListComments.Count(c => c.UserListId == l.Id && c.ParentCommentId == null && agentIds.Contains(c.UserId)) < MaxAgentCommentsPerList)
+                    .OrderByDescending(l => l.UpdatedAt)
+                    .Select(l => new LangCandidate(l.Id, l.UserId, false, l.Name + " " + (l.Description ?? "")))
+                    .Take(30)
+                    .ToListAsync(ct);
+
+                var capped = await CappedHumansAsync(candidates.Select(c => c.UserId), ct);
+                candidates = candidates.Where(c => !capped.Contains(c.UserId)).ToList();
+                if (PickInLanguage(candidates, new HashSet<int>(), agent.Language) is not int picked)
+                    return Outcome.Skip("Yorumlanacak uygun liste yok.");
+                listId = picked;
+                task.TargetListId = listId;
+            }
+
+            var list = await LoadListForModelAsync(listId, ct);
+            if (list is null) return Outcome.Skip("Liste silinmis ya da herkese acik degil.");
+            if (list.OwnerId == agentId || list.OwnerIsAiAgent) return Outcome.Skip("Liste bir botun.");
+            if (list.Games.Count < AiAgentEvents.MinGamesForListComment) return Outcome.Skip("Listede yeterli oyun yok.");
+            if (!await _policy.CanInteractAsync(list.OwnerId, ct)) return Outcome.Skip("Liste sahibi AI etkilesimine uygun degil.");
+
+            task.TargetUserId = list.OwnerId;
+
+            if (await _context.UserListComments.AnyAsync(c => c.UserListId == listId && c.UserId == agentId, ct))
+                return Outcome.Skip("Bu liste zaten yorumlandi.");
+            var agentRoots = await _context.UserListComments.CountAsync(c =>
+                c.UserListId == listId && c.ParentCommentId == null && agentIds.Contains(c.UserId), ct);
+            if (agentRoots >= MaxAgentCommentsPerList) return Outcome.Skip("Listenin bot yorumu tavani dolu.");
+
+            // Insana onun yazdigi dilde: liste adi ve aciklamasi, belirlenemezse arayuz tercihi.
+            var lang = AiLanguage.Detect($"{list.Name} {list.Description}") ?? await PreferredLanguageAsync(list.OwnerId, agent.Language, ct);
+            var description = list.Description is null ? null : await _conversations.MaskPlainHandlesAsync(list.Description, lang, ct);
+
+            var text = await _writer.WriteListCommentAsync(agent, list.OwnerUsername, list.Name, description, list.Games, list.TotalGames, lang, ct);
+            if (text is null) return Outcome.Skip("Metin uretilemedi.");
+
+            // Model yazarken riza geri alinmis olabilir; yorumdaki "@ad" dogrudan bildirim oldugu icin
+            // yalnizca ayni dildeki botlar ve (rizali) liste sahibi etiketli kalir.
+            if (!await _policy.CanInteractAsync(list.OwnerId, ct)) return Outcome.Skip("Liste sahibi AI etkilesimine uygun degil.");
+            var allowedHandles = (await AgentHandlesAsync(agent.Language, ct)).Keys.ToHashSet();
+            allowedHandles.Add(list.OwnerUsername.ToLowerInvariant());
+            allowedHandles.Remove(agent.Username.ToLowerInvariant());
+            text = text with { Text = AiMentionLinker.KeepAllowedHandles(text.Text, allowedHandles) };
+
+            var comment = await _listComments.CreateCommentAsync(listId, agentId, new UserListCommentForCreationDto { Content = text.Text });
+            return new Outcome(AiAgentTaskStatus.Done, Summary(text.Text), comment.Id, text);
+        }
+
+        private async Task<Outcome> ReplyToListCommentAsync(AiAgentTask task, AiAgentIdentity agent, int commentId, CancellationToken ct)
+        {
+            var agentId = task.AgentUserId;
+            var comment = await _context.UserListComments.AsNoTracking()
+                .Where(c => c.Id == commentId)
+                .Select(c => new { c.Id, c.UserListId, c.UserId, c.Content, c.ParentCommentId, c.User.Username, c.User.IsAiAgent })
+                .FirstOrDefaultAsync(ct);
+            if (comment is null) return Outcome.Skip("Yorum silinmis.");
+            if (comment.UserId == agentId) return Outcome.Skip("Kendi yorumu.");
+            if (comment.IsAiAgent) return Outcome.Skip("Yorum bir botun.");
+            if (!await _policy.CanInteractAsync(comment.UserId, ct)) return Outcome.Skip("Yorum sahibi uygun degil.");
+            if (await _context.UserListComments.AnyAsync(c => c.ParentCommentId == commentId && c.UserId == agentId, ct))
+                return Outcome.Skip("Bu yoruma zaten cevap verildi.");
+
+            var list = await LoadListForModelAsync(comment.UserListId, ct);
+            if (list is null) return Outcome.Skip("Liste silinmis ya da herkese acik degil.");
+            task.TargetListId = list.Id;
+
+            // Zincir: yorumdan koke dogru ustler (en fazla MaxListCommentDepth adim). Riza vermemis
+            // insanlarin metni ve adi modele gitmez; derinlik yanitin nereye yazilacagini belirler.
+            var lang = AiLanguage.Detect(comment.Content) ?? await PreferredLanguageAsync(comment.UserId, agent.Language, ct);
+            var thread = new List<AiThreadLine>
+            {
+                new(false, comment.Username, false, await _conversations.MaskPlainHandlesAsync(comment.Content, lang, ct))
+            };
+            var depth = 0;
+            var parentId = comment.ParentCommentId;
+            while (parentId is int pid && depth < MaxListCommentDepth + 1)
+            {
+                var parent = await _context.UserListComments.AsNoTracking()
+                    .Where(c => c.Id == pid)
+                    .Select(c => new { c.UserId, c.Content, c.ParentCommentId, c.User.Username, c.User.IsAiAgent })
+                    .FirstOrDefaultAsync(ct);
+                if (parent is null) break;
+                depth++;
+
+                var mine = parent.UserId == agentId;
+                if (mine || parent.IsAiAgent)
+                {
+                    thread.Insert(0, new AiThreadLine(mine, parent.Username, true, parent.Content));
+                }
+                else if (await _policy.CanInteractAsync(parent.UserId, ct))
+                {
+                    thread.Insert(0, new AiThreadLine(false, parent.Username, false, await _conversations.MaskPlainHandlesAsync(parent.Content, lang, ct)));
+                }
+                parentId = parent.ParentCommentId;
+            }
+
+            var addresseeIsOwner = comment.UserId == list.OwnerId;
+            var text = await _writer.WriteListCommentReplyAsync(agent, list.OwnerUsername, list.Name, list.Games, thread,
+                comment.Username, addresseeIsOwner, addresseeIsHuman: true, lang, ct);
+            if (text is null) return Outcome.Skip("Metin uretilemedi.");
+
+            if (!await _policy.CanInteractAsync(comment.UserId, ct)) return Outcome.Skip("Yorum sahibi uygun degil.");
+            var allowedHandles = (await AgentHandlesAsync(agent.Language, ct)).Keys.ToHashSet();
+            allowedHandles.Add(comment.Username.ToLowerInvariant());
+            allowedHandles.Remove(agent.Username.ToLowerInvariant());
+            text = text with { Text = AiMentionLinker.KeepAllowedHandles(text.Text, allowedHandles) };
+
+            // Yorum zaten en derin seviyedeyse yanit onun KARDESI olarak (ayni ustun altina) yazilir.
+            var replyTo = depth >= MaxListCommentDepth && comment.ParentCommentId is int siblingParent ? siblingParent : commentId;
+            var reply = await _listComments.CreateCommentAsync(list.Id, agentId,
+                new UserListCommentForCreationDto { Content = text.Text, ParentCommentId = replyTo });
+            return new Outcome(AiAgentTaskStatus.Done, Summary(text.Text), reply.Id, text);
+        }
+
+        private sealed record ListForModel(
+            int Id, int OwnerId, string OwnerUsername, bool OwnerIsAiAgent, string Name, string? Description,
+            IReadOnlyList<string> Games, int TotalGames);
+
+        /// <summary>Herkese acik, sahibi aktif ozel liste; degilse null. Oyunlar eklenme sirasiyla.</summary>
+        private async Task<ListForModel?> LoadListForModelAsync(int listId, CancellationToken ct)
+        {
+            var row = await _context.UserLists.AsNoTracking()
+                .WhereOwnerActive()
+                .Where(l => l.Id == listId && l.Type == UserListType.Custom && l.Visibility == ListVisibilitySetting.Public)
+                .Select(l => new
+                {
+                    l.Id,
+                    l.UserId,
+                    l.User.Username,
+                    l.User.IsAiAgent,
+                    l.Name,
+                    l.Description,
+                    Total = l.UserListGames.Count(),
+                    Games = l.UserListGames.OrderBy(g => g.AddedAt).Select(g => g.Game.Name).Take(MaxListGamesInPrompt).ToList()
+                })
+                .FirstOrDefaultAsync(ct);
+            return row is null
+                ? null
+                : new ListForModel(row.Id, row.UserId, row.Username, row.IsAiAgent, row.Name, row.Description, row.Games, row.Total);
         }
 
         // ------------------------------------------------------------------ Gonderi
@@ -767,7 +1049,8 @@ namespace GGHub.Infrastructure.Services
             var since = DateTime.UtcNow.AddHours(-24);
             return (await _context.AiAgentTasks.AsNoTracking()
                     .Where(t => t.TargetUserId != null && ids.Contains(t.TargetUserId.Value) && t.CreatedAt >= since &&
-                                (t.Type == AiAgentTaskType.ReplyToPost || t.Type == AiAgentTaskType.CommentOnReview))
+                                (t.Type == AiAgentTaskType.ReplyToPost || t.Type == AiAgentTaskType.CommentOnReview ||
+                                 t.Type == AiAgentTaskType.CommentOnList))
                     .GroupBy(t => t.TargetUserId!.Value)
                     .Select(g => new { UserId = g.Key, Count = g.Count() })
                     .ToListAsync(ct))

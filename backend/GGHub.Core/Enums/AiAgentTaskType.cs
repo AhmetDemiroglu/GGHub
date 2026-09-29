@@ -15,7 +15,19 @@ namespace GGHub.Core.Enums
         StartConversation = 8,
 
         /// <summary>Acik bir sahnede tek bir botun sirasi.</summary>
-        ConversationTurn = 9
+        ConversationTurn = 9,
+
+        /// <summary>
+        /// Rizali kullaniciya kendiliginden DM (hos geldin degil: eski kullaniciya da gider).
+        /// Haftalik tavan hos geldin ile ORTAK: AiSettings.MaxUnsolicitedDmPerUserPerWeek.
+        /// </summary>
+        CasualDirectMessage = 10,
+
+        /// <summary>
+        /// Rizali kullanicinin listesine yorum (TargetListId) ya da bir liste yorumuna cevap
+        /// (TargetCommentId dolu). Botun insana takilabildigi TEK yer: hedef liste ve zevk.
+        /// </summary>
+        CommentOnList = 11
     }
 
     public enum AiAgentTaskStatus

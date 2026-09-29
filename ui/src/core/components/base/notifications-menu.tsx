@@ -7,7 +7,7 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import "dayjs/locale/en";
 import "dayjs/locale/tr";
 import { useQueryClient } from "@tanstack/react-query";
-import { AtSign, Bell, Cake, Heart, List, MessageSquare, Repeat2, Reply, Star, ThumbsUp, UserPlus } from "lucide-react";
+import { AtSign, Bell, Bug, Cake, Heart, List, MessageSquare, Repeat2, Reply, Star, ThumbsUp, UserPlus } from "lucide-react";
 import { markAllNotificationsAsRead, markNotificationAsRead } from "@/api/notifications/notifications.api";
 import { useNavigationData, useNotifications } from "@/core/hooks/use-navigation-data";
 import { useLocalizedHref } from "@/core/hooks/use-localized-href";
@@ -55,6 +55,8 @@ const notificationIconMeta = (type: NotificationType): { Icon: IconComponent; co
             return { Icon: Repeat2, color: "text-emerald-500" };
         case NotificationType.Birthday:
             return { Icon: Cake, color: "text-fuchsia-500" };
+        case NotificationType.SystemAlert:
+            return { Icon: Bug, color: "text-destructive" };
         default:
             return { Icon: Bell, color: "text-muted-foreground" };
     }
@@ -153,14 +155,16 @@ export function NotificationsMenu() {
                         items.map((notification) => {
                             const { Icon, color } = notificationIconMeta(notification.type);
                             const close = () => setOpen(false);
+                            // Sistem uyarisi linksiz gelir (mobilde hata sayfasi yok); web'de hata kayitlarina gider.
+                            const link = notification.link ?? (notification.type === NotificationType.SystemAlert ? "/errors" : null);
 
                             return (
                                 // Satiri kaplayan link deseni: profil linkini ic ice <a> yapmadan
                                 // hem satirin tamami hem de avatar/ad ayri ayri tiklanabilir kalir.
                                 <div key={notification.id} className={cn("relative border-b p-3 last:border-b-0 hover:bg-accent", !notification.isRead && "bg-accent/50")}>
-                                    {notification.link && (
+                                    {link && (
                                         <Link
-                                            href={localizeHref(notification.link)}
+                                            href={localizeHref(link)}
                                             className="absolute inset-0 z-10 cursor-pointer"
                                             aria-label={notification.message}
                                             onClick={() => {

@@ -77,6 +77,14 @@ namespace GGHub.Infrastructure.Services
                     // Suresi dolmus ya da iptal edilmis refresh token'lar. Yenileme bunlari bir daha
                     // kabul etmez; tabloda kalmalarinin tek etkisi Token aramasini (her yenilemede)
                     // yavaslatmakti. 7 gunluk pay denetim/geri izleme icin.
+                    // Hata kayitlarinin tekil olaylari (stack, yol, kullanici). Gruplar kalir:
+                    // "bu hata ilk ne zaman goruldu, kac kez oldu" bilgisi silinmez.
+                    var errorRetentionDays = _configuration.GetValue<int?>("ErrorLog:RetentionDays") ?? 30;
+                    var errorLogs = scope.ServiceProvider.GetRequiredService<IErrorLogService>();
+                    var errorsDeleted = await errorLogs.PurgeEventsOlderThanAsync(DateTime.UtcNow.AddDays(-errorRetentionDays), BatchSize, stoppingToken);
+                    if (errorsDeleted > 0)
+                        _logger.LogInformation("error-log retention: {Deleted} olay silindi ({Days} gun oncesi)", errorsDeleted, errorRetentionDays);
+
                     var db = scope.ServiceProvider.GetRequiredService<GGHubDbContext>();
                     var tokenCutoff = DateTime.UtcNow.AddDays(-7);
                     var tokensDeleted = await db.RefreshTokens

@@ -24,7 +24,8 @@ namespace GGHub.Infrastructure.Services
 
         public async Task SubmitRatingAsync(int listId, int userId, UserListRatingForUpsertDto dto)
         {
-            var list = await _context.UserLists.FindAsync(listId);
+            // FindAsync degil: sahibi silinmis listeye puan verilemez (liste hic yokmus gibi).
+            var list = await _context.UserLists.WhereOwnerActive().FirstOrDefaultAsync(l => l.Id == listId);
 
             if (list == null)
             {

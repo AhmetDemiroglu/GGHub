@@ -40,8 +40,8 @@ namespace GGHub.Core.Entities
         /// <summary>Bir kullaniciya gunde en fazla kac bot mesaji (tum botlar toplami).</summary>
         public int MaxAgentMessagesPerUserPerDay { get; set; } = 20;
 
-        /// <summary>Kullanici yazmadan atilan (hos geldin) bot DM'i, kullanici basina haftada.</summary>
-        public int MaxUnsolicitedDmPerUserPerWeek { get; set; } = 1;
+        /// <summary>Kullanici yazmadan atilan (hos geldin + kendiliginden) bot DM'i, kullanici basina haftada.</summary>
+        public int MaxUnsolicitedDmPerUserPerWeek { get; set; } = 3;
 
         /// <summary>Bir gonderinin altina en fazla kac bot yaniti.</summary>
         public int MaxAgentRepliesPerPost { get; set; } = 2;

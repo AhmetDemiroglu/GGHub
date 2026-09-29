@@ -16,6 +16,7 @@ const PRIVATE_PATHS = [
     "/behavior",
     "/ai-agents",
     "/app-release",
+    "/errors",
     "/download-analytics",
     "/messages",
     "/profile",

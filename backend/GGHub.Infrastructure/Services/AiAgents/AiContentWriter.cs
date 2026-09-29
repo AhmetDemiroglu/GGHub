@@ -46,7 +46,18 @@ namespace GGHub.Infrastructure.Services
             _llm = llm;
         }
 
-        private static string BaseRules(AiAgentIdentity agent, string lang) => $"""
+        /// <summary>BaseRules'taki "insana sicak ol" satiri; liste takilmasinda ListRoast ile degisir.</summary>
+        private const string WarmToHumans =
+            "İnsan kullanıcılara karşı her zaman sıcak ve saygılısın; sert takılma ve alay yalnızca AI karakterler arasında.";
+
+        /// <summary>
+        /// Liste yorumlari: botun insana takilabildigi TEK yer (Ahmet karari, 29 Eyl 2026). Kullanici
+        /// AI etkilesimine riza vermis ve listesi herkese acik. Hedef liste ve zevk; kisi degil.
+        /// </summary>
+        private const string ListRoast =
+            "Bu görevde bir insan kullanıcının oyun listesine takılıyorsun: iğneleyici, alaycı ve komik olabilirsin. Hedef yalnızca liste ve oyun zevki; kişinin kendisi, zekası, görünüşü, yaşı, hayatı ya da kimliği asla. Küfür, hakaret ve aşağılama yok. Arkadaşına takılan biri gibi yaz: güldürsün, kırmasın.";
+
+        private static string BaseRules(AiAgentIdentity agent, string lang, bool listRoast = false) => $"""
             Sen GGHub adlı oyun sosyal ağında yaşayan bir yapay zeka karakterisin. Adın "{agent.DisplayName}", kullanıcı adın @{agent.Username}.
             Karakterin: {agent.Persona}
 
@@ -61,7 +72,7 @@ namespace GGHub.Infrastructure.Services
             - Kısa ve doğal yaz, gerçek bir sohbet gibi. Cümle uzunluğunu değiştir. Emoji en fazla iki tane. Hashtag, madde işareti, başlık ve markdown kullanma. Uzun tire (— ya da –) kullanma.
             - GGHub'da seninle birlikte başka AI karakterler de yaşıyor ve aranızda gerçek fikir ayrılıkları var. Kendi zevkini savun, karşı tarafın argümanıyla ve zevkiyle açıkça dalga geç, alaycı ol, kolay kolay geri adım atma; uzlaşmak zorunda değilsin. Uysal ve yumuşak olma ama sevimsiz de olma: keskin ve zeki.
             - Sınır kesin: hedef her zaman fikir ve zevktir, kişi değil. Küfür, hakaret, aşağılama, nefret söylemi ve kimlik (cinsiyet, köken, din, engel) üzerinden laf yok.
-            - İnsan kullanıcılara karşı her zaman sıcak ve saygılısın; sert takılma ve alay yalnızca AI karakterler arasında.
+            - {(listRoast ? ListRoast : WarmToHumans)}
             - Her sohbette aynı kalıbı tekrar etme: girişini, cümle yapını ve kapanışını değiştir.
             - Birine seslenirken @kullaniciadi yaz; yalnızca bu mesajda sana verilen kullanıcı adlarını kullan, başka ad uydurma.
             - Yalnızca yazacağın metni ver. Açıklama, tırnak, "İşte cevabım" gibi giriş ekleme.
@@ -121,6 +132,73 @@ namespace GGHub.Infrastructure.Services
                 {HumanAddressee}
                 """;
             return RunAsync(BaseRules(agent, lang), new[] { new GeminiTurn("user", prompt) }, lang, 200, 300, 0.9, ct);
+        }
+
+        /// <summary>
+        /// Rizali kullaniciya kendiliginden DM. Konu kullanicinin GGHub'daki son hareketi (hook);
+        /// hareket yoksa genel bir oyun sorusu. Hos geldin mesajindan farki: tanisma yok, dogrudan konu.
+        /// </summary>
+        public Task<AiText?> WriteCasualMessageAsync(
+            AiAgentIdentity agent, string partnerName, string? hook, bool firstContact, string lang, CancellationToken ct)
+        {
+            var topic = string.IsNullOrWhiteSpace(hook)
+                ? "Kullanıcının GGHub'da belirgin bir son hareketi yok: ona şu sıralar ne oynadığını ya da ne beklediğini sor."
+                : $"Kullanıcının GGHub'daki son hareketi: {hook} Mesajını bunun üzerine kur: kendi görüşünü söyle ve ona bir soru sor.";
+            var intro = firstContact
+                ? "Onunla ilk kez yazışıyorsun: tek kısa ifadeyle GGHub'ın AI karakterlerinden biri olduğunu belli et."
+                : "Daha önce yazışmıştınız: kendini yeniden tanıtma, doğrudan konuya gir.";
+
+            var prompt = $"""
+                @{partnerName} adlı kullanıcıya kendiliğinden bir özel mesaj yazıyorsun. O sana yazmadı, sohbeti sen başlatıyorsun.
+                {topic}
+                {intro}
+                En fazla 2 kısa cümle. Reklam gibi, duyuru gibi ya da toplu mesaj gibi yazma.
+                {HumanAddressee}
+                """;
+            return RunAsync(BaseRules(agent, lang), new[] { new GeminiTurn("user", prompt) }, lang, 200, 300, 1.0, ct);
+        }
+
+        /// <summary>Insan kullanicinin listesine yorum (takilma tonu, bkz. ListRoast).</summary>
+        public Task<AiText?> WriteListCommentAsync(
+            AiAgentIdentity agent, string owner, string listName, string? listDescription, IReadOnlyList<string> games,
+            int totalGames, string lang, CancellationToken ct)
+        {
+            var description = string.IsNullOrWhiteSpace(listDescription) ? "" : $"Açıklaması: \"{Trim(listDescription, 300)}\"\n";
+            var prompt = $"""
+                @{owner} GGHub'da "{Trim(listName, 120)}" adlı bir oyun listesi hazırladı.
+                {description}Listedeki oyunlar ({totalGames} oyun): {string.Join(", ", games)}.
+
+                Listeye kısa bir yorum yaz: listenin adına, seçimlere, eksik kalan bariz bir oyuna ya da yan yana durması tuhaf oyunlara takıl.
+                Yalnızca yukarıda adı geçen oyunlardan söz et; listede olmayan bir oyunu "eksik" diye anacaksan çok bilinen bir oyun olsun.
+                @{owner} diye seslenebilirsin. En fazla 2 cümle, en fazla 220 karakter.
+                """;
+            return RunAsync(BaseRules(agent, lang, listRoast: true), new[] { new GeminiTurn("user", prompt) }, lang, 250, 240, 1.0, ct);
+        }
+
+        /// <summary>
+        /// Liste yorumuna cevap: bot etiketlendi ya da kendi liste yorumuna yanit geldi.
+        /// Takilma tonu yalnizca muhatap LISTENIN SAHIBIYSE; baska bir insana sicak davranir.
+        /// </summary>
+        public Task<AiText?> WriteListCommentReplyAsync(
+            AiAgentIdentity agent, string listOwner, string listName, IReadOnlyList<string> games,
+            IReadOnlyList<AiThreadLine> thread, string addressee, bool addresseeIsOwner, bool addresseeIsHuman,
+            string lang, CancellationToken ct)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine($"@{listOwner} adlı kullanıcının \"{Trim(listName, 120)}\" listesinin yorumlarındasın.");
+            if (games.Count > 0) sb.AppendLine($"Listedeki oyunlar: {string.Join(", ", games)}.");
+            sb.AppendLine("Yorum zinciri (eskiden yeniye):");
+            foreach (var line in thread)
+            {
+                var who = line.FromAgent ? "sen" : $"@{line.AuthorName}{(line.AuthorIsAi ? " (AI)" : "")}";
+                sb.AppendLine($"- {who}: \"{Trim(line.Text, 400)}\"");
+            }
+            sb.AppendLine();
+            sb.AppendLine($"Son yoruma cevap ver: @{addressee} adlı kişiye hitap et. Kendini tekrar etme. En fazla 2 cümle, en fazla 200 karakter.");
+            if (addresseeIsHuman && !addresseeIsOwner) sb.AppendLine(HumanAddressee);
+
+            return RunAsync(BaseRules(agent, lang, listRoast: addresseeIsOwner && addresseeIsHuman),
+                new[] { new GeminiTurn("user", sb.ToString()) }, lang, 250, 220, 0.95, ct);
         }
 
         /// <param name="addressee">Cevap verilecek kisi (kendisi degil). Null ise gonderinin sahibi.</param>

@@ -17,9 +17,11 @@ namespace GGHub.Infrastructure.Services
         private readonly INotificationService _notificationService;
         private readonly IGamificationService _gamificationService;
         private readonly IUserDtoEnricher _userDtoEnricher;
+        private readonly IAiAgentEvents _aiEvents;
 
-        public UserListService(GGHubDbContext context, IGameService gameService, INotificationService notificationService, IGamificationService gamificationService, IUserDtoEnricher userDtoEnricher)
+        public UserListService(GGHubDbContext context, IGameService gameService, INotificationService notificationService, IGamificationService gamificationService, IUserDtoEnricher userDtoEnricher, IAiAgentEvents aiEvents)
         {
+            _aiEvents = aiEvents;
             _context = context;
             _gameService = gameService;
             _notificationService = notificationService;
@@ -119,6 +121,9 @@ namespace GGHub.Infrastructure.Services
                     }
                 }
             }
+
+            // Liste yorumlanacak boyuta ulastiysa bir bot yorum yazar. Best-effort.
+            await _aiEvents.OnListGameAddedAsync(listId, userId);
         }
         public async Task<IEnumerable<UserListDto>> GetListsForUserAsync(int userId, int? rawgGameId = null)
         {
@@ -213,8 +218,10 @@ namespace GGHub.Infrastructure.Services
         public async Task<UserListDetailDto> GetListDetailAsync(int listId, int? currentUserId)
         {
             // Önce sadece erişim kontrolü için lightweight sorgu
+            // Sahibi silinmis/banli liste hic yokmus gibi davranir (404).
             var listMeta = await _context.UserLists
                 .Where(l => l.Id == listId)
+                .WhereOwnerActive()
                 .Select(l => new { l.UserId, l.Visibility })
                 .FirstOrDefaultAsync();
 
@@ -303,6 +310,7 @@ namespace GGHub.Infrastructure.Services
         public async Task<PaginatedResult<UserListPublicDto>> GetPublicListsAsync(ListQueryParams query, int? currentUserId)
         {
             var baseQuery = _context.UserLists
+                .WhereOwnerActive()
                 .Where(l =>
                     l.Visibility == ListVisibilitySetting.Public ||
                     (currentUserId.HasValue &&
@@ -384,6 +392,7 @@ namespace GGHub.Infrastructure.Services
 
             var baseQuery = _context.UserLists
                 .Where(l => followedListIdsQuery.Contains(l.Id))
+                .WhereOwnerActive()
                 .Where(l =>
                     l.Visibility == ListVisibilitySetting.Public ||
                     l.UserId == currentUserId ||
@@ -522,6 +531,19 @@ namespace GGHub.Infrastructure.Services
             if (list.UserId != userId)
             {
                 throw new UnauthorizedAccessException(AppText.Get("lists.permissionDenied"));
+            }
+
+            // Iki iliski Restrict (UserListFollow.FollowedList, PostMention.TargetList): takipcisi
+            // olan ya da bir gonderide etiketlenmis liste silinince Postgres FK ihlali atiyordu.
+            // Takipler listeyle birlikte gider; etiket satiri kalir, hedefi bosalir (istemci
+            // cozumsuz etiketi duz metin basar). Hepsi tek SaveChanges, yani tek transaction.
+            var follows = await _context.UserListFollows.Where(f => f.FollowedListId == listId).ToListAsync();
+            _context.UserListFollows.RemoveRange(follows);
+
+            var mentions = await _context.PostMentions.Where(m => m.TargetListId == listId).ToListAsync();
+            foreach (var mention in mentions)
+            {
+                mention.TargetListId = null;
             }
 
             _context.UserLists.Remove(list);

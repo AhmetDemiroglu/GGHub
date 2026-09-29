@@ -55,7 +55,7 @@ const DYNAMIC_ROUTES: Array<[prefix: string, template: string]> = [
 ];
 
 /** Yonetim paneli olculmez: yoneticinin kendi gezintisi "kullanici davranisi" degildir. */
-const UNTRACKED_PREFIXES = ["/dashboard", "/users", "/reports", "/download-analytics", "/traffic", "/behavior", "/ai-agents", "/app-release", "/api/"];
+const UNTRACKED_PREFIXES = ["/dashboard", "/users", "/reports", "/download-analytics", "/traffic", "/behavior", "/ai-agents", "/app-release", "/errors", "/api/"];
 
 const LOCALE_PREFIX = /^\/(tr|en-US)(?=\/|$)/;
 

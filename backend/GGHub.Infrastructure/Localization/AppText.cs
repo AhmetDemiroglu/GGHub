@@ -39,6 +39,10 @@ public static class AppText
         // link atmaya zorlardi. Kisisellestirme kutlama sayfasinda.
         ["birthday.emailSubject"] = "GGHub - Doğum Günün Kutlu Olsun 🎉",
         ["birthday.notification"] = "İyi ki doğdun! Kutlamanı görmek için dokun. 🎂",
+        // Yeni sunucu hatasi (yalniz adminlere). Aktoru yok, {username} tasimaz.
+        ["admin.newErrorNotification"] = "Yeni sunucu hatası: {endpoint} ({error})",
+        ["admin.reopenedErrorNotification"] = "Çözüldü denen hata yeniden görüldü: {endpoint} ({error})",
+        ["common.serverError"] = "Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.",
         ["lists.notFoundOrUnauthorized"] = "Liste bulunamadı veya bu listeyi görme yetkiniz yok.",
         ["lists.notFound"] = "Liste bulunamadı.",
         ["lists.updateFailed"] = "Liste güncellenemedi.",
@@ -215,6 +219,9 @@ public static class AppText
         ["auth.passwordChangedSubject"] = "GGHub - Password Change Notification",
         ["birthday.emailSubject"] = "GGHub - Happy Birthday 🎉",
         ["birthday.notification"] = "Happy birthday! Tap to see your celebration. 🎂",
+        ["admin.newErrorNotification"] = "New server error: {endpoint} ({error})",
+        ["admin.reopenedErrorNotification"] = "An error marked resolved came back: {endpoint} ({error})",
+        ["common.serverError"] = "Something went wrong. Please try again.",
         ["lists.notFoundOrUnauthorized"] = "The list was not found or you do not have permission to view it.",
         ["lists.notFound"] = "List not found.",
         ["lists.updateFailed"] = "The list could not be updated.",

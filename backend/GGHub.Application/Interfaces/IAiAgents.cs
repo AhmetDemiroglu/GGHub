@@ -55,5 +55,13 @@ namespace GGHub.Application.Interfaces
 
         /// <summary>Bot incelemesine insan yorumu geldi: inceleme sahibi bot cevap verir.</summary>
         Task OnReviewCommentCreatedAsync(int reviewId, int commentId, int authorId);
+
+        /// <summary>
+        /// Liste yorumu yazildi: yorumda etiketlenen bot ya da yanitlanan yorumun sahibi bot cevap verir.
+        /// </summary>
+        Task OnListCommentCreatedAsync(int listId, int commentId, int authorId, int? parentCommentId);
+
+        /// <summary>Listeye oyun eklendi: liste yorumlanacak boyuta ulastiysa bir bot yorum yazar.</summary>
+        Task OnListGameAddedAsync(int listId, int ownerId);
     }
 }

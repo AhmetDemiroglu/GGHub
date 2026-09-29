@@ -57,6 +57,8 @@ namespace GGHub.Infrastructure.Persistence
         public DbSet<AiConsentRecord> AiConsentRecords { get; set; }
         public DbSet<AiConversation> AiConversations { get; set; }
         public DbSet<AppReleasePolicy> AppReleasePolicies { get; set; }
+        public DbSet<ErrorGroup> ErrorGroups { get; set; }
+        public DbSet<ErrorEvent> ErrorEvents { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -128,16 +130,20 @@ namespace GGHub.Infrastructure.Persistence
             modelBuilder.Entity<UserListCommentVote>()
                 .HasKey(v => new { v.UserId, v.UserListCommentId });
 
+            // Cascade (eskiden ClientSetNull'du): DeleteCommentAsync yorumu FindAsync ile cekiyor,
+            // Replies'i Include ETMIYOR. ClientSetNull'da EF yuklenmemis cocuklarin FK'sini
+            // null'layamiyor, yaniti olan yorum silinince Postgres FK ihlali atiyordu (prod'da
+            // DELETE api/userlistcomments/{id} -> 500). ReviewComment ile ayni cozum: silmeyi
+            // Postgres ustlenir, yanit zinciri yorumla birlikte gider.
             modelBuilder.Entity<UserListComment>()
                 .HasOne(c => c.ParentComment)
                 .WithMany(c => c.Replies)
                 .HasForeignKey(c => c.ParentCommentId)
-                .OnDelete(DeleteBehavior.ClientSetNull);
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<ReviewCommentVote>()
                 .HasKey(v => new { v.UserId, v.ReviewCommentId });
 
-            // BILEREK UserListComment'ten AYRILIYORUZ: orada ClientSetNull var, burada Cascade.
             // Sebep: DeleteCommentAsync yorumu FindAsync ile cekiyor, Replies'i Include ETMIYOR.
             // ClientSetNull'da EF yuklenmemis cocuklarin FK'sini null'layamaz ve yaniti olan bir
             // yorum silinmeye calisilinca DbUpdateException firlatir (referanstaki gizli hata).
@@ -749,6 +755,54 @@ namespace GGHub.Infrastructure.Persistence
 
                 entity.HasIndex(e => e.TargetUserId)
                     .HasDatabaseName("IX_PostMentions_TargetUserId");
+            });
+
+            // Hata kayitlari (admin paneli /errors). Grup = ayni hatanin tum tekrarlari.
+            modelBuilder.Entity<ErrorGroup>(entity =>
+            {
+                entity.Property(e => e.Fingerprint).HasMaxLength(64).IsRequired();
+                entity.Property(e => e.ExceptionType).HasMaxLength(256).IsRequired();
+                entity.Property(e => e.Message).HasMaxLength(2000).IsRequired();
+                entity.Property(e => e.Logger).HasMaxLength(256);
+                entity.Property(e => e.Method).HasMaxLength(16);
+                entity.Property(e => e.RouteTemplate).HasMaxLength(256);
+                entity.Property(e => e.Note).HasMaxLength(1000);
+
+                // Yazici her olayda grubu parmak iziyle arar; unique ayrica rolling deploy'da
+                // iki container'in ayni grubu iki kez acmasini engeller.
+                entity.HasIndex(e => e.Fingerprint)
+                    .IsUnique()
+                    .HasDatabaseName("IX_ErrorGroups_Fingerprint");
+
+                // Panel listesi: duruma gore suz, son gorulmeye gore sirala.
+                entity.HasIndex(e => new { e.Status, e.LastSeenAt })
+                    .HasDatabaseName("IX_ErrorGroups_Status_LastSeenAt");
+            });
+
+            modelBuilder.Entity<ErrorEvent>(entity =>
+            {
+                entity.Property(e => e.Message).HasMaxLength(2000).IsRequired();
+                entity.Property(e => e.Method).HasMaxLength(16);
+                entity.Property(e => e.Path).HasMaxLength(512);
+                entity.Property(e => e.QueryString).HasMaxLength(1024);
+                entity.Property(e => e.Username).HasMaxLength(64);
+                entity.Property(e => e.UserAgent).HasMaxLength(512);
+                entity.Property(e => e.Locale).HasMaxLength(16);
+                entity.Property(e => e.TraceId).HasMaxLength(64);
+                entity.Property(e => e.Environment).HasMaxLength(32);
+
+                entity.HasOne(e => e.ErrorGroup)
+                    .WithMany(g => g.Events)
+                    .HasForeignKey(e => e.ErrorGroupId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Detay paneli (grubun son olaylari) ve olay freni.
+                entity.HasIndex(e => new { e.ErrorGroupId, e.OccurredAt })
+                    .HasDatabaseName("IX_ErrorEvents_ErrorGroupId_OccurredAt");
+
+                // Saklama budamasi.
+                entity.HasIndex(e => e.OccurredAt)
+                    .HasDatabaseName("IX_ErrorEvents_OccurredAt");
             });
         }
     }

@@ -17,8 +17,10 @@ namespace GGHub.Infrastructure.Services
         private readonly IUserDtoEnricher _userDtoEnricher;
         private readonly IMentionService _mentionService;
         private readonly IAiInteractionPolicy _aiPolicy;
-        public UserListCommentService(GGHubDbContext context, IGamificationService gamificationService, INotificationService notificationService, IUserDtoEnricher userDtoEnricher, IMentionService mentionService, IAiInteractionPolicy aiPolicy)
+        private readonly IAiAgentEvents _aiEvents;
+        public UserListCommentService(GGHubDbContext context, IGamificationService gamificationService, INotificationService notificationService, IUserDtoEnricher userDtoEnricher, IMentionService mentionService, IAiInteractionPolicy aiPolicy, IAiAgentEvents aiEvents)
         {
+            _aiEvents = aiEvents;
             _context = context;
             _gamificationService = gamificationService;
             _notificationService = notificationService;
@@ -28,7 +30,7 @@ namespace GGHub.Infrastructure.Services
         }
         private async Task CheckListVisibility(int listId, int? userId)
         {
-            var list = await _context.UserLists.AsNoTracking().FirstOrDefaultAsync(l => l.Id == listId);
+            var list = await _context.UserLists.AsNoTracking().WhereOwnerActive().FirstOrDefaultAsync(l => l.Id == listId);
             if (list == null) throw new KeyNotFoundException(AppText.Get("lists.notFound"));
 
             if (!userId.HasValue)
@@ -130,6 +132,9 @@ namespace GGHub.Infrastructure.Services
                     $"/lists/{listId}",
                     excludeUserIds: notifiedUserId.HasValue ? new[] { notifiedUserId.Value } : null);
             }
+
+            // Bot tepkisi (etiketlenen bot ya da yanitlanan bot yorumunun sahibi). Best-effort.
+            await _aiEvents.OnListCommentCreatedAsync(listId, comment.Id, userId, dto.ParentCommentId);
 
             var created = MapToCommentDto(comment, user, 0, 0, 0, userId);
             await _userDtoEnricher.EnrichAsync(created.Owner, userId);

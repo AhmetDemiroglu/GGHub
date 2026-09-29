@@ -27,8 +27,14 @@ namespace GGHub.Core.Entities
         public int? TargetReviewId { get; set; }
         public int? TriggerMessageId { get; set; }
 
-        /// <summary>Yanitlanacak inceleme yorumu (bot incelemesindeki yorum zinciri).</summary>
+        /// <summary>
+        /// Yanitlanacak yorum. Tablo gorev tipinden belli olur: CommentOnReview'da inceleme
+        /// yorumu, CommentOnList'te liste yorumu.
+        /// </summary>
         public int? TargetCommentId { get; set; }
+
+        /// <summary>Yorumlanacak liste (CommentOnList).</summary>
+        public int? TargetListId { get; set; }
 
         /// <summary>ConversationTurn gorevinin ait oldugu sahne.</summary>
         public int? ConversationId { get; set; }

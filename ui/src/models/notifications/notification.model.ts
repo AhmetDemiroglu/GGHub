@@ -32,4 +32,7 @@ export enum NotificationType {
     PostRepost = 14,
     // 15 : doğum günü. Aktörü YOKTUR (bildirimi sistem üretir), mesaj düz metin olarak basılır.
     Birthday = 15,
+    // 16 : sistem uyarısı (yeni sunucu hatası). Yalnızca adminlere gider, aktörü ve linki yoktur;
+    // web satıra tıklanınca /errors sayfasını açar.
+    SystemAlert = 16,
 }

@@ -24,11 +24,14 @@ namespace GGHub.Infrastructure.Services
     /// </summary>
     public class AiAgentEvents : IAiAgentEvents
     {
-        /// <summary>Bir kullaniciya gunde en fazla kac bot gonderi yaniti / inceleme yorumu.</summary>
-        /// <summary>Bir kullaniciya gunde en fazla kac bot gonderi yaniti / inceleme yorumu (tepki + planli).</summary>
+        /// <summary>Bir kullaniciya gunde en fazla kac bot gonderi yaniti / inceleme yorumu / liste yorumu (tepki + planli).</summary>
         internal const int MaxPublicReactionsPerUserPerDay = 4;
         private const double LaterPostReplyChance = 0.25;
         private const double LaterReviewCommentChance = 0.30;
+        private const double LaterListCommentChance = 0.30;
+
+        /// <summary>Liste bu kadar oyuna ulasinca yorumlanabilir (daha azinda takilacak malzeme yok).</summary>
+        internal const int MinGamesForListComment = 3;
 
         private readonly GGHubDbContext _context;
         private readonly IAiSettingsProvider _settings;
@@ -227,6 +230,104 @@ namespace GGHub.Infrastructure.Services
             }
         }
 
+        public async Task OnListCommentCreatedAsync(int listId, int commentId, int authorId, int? parentCommentId)
+        {
+            try
+            {
+                if (!(await _settings.GetAsync()).AgentsEnabled) return;
+
+                var agents = await _directory.GetAgentIdsAsync();
+                if (agents.Contains(authorId)) return;
+                if (!await _policy.CanInteractAsync(authorId)) return;
+
+                // Bot yalnizca herkese acik listede konusur (takipciye ozel listeyi gormesi icin
+                // sahibini takip etmesi gerekirdi; gizli listede hic isi yok).
+                var isPublic = await _context.UserLists.AsNoTracking()
+                    .AnyAsync(l => l.Id == listId && l.Visibility == ListVisibilitySetting.Public);
+                if (!isPublic) return;
+
+                var content = await _context.UserListComments.AsNoTracking()
+                    .Where(c => c.Id == commentId).Select(c => c.Content).FirstOrDefaultAsync();
+
+                // (a) Yorumda bot etiketlendi: etiketlenen bot(lar) cevap verir.
+                var responders = (await MentionedEnabledAgentIdsAsync(content)).Take(2).ToList();
+
+                // (b) Botun liste yorumuna yanit verildi: o bot cevap verir.
+                if (responders.Count == 0 && parentCommentId.HasValue)
+                {
+                    var parentAuthor = await _context.UserListComments.AsNoTracking()
+                        .Where(c => c.Id == parentCommentId.Value).Select(c => (int?)c.UserId).FirstOrDefaultAsync();
+                    if (parentAuthor is int botId && agents.Contains(botId) && await IsEnabledAgentAsync(botId))
+                    {
+                        responders.Add(botId);
+                    }
+                }
+
+                if (responders.Count == 0) return;
+                if (!await UnderUserDailyCapAsync(authorId)) return;
+
+                var pending = await _context.AiAgentTasks.AnyAsync(t =>
+                    t.Type == AiAgentTaskType.CommentOnList && t.TargetCommentId == commentId &&
+                    (t.Status == AiAgentTaskStatus.Pending || t.Status == AiAgentTaskStatus.Running));
+                if (pending) return;
+
+                foreach (var agentId in responders)
+                {
+                    await AddTaskAsync(agentId, AiAgentTaskType.CommentOnList, TimeSpan.FromSeconds(Random.Shared.Next(60, 301)),
+                        targetUserId: authorId, targetCommentId: commentId, targetListId: listId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[AiAgents] Liste yorumu tepki gorevi yazilamadi (yorum {CommentId}).", commentId);
+            }
+        }
+
+        public async Task OnListGameAddedAsync(int listId, int ownerId)
+        {
+            try
+            {
+                if (!(await _settings.GetAsync()).AgentsEnabled) return;
+
+                var agents = await _directory.GetAgentIdsAsync();
+                if (agents.Contains(ownerId)) return;
+
+                var list = await _context.UserLists.AsNoTracking()
+                    .Where(l => l.Id == listId && l.UserId == ownerId)
+                    .Select(l => new { l.Name, l.Description, l.Type, l.Visibility, GameCount = l.UserListGames.Count() })
+                    .FirstOrDefaultAsync();
+                if (list is null || list.Type != UserListType.Custom || list.Visibility != ListVisibilitySetting.Public) return;
+
+                // Yalnizca esige ULASILDIGI anda: 4. ve sonraki oyunlar yeniden tetiklemez.
+                if (list.GameCount != MinGamesForListComment) return;
+                if (!await _policy.CanInteractAsync(ownerId)) return;
+                if (!await UnderUserDailyCapAsync(ownerId)) return;
+
+                // Liste basina tek kendiliginden yorum (oyun cikarip yeniden eklemek tekrar ettirmez).
+                var already = await _context.AiAgentTasks.AnyAsync(t =>
+                    t.Type == AiAgentTaskType.CommentOnList && t.TargetListId == listId && t.TargetCommentId == null);
+                if (already) return;
+
+                // Ilk yorumlanabilir liste kesin, sonrakiler olasilikla.
+                var commentable = await _context.UserLists.CountAsync(l =>
+                    l.UserId == ownerId && l.Type == UserListType.Custom && l.Visibility == ListVisibilitySetting.Public &&
+                    l.UserListGames.Count() >= MinGamesForListComment);
+                var isFirst = commentable <= 1;
+                if (!isFirst && Random.Shared.NextDouble() >= LaterListCommentChance) return;
+
+                var agent = await PickAgentAsync(await LanguageOfAsync(ownerId, $"{list.Name} {list.Description}"));
+                if (agent is null) return;
+
+                await AddTaskAsync(agent.Value, AiAgentTaskType.CommentOnList,
+                    TimeSpan.FromSeconds(Random.Shared.Next(300, 1801)),
+                    targetUserId: ownerId, targetListId: listId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[AiAgents] Liste tepki gorevi yazilamadi (liste {ListId}).", listId);
+            }
+        }
+
         // ------------------------------------------------------------------
 
         /// <summary>Metinde "@kullaniciadi" ile etiketlenen ACIK botlarin kimlikleri.</summary>
@@ -286,7 +387,8 @@ namespace GGHub.Infrastructure.Services
             var since = DateTime.UtcNow.AddHours(-24);
             var count = await _context.AiAgentTasks.CountAsync(t =>
                 t.TargetUserId == userId &&
-                (t.Type == AiAgentTaskType.ReplyToPost || t.Type == AiAgentTaskType.CommentOnReview) &&
+                (t.Type == AiAgentTaskType.ReplyToPost || t.Type == AiAgentTaskType.CommentOnReview ||
+                 t.Type == AiAgentTaskType.CommentOnList) &&
                 t.CreatedAt >= since);
             return count < MaxPublicReactionsPerUserPerDay;
         }
@@ -294,7 +396,7 @@ namespace GGHub.Infrastructure.Services
         private async Task AddTaskAsync(
             int agentId, AiAgentTaskType type, TimeSpan delay,
             int? targetUserId = null, int? targetPostId = null, int? targetReviewId = null, int? triggerMessageId = null,
-            int? targetCommentId = null)
+            int? targetCommentId = null, int? targetListId = null)
         {
             var task = new AiAgentTask
             {
@@ -305,6 +407,7 @@ namespace GGHub.Infrastructure.Services
                 TargetPostId = targetPostId,
                 TargetReviewId = targetReviewId,
                 TargetCommentId = targetCommentId,
+                TargetListId = targetListId,
                 TriggerMessageId = triggerMessageId,
                 ScheduledAt = DateTime.UtcNow + delay,
                 CreatedAt = DateTime.UtcNow
