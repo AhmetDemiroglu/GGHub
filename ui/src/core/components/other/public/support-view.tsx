@@ -13,7 +13,7 @@ export function SupportView() {
     return (
         <div className="w-full p-5">
             <div className="flex flex-col items-center gap-4 pt-2 text-center">
-                <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500/15 to-violet-500/15 text-cyan-400">
+                <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500/15 to-violet-500/15 text-cyan-600 dark:text-cyan-400">
                     <LifeBuoy className="h-8 w-8" />
                 </div>
                 <h1 className="text-3xl font-bold tracking-tight md:text-4xl">{t.title}</h1>

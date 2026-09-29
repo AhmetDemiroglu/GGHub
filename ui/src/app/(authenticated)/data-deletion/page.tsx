@@ -2,6 +2,7 @@ import { DataDeletionView } from "@/core/components/other/public/data-deletion-v
 import { staticPageMetadata } from "@/core/seo/page-metadata";
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { Trash2, Globe, Smartphone, Mail, Database, Scale, Check } from "lucide-react";
 import { useCurrentLocale } from "@/core/contexts/locale-context";
 
@@ -199,9 +200,14 @@ export default function DataDeletionPage() {
         </div>
     );
 =======
+=======
+>>>>>>> origin/claude/admiring-davinci-786hxg
 export const generateMetadata = staticPageMetadata("/data-deletion", "dataDeletion");
 
 export default function DataDeletionPage() {
     return <DataDeletionView />;
+<<<<<<< HEAD
+>>>>>>> origin/claude/admiring-davinci-786hxg
+=======
 >>>>>>> origin/claude/admiring-davinci-786hxg
 }

@@ -2,6 +2,7 @@ import { RegisterView } from "../_components/register-view";
 import { staticPageMetadata } from "@/core/seo/page-metadata";
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { useRouter, useSearchParams } from "next/navigation";
 import { trackAction } from "@/core/lib/site-analytics";
 import { useForm } from "react-hook-form";
@@ -184,6 +185,9 @@ function RegisterPageContent() {
         </div>
     );
 }
+=======
+export const generateMetadata = staticPageMetadata("/register", "register");
+>>>>>>> origin/claude/admiring-davinci-786hxg
 =======
 export const generateMetadata = staticPageMetadata("/register", "register");
 >>>>>>> origin/claude/admiring-davinci-786hxg

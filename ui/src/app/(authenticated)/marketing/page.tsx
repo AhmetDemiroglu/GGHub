@@ -2,6 +2,7 @@ import { MarketingView } from "@/core/components/other/public/marketing-view";
 import { staticPageMetadata } from "@/core/seo/page-metadata";
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { Gamepad2, ListChecks, Star, Users, MessageCircle, Trophy, Sparkles } from "lucide-react";
 import { AppDownloadCTA } from "@core/components/other/public/app-cta";
 import { useCurrentLocale } from "@/core/contexts/locale-context";
@@ -87,9 +88,14 @@ export default function MarketingPage() {
         </div>
     );
 =======
+=======
+>>>>>>> origin/claude/admiring-davinci-786hxg
 export const generateMetadata = staticPageMetadata("/marketing", "marketing");
 
 export default function MarketingPage() {
     return <MarketingView />;
+<<<<<<< HEAD
+>>>>>>> origin/claude/admiring-davinci-786hxg
+=======
 >>>>>>> origin/claude/admiring-davinci-786hxg
 }

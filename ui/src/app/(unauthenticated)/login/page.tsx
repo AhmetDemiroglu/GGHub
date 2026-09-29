@@ -2,6 +2,7 @@ import { LoginView } from "../_components/login-view";
 import { staticPageMetadata } from "@/core/seo/page-metadata";
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 import Link from "next/link";
 import { trackAction } from "@/core/lib/site-analytics";
 import { Suspense, useEffect, useRef } from "react";
@@ -192,6 +193,9 @@ function LoginPageContent() {
         </div>
     );
 }
+=======
+export const generateMetadata = staticPageMetadata("/login", "login");
+>>>>>>> origin/claude/admiring-davinci-786hxg
 =======
 export const generateMetadata = staticPageMetadata("/login", "login");
 >>>>>>> origin/claude/admiring-davinci-786hxg

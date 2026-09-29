@@ -5,7 +5,7 @@ import { AppDownloadCTA } from "@core/components/other/public/app-cta";
 import { useCurrentLocale } from "@/core/contexts/locale-context";
 
 const ICONS = [Gamepad2, ListChecks, Star, Users, MessageCircle, Trophy];
-const COLORS = ["text-cyan-400", "text-violet-400", "text-amber-400", "text-blue-400", "text-emerald-400", "text-fuchsia-400"];
+const COLORS = ["text-cyan-600 dark:text-cyan-400", "text-violet-600 dark:text-violet-400", "text-amber-600 dark:text-amber-400", "text-blue-600 dark:text-blue-400", "text-emerald-600 dark:text-emerald-400", "text-fuchsia-600 dark:text-fuchsia-400"];
 
 const COPY = {
     "en-US": {
@@ -52,7 +52,7 @@ export function MarketingView() {
                 />
                 <div className="relative">
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-border/40 bg-background/40 px-3 py-1 text-xs uppercase tracking-[0.25em] text-muted-foreground">
-                        <Sparkles className="h-3.5 w-3.5 text-cyan-300" /> {t.badge}
+                        <Sparkles className="h-3.5 w-3.5 text-cyan-700 dark:text-cyan-300" /> {t.badge}
                     </span>
                     <h1 className="mt-5 text-balance text-4xl font-extrabold leading-tight tracking-tight md:text-6xl">
                         <span className="bg-gradient-to-r from-cyan-400 via-blue-500 to-fuchsia-500 bg-clip-text text-transparent">GGHub</span>
