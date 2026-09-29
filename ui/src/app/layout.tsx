@@ -179,7 +179,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     speed={200}
                     shadow="0 0 30px #00D9FF, 0 0 60px #00D9FF, 0 0 90px #00D9FF, 0 0 120px #00D9FF, 0 0 150px #00D9FF"
                 />
-                <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+                {/* defaultTheme "system": ilk acilista isletim sisteminin acik/koyu tercihi uygulanir.
+                    Kullanici dugmeden tema secince next-themes secimi localStorage("theme")'a yazar ve
+                    sonraki acilislarda sistem yerine o secim gecerli olur. */}
+                <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
                     <LocaleProvider locale={locale} messages={messages}>
                         <Providers locale={locale} messages={messages}>
                             {/* AuthProvider'in icinde olmali: kayitli kullanicinin gezintisi kimligiyle baglanir. */}
@@ -187,8 +190,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                             {children}
                         </Providers>
                     </LocaleProvider>
+                    {/* ThemeProvider'in ICINDE olmali: disarida useTheme() bos context dondurur ve richColors
+                        toast'lari uygulama temasi yerine isletim sistemi temasini takip ederdi. */}
+                    <Toaster richColors />
                 </ThemeProvider>
-                <Toaster richColors />
             </body>
         </html>
     );

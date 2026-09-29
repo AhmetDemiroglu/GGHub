@@ -21,7 +21,7 @@ export const GameSidebar = ({ game }: { game: Game }) => {
         <div className="space-y-8">
             {/* 1. Puanlama Rozetleri (Badge) */}
             <div className="space-y-3">
-                <h3 className="text-sm font-medium text-zinc-500 uppercase tracking-wider">{t("gameDetail.ratingsTitle")}</h3>
+                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{t("gameDetail.ratingsTitle")}</h3>
                 <div className="flex flex-wrap gap-4">
                     <ScoreBadge type="metacritic" score={game.metacritic} />
                     <ScoreBadge type="rawg" score={game.rating} />

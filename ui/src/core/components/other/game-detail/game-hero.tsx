@@ -88,15 +88,18 @@ export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
     // Tarih arayuz dilinde: Ingilizce sayfada "14 Mart 2024" yaziyordu.
     const releaseDate = game.released ? new Date(game.released).toLocaleDateString(getDateLocaleCode(locale), { month: "long", day: "numeric", year: "numeric" }) : null;
 
+    // Hero her iki temada da koyu sinematik yuzey (ana sayfa hero-slider ile ayni #080910).
+    // Onceki hali gradyani --background'a akitiyordu: acik temada beyaz metin beyaz zemine
+    // dusuyor ve baslik okunmuyordu. Koyu temada gorunum degismedi (dark: varyantlari).
     return (
-        <div className="relative w-full min-h-[550px] overflow-hidden rounded-3xl shadow-2xl bg-background border border-white/5">
+        <div className="relative w-full min-h-[550px] overflow-hidden rounded-3xl shadow-2xl bg-[#080910] dark:bg-background border border-white/5">
             <div
                 className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-1000 hover:scale-105"
                 // /placeholder-game.jpg diye bir dosya yoktu (404); yedek gorsel diger kartlarla ayni.
                 style={{ backgroundImage: `url(${game.backgroundImage || placeHolder2.src})` }}
             >
-                <div className="absolute inset-0 bg-linear-to-t from-background via-background/90 via-30% to-transparent" />
-                <div className="absolute inset-0 bg-linear-to-r from-background via-background/50 to-transparent" />
+                <div className="absolute inset-0 bg-linear-to-t from-[#080910] via-[#080910]/90 via-30% to-transparent dark:from-background dark:via-background/90" />
+                <div className="absolute inset-0 bg-linear-to-r from-[#080910] via-[#080910]/50 to-transparent dark:from-background dark:via-background/50" />
             </div>
 
             <div className="relative h-full flex flex-col justify-end px-5 pt-40 pb-7 md:px-12 md:pt-62 md:pb-10 lg:px-16 lg:pb-12 z-10">

@@ -532,3 +532,148 @@
     transition: opacity 250ms ease, max-height 250ms ease;
     transition-delay: 100ms;
 }
+
+/* ── Topbar + Liquid Glass ─────────────────────────────────────────────────
+   Ust cubuk sayfanin en ustune yapisik dogar (duz, kenardan kenara, sidebar
+   yokmus gibi tek parca). Icerik kaydirilinca ust kenardan kopar: kenarlardan
+   iceri cekilir, kapsule donusur ve alttan akan icerigi cam gibi kirar.
+   Gecis egrisi hafif tasmali (spring): damla gibi kopup yerine oturur. */
+:root {
+    --topbar-h: 3.5rem;
+    --topbar-float-inset: 0.75rem;
+    --topbar-float-top: 0.5rem;
+    --topbar-ease: cubic-bezier(0.32, 1.35, 0.5, 1);
+    --glass-tint-a: rgba(255, 255, 255, 0.28);
+    --glass-tint-b: rgba(250, 247, 238, 0.16);
+    --glass-rim: rgba(255, 255, 255, 0.55);
+    --glass-rim-soft: rgba(255, 255, 255, 0.18);
+    --glass-sheen: rgba(255, 255, 255, 0.22);
+}
+
+.dark {
+    --glass-tint-a: rgba(62, 70, 100, 0.3);
+    --glass-tint-b: rgba(18, 22, 40, 0.16);
+    --glass-rim: rgba(255, 255, 255, 0.28);
+    --glass-rim-soft: rgba(255, 255, 255, 0.09);
+    --glass-sheen: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 767px) {
+    :root {
+        --topbar-float-inset: 0.5rem;
+        --topbar-float-top: 0.375rem;
+    }
+}
+
+.topbar-shell {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: var(--topbar-h);
+    border-radius: 0;
+    background: var(--background);
+    box-shadow: 0 1px 0 color-mix(in oklab, var(--border) 70%, transparent);
+    transition:
+        left 560ms var(--topbar-ease),
+        right 560ms var(--topbar-ease),
+        top 560ms var(--topbar-ease),
+        height 560ms var(--topbar-ease),
+        border-radius 560ms var(--topbar-ease),
+        background-color 320ms ease,
+        box-shadow 420ms ease;
+}
+
+[data-floating="true"] .topbar-shell {
+    left: var(--topbar-float-inset);
+    right: var(--topbar-float-inset);
+    top: var(--topbar-float-top);
+    height: calc(var(--topbar-h) - var(--topbar-float-top));
+    border-radius: 9999px;
+    background: transparent;
+    box-shadow:
+        0 18px 40px -18px rgba(8, 10, 24, 0.45),
+        0 2px 6px -2px rgba(8, 10, 24, 0.2);
+}
+
+/* Kapsul parlak icerigin ustune gelince alanlar biraz daha dolgun olur: metin okunur kalir. */
+.topbar-field {
+    transition: background-color 320ms ease;
+}
+[data-floating="true"] .topbar-field {
+    background-color: color-mix(in oklab, var(--background) 62%, transparent);
+}
+
+/* Kopma izi: cubuk ayrilinca en ustte kalan ince isik cizgisi. */
+.topbar-edge {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--foreground) 18%, transparent) 30%, color-mix(in oklab, var(--foreground) 18%, transparent) 70%, transparent);
+    opacity: 0;
+    transition: opacity 400ms ease 120ms;
+}
+[data-floating="true"] .topbar-edge {
+    opacity: 1;
+}
+
+.glass-surface {
+    opacity: 0;
+    transition: opacity 360ms ease;
+}
+[data-floating="true"] .glass-surface {
+    opacity: 1;
+}
+
+.glass-base,
+.glass-refract,
+.glass-shine {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+}
+
+.glass-base {
+    backdrop-filter: blur(1.8px) saturate(1.5);
+    background: linear-gradient(180deg, var(--glass-tint-a), var(--glass-tint-b));
+}
+
+/* Lens yoksa (Chromium disi) buzlu cam: kirilma olmayinca netlik yerine yumusaklik. */
+.glass-surface[data-lens="false"] .glass-base {
+    backdrop-filter: blur(14px) saturate(1.6);
+}
+
+.glass-shine {
+    box-shadow:
+        inset 0 1px 0 var(--glass-rim),
+        inset 0 -1px 0 var(--glass-rim-soft),
+        inset 0 0 0 1px var(--glass-rim-soft);
+    background: linear-gradient(180deg, var(--glass-sheen) 0%, transparent 55%);
+}
+
+/* Arama sonuclari: girdinin hemen altina acilir, kapsulle birlikte hareket eder. */
+.topbar-dropdown {
+    transform-origin: top center;
+    animation: topbar-dropdown-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes topbar-dropdown-in {
+    from {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .topbar-shell,
+    .topbar-edge,
+    .glass-surface {
+        transition: none;
+    }
+    .topbar-dropdown {
+        animation: none;
+    }
+}

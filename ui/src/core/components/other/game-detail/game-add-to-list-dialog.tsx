@@ -109,7 +109,7 @@ export const GameAddToListDialog = ({ isOpen, onClose, gameId }: GameAddToListDi
                                             onClick={() => !isAdded && addGame(list.id)}
                                         >
                                             {/* Sol: İkon (Sabit) */}
-                                            <div className="w-10 h-10 bg-zinc-900 rounded flex items-center justify-center border border-zinc-800 font-bold text-zinc-500 group-hover:text-zinc-300 shrink-0">
+                                            <div className="w-10 h-10 bg-secondary rounded flex items-center justify-center border border-border font-bold text-muted-foreground group-hover:text-foreground shrink-0">
                                                 {list.name.charAt(0).toUpperCase()}
                                             </div>
 
@@ -142,7 +142,7 @@ export const GameAddToListDialog = ({ isOpen, onClose, gameId }: GameAddToListDi
 
                                                     {isAdded && (
                                                         <>
-                                                            <span className="w-1 h-1 rounded-full bg-zinc-600"></span>
+                                                            <span className="w-1 h-1 rounded-full bg-muted-foreground/50"></span>
                                                             <span className="text-[10px] italic text-muted-foreground/70">
                                                                 Bu listede ekli
                                                             </span>

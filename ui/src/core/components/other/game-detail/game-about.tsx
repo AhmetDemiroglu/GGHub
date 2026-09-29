@@ -72,7 +72,7 @@ export const GameAbout = ({ game }: { game: Game }) => {
                         <button
                             onClick={() => translateGame()}
                             disabled={isTranslating}
-                            className="flex cursor-pointer items-center gap-2 rounded-lg border border-purple-500/30 bg-purple-500/10 px-3 py-1.5 text-xs font-bold text-purple-400 transition-all hover:bg-purple-500/20 disabled:opacity-50"
+                            className="flex cursor-pointer items-center gap-2 rounded-lg border border-purple-500/30 bg-purple-500/10 px-3 py-1.5 text-xs font-bold text-purple-600 dark:text-purple-400 transition-all hover:bg-purple-500/20 disabled:opacity-50"
                         >
                             {isTranslating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                             {isTranslating ? t("gameDetail.translating") : t("gameDetail.translateToTurkish")}

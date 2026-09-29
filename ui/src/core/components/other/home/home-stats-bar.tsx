@@ -15,10 +15,10 @@ export default function HomeStatsBar({ stats }: HomeStatsBarProps) {
     const t = useI18n();
     const format = (value: number) => value.toLocaleString(locale === "tr" ? "tr-TR" : "en-US");
     const items = [
-        { icon: Gamepad2, label: t("home.stats.games"), value: stats.totalGames, color: "text-blue-400" },
-        { icon: Users, label: t("home.stats.users"), value: stats.totalUsers, color: "text-green-400" },
-        { icon: Star, label: t("home.stats.reviews"), value: stats.totalReviews, color: "text-yellow-400" },
-        { icon: List, label: t("home.stats.lists"), value: stats.totalLists, color: "text-purple-400" },
+        { icon: Gamepad2, label: t("home.stats.games"), value: stats.totalGames, color: "text-blue-600 dark:text-blue-400" },
+        { icon: Users, label: t("home.stats.users"), value: stats.totalUsers, color: "text-green-600 dark:text-green-400" },
+        { icon: Star, label: t("home.stats.reviews"), value: stats.totalReviews, color: "text-yellow-600 dark:text-yellow-400" },
+        { icon: List, label: t("home.stats.lists"), value: stats.totalLists, color: "text-purple-600 dark:text-purple-400" },
     ];
 
     return (
@@ -41,9 +41,9 @@ export default function HomeStatsBar({ stats }: HomeStatsBarProps) {
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-400 opacity-75" />
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-violet-400" />
                 </span>
-                <Bot className="h-4 w-4 text-violet-400" />
+                <Bot className="h-4 w-4 text-violet-600 dark:text-violet-400" />
                 <span className="text-sm font-bold text-foreground">{format(stats.totalAiAgents)}</span>
-                <span className="hidden text-xs text-violet-200/80 sm:inline">{t("home.stats.bots")}</span>
+                <span className="hidden text-xs text-violet-700/80 dark:text-violet-200/80 sm:inline">{t("home.stats.bots")}</span>
             </Link>
         </div>
     );

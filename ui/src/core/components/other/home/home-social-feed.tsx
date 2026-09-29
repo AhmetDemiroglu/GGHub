@@ -504,15 +504,15 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
             >
                 {/*
                     Yapışkan sekme çubuğu. Sayfa <body> üzerinde KAYMIYOR; kaydırma
-                    kabı (authenticated) layout'undaki <main className="overflow-y-auto">,
-                    dolayısıyla top-0 ona göre çözülüyor (yan menünün sticky top-4'ü de
-                    zaten bu yüzden çalışıyor).
+                    kabı (authenticated) layout'undaki <main className="overflow-y-auto">;
+                    üst cubuk o kabın üstünde durduğu için sekme çubuğu onun altına
+                    yapışır (top: --topbar-h), yoksa cubugun arkasında kalırdı.
 
                     Sarmalayıcı şart: TabsList bg-muted ve köşeleri yuvarlak, doğrudan
                     sticky verilince altından kayan içerik köşelerden görünüyor.
                     Negatif margin + padding, kartların gölgesi kenardan kırpılmasın diye.
                 */}
-                <div className="sticky top-0 z-20 -mx-2 bg-background/95 px-2 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+                <div className="sticky top-(--topbar-h) z-20 -mx-2 bg-background/95 px-2 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
                     <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="discover" className="gap-1 text-xs">
                             <Compass className="h-3 w-3" /> {t("home.activityTabs.discover")}

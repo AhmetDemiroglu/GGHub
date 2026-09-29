@@ -43,13 +43,13 @@ export default function NotFound() {
                     <div className="pointer-events-none absolute -left-32 top-1/2 z-50 h-56 w-56 -translate-y-1/2">
                         <div className="absolute left-1/2 top-1/2 animate-search-sweep -translate-x-1/2 -translate-y-1/2">
                             <div className="flex h-10 w-10 items-center justify-center rounded-full">
-                                <Search className="h-7 w-7 text-cyan-100 drop-shadow-[0_0_16px_rgba(34,211,238,0.45)]" />
+                                <Search className="h-7 w-7 text-cyan-600 dark:text-cyan-100 drop-shadow-[0_0_16px_rgba(34,211,238,0.45)]" />
                             </div>
                         </div>
                     </div>
 
                     <div className="relative z-20">
-                        <h1 className="animate-text-glow select-none bg-gradient-to-r from-cyan-200 via-slate-50 to-purple-200 bg-clip-text text-[5rem] font-extrabold leading-none tracking-tight text-transparent md:text-[6.5rem]">
+                        <h1 className="animate-text-glow select-none bg-gradient-to-r from-cyan-600 via-slate-500 to-purple-600 bg-clip-text dark:from-cyan-200 dark:via-slate-50 dark:to-purple-200 text-[5rem] font-extrabold leading-none tracking-tight text-transparent md:text-[6.5rem]">
                             404
                         </h1>
                         <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-border/30 bg-background/40 px-4 py-2 text-xs uppercase tracking-[0.35em] text-muted-foreground/80 shadow-[0_0_30px_rgba(15,23,42,0.25)]">
@@ -64,7 +64,7 @@ export default function NotFound() {
                         <p className="text-muted-foreground">
                             {t("notFound.description")}
                             <span className="ml-2 mt-1 inline-flex animate-pulse items-center">
-                                <Rocket className="h-4 w-4 text-violet-400" />
+                                <Rocket className="h-4 w-4 text-violet-600 dark:text-violet-400" />
                             </span>
                         </p>
                     </div>
@@ -88,32 +88,32 @@ export default function NotFound() {
 
                     <div className="space-y-3">
                         <p className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground/80">
-                            <CircleArrowDown className="h-4 w-4 animate-bounce text-cyan-300" />
+                            <CircleArrowDown className="h-4 w-4 animate-bounce text-cyan-600 dark:text-cyan-300" />
                             {t("notFound.quickLinks")}
                         </p>
                         <div className="flex flex-wrap gap-3">
                             <Button asChild variant="ghost" size="sm" className="group gap-2 bg-background/40 transition-colors hover:animate-pulse hover:bg-emerald-500/10">
                                 <Link href={buildLocalizedPathname("/discover", locale)}>
-                                    <Gamepad2 className="h-4 w-4 text-emerald-400" />
-                                    <span className="transition-colors group-hover:text-emerald-400">{t("notFound.games")}</span>
+                                    <Gamepad2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                                    <span className="transition-colors group-hover:text-emerald-600 dark:group-hover:text-emerald-400">{t("notFound.games")}</span>
                                 </Link>
                             </Button>
                             <Button asChild variant="ghost" size="sm" className="group gap-2 bg-background/40 transition-colors hover:animate-pulse hover:bg-purple-500/10">
                                 <Link href={buildLocalizedPathname("/lists", locale)}>
-                                    <List className="h-4 w-4 text-purple-400" />
-                                    <span className="transition-colors group-hover:text-purple-400">{t("notFound.lists")}</span>
+                                    <List className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                                    <span className="transition-colors group-hover:text-purple-600 dark:group-hover:text-purple-400">{t("notFound.lists")}</span>
                                 </Link>
                             </Button>
                             <Button asChild variant="ghost" size="sm" className="group gap-2 bg-background/40 transition-colors hover:animate-pulse hover:bg-blue-500/10">
                                 <Link href={buildLocalizedPathname("/", locale)}>
-                                    <Users className="h-4 w-4 text-blue-400" />
-                                    <span className="transition-colors group-hover:text-blue-400">{t("notFound.community")}</span>
+                                    <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                    <span className="transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400">{t("notFound.community")}</span>
                                 </Link>
                             </Button>
                             <Button asChild variant="ghost" size="sm" className="group gap-2 bg-background/40 transition-colors hover:animate-pulse hover:bg-amber-500/10">
                                 <Link href={buildLocalizedPathname("/profile", locale)}>
-                                    <Settings className="h-4 w-4 text-amber-400" />
-                                    <span className="transition-colors group-hover:text-amber-400">{t("notFound.profile")}</span>
+                                    <Settings className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                                    <span className="transition-colors group-hover:text-amber-600 dark:group-hover:text-amber-400">{t("notFound.profile")}</span>
                                 </Link>
                             </Button>
                         </div>
