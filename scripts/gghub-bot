@@ -311,7 +311,7 @@ cmd_autoupdate() {
   fi
 
   if ! DOTNET_ROOT="$HOME/.dotnet" "$DOTNET" publish "$src/backend/GGHub.Worker/GGHub.Worker.csproj" \
-      -c Release -o "$out" --nologo -v quiet >>"$UPDATE_LOG" 2>&1; then
+      -c Release -o "$out" --nologo -v quiet -clp:ErrorsOnly >>"$UPDATE_LOG" 2>&1; then
     log_update "DERLEME HATASI ($commit). Bot eski surumle calismaya devam ediyor."
     return 0
   fi
