@@ -2,32 +2,12 @@
 
 import { useId, useLayoutEffect, useRef, useState } from "react";
 
-/*
- * Liquid Glass yuzeyi (onayli recete, MEMORY.md "GGHub Liquid Glass").
- *
- * Gercek kirilma yalniz `backdrop-filter: url(#filter)` + SVG feDisplacementMap ile olur:
- * canvas, kapsulun rounded-rect SDF'inden bir yer degistirme haritasi uretir (R=x, G=y,
- * 128 notr). Itme disa bakan normal boyunca, yalniz dar kenar bandinda ve easing ile artar;
- * merkez duz ve sakin kalir, bukulme rim'de toplanir (lens karakteri).
- *
- * Esnek ust cubuk icin zincir iki asamali: once rijit kapsul haritasiyla kirilma (lens),
- * sonra cubugun o anki egilme alaniyla (deform haritasi, 64x8, her kare) dikey yer degistirme.
- * Boylece rim bandi ve camdan gorunen icerik siluetle birlikte egilir; sabit bir hap kalmaz.
- * Katmanin kutusu govdenin tamamidir (sarkma payi dahil); gorunen sekli clip-path verir.
- *
- * Taban rengi (tint + hafif blur) topbar-skin-glass'ta, rim ve ic parilti SVG cizgilerde:
- * onlar da silueti izler. Gurultu, kromatik sacak, feTurbulence YOK (banyo cami reddedildi).
- * Chromium disinda url() destegi yoksa refract katmani devre disi kalir; skin buzlu cama duser.
- *
- * Haritalarin uretimi ve yerlestirilmesi topbar-motion.ts'tedir; bu bilesen iskelet + destek tespiti.
- */
-const EDGE_BAND = 14;
+/** A narrow edge lens; the center stays optically quiet and the controls sit above it. */
+const EDGE_BAND = 8;
 const EDGE_POWER = 3.2;
-export const LENS_SCALE = 48;
-/** Deform haritasi 8 bit: scale 72 -> +-36px araligi, 0.28px adim. Cekme tavani (28px) icinde kalir. */
-export const DEFORM_SCALE = 72;
-/** Notr deform haritasi (1x1, 128/128): egilme yokken kirilma zinciri oldugu gibi gecer. */
-export const NEUTRAL_MAP = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12OwsLAAAAF9AKPhmxfUAAAAAElFTkSuQmCC";
+export const LENS_SCALE = 12;
+/** Neutral SVG works consistently across engines and does not add a second displacement pass. */
+const NEUTRAL_MAP = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'%3E%3Cpath fill='%23808080' d='M0 0h1v1H0z'/%3E%3C/svg%3E";
 
 /** Rounded-rect SDF'inden yer degistirme haritasi. Dis bolge ve merkez notr (128). */
 export function buildDisplacementMap(width: number, height: number, radius: number): string | null {
@@ -94,11 +74,7 @@ function supportsLens(id: string): boolean {
     return CSS.supports("backdrop-filter", `url(#${id})`);
 }
 
-/**
- * Ebeveyninin (govde) tamamini kaplayan kirilma katmani. feImage dugumleri data-glass ile
- * isaretlidir; topbar-motion.ts lens haritasini boyut degisiminde, deform haritasini ve lens
- * yerlesimini her karede oraya yazar. `active` false iken filtre kapali ve katman gorunmez.
- */
+/** Motion positions the edge map; unsupported browsers keep the CSS glass surface. */
 export function GlassSurface({ active = true }: { active?: boolean }) {
     const rawId = useId();
     const id = `glass${rawId.replace(/[^a-zA-Z0-9]/g, "")}`;
@@ -110,11 +86,9 @@ export function GlassSurface({ active = true }: { active?: boolean }) {
     return (
         <div ref={ref} aria-hidden="true" data-active={active} data-lens={lens} className="glass-surface">
             <svg width="0" height="0" className="absolute" focusable="false">
-                <filter id={id} x="0" y="-40%" width="100%" height="180%" colorInterpolationFilters="sRGB">
+                <filter id={id} x="-5%" y="-30%" width="110%" height="160%" colorInterpolationFilters="sRGB">
                     <feImage data-glass="lens" href={NEUTRAL_MAP} x="0" y="0" width="1" height="1" preserveAspectRatio="none" result="lensMap" />
-                    <feDisplacementMap in="SourceGraphic" in2="lensMap" scale={LENS_SCALE} xChannelSelector="R" yChannelSelector="G" result="refracted" />
-                    <feImage data-glass="deform" href={NEUTRAL_MAP} x="0" y="0" width="1" height="1" preserveAspectRatio="none" result="deformMap" />
-                    <feDisplacementMap in="refracted" in2="deformMap" scale={DEFORM_SCALE} xChannelSelector="R" yChannelSelector="G" />
+                    <feDisplacementMap in="SourceGraphic" in2="lensMap" scale={LENS_SCALE} xChannelSelector="R" yChannelSelector="G" />
                 </filter>
             </svg>
             <div data-glass="refract" className="glass-refract" style={{ backdropFilter: active && lens ? `url(#${id})` : "none" }} />
