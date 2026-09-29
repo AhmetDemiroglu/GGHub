@@ -9,17 +9,17 @@ import { buildLocalizedPathname } from "@/i18n/config";
 type Section = { title: string; lead?: string; list?: string[]; after?: string };
 
 const META = [
-    { icon: Info, color: "text-cyan-400" },
-    { icon: Database, color: "text-violet-400" },
-    { icon: Target, color: "text-amber-400" },
-    { icon: Cookie, color: "text-orange-400" },
-    { icon: Share2, color: "text-blue-400" },
-    { icon: Bot, color: "text-violet-400" },
-    { icon: Plane, color: "text-sky-400" },
-    { icon: Clock, color: "text-emerald-400" },
-    { icon: UserCheck, color: "text-fuchsia-400" },
-    { icon: Lock, color: "text-rose-400" },
-    { icon: RefreshCw, color: "text-teal-400" },
+    { icon: Info, color: "text-cyan-600 dark:text-cyan-400" },
+    { icon: Database, color: "text-violet-600 dark:text-violet-400" },
+    { icon: Target, color: "text-amber-600 dark:text-amber-400" },
+    { icon: Cookie, color: "text-orange-600 dark:text-orange-400" },
+    { icon: Share2, color: "text-blue-600 dark:text-blue-400" },
+    { icon: Bot, color: "text-violet-600 dark:text-violet-400" },
+    { icon: Plane, color: "text-sky-600 dark:text-sky-400" },
+    { icon: Clock, color: "text-emerald-600 dark:text-emerald-400" },
+    { icon: UserCheck, color: "text-fuchsia-600 dark:text-fuchsia-400" },
+    { icon: Lock, color: "text-rose-600 dark:text-rose-400" },
+    { icon: RefreshCw, color: "text-teal-600 dark:text-teal-400" },
 ];
 
 const COPY = {
@@ -227,7 +227,7 @@ export default function PrivacyPage() {
                         className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.12),_transparent_55%),radial-gradient(circle_at_bottom,_rgba(139,92,246,0.12),_transparent_60%)]"
                     />
                     <div className="relative flex flex-col items-center gap-4">
-                        <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500/15 to-violet-500/15 text-cyan-400">
+                        <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500/15 to-violet-500/15 text-cyan-600 dark:text-cyan-400">
                             <Shield className="h-8 w-8" />
                         </div>
                         <h1 className="text-3xl font-bold tracking-tight md:text-4xl">{t.title}</h1>
@@ -239,7 +239,7 @@ export default function PrivacyPage() {
                 {/* Account & Data Deletion section, prominent so reviewers see it even in the policy */}
                 <section className="rounded-2xl border border-rose-500/30 bg-gradient-to-br from-rose-500/[0.08] to-violet-500/5 p-6">
                     <div className="flex items-center gap-3">
-                        <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/50 text-rose-400">
+                        <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/50 text-rose-600 dark:text-rose-400">
                             <Trash2 className="h-5 w-5" />
                         </div>
                         <h2 className="text-base font-semibold tracking-tight">{t.deletion.title}</h2>
@@ -248,10 +248,10 @@ export default function PrivacyPage() {
                     <div className="mt-4 grid gap-4 sm:grid-cols-2">
                         <div className="rounded-xl border border-border/50 bg-card/40 p-4">
                             <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground/90">
-                                <Globe className="h-4 w-4 text-rose-400" />
+                                <Globe className="h-4 w-4 text-rose-600 dark:text-rose-400" />
                                 {t.deletion.webLabel}
                             </div>
-                            <ol className="list-decimal space-y-1.5 pl-5 text-sm leading-relaxed text-muted-foreground marker:text-rose-400/70">
+                            <ol className="list-decimal space-y-1.5 pl-5 text-sm leading-relaxed text-muted-foreground marker:text-rose-600/70 dark:marker:text-rose-400/70">
                                 {t.deletion.webSteps.map((s) => (
                                     <li key={s}>{s}</li>
                                 ))}
@@ -259,10 +259,10 @@ export default function PrivacyPage() {
                         </div>
                         <div className="rounded-xl border border-border/50 bg-card/40 p-4">
                             <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground/90">
-                                <Smartphone className="h-4 w-4 text-rose-400" />
+                                <Smartphone className="h-4 w-4 text-rose-600 dark:text-rose-400" />
                                 {t.deletion.appLabel}
                             </div>
-                            <ol className="list-decimal space-y-1.5 pl-5 text-sm leading-relaxed text-muted-foreground marker:text-rose-400/70">
+                            <ol className="list-decimal space-y-1.5 pl-5 text-sm leading-relaxed text-muted-foreground marker:text-rose-600/70 dark:marker:text-rose-400/70">
                                 {t.deletion.appSteps.map((s) => (
                                     <li key={s}>{s}</li>
                                 ))}
@@ -297,7 +297,7 @@ export default function PrivacyPage() {
                                         <ul className="space-y-2">
                                             {s.list.map((item) => (
                                                 <li key={item} className="flex items-start gap-2.5">
-                                                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400/80" />
+                                                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-cyan-600/80 dark:text-cyan-400/80" />
                                                     <span>{item}</span>
                                                 </li>
                                             ))}
@@ -312,7 +312,7 @@ export default function PrivacyPage() {
                     {/* İletişim, 9'un yanındaki boşluğu doldurur */}
                     <section className="rounded-2xl border border-border/50 bg-gradient-to-br from-cyan-500/5 to-violet-500/5 p-6 transition-colors hover:border-border">
                         <div className="flex items-center gap-3">
-                            <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/50 text-cyan-400">
+                            <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/50 text-cyan-600 dark:text-cyan-400">
                                 <Mail className="h-5 w-5" />
                             </div>
                             <h2 className="text-base font-semibold tracking-tight">{t.contactTitle}</h2>
@@ -331,18 +331,18 @@ export default function PrivacyPage() {
                 {/* AI etkilesimi acik riza metni: onay penceresi buraya (#ai-consent) link verir. */}
                 <section id="ai-consent" className="scroll-mt-24 rounded-2xl border border-violet-500/40 bg-gradient-to-br from-violet-500/10 via-fuchsia-500/5 to-cyan-500/10 p-6">
                     <div className="flex flex-wrap items-center gap-3">
-                        <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/50 text-violet-400">
+                        <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/50 text-violet-600 dark:text-violet-400">
                             <Bot className="h-5 w-5" />
                         </div>
                         <h2 className="text-base font-semibold tracking-tight">{t.consent.title}</h2>
-                        <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-[11px] font-semibold text-violet-300">{t.consent.version}</span>
+                        <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-[11px] font-semibold text-violet-700 dark:text-violet-300">{t.consent.version}</span>
                     </div>
                     <div className="mt-4 space-y-3 text-sm leading-relaxed text-muted-foreground">
                         <p>{t.consent.lead}</p>
                         <ul className="space-y-2">
                             {t.consent.list.map((item) => (
                                 <li key={item} className="flex items-start gap-2.5">
-                                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-violet-400/80" />
+                                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-violet-600/80 dark:text-violet-400/80" />
                                     <span>{item}</span>
                                 </li>
                             ))}

@@ -6,10 +6,10 @@ import { useCurrentLocale } from "@/core/contexts/locale-context";
 type Section = { title: string; lead?: string; list?: string[]; after?: string };
 
 const META = [
-    { icon: Ban, color: "text-rose-400" },
-    { icon: ShieldCheck, color: "text-emerald-400" },
-    { icon: Flag, color: "text-amber-400" },
-    { icon: Scale, color: "text-cyan-400" },
+    { icon: Ban, color: "text-rose-600 dark:text-rose-400" },
+    { icon: ShieldCheck, color: "text-emerald-600 dark:text-emerald-400" },
+    { icon: Flag, color: "text-amber-600 dark:text-amber-400" },
+    { icon: Scale, color: "text-cyan-600 dark:text-cyan-400" },
 ];
 
 const COPY = {
@@ -101,7 +101,7 @@ export default function ChildSafetyPage() {
                         className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.12),_transparent_55%),radial-gradient(circle_at_bottom,_rgba(34,211,238,0.12),_transparent_60%)]"
                     />
                     <div className="relative flex flex-col items-center gap-4">
-                        <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/15 to-cyan-500/15 text-emerald-400">
+                        <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/15 to-cyan-500/15 text-emerald-600 dark:text-emerald-400">
                             <ShieldCheck className="h-8 w-8" />
                         </div>
                         <h1 className="text-3xl font-bold tracking-tight md:text-4xl">{t.title}</h1>
@@ -128,7 +128,7 @@ export default function ChildSafetyPage() {
                                         <ul className="space-y-2">
                                             {s.list.map((item) => (
                                                 <li key={item} className="flex items-start gap-2.5">
-                                                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400/80" />
+                                                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600/80 dark:text-emerald-400/80" />
                                                     <span>{item}</span>
                                                 </li>
                                             ))}
@@ -143,7 +143,7 @@ export default function ChildSafetyPage() {
                     {/* Contact */}
                     <section className="rounded-2xl border border-border/50 bg-gradient-to-br from-emerald-500/5 to-cyan-500/5 p-6 transition-colors hover:border-border">
                         <div className="flex items-center gap-3">
-                            <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/50 text-emerald-400">
+                            <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/50 text-emerald-600 dark:text-emerald-400">
                                 <Mail className="h-5 w-5" />
                             </div>
                             <h2 className="text-base font-semibold tracking-tight">{t.contactTitle}</h2>

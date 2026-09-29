@@ -67,7 +67,7 @@ export const GameReviewDialog = ({ isOpen, onClose, gameId, gameSlug, gameName, 
     const getRatingButtonClasses = (num: number, currentRating: number) => {
         const isActive = num <= currentRating;
         if (!isActive) {
-            return "bg-zinc-900 border-zinc-700 text-zinc-500 hover:border-zinc-500 hover:text-zinc-300";
+            return "bg-secondary border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground";
         }
         if (num >= 9) {
             return "bg-emerald-500 border-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.5)]";
@@ -103,15 +103,15 @@ export const GameReviewDialog = ({ isOpen, onClose, gameId, gameSlug, gameName, 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
             {/* overflow-visible: etiket onerileri (MentionTextarea) pencerenin altindan tasabilsin, kesilmesin. */}
-            <div className="w-full max-w-lg bg-[#151515] border border-zinc-800 rounded-xl shadow-2xl overflow-visible zoom-in-95 duration-200">
+            <div className="w-full max-w-lg bg-background border border-border rounded-xl shadow-2xl overflow-visible zoom-in-95 duration-200">
                 {/* Header */}
-                <div className="flex items-center justify-between rounded-t-xl p-5 border-b border-zinc-800 bg-zinc-900/50">
+                <div className="flex items-center justify-between rounded-t-xl p-5 border-b border-border bg-muted/30">
                     <div>
-                        <h3 className="font-bold text-white text-lg">{t("reviewDialog.title")}</h3>
-                        <p className="text-xs text-zinc-400">{gameName}</p>
+                        <h3 className="font-bold text-foreground text-lg">{t("reviewDialog.title")}</h3>
+                        <p className="text-xs text-muted-foreground">{gameName}</p>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                        <X size={20} className="text-zinc-400" />
+                    <button type="button" onClick={onClose} className="p-2 hover:bg-secondary rounded-full transition-colors">
+                        <X size={20} className="text-muted-foreground" />
                     </button>
                 </div>
 
@@ -119,29 +119,29 @@ export const GameReviewDialog = ({ isOpen, onClose, gameId, gameSlug, gameName, 
                 <form onSubmit={handleSubmit} className="p-6">
                     {/* Puanlama Alanı */}
                     <div className="mb-6 text-center">
-                        <label className="block text-sm font-medium text-zinc-400 mb-3 uppercase tracking-wider">
+                        <label className="block text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
                             {t("reviewDialog.ratingLabel", { rating })}
                         </label>
                         {renderRatingButtons()}
-                        <div className="flex items-center justify-center gap-2 text-xs text-zinc-500">
+                        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
                             <span>{t("reviewDialog.weak")}</span>
-                            <div className="h-px w-20 bg-zinc-800"></div>
+                            <div className="h-px w-20 bg-border"></div>
                             <span>{t("reviewDialog.average")}</span>
-                            <div className="h-px w-20 bg-zinc-800"></div>
+                            <div className="h-px w-20 bg-border"></div>
                             <span>{t("reviewDialog.legendary")}</span>
                         </div>
                     </div>
 
                     {/* Yorum Alanı */}
                     <div className="mb-6">
-                        <label className="block text-sm font-medium text-zinc-400 mb-2 uppercase tracking-wider">
+                        <label className="block text-sm font-medium text-muted-foreground mb-2 uppercase tracking-wider">
                             {t("reviewDialog.thoughtsLabel")}
                         </label>
                         <MentionTextarea
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
                             placeholder={t("reviewDialog.placeholder")}
-                            className="w-full h-32 bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 text-white placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all resize-none"
+                            className="w-full h-32 bg-muted/30 border border-input rounded-lg p-4 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/50 transition-all resize-none"
                         />
                     </div>
 
@@ -150,14 +150,14 @@ export const GameReviewDialog = ({ isOpen, onClose, gameId, gameSlug, gameName, 
                         <button
                             type="button"
                             onClick={onClose}
-                            className="cursor-pointer px-5 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+                            className="cursor-pointer px-5 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                         >
                             {t("reviewDialog.cancel")}
                         </button>
                         <button
                             type="submit"
                             disabled={isPending}
-                            className="cursor-pointer px-6 py-2.5 bg-white text-black rounded-lg text-sm font-bold hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            className="cursor-pointer px-6 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-bold hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                         >
                             {isPending && <Loader2 size={16} className="animate-spin" />}
                             {t("reviewDialog.submit")}

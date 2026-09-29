@@ -117,7 +117,7 @@ export default function WishlistPage() {
                                                 <div className="flex items-center gap-2 flex-wrap mt-1">
                                                     {game.rating ? (
                                                         <div
-                                                            className="px-2 py-1 rounded-md bg-blue-500/10 text-blue-400 font-bold text-[10px] border border-blue-500/20 flex items-center gap-1.5 tabular-nums"
+                                                            className="px-2 py-1 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold text-[10px] border border-blue-500/20 flex items-center gap-1.5 tabular-nums"
                                                             title="RAWG Rating"
                                                         >
                                                             <Image src={rawgLogoSrc} alt="RAWG" width={12} height={12} className="w-3 h-3 object-contain opacity-80" />
@@ -127,7 +127,7 @@ export default function WishlistPage() {
 
                                                     {game.metacritic ? (
                                                         <div
-                                                            className="px-2 py-1 rounded-md bg-green-500/10 text-green-400 font-bold text-[10px] border border-green-500/20 flex items-center gap-1.5 tabular-nums"
+                                                            className="px-2 py-1 rounded-md bg-green-500/10 text-green-600 dark:text-green-400 font-bold text-[10px] border border-green-500/20 flex items-center gap-1.5 tabular-nums"
                                                             title="Metacritic"
                                                         >
                                                             <Image src={metacriticLogoSrc} alt="Metacritic" width={12} height={12} className="w-3 h-3 object-contain opacity-80" />
@@ -136,7 +136,7 @@ export default function WishlistPage() {
                                                     ) : null}
 
                                                     <div
-                                                        className="px-2 py-1 rounded-md bg-purple-500/10 text-purple-400 font-bold text-[10px] border border-purple-500/20 flex items-center gap-1.5 tabular-nums"
+                                                        className="px-2 py-1 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold text-[10px] border border-purple-500/20 flex items-center gap-1.5 tabular-nums"
                                                         title={t("wishlistPage.gghubRating")}
                                                     >
                                                         <Image src={logoSrc} alt="GGHub" width={12} height={12} className="w-3 h-3 object-contain opacity-80" />

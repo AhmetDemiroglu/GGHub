@@ -158,7 +158,7 @@ function LoginPageContent() {
                             <div className="text-right">
                                 <Link
                                     href={buildLocalizedPathname("/forgot-password", locale)}
-                                    className="text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-cyan-400 hover:underline"
+                                    className="text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-cyan-600 dark:hover:text-cyan-400 hover:underline"
                                 >
                                     {t("auth.forgotPassword")}
                                 </Link>
@@ -178,7 +178,7 @@ function LoginPageContent() {
                                 {t("auth.noAccount")}
                                 <Link
                                     href={buildLocalizedPathname("/register", locale)}
-                                    className="ml-1 font-semibold text-cyan-400 underline-offset-4 hover:underline"
+                                    className="ml-1 font-semibold text-cyan-600 dark:text-cyan-400 underline-offset-4 hover:underline"
                                 >
                                     {t("auth.createAccount")}
                                 </Link>

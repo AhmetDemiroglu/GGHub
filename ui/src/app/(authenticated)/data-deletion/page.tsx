@@ -6,11 +6,11 @@ import { useCurrentLocale } from "@/core/contexts/locale-context";
 type Section = { title: string; lead?: string; list?: string[]; after?: string };
 
 const META = [
-    { icon: Globe, color: "text-cyan-400" },
-    { icon: Smartphone, color: "text-violet-400" },
-    { icon: Mail, color: "text-blue-400" },
-    { icon: Database, color: "text-rose-400" },
-    { icon: Scale, color: "text-emerald-400" },
+    { icon: Globe, color: "text-cyan-600 dark:text-cyan-400" },
+    { icon: Smartphone, color: "text-violet-600 dark:text-violet-400" },
+    { icon: Mail, color: "text-blue-600 dark:text-blue-400" },
+    { icon: Database, color: "text-rose-600 dark:text-rose-400" },
+    { icon: Scale, color: "text-emerald-600 dark:text-emerald-400" },
 ];
 
 const COPY = {
@@ -136,7 +136,7 @@ export default function DataDeletionPage() {
                         className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(244,63,94,0.12),_transparent_55%),radial-gradient(circle_at_bottom,_rgba(139,92,246,0.12),_transparent_60%)]"
                     />
                     <div className="relative flex flex-col items-center gap-4">
-                        <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500/15 to-violet-500/15 text-rose-400">
+                        <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500/15 to-violet-500/15 text-rose-600 dark:text-rose-400">
                             <Trash2 className="h-8 w-8" />
                         </div>
                         <h1 className="text-3xl font-bold tracking-tight md:text-4xl">{t.title}</h1>
@@ -163,7 +163,7 @@ export default function DataDeletionPage() {
                                         <ul className="space-y-2">
                                             {s.list.map((item) => (
                                                 <li key={item} className="flex items-start gap-2.5">
-                                                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-rose-400/80" />
+                                                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-rose-600/80 dark:text-rose-400/80" />
                                                     <span>{item}</span>
                                                 </li>
                                             ))}
@@ -178,7 +178,7 @@ export default function DataDeletionPage() {
                     {/* Contact */}
                     <section className="rounded-2xl border border-border/50 bg-gradient-to-br from-rose-500/5 to-violet-500/5 p-6 transition-colors hover:border-border">
                         <div className="flex items-center gap-3">
-                            <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/50 text-rose-400">
+                            <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/50 text-rose-600 dark:text-rose-400">
                                 <Mail className="h-5 w-5" />
                             </div>
                             <h2 className="text-base font-semibold tracking-tight">{t.contactTitle}</h2>

@@ -17,19 +17,19 @@ const SCORE_LABELS: Record<ScoreType, string> = {
 
 const getScoreStyling = (type: ScoreType, score: number | null | undefined) => {
   if (type === 'gghub') {
-    return "bg-purple-500/10 text-purple-400 border-purple-500/20";
+    return "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20";
   }
   if (type === 'rawg') {
-    return "bg-blue-500/10 text-blue-400 border-blue-500/20";
+    return "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20";
   }
   if (type === 'igdb') {
-    return "bg-indigo-500/10 text-indigo-300 border-indigo-500/20";
+    return "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 border-indigo-500/20";
   }
 
-  if (!score) return "bg-gray-500/10 text-gray-400 border-gray-500/20";
-  if (score > 74) return "bg-green-500/10 text-green-400 border-green-500/20 shadow-[0_0_8px_rgba(34,197,94,0.3)]";
-  if (score > 49) return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20 shadow-[0_0_8px_rgba(234,179,8,0.3)]";
-  return "bg-red-500/10 text-red-400 border-red-500/20 shadow-[0_0_8px_rgba(239,68,68,0.3)]";
+  if (!score) return "bg-gray-500/10 text-gray-500 dark:text-gray-400 border-gray-500/20";
+  if (score > 74) return "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20 shadow-[0_0_8px_rgba(34,197,94,0.3)]";
+  if (score > 49) return "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20 shadow-[0_0_8px_rgba(234,179,8,0.3)]";
+  return "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20 shadow-[0_0_8px_rgba(239,68,68,0.3)]";
 };
 
 export function ScoreBadge({ type, score }: ScoreBadgeProps) {

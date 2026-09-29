@@ -145,7 +145,7 @@ const DialogBody = ({ initial }: { initial: MobilePlatform }) => {
                         <DialogPrimitive.Title className="text-lg font-bold leading-tight text-foreground">GGHub</DialogPrimitive.Title>
                         <p className="mt-0.5 text-sm text-muted-foreground">{t("mobileApp.subtitle")}</p>
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                            <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-[11px] font-semibold text-violet-400">{t("mobileApp.free")}</span>
+                            <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-[11px] font-semibold text-violet-600 dark:text-violet-400">{t("mobileApp.free")}</span>
                             <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">{t("mobileApp.platforms")}</span>
                         </div>
                     </div>
@@ -158,7 +158,7 @@ const DialogBody = ({ initial }: { initial: MobilePlatform }) => {
                 <ul className="relative mb-5 mt-5 space-y-3.5">
                     {features.map((feature) => (
                         <li key={feature.title} className="flex items-start gap-3">
-                            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-400">
+                            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-400">
                                 <feature.icon className="size-[18px]" />
                             </span>
                             <span className="min-w-0">

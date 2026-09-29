@@ -105,7 +105,7 @@ export const ReviewList = ({ gameId, gameName, gameSlug, onAddReview }: ReviewLi
     if (isLoading) {
         return (
             <div className="flex justify-center py-12">
-                <Loader2 size={32} className="animate-spin text-zinc-500" />
+                <Loader2 size={32} className="animate-spin text-muted-foreground" />
             </div>
         );
     }
@@ -145,11 +145,11 @@ export const ReviewList = ({ gameId, gameName, gameSlug, onAddReview }: ReviewLi
                 <div className="flex items-center gap-3 w-full md:w-auto">
                     <div className="relative flex-1 md:w-64">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder={t("reviewList.searchPlaceholder")} className="pl-9 bg-card/50 border-zinc-800" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                        <Input placeholder={t("reviewList.searchPlaceholder")} className="pl-9 bg-card/50" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                     </div>
 
                     <Select value={sortBy} onValueChange={setSortBy}>
-                        <SelectTrigger className="w-[180px] bg-card/50 border-zinc-800">
+                        <SelectTrigger className="w-[180px] bg-card/50">
                             <div className="flex items-center gap-2">
                                 <SortAsc className="h-4 w-4 text-muted-foreground" />
                                 <SelectValue placeholder={t("reviewList.sortPlaceholder")} />

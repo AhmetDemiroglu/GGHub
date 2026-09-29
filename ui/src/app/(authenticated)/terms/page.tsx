@@ -7,17 +7,17 @@ import { useCurrentLocale } from "@/core/contexts/locale-context";
 type Section = { title: string; lead?: string; list?: string[]; deny?: boolean; after?: string };
 
 const META = [
-    { icon: Handshake, color: "text-cyan-400" },
-    { icon: Gamepad2, color: "text-violet-400" },
-    { icon: UserCog, color: "text-amber-400" },
-    { icon: ShieldAlert, color: "text-rose-400" },
-    { icon: MessageSquare, color: "text-blue-400" },
-    { icon: Flag, color: "text-orange-400" },
-    { icon: Copyright, color: "text-fuchsia-400" },
-    { icon: Plug, color: "text-emerald-400" },
-    { icon: Bot, color: "text-violet-400" },
-    { icon: AlertTriangle, color: "text-amber-400" },
-    { icon: LogOut, color: "text-teal-400" },
+    { icon: Handshake, color: "text-cyan-600 dark:text-cyan-400" },
+    { icon: Gamepad2, color: "text-violet-600 dark:text-violet-400" },
+    { icon: UserCog, color: "text-amber-600 dark:text-amber-400" },
+    { icon: ShieldAlert, color: "text-rose-600 dark:text-rose-400" },
+    { icon: MessageSquare, color: "text-blue-600 dark:text-blue-400" },
+    { icon: Flag, color: "text-orange-600 dark:text-orange-400" },
+    { icon: Copyright, color: "text-fuchsia-600 dark:text-fuchsia-400" },
+    { icon: Plug, color: "text-emerald-600 dark:text-emerald-400" },
+    { icon: Bot, color: "text-violet-600 dark:text-violet-400" },
+    { icon: AlertTriangle, color: "text-amber-600 dark:text-amber-400" },
+    { icon: LogOut, color: "text-teal-600 dark:text-teal-400" },
 ];
 
 const COPY = {
@@ -135,7 +135,7 @@ export default function TermsPage() {
                         className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(139,92,246,0.12),_transparent_55%),radial-gradient(circle_at_bottom,_rgba(34,211,238,0.12),_transparent_60%)]"
                     />
                     <div className="relative flex flex-col items-center gap-4">
-                        <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500/15 to-cyan-500/15 text-violet-400">
+                        <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500/15 to-cyan-500/15 text-violet-600 dark:text-violet-400">
                             <FileText className="h-8 w-8" />
                         </div>
                         <h1 className="text-3xl font-bold tracking-tight md:text-4xl">{t.title}</h1>
@@ -163,7 +163,7 @@ export default function TermsPage() {
                                             {s.list.map((item) =>
                                                 s.deny ? (
                                                     <li key={item} className="flex items-start gap-2.5">
-                                                        <X className="mt-0.5 h-4 w-4 shrink-0 text-rose-400/80" />
+                                                        <X className="mt-0.5 h-4 w-4 shrink-0 text-rose-600/80 dark:text-rose-400/80" />
                                                         <span>{item}</span>
                                                     </li>
                                                 ) : (
@@ -184,7 +184,7 @@ export default function TermsPage() {
                     {/* Uygulanacak hukuk, full width */}
                     <div className="md:col-span-2 rounded-2xl border border-border/50 bg-gradient-to-br from-violet-500/5 to-cyan-500/5 p-6">
                         <div className="flex items-start gap-4">
-                            <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary/50 text-violet-400">
+                            <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary/50 text-violet-600 dark:text-violet-400">
                                 <Scale className="h-5 w-5" />
                             </div>
                             <div>
