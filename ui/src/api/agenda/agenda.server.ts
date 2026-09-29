@@ -4,10 +4,11 @@ import { serverGet } from "@/api/server-fetch";
 
 /**
  * Oyun Gundemi icerigini sunucuda ceker (ortak gerekce: api/server-fetch.ts).
- * Uc [AllowAnonymous] ve backend tarafinda 30 dk memory-cache'li; buradaki 15 dk
- * revalidate yalnizca Next katmanindaki kopyayi tazeler.
+ * Uc [AllowAnonymous] ve backend tarafinda 10 dk memory-cache'li. Buradaki kopya 5 dk:
+ * 15 dk iken bot vitrini duzelttikten sonra sayfa eski vitrini ceyrek saat daha gosterdi.
+ * Istemci zaten acilista tazesini ceker (agenda-view.tsx initialDataUpdatedAt).
  */
-const REVALIDATE_SECONDS = 900;
+const REVALIDATE_SECONDS = 300;
 
 export async function getAgendaServer(locale: AppLocale, year: number, month: number): Promise<AgendaContent | null> {
     const { data } = await serverGet<AgendaContent>(`/api/games/agenda?year=${year}&month=${month}`, {

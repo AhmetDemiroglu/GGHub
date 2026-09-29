@@ -156,7 +156,7 @@ namespace GGHub.Infrastructure.Services
                 return games.Where(picked.Contains).ToList();
             }
 
-            var highlights = PickHighlights(releasedGames, upcomingGames, isYearView, today);
+            var highlights = PickHighlights(releasedGames, upcomingGames, isYearView, today, year);
 
             var result = new AgendaViewModel
             {
@@ -192,7 +192,7 @@ namespace GGHub.Infrastructure.Services
         ///  2. Esik var. Esigi gecen oyun yoksa vitrin bos kalir; rastgele oyunla doldurulmaz.
         /// </summary>
         private static List<GameDto> PickHighlights(
-            List<AgendaRow> releasedGames, List<AgendaRow> upcomingGames, bool isYearView, string today)
+            List<AgendaRow> releasedGames, List<AgendaRow> upcomingGames, bool isYearView, string today, int year)
         {
             const int highlightCount = 6;
 
@@ -205,9 +205,13 @@ namespace GGHub.Infrastructure.Services
 
             var pool = recent.Concat(upcomingGames).ToList();
 
-            // Hype skoru henuz hic yazilmamissa (job ilk kez kosmadan once ya da pencerenin
-            // disindaki eski yillar) eski olcute dusulur, ama yine donemin tamami uzerinden.
-            if (!pool.Any(g => g.HypeScore > 0))
+            // Eski olcut YALNIZCA HypeScoreJob'in hic dokunmadigi yillarda kullanilir (pencere
+            // gecen yilin basindan baslar). Pencere icinde hype yoksa vitrin BOS kalir: 29 Eylul
+            // 2026'da bot guncellenmeden once bu yedek devreye girdi, "Sad Virus Dungeon" gibi
+            // oyunlari vitrine koydu ve o yanit Vercel onbellegine girip bot duzelttikten sonra
+            // da 15 dakika gosterildi.
+            var outsideHypeWindow = year < DateTime.UtcNow.Year - 1;
+            if (outsideHypeWindow)
             {
                 return pool
                     .OrderByDescending(g => g.LegacyRank)

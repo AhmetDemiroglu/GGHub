@@ -72,6 +72,10 @@ export const AgendaView = ({ initialContent, initialYear, initialMonth }: Agenda
         queryKey: ["agenda", year, month],
         queryFn: () => agendaApi.get(year, month),
         initialData: year === initialYear && month === initialMonth ? (initialContent ?? undefined) : undefined,
+        // Sunucudan gelen kopya Next veri onbelleginden gelir ve ne kadar eski oldugu
+        // bilinmez. 0 = "bayat say": sayfa acilir acilmaz arka planda API'den tazesi cekilir.
+        // Olmadan 29 Eylul 2026'da API dogru vitrini donerken sayfa eskisini gosterdi.
+        initialDataUpdatedAt: 0,
         staleTime: 10 * 60 * 1000,
         meta: { suppressGlobalToast: true },
     });
