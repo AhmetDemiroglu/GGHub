@@ -128,7 +128,7 @@ export default function HomeView({ initialContent = null }: { initialContent?: H
                 {/* Desktop sidebar: viewport'a sabit; içeriği taşarsa sayfa dışına
                     çıkmak yerine kendi içinde kayar (liderlik tablosu hep erişilebilir). */}
                 <aside className="hidden xl:col-span-4 xl:block">
-                    <div className="no-scrollbar sticky top-4 max-h-[calc(100dvh-2rem)] overflow-y-auto">
+                    <div className="no-scrollbar sticky top-[calc(var(--topbar-h)+1rem)] max-h-[calc(100dvh-var(--topbar-h)-2rem)] overflow-y-auto">
                         <HomeRightSidebar trending={content.trendingLocal} leaders={content.topGamers} />
                     </div>
                 </aside>
