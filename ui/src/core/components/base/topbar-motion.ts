@@ -15,6 +15,7 @@ export interface TopbarRefs {
     content: RefObject<HTMLDivElement | null>;
     rimSvg: RefObject<SVGSVGElement | null>;
     rimGlass: RefObject<SVGPathElement | null>;
+    rimDepth: RefObject<SVGPathElement | null>;
 }
 
 export function useTopbarMotion(refs: TopbarRefs) {
@@ -28,6 +29,7 @@ export function useTopbarMotion(refs: TopbarRefs) {
         const content = refs.content.current;
         const rim = refs.rimGlass.current;
         const svg = refs.rimSvg.current;
+        const depth = refs.rimDepth.current;
         const layers = [refs.shadow.current, refs.skinSolid.current, refs.skinGlass.current];
         if (!main || !header || !body || !content || !rim || !svg || layers.some(layer => !layer)) return;
 
@@ -44,18 +46,19 @@ export function useTopbarMotion(refs: TopbarRefs) {
 
         function draw(dt: number) {
             if (!main || !header || !content || !rim || !svg) return;
-            const state = physics.step(main.scrollTop, dt, mobile.matches, reduced.matches);
-            const path = buildTopbarOutline({ ...state, width });
-            if (path !== lastPath) {
-                const clip = `path("${path}")`;
+            const state = physics.step(main.scrollTop, dt, mobile.matches, reduced.matches, width);
+            const outline = buildTopbarOutline({ ...state, width });
+            if (outline.fill !== lastPath) {
+                const clip = `path("${outline.fill}")`;
                 // Clip each surface, never a backdrop-filter ancestor.
                 for (const layer of [...layers, refract, svg]) if (layer) layer.style.clipPath = clip;
-                rim.setAttribute("d", path);
+                rim.setAttribute("d", outline.rim);
+                depth?.setAttribute("d", outline.rim);
                 content.style.left = `${state.inset}px`;
                 content.style.right = `${state.inset}px`;
                 content.style.top = `${state.top}px`;
                 content.style.height = `${state.height}px`;
-                lastPath = path;
+                lastPath = outline.fill;
                 if (lensImage) {
                     lensImage.setAttribute("x", String(state.inset));
                     lensImage.setAttribute("y", String(state.top));
@@ -63,11 +66,11 @@ export function useTopbarMotion(refs: TopbarRefs) {
                     lensImage.setAttribute("height", String(state.height));
                 }
             }
-            header.style.setProperty("--peel", String(state.peel));
+            header.style.setProperty("--peel", String(state.glass));
             header.style.setProperty("--lens-reveal", String(state.lens));
             header.dataset.floating = String(state.floating);
-            setMotion(current => current.floating === state.floating && current.engaged === (state.peel > 0) && current.scrollbar === scrollbar
-                ? current : { floating: state.floating, engaged: state.peel > 0, scrollbar });
+            setMotion(current => current.floating === state.floating && current.engaged === (state.glass > 0) && current.scrollbar === scrollbar
+                ? current : { floating: state.floating, engaged: state.glass > 0, scrollbar });
             return state.settled;
         }
 

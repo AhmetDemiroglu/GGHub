@@ -37,6 +37,7 @@ export function AppTopbar() {
         content: React.createRef<HTMLDivElement>(),
         rimSvg: React.createRef<SVGSVGElement>(),
         rimGlass: React.createRef<SVGPathElement>(),
+        rimDepth: React.createRef<SVGPathElement>(),
     }).current;
     const { floating, engaged, scrollbar } = useTopbarMotion(refs);
 
@@ -67,6 +68,7 @@ export function AppTopbar() {
                             <stop offset="1" style={{ stopColor: "var(--glass-rim-soft)" }} />
                         </linearGradient>
                     </defs>
+                    <path ref={refs.rimDepth} className="topbar-rim-depth" />
                     <path ref={refs.rimGlass} className="topbar-rim-glass" stroke={`url(#${rimGradientId})`} />
                 </svg>
             </div>

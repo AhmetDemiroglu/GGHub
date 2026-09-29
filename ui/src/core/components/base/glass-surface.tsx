@@ -3,9 +3,9 @@
 import { useId, useLayoutEffect, useRef, useState } from "react";
 
 /** A narrow edge lens; the center stays optically quiet and the controls sit above it. */
-const EDGE_BAND = 8;
+const EDGE_BAND = 12;
 const EDGE_POWER = 3.2;
-export const LENS_SCALE = 12;
+export const LENS_SCALE = 34;
 /** Neutral SVG works consistently across engines and does not add a second displacement pass. */
 const NEUTRAL_MAP = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'%3E%3Cpath fill='%23808080' d='M0 0h1v1H0z'/%3E%3C/svg%3E";
 

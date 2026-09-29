@@ -1,30 +1,110 @@
-/** A smooth capsule with a single, centered adhesive bridge during the first pull. */
+/**
+ * Outline of the elastic bar. The middle is always a straight, rigid body. Only the two ends
+ * change: they are strands glued to the walls (morph 0), round caps (morph 1) or a blend.
+ */
 export interface OutlineInput {
     width: number;
-    inset: number;
     top: number;
+    inset: number;
     height: number;
     radius: number;
-    peel: number;
-    tether: number;
+    morph: number;
+    wall: number;
+    neck: number;
+    stub: number;
+    stubLength: number;
+    stubWall: number;
 }
 
-const f = (value: number) => Number(value.toFixed(3));
+export interface TopbarOutline {
+    /** Closed silhouette, used as the clip of every surface. */
+    fill: string;
+    /** Free edges only. Wall contact is never stroked. */
+    rim: string;
+}
 
-export function buildTopbarOutline(input: OutlineInput): string {
-    const { width, top, height, peel, tether } = input;
-    const left = Math.min(input.inset, Math.max(0, width / 2 - 1));
-    const right = width - left;
-    const bottom = top + height;
-    const r = Math.max(0, Math.min(input.radius, height / 2, (right - left) / 2));
-    const center = width / 2;
-    const span = Math.min((right - left - 2 * r) / 2, Math.min(240, width * 0.3) * (1 - peel * 0.76));
-    const root = Math.max(0.5, span * (0.3 - peel * 0.28)) * tether;
-    const anchor = top * (1 - tether);
-    const bridge = tether > 0.001 && top > 0.01 && span > 0
-        ? `L${f(center - span)},${f(top)} C${f(center - span * 0.35)},${f(top)} ${f(center - root * 2)},${f(anchor)} ${f(center - root)},${f(anchor)} Q${f(center)},${f(anchor)} ${f(center + root)},${f(anchor)} C${f(center + root * 2)},${f(anchor)} ${f(center + span * 0.35)},${f(top)} ${f(center + span)},${f(top)}`
-        : "";
+type Point = [number, number];
 
-    // Circular arcs match the lens map exactly, including intermediate radii.
-    return `M${f(left + r)},${f(top)} ${bridge} L${f(right - r)},${f(top)} A${f(r)},${f(r)} 0 0 1 ${f(right)},${f(top + r)} L${f(right)},${f(bottom - r)} A${f(r)},${f(r)} 0 0 1 ${f(right - r)},${f(bottom)} L${f(left + r)},${f(bottom)} A${f(r)},${f(r)} 0 0 1 ${f(left)},${f(bottom - r)} L${f(left)},${f(top + r)} A${f(r)},${f(r)} 0 0 1 ${f(left + r)},${f(top)} Z`;
+const EDGE_SAMPLES = 28;
+const STUB_SAMPLES = 8;
+/** Thinnest point of the strand, measured from the wall. */
+const NECK_AT = 0.3;
+
+const f = (value: number) => Number(value.toFixed(2));
+const ease = (t: number) => t * t * (3 - 2 * t);
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+/** Thickness and midline of a strand. u is 0 on the wall and 1 where the body begins. */
+function strand(u: number, input: OutlineInput): { top: number; bottom: number } {
+    const { top, height, wall, neck } = input;
+    const toBody = u > NECK_AT ? ease((u - NECK_AT) / (1 - NECK_AT)) : 0;
+    const toWall = u < NECK_AT ? ease(1 - u / NECK_AT) : 0;
+    const thickness = neck + (height - neck) * toBody + (wall - neck) * toWall;
+    const middle = lerp(wall / 2, top + height / 2, ease(u));
+    return { top: middle - thickness / 2, bottom: middle + thickness / 2 };
+}
+
+/** Left end, ordered from the body's top edge, around the end, to the body's bottom edge. */
+function leftEnd(input: OutlineInput): Point[] {
+    const { top, inset, height, morph } = input;
+    const limit = input.width / 2;
+    const r = Math.max(0, Math.min(input.radius, height / 2));
+    const reach = inset + height / 2;
+    const upper: Point[] = [];
+    const lower: Point[] = [];
+
+    for (let i = 0; i < EDGE_SAMPLES; i++) {
+        const t = i / (EDGE_SAMPLES - 1);
+        const angle = t * Math.PI / 2;
+        let upperPoint: Point = [inset + r - r * Math.sin(angle), top + r - r * Math.cos(angle)];
+        let lowerPoint: Point = [inset + r - r * Math.cos(angle), top + height - r + r * Math.sin(angle)];
+        if (morph < 1) {
+            const down = strand(1 - t, input);
+            const back = strand(t, input);
+            upperPoint = [lerp(reach * (1 - t), upperPoint[0], morph), lerp(down.top, upperPoint[1], morph)];
+            lowerPoint = [lerp(reach * t, lowerPoint[0], morph), lerp(back.bottom, lowerPoint[1], morph)];
+        }
+        upper.push([Math.min(upperPoint[0], limit), upperPoint[1]]);
+        lower.push([Math.min(lowerPoint[0], limit), lowerPoint[1]]);
+    }
+    return [...upper, ...lower];
+}
+
+/** Residue on the wall: it keeps the strand's root and shrinks into the corner. */
+function leftStub(input: OutlineInput): Point[] {
+    const size = 1 - input.stub;
+    if (size <= 0.001 || input.stubLength <= 0) return [];
+    const length = Math.min(input.stubLength * size, input.width / 2);
+    const wall = input.stubWall * size;
+    const upper: Point[] = [];
+    const lower: Point[] = [];
+    for (let i = 0; i <= STUB_SAMPLES; i++) {
+        const u = i / STUB_SAMPLES;
+        const thickness = wall * (1 - ease(u));
+        const middle = wall / 2 + wall * 0.35 * u;
+        upper.push([length * u, middle - thickness / 2]);
+        lower.push([length * u, middle + thickness / 2]);
+    }
+    return [...upper, ...lower.reverse()];
+}
+
+const line = (points: Point[]) => points.map(([x, y], i) => `${i ? "L" : "M"}${f(x)},${f(y)}`).join("");
+
+export function buildTopbarOutline(input: OutlineInput): TopbarOutline {
+    const width = Math.max(1, input.width);
+    const mirror = ([x, y]: Point): Point => [width - x, y];
+    const left = leftEnd({ ...input, width });
+    const right = left.map(mirror);
+
+    const body = `${line([...right, ...left.slice().reverse()])}Z`;
+    const stub = leftStub({ ...input, width });
+    const residue = stub.length ? `${line(stub)}Z${line(stub.map(mirror))}Z` : "";
+
+    const attached = input.morph === 0;
+    const rim = attached
+        ? line([...left.slice(0, EDGE_SAMPLES).reverse(), ...right.slice(0, EDGE_SAMPLES)])
+            + line([...left.slice(EDGE_SAMPLES), ...right.slice(EDGE_SAMPLES).reverse()])
+        : body;
+
+    return { fill: body + residue, rim };
 }
