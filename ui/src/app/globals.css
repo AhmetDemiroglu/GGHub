@@ -541,6 +541,8 @@
     --topbar-reserve: 48px;
     --glass-tint-a: rgba(255, 255, 255, 0.28);
     --glass-tint-b: rgba(250, 247, 238, 0.16);
+    --glass-dense-a: rgba(255, 255, 255, 0.6);
+    --glass-dense-b: rgba(250, 250, 255, 0.46);
     --glass-frost-a: rgba(255, 255, 255, 0.52);
     --glass-frost-b: rgba(250, 247, 238, 0.36);
     --glass-rim: rgba(255, 255, 255, 0.72);
@@ -556,6 +558,8 @@
 .dark {
     --glass-tint-a: rgba(255, 255, 255, 0.1);
     --glass-tint-b: rgba(255, 255, 255, 0.035);
+    --glass-dense-a: rgba(24, 29, 48, 0.56);
+    --glass-dense-b: rgba(12, 16, 30, 0.44);
     --glass-frost-a: rgba(30, 36, 58, 0.62);
     --glass-frost-b: rgba(13, 18, 34, 0.46);
     --glass-rim: rgba(255, 255, 255, 0.38);
@@ -667,6 +671,56 @@
         background: color-mix(in oklab, var(--background) 96%, transparent) !important;
     }
     .topbar-body .glass-refract {
+        display: none;
+    }
+}
+/* Standalone glass surface. Same recipe and variables as the topbar capsule. */
+.glass-capsule {
+    position: relative;
+    border-radius: 9999px;
+    box-shadow: 0 10px 24px -14px var(--glass-shadow), 0 2px 6px -3px var(--glass-shadow);
+}
+.glass-capsule-stack,
+.glass-capsule-base,
+.glass-capsule-refract,
+.glass-capsule-shine {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+}
+.glass-capsule-base {
+    backdrop-filter: blur(20px) saturate(1.6);
+    background: linear-gradient(180deg, var(--glass-frost-a), var(--glass-frost-b));
+}
+.glass-capsule[data-lens="true"] .glass-capsule-base {
+    backdrop-filter: blur(1.8px) saturate(1.5);
+    background: linear-gradient(180deg, var(--glass-tint-a), var(--glass-tint-b));
+}
+/* Labels sit directly on this surface while text scrolls beneath it: the body is frosted
+   for legibility, the rim keeps the lens and the specular line. */
+.glass-capsule[data-tone="dense"][data-lens="true"] .glass-capsule-base {
+    backdrop-filter: blur(14px) saturate(1.6);
+    background: linear-gradient(180deg, var(--glass-dense-a), var(--glass-dense-b));
+}
+.glass-capsule-shine {
+    background:
+        linear-gradient(115deg, var(--glass-sheen) 0%, transparent 26%),
+        radial-gradient(140% 190% at 86% -45%, var(--glass-sheen), transparent 55%);
+    box-shadow:
+        inset 0 1px 0 var(--glass-spec),
+        inset 0 2px 7px var(--glass-spec-soft),
+        inset 1px 0 0 var(--glass-spec-side),
+        inset -1px 0 0 var(--glass-spec-side),
+        inset 0 -1px 0 var(--glass-under),
+        inset 0 -7px 14px -9px var(--glass-under-soft);
+}
+@media (prefers-reduced-transparency: reduce) {
+    .glass-capsule .glass-capsule-base {
+        backdrop-filter: none !important;
+        background: color-mix(in oklab, var(--background) 96%, transparent) !important;
+    }
+    .glass-capsule .glass-capsule-refract {
         display: none;
     }
 }

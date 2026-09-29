@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/core/components/ui/t
 import { Skeleton } from "@/core/components/ui/skeleton";
 import { Switch } from "@/core/components/ui/switch";
 import { Label } from "@/core/components/ui/label";
+import { GlassCapsule } from "@/core/components/base/glass-capsule";
 import { MentionText } from "@/core/components/base/mention-text";
 import { AiBadge } from "@/core/components/base/ai-badge";
 import { PostCard } from "@/core/components/other/posts/post-card";
@@ -31,10 +32,15 @@ import {
     MessageCircle,
     MessageSquare,
     Star,
+    User,
     UserPlus,
 } from "lucide-react";
 
 const FEED_PAGE_SIZE = 10;
+
+// Cam kapsülün içindeki sekme: yuvarlak, aktif olan yarı saydam dolgu alır (opak kutu camı kapatır).
+const FEED_TAB_CLASS =
+    "h-full gap-1 rounded-full text-xs data-[state=active]:bg-foreground/10 data-[state=active]:shadow-none dark:data-[state=active]:border-transparent dark:data-[state=active]:bg-white/12";
 
 // Gonderi yazma kutusu (etiket metin alani, anket editoru, gorsel kucultme) yalniz giris yapmis
 // kullanicida gorunur; ilk yuk paketinden cikarilip ihtiyac aninda indirilir.
@@ -504,34 +510,42 @@ export default function HomeSocialFeed({ isAuthenticated }: HomeSocialFeedProps)
             >
                 {/*
                     Yapışkan sekme çubuğu. Sayfa <body> üzerinde KAYMIYOR; kaydırma
-                    kabı (authenticated) layout'undaki <main className="overflow-y-auto">;
-                    üst cubuk o kabın üstünde durduğu için sekme çubuğu onun altına
-                    yapışır (top: --topbar-h), yoksa cubugun arkasında kalırdı.
+                    kabı (authenticated) layout'undaki <main className="overflow-y-auto">.
 
-                    Sarmalayıcı şart: TabsList bg-muted ve köşeleri yuvarlak, doğrudan
-                    sticky verilince altından kayan içerik köşelerden görünüyor.
-                    Negatif margin + padding, kartların gölgesi kenardan kırpılmasın diye.
+                    Konum: sticky `top`, kabın padding'inden SONRA ölçülür ve <main>'in
+                    üst padding'i zaten --topbar-h + boşluk. Buraya bir daha --topbar-h
+                    yazınca çubuk üst kapsülün 72px altında asılı kalıyordu. Negatif
+                    değerler o boşluğu geri alır: çubuk her genişlikte üst kapsülün
+                    8px altına oturur.
+
+                    Yüzey üst çubukla aynı cam; arkasında opak şerit yok, akış iki
+                    kapsülün altından görünerek kayar.
                 */}
-                <div className="sticky top-(--topbar-h) z-20 -mx-2 bg-background/95 px-2 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-                    <TabsList className="grid w-full grid-cols-3">
-                        <TabsTrigger value="discover" className="gap-1 text-xs">
-                            <Compass className="h-3 w-3" /> {t("home.activityTabs.discover")}
-                        </TabsTrigger>
-                        <TabsTrigger value="posts" className="gap-1 text-xs">
-                            <MessageSquare className="h-3 w-3" /> {t("home.activityTabs.posts")}
-                        </TabsTrigger>
-                        <TabsTrigger value="reviews" className="gap-1 text-xs">
-                            <Star className="h-3 w-3" /> {t("home.activityTabs.reviews")}
-                        </TabsTrigger>
-                    </TabsList>
-                    {isAuthenticated ? (
-                        <div className="mt-2 flex items-center justify-end gap-2">
-                            <Label htmlFor="feed-humans-only" className="cursor-pointer text-xs text-muted-foreground" title={t("ai.humansOnlyHint")}>
-                                {t("ai.humansOnly")}
-                            </Label>
-                            <Switch id="feed-humans-only" checked={humansOnly} onCheckedChange={toggleHumansOnly} aria-label={t("ai.humansOnlyHint")} />
+                <div className="sticky top-0 z-20 md:-top-2 2xl:-top-4">
+                    <GlassCapsule tone="dense">
+                        <div className="flex items-center gap-1 p-1">
+                            <TabsList className="grid h-9 min-w-0 flex-1 grid-cols-3 rounded-full bg-transparent p-0">
+                                <TabsTrigger value="discover" className={FEED_TAB_CLASS}>
+                                    <Compass className="h-3 w-3" /> {t("home.activityTabs.discover")}
+                                </TabsTrigger>
+                                <TabsTrigger value="posts" className={FEED_TAB_CLASS}>
+                                    <MessageSquare className="h-3 w-3" /> {t("home.activityTabs.posts")}
+                                </TabsTrigger>
+                                <TabsTrigger value="reviews" className={FEED_TAB_CLASS}>
+                                    <Star className="h-3 w-3" /> {t("home.activityTabs.reviews")}
+                                </TabsTrigger>
+                            </TabsList>
+                            {isAuthenticated ? (
+                                <div className="flex shrink-0 items-center gap-2 border-l border-foreground/10 pl-3 pr-2">
+                                    <Label htmlFor="feed-humans-only" className="cursor-pointer text-xs text-muted-foreground" title={t("ai.humansOnlyHint")}>
+                                        <User className="size-3.5 sm:hidden" aria-hidden />
+                                        <span className="hidden sm:inline">{t("ai.humansOnly")}</span>
+                                    </Label>
+                                    <Switch id="feed-humans-only" checked={humansOnly} onCheckedChange={toggleHumansOnly} aria-label={t("ai.humansOnlyHint")} />
+                                </div>
+                            ) : null}
                         </div>
-                    ) : null}
+                    </GlassCapsule>
                 </div>
 
                 <TabsContent value={activeTab} className="mt-4">
