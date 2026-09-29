@@ -6,8 +6,8 @@
 #   gghub-bot status    -> calisiyor mu + bu ayki Gemini harcamasi + kalan kuyruk
 #   gghub-bot logs      -> canli log
 #   gghub-bot update    -> repodan yeniden derle + kur + yeniden baslat
-#   gghub-bot autoupdate-install -> otomatik guncelleyiciyi kur (bir kez)
-#   gghub-bot autoupdate -> origin/main'de backend degistiyse yeniden derle + kur (LaunchAgent cagirir)
+#   gghub-bot autoupdate -> origin/main'de backend degistiyse yeniden derle + kur
+#                           (git hook'u her push/pull'da kendisi cagirir; bkz. scripts/install-hooks)
 #   gghub-bot uninstall -> TAMAMEN kaldir: durdur + acilista baslatmayi iptal + dosyalari sil
 #
 # Bot NEDEN burada calisiyor: Railway'de 7/24 donen bir crawler prod container'inda CPU yakiyor
@@ -24,19 +24,15 @@ LABEL="social.gghub.bot"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 DOTNET="$HOME/.dotnet/dotnet"
 
-# Otomatik guncelleyici. Derleme alani KIOXIA'da (Mac diskine derleme ciktisi yazilmaz);
-# disk takili degilse guncelleyici o turu sessizce atlar, bot eski surumle calismaya devam eder.
-UPDATER_LABEL="social.gghub.bot-updater"
-UPDATER_PLIST="$HOME/Library/LaunchAgents/$UPDATER_LABEL.plist"
-UPDATER_SCRIPT="$BOT_HOME/gghub-bot"
+# Otomatik guncelleme (bkz. cmd_autoupdate). Derleme alani KIOXIA'da: Mac diskine derleme
+# ciktisi yazilmaz.
 UPDATE_STAMP="$BOT_HOME/built-backend-tree"
 UPDATE_LOG="$LOG_DIR/autoupdate.log"
 BUILD_ROOT="${GGHUB_BOT_BUILD_ROOT:-/Volumes/KIOXIA/_caches/gghub-bot-build}"
 
-# Repo yolu: bu script repo icinde durdugu icin kendi konumundan turetiliyor. Otomatik
-# guncelleyici scriptin ~/.gghub-bot'taki kopyasini calistirir; o zaman yol GGHUB_REPO'dan gelir.
+# Repo yolu: bu script repo icinde durdugu icin kendi konumundan turetiliyor.
 SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="${GGHUB_REPO:-$(cd "$SCRIPT_PATH/.." && pwd)}"
+REPO_ROOT="$(cd "$SCRIPT_PATH/.." && pwd)"
 WORKER_PROJ="$REPO_ROOT/backend/GGHub.Worker/GGHub.Worker.csproj"
 
 c_red()  { printf '\033[31m%s\033[0m\n' "$*"; }
@@ -225,11 +221,7 @@ cmd_uninstall() {
   # Sureci launchctl kacirirsa diye ikinci emniyet
   pkill -f "$APP_DIR/GGHub.Worker" 2>/dev/null || true
 
-  if [ -f "$UPDATER_PLIST" ]; then
-    launchctl unload "$UPDATER_PLIST" 2>/dev/null || true
-    rm -f "$UPDATER_PLIST" "$UPDATER_SCRIPT" "$UPDATE_STAMP"
-    c_grn "Otomatik guncelleyici kaldirildi."
-  fi
+  rm -f "$UPDATE_STAMP"
 
   [ -f "$PLIST" ] && { rm -f "$PLIST"; c_grn "Silindi: $PLIST"; }
   [ -d "$APP_DIR" ] && { rm -rf "$APP_DIR"; c_grn "Silindi: $APP_DIR"; }
@@ -249,14 +241,21 @@ cmd_uninstall() {
 # kodu bu kopyaya kendiliginden ulasmiyordu; 29 Eyl 2026'da push'tan sonra bot eski surumde kaldi,
 # yeni hype job'i hic calismadi ve gundem vitrini bozuk gorundu.
 #
-# NASIL: LaunchAgent 10 dakikada bir "autoupdate" calistirir.
-#   1. origin/main cekilir. Kaynak YEREL CALISMA AGACI DEGIL origin/main'dir: yerelde yarim kalmis,
-#      push edilmemis degisiklikler prod'a yazan bota asla girmemeli. Railway de origin/main'i calistirir.
+# TETIKLEYICI: git'in reference-transaction hook'u (scripts/install-hooks kurar). Bu Mac'te
+# origin/main her degistiginde (push VEYA pull/fetch) arka planda "autoupdate" baslatir.
+# Zamanlanmis bir LaunchAgent DENENDI ve CALISMADI: macOS arka plan servislerinin harici diske
+# erisimini engelliyor ("Unable to read current working directory: Operation not permitted").
+# Hook'tan baslayan surec ise push'u yapan uygulamanin (Terminal, VS Code, Claude) disk iznini
+# tasir, KIOXIA'yi okuyabilir.
+#
+# ADIMLAR:
+#   1. Kaynak YEREL CALISMA AGACI DEGIL origin/main'dir: yerelde yarim kalmis, push edilmemis
+#      degisiklikler prod'a yazan bota asla girmemeli. Railway de origin/main'i calistirir.
 #   2. origin/main'deki backend/ agacinin hash'i son kurulumla ayniysa hicbir sey yapilmaz
 #      (yalnizca ui/ veya mobile-ui/ degisen push'lar botu yeniden baslatmaz).
 #   3. Degistiyse backend/ KIOXIA'daki derleme alanina cikarilir ve orada derlenir.
 #   4. Yeni derleme "--check-schema" ile sinanir. Railway yeni migration'i henuz uygulamadiysa
-#      eski bot calismaya devam eder, yeni derleme 10 dakika sonra tekrar denenir.
+#      eski bot calismaya devam eder; 30 sn arayla 25 dakikaya kadar beklenir.
 #   5. Gecerse bot durdurulur, yeni derleme kurulur, bot yeniden baslatilir.
 # ---------------------------------------------------------------------------------------------
 
@@ -266,25 +265,29 @@ log_update() {
 }
 
 cmd_autoupdate() {
-  # Iki guncelleme ust uste binmesin (derleme 10 dakikadan uzun surebilir).
-  # Kilit degiskeni GLOBAL: EXIT trap'i fonksiyon dondukten sonra calisir ve set -u altinda
-  # local bir degisken orada tanimsiz kalirdi.
+  local fetch=1
+  [ "${1:-}" = "--no-fetch" ] && fetch=0
+
+  # Iki guncelleme ust uste binmesin (arka arkaya iki push). Kilit degiskeni GLOBAL: EXIT
+  # trap'i fonksiyon dondukten sonra calisir ve set -u altinda local degisken orada tanimsizdir.
   AUTOUPDATE_LOCK="$BOT_HOME/autoupdate.lock"
   if ! mkdir "$AUTOUPDATE_LOCK" 2>/dev/null; then
-    # 2 saatten eski kilit onceki kosunun coktugunu gosterir; birak.
-    if [ -n "$(find "$AUTOUPDATE_LOCK" -maxdepth 0 -mmin +120 2>/dev/null)" ]; then
+    # 1 saatten eski kilit onceki kosunun coktugunu gosterir; birak.
+    if [ -n "$(find "$AUTOUPDATE_LOCK" -maxdepth 0 -mmin +60 2>/dev/null)" ]; then
       rm -rf "$AUTOUPDATE_LOCK"; mkdir "$AUTOUPDATE_LOCK" || return 0
     else
+      log_update "Baska bir guncelleme suruyor, bu tetikleme atlandi."
       return 0
     fi
   fi
   trap 'rm -rf "$AUTOUPDATE_LOCK"' EXIT
 
-  [ -d "$REPO_ROOT/.git" ] || return 0            # KIOXIA takili degil
+  [ -x "$APP_DIR/GGHub.Worker" ] || return 0      # bot bu makinede kurulu degil
+  [ -d "$REPO_ROOT/.git" ] || return 0
   [ -x "$DOTNET" ] || { log_update "dotnet yok: $DOTNET"; return 0; }
 
-  if ! git -C "$REPO_ROOT" fetch -q origin main 2>>"$UPDATE_LOG"; then
-    log_update "git fetch basarisiz (ag yok?), sonraki turda denenecek."
+  if [ "$fetch" -eq 1 ] && ! git -C "$REPO_ROOT" fetch -q origin main 2>>"$UPDATE_LOG"; then
+    log_update "git fetch basarisiz."
     return 0
   fi
 
@@ -292,7 +295,10 @@ cmd_autoupdate() {
   commit="$(git -C "$REPO_ROOT" rev-parse --short origin/main)"
   tree="$(git -C "$REPO_ROOT" rev-parse origin/main:backend)"
   built="$(awk '{print $1}' "$UPDATE_STAMP" 2>/dev/null || true)"
-  [ "$tree" = "$built" ] && return 0
+  if [ "$tree" = "$built" ]; then
+    [ "$fetch" -eq 1 ] && c_grn "Bot zaten guncel (origin/main $commit)."
+    return 0
+  fi
 
   log_update "backend degisti (origin/main $commit), derleniyor..."
 
@@ -310,24 +316,27 @@ cmd_autoupdate() {
     return 0
   fi
 
-  # Sema kapisi: yeni derleme DB'nin gerisinde/ilerisinde mi?
-  local schema
-  if ! schema="$(DOTNET_ROOT="$HOME/.dotnet" GGHUB_BOT_HOME="$BOT_HOME" DOTNET_ENVIRONMENT=Production \
-      "$out/GGHub.Worker" --check-schema 2>/dev/null | tail -1)"; then
+  # Sema kapisi. Push'tan hemen sonra Railway henuz deploy etmemis olabilir.
+  local schema="" attempt
+  for attempt in $(seq 1 50); do
+    if schema="$(DOTNET_ROOT="$HOME/.dotnet" GGHUB_BOT_HOME="$BOT_HOME" DOTNET_ENVIRONMENT=Production \
+        "$out/GGHub.Worker" --check-schema 2>/dev/null | tail -1)"; then
+      break
+    fi
     # DIKKAT: macOS'un bash 3.2'si "${x:-...}" icindeki kesme isaretini tirnak baslangici sayiyor
     # ve scriptin geri kalanini yutuyor; bu yuzden bos deger ayri bir satirda veriliyor.
     [ -n "$schema" ] || schema="DB ulasilamadi"
-    log_update "Bekleniyor: $schema. Railway deploy bitince tekrar denenecek."
-    return 0
-  fi
+    [ "$attempt" -eq 1 ] && log_update "Railway bekleniyor: $schema"
+    [ "$attempt" -eq 50 ] && { log_update "25 dk icinde sema hazir olmadi, vazgecildi. Elle: gghub-bot autoupdate"; return 0; }
+    sleep 30
+  done
 
   local was_running=0
   is_loaded && was_running=1
   [ "$was_running" -eq 1 ] && launchctl unload "$PLIST" 2>/dev/null
 
-  rm -rf "$APP_DIR.new"
+  rm -rf "$APP_DIR.new" "$APP_DIR.old"
   cp -R "$out" "$APP_DIR.new"
-  rm -rf "$APP_DIR.old"
   [ -d "$APP_DIR" ] && mv "$APP_DIR" "$APP_DIR.old"
   mv "$APP_DIR.new" "$APP_DIR"
   rm -rf "$APP_DIR.old"
@@ -335,74 +344,8 @@ cmd_autoupdate() {
   [ "$was_running" -eq 1 ] && launchctl load "$PLIST"
   echo "$tree $commit" > "$UPDATE_STAMP"
   log_update "Kuruldu: origin/main $commit. Bot $([ "$was_running" -eq 1 ] && echo 'yeniden baslatildi' || echo 'durmus durumdaydi, baslatilmadi')."
-
-  # Guncelleyicinin kendi kopyasini da tazele. mv yeni bir dosya yaratir; calismakta olan bu
-  # surec eski dosyayi okumaya devam eder, yarim okunmus script sorunu olmaz.
-  if git -C "$REPO_ROOT" show origin/main:scripts/gghub-bot > "$UPDATER_SCRIPT.tmp" 2>/dev/null; then
-    chmod +x "$UPDATER_SCRIPT.tmp" && mv "$UPDATER_SCRIPT.tmp" "$UPDATER_SCRIPT"
-  fi
-}
-
-cmd_autoupdate_install() {
-  mkdir -p "$BOT_HOME" "$LOG_DIR"
-
-  # LaunchAgent repodaki scripti DEGIL, ~/.gghub-bot'taki kopyasini calistirir: KIOXIA takili
-  # degilken launchd'nin her 10 dakikada bir "dosya yok" hatasi yazmasi yerine script kendisi
-  # sessizce cikar.
-  cp "$SCRIPT_PATH/gghub-bot" "$UPDATER_SCRIPT"
-  chmod +x "$UPDATER_SCRIPT"
-
-  cat > "$UPDATER_PLIST" <<PLIST_EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key>
-  <string>$UPDATER_LABEL</string>
-
-  <key>ProgramArguments</key>
-  <array>
-    <string>/bin/bash</string>
-    <string>$UPDATER_SCRIPT</string>
-    <string>autoupdate</string>
-  </array>
-
-  <key>EnvironmentVariables</key>
-  <dict>
-    <key>GGHUB_REPO</key>
-    <string>$REPO_ROOT</string>
-    <key>GGHUB_BOT_HOME</key>
-    <string>$BOT_HOME</string>
-    <key>PATH</key>
-    <string>/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin</string>
-  </dict>
-
-  <!-- 10 dakikada bir + her acilista -->
-  <key>StartInterval</key>
-  <integer>600</integer>
-  <key>RunAtLoad</key>
-  <true/>
-
-  <key>StandardOutPath</key>
-  <string>$LOG_DIR/autoupdate.out.log</string>
-  <key>StandardErrorPath</key>
-  <string>$LOG_DIR/autoupdate.out.log</string>
-
-  <key>ProcessType</key>
-  <string>Background</string>
-  <key>LowPriorityIO</key>
-  <true/>
-  <key>Nice</key>
-  <integer>10</integer>
-</dict>
-</plist>
-PLIST_EOF
-
-  launchctl list 2>/dev/null | grep -q "$UPDATER_LABEL" && launchctl unload "$UPDATER_PLIST" 2>/dev/null
-  launchctl load "$UPDATER_PLIST"
-
-  c_grn "Otomatik guncelleyici kuruldu: 10 dakikada bir origin/main kontrol edilir."
-  c_dim "Log: $UPDATE_LOG"
+  [ "$fetch" -eq 1 ] && c_grn "Kuruldu: origin/main $commit"
+  return 0
 }
 
 cmd_logs() {
@@ -429,11 +372,11 @@ cmd_status() {
   echo "Kurulum : $APP_DIR"
   echo "Ayarlar : $CONFIG"
   echo "Loglar  : $LOG_DIR"
-  if [ -f "$UPDATER_PLIST" ]; then
-    echo "Guncelle: otomatik, 10 dk'da bir (kurulu surum: $(awk '{print $2}' "$UPDATE_STAMP" 2>/dev/null || echo '-'))"
+  if [ -x "$REPO_ROOT/.git/hooks/reference-transaction" ]; then
+    echo "Guncelle: otomatik, her push/pull sonrasi (kurulu surum: $(awk '{print $2}' "$UPDATE_STAMP" 2>/dev/null || echo '-'))"
     [ -f "$UPDATE_LOG" ] && echo "          son: $(tail -1 "$UPDATE_LOG")"
   else
-    c_ylw "Guncelle: ELLE (otomatik icin: gghub-bot autoupdate-install)"
+    c_ylw "Guncelle: ELLE (otomatik icin bir kez: scripts/install-hooks)"
   fi
   echo
 
@@ -455,8 +398,7 @@ case "${1:-}" in
   stop)      cmd_stop ;;
   restart)   cmd_restart ;;
   update)    cmd_update ;;
-  autoupdate)         cmd_autoupdate ;;
-  autoupdate-install) cmd_autoupdate_install ;;
+  autoupdate) shift; cmd_autoupdate "$@" ;;
   status)    cmd_status ;;
   logs)      cmd_logs ;;
   uninstall) cmd_uninstall ;;
@@ -471,9 +413,8 @@ Kullanim: gghub-bot <komut>
   start       Durmus botu baslat
   restart     Durdur ve baslat
   update      Repodan yeniden derle, kur, yeniden baslat
-  autoupdate-install
-              Otomatik guncelleyiciyi kur: origin/main'de backend degisince bot
-              kendini yeniden derler ve baslatir (bir kez calistir)
+  autoupdate  origin/main'de backend degistiyse derle, kur, yeniden baslat
+              (normalde git hook'u her push/pull'da kendisi calistirir)
   uninstall   TAMAMEN kaldir: durdur + acilis kaydini sil + dosyalari sil
 
 USAGE
