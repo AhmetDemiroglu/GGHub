@@ -314,7 +314,10 @@ cmd_autoupdate() {
   local schema
   if ! schema="$(DOTNET_ROOT="$HOME/.dotnet" GGHUB_BOT_HOME="$BOT_HOME" DOTNET_ENVIRONMENT=Production \
       "$out/GGHub.Worker" --check-schema 2>/dev/null | tail -1)"; then
-    log_update "Bekleniyor: ${schema:-DB'ye ulasilamadi}. Railway deploy'u bitince tekrar denenecek."
+    # DIKKAT: macOS'un bash 3.2'si "${x:-...}" icindeki kesme isaretini tirnak baslangici sayiyor
+    # ve scriptin geri kalanini yutuyor; bu yuzden bos deger ayri bir satirda veriliyor.
+    [ -n "$schema" ] || schema="DB ulasilamadi"
+    log_update "Bekleniyor: $schema. Railway deploy bitince tekrar denenecek."
     return 0
   fi
 
