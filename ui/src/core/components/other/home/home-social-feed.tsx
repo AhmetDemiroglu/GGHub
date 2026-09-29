@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { enUS, tr } from "date-fns/locale";
@@ -11,8 +12,6 @@ import { Activity, ActivityActor, ActivityType } from "@/models/activity/activit
 import type { Post } from "@/models/post/post.model";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 import { buildLocalizedPathname } from "@/i18n/config";
-import { enUSMessages } from "@/i18n/messages/en-US";
-import { trMessages } from "@/i18n/messages/tr";
 import { getImageUrl } from "@/core/lib/get-image-url";
 import placeholderGame from "@/core/assets/placeholder.png";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
@@ -23,7 +22,6 @@ import { Label } from "@/core/components/ui/label";
 import { MentionText } from "@/core/components/base/mention-text";
 import { AiBadge } from "@/core/components/base/ai-badge";
 import { PostCard } from "@/core/components/other/posts/post-card";
-import { PostComposer } from "@/core/components/other/posts/post-composer";
 import {
     Activity as ActivityIcon,
     Compass,
@@ -37,6 +35,13 @@ import {
 } from "lucide-react";
 
 const FEED_PAGE_SIZE = 10;
+
+// Gonderi yazma kutusu (etiket metin alani, anket editoru, gorsel kucultme) yalniz giris yapmis
+// kullanicida gorunur; ilk yuk paketinden cikarilip ihtiyac aninda indirilir.
+const PostComposer = dynamic(() => import("@/core/components/other/posts/post-composer").then((m) => m.PostComposer), {
+    ssr: false,
+    loading: () => <Skeleton className="h-28 w-full rounded-xl" />,
+});
 
 /**
  * Sekme sirasi mobildeki TAB_ORDER ile birebir: Kesfet, Gonderiler, Incelemeler.
@@ -645,7 +650,7 @@ function CardHeader({
 
 function ReviewCard({ activity, timeAgo, locale }: { activity: Activity; timeAgo: string; locale: "tr" | "en-US" }) {
     const review = activity.reviewData!;
-    const text = locale === "tr" ? trMessages : enUSMessages;
+    const t = useI18n();
 
     return (
         <div className="rounded-xl border border-border/50 bg-card/50 p-4 transition-colors hover:bg-card/80">
@@ -656,7 +661,7 @@ function ReviewCard({ activity, timeAgo, locale }: { activity: Activity; timeAgo
                         <Star className="h-4 w-4 text-blue-500" />
                     </div>
                 }
-                actionText={text.home.reviewShared}
+                actionText={t("home.reviewShared")}
                 timeAgo={timeAgo}
                 locale={locale}
             />
@@ -701,7 +706,7 @@ function ReviewCard({ activity, timeAgo, locale }: { activity: Activity; timeAgo
 
 function ListCard({ activity, timeAgo, locale }: { activity: Activity; timeAgo: string; locale: "tr" | "en-US" }) {
     const list = activity.listData!;
-    const text = locale === "tr" ? trMessages : enUSMessages;
+    const t = useI18n();
 
     return (
         <div className="rounded-xl border border-border/50 bg-card/50 p-4 transition-colors hover:bg-card/80">
@@ -712,7 +717,7 @@ function ListCard({ activity, timeAgo, locale }: { activity: Activity; timeAgo: 
                         <List className="h-4 w-4 text-amber-500" />
                     </div>
                 }
-                actionText={text.home.listCreated}
+                actionText={t("home.listCreated")}
                 timeAgo={timeAgo}
                 locale={locale}
             />
@@ -722,7 +727,7 @@ function ListCard({ activity, timeAgo, locale }: { activity: Activity; timeAgo: 
             >
                 <p className="text-sm font-bold transition-colors group-hover:text-primary">{list.name}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                    {list.gameCount} {text.home.gamesSuffix}
+                    {list.gameCount} {t("home.gamesSuffix")}
                 </p>
                 {list.previewImages.length > 0 ? (
                     <div className="mt-2 flex gap-1">
@@ -740,7 +745,7 @@ function ListCard({ activity, timeAgo, locale }: { activity: Activity; timeAgo: 
 
 function FollowCard({ activity, timeAgo, locale }: { activity: Activity; timeAgo: string; locale: "tr" | "en-US" }) {
     const follow = activity.followData!;
-    const text = locale === "tr" ? trMessages : enUSMessages;
+    const t = useI18n();
 
     return (
         <div className="rounded-xl border border-border/50 bg-card/50 p-4 transition-colors hover:bg-card/80">
@@ -751,7 +756,7 @@ function FollowCard({ activity, timeAgo, locale }: { activity: Activity; timeAgo
                         <UserPlus className="h-4 w-4 text-emerald-500" />
                     </div>
                 }
-                actionText={text.home.startedFollowing}
+                actionText={t("home.startedFollowing")}
                 timeAgo={timeAgo}
                 locale={locale}
             />
@@ -768,7 +773,7 @@ function FollowCard({ activity, timeAgo, locale }: { activity: Activity; timeAgo
                         {follow.username}
                         {follow.isAiAgent && <AiBadge className="ml-1" />}
                     </p>
-                    <p className="text-xs text-muted-foreground">{text.home.viewProfile}</p>
+                    <p className="text-xs text-muted-foreground">{t("home.viewProfile")}</p>
                 </div>
             </Link>
         </div>

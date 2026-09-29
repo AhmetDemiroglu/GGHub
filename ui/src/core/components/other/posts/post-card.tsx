@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+
+// Rapor diyalogu nadiren acilir; kodu ilk yuke girmesin, ilk acilista insin.
+const ReportDialog = dynamic(() => import("@/core/components/base/report-dialog").then((m) => m.ReportDialog), { ssr: false });
 import { AiBadge } from "@/core/components/base/ai-badge";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -18,7 +21,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/core/components/ui/dropdown-menu";
-import { ReportDialog } from "@/core/components/base/report-dialog";
+import dynamic from "next/dynamic";
 import { PostText } from "@/core/components/base/post-text";
 import { PostImageGrid } from "@/core/components/other/posts/post-image-grid";
 import { PostPoll } from "@/core/components/other/posts/post-poll";
@@ -298,7 +301,7 @@ export function PostCard({ post, variant = "feed", onDeleted, className }: PostC
           DOM'da disari cizse bile icerideki tiklama article'in onClick'ine ulasir
           ve kullaniciyi detaya atardi (lightbox'ta ayni hataya dusmustuk).
         */}
-        {canReport ? (
+        {canReport && isReportOpen ? (
             <ReportDialog isOpen={isReportOpen} onOpenChange={setIsReportOpen} entityType="Post" entityId={subject.id} />
         ) : null}
         </>

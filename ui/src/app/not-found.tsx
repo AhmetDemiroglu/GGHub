@@ -1,19 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, CircleArrowDown, Gamepad2, Home, List, Rocket, Search, Settings, Sparkles, UserCircle, Users } from "lucide-react";
 import { Button } from "@core/components/ui/button";
-import { getPathLocale } from "@/i18n";
 import { buildLocalizedPathname } from "@/i18n/config";
-import { messagesByLocale, translate } from "@/i18n";
+import { useLocaleContext } from "@/core/contexts/locale-context";
 
 export default function NotFound() {
     const router = useRouter();
-    const pathname = usePathname();
-    const locale = getPathLocale(pathname);
-    const messages = messagesByLocale[locale];
-    const t = (key: string, values?: Record<string, string>) => translate(messages, key, values);
+    // Dil ve mesajlar LocaleProvider'dan (yol dilini zaten o cozuyor). Onceden iki dilin
+    // paketi buraya statik import ediliyordu; gerekce i18n/translate.ts'te.
+    const { locale, t } = useLocaleContext();
 
     return (
         <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 py-10 text-foreground">

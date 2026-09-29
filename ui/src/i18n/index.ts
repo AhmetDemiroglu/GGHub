@@ -1,50 +1,18 @@
-import { AppLocale, buildLocalizedPathname, defaultLocale, isLocale } from "./config";
+import { AppLocale } from "./config";
 import { enUSMessages } from "./messages/en-US";
 import { trMessages } from "./messages/tr";
+import type { MessageNode } from "./translate";
 
-type MessageNode = {
-    [key: string]: string | MessageNode;
-};
+// Bu modul iki dilin paketini de STATIK ice alir: yalniz sunucu bilesenleri (layout, page)
+// buradan getMessages okumali. Istemci bilesenleri "@/i18n/translate" kullanir; gerekce orada.
+export { translate, getPathLocale, getLocalizedHref, loadMessages } from "./translate";
+export type { Messages, MessageNode } from "./translate";
 
 export const messagesByLocale = {
     tr: trMessages,
     "en-US": enUSMessages,
 } satisfies Record<AppLocale, MessageNode>;
 
-export type Messages = MessageNode;
-
-export const getMessages = (locale: AppLocale): Messages => {
+export const getMessages = (locale: AppLocale): MessageNode => {
     return messagesByLocale[locale];
 };
-
-const getValueByPath = (messages: Record<string, unknown>, path: string): unknown => {
-    return path.split(".").reduce<unknown>((accumulator, segment) => {
-        if (accumulator && typeof accumulator === "object" && segment in accumulator) {
-            return (accumulator as Record<string, unknown>)[segment];
-        }
-
-        return undefined;
-    }, messages);
-};
-
-export const translate = (messages: Messages, key: string, values?: Record<string, string | number>) => {
-    const template = getValueByPath(messages as unknown as Record<string, unknown>, key);
-    if (typeof template !== "string") {
-        return key;
-    }
-
-    if (!values) {
-        return template;
-    }
-
-    return Object.entries(values).reduce((result, [token, value]) => {
-        return result.replaceAll(`{${token}}`, String(value));
-    }, template);
-};
-
-export const getPathLocale = (pathname?: string | null): AppLocale => {
-    const firstSegment = pathname?.split("/").filter(Boolean)[0];
-    return firstSegment && isLocale(firstSegment) ? firstSegment : defaultLocale;
-};
-
-export const getLocalizedHref = (pathname: string, locale: AppLocale) => buildLocalizedPathname(pathname, locale);

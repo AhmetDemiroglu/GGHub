@@ -1,7 +1,9 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef, useState, ReactNode, useCallback } from "react";
-import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } from "@microsoft/signalr";
+// Yalniz TIP: kutuphanenin kendisi (18 kB gz) baglanti kurulacagi anda dinamik import ile iner.
+// Anonim ziyaretci hic indirmez; giris yapmis kullanicida ilk boyadan sonra bosta aninda gelir.
+import type { HubConnection } from "@microsoft/signalr";
 import { useAuth } from "@core/hooks/use-auth";
 import { useQueryClient } from "@tanstack/react-query";
 import { MessageDto, ConversationDto } from "@/models/messages/message.model";
@@ -105,7 +107,10 @@ export function SignalRProvider({ children }: { children: ReactNode }) {
 
         // Sayfa yüklenmesini bloklamadan, idle anında bağlantıyı başlat
         let cancelled = false;
-        const startConnection = () => {
+        const startConnection = async () => {
+            if (cancelled) return;
+
+            const { HubConnectionBuilder, LogLevel } = await import("@microsoft/signalr");
             if (cancelled) return;
 
             const hubUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/hubs/chat`;
@@ -176,8 +181,8 @@ export function SignalRProvider({ children }: { children: ReactNode }) {
 
     const joinConversation = useCallback(
         async (partnerUsername: string) => {
-            if (connectionRef.current?.state === HubConnectionState.Connected) {
-                await connectionRef.current.invoke("JoinConversation", partnerUsername);
+            if (String(connectionRef.current?.state) === "Connected") {
+                await connectionRef.current!.invoke("JoinConversation", partnerUsername);
             }
         },
         []
@@ -185,8 +190,8 @@ export function SignalRProvider({ children }: { children: ReactNode }) {
 
     const leaveConversation = useCallback(
         async (partnerUsername: string) => {
-            if (connectionRef.current?.state === HubConnectionState.Connected) {
-                await connectionRef.current.invoke("LeaveConversation", partnerUsername);
+            if (String(connectionRef.current?.state) === "Connected") {
+                await connectionRef.current!.invoke("LeaveConversation", partnerUsername);
             }
         },
         []

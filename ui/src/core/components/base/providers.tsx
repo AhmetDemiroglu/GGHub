@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { AuthProvider } from "@core/contexts/auth-context";
 import { SignalRProvider } from "@core/contexts/signalr-context";
 import { AiConsentProvider } from "@core/components/other/ai-consent";
-import { Messages, translate } from "@/i18n";
+import { Messages, translate } from "@/i18n/translate";
 import { AppLocale } from "@/i18n/config";
 
 type BusinessAwareError = AxiosError & {

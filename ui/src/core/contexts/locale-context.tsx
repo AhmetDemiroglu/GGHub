@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Messages, getMessages, translate } from "@/i18n";
+import { Messages, loadMessages, translate } from "@/i18n/translate";
 import { AppLocale, getLocaleLabel, isLocale, localeStorageKey } from "@/i18n/config";
 import { setActiveClientLocale } from "@/core/lib/client-locale";
 
@@ -32,8 +32,19 @@ export function LocaleProvider({ children, locale, messages }: { children: React
         if (localeFromPath && isLocale(localeFromPath)) {
             setActiveClientLocale(localeFromPath);
             setActiveLocale(localeFromPath);
-            setActiveMessages(getMessages(localeFromPath));
-            return;
+            // Sunucunun gonderdigi paket zaten bu dilse onu kullan; degilse diger dilin paketi
+            // ayri chunk olarak iner (her sayfada iki dili birden tasimamak icin, bkz. i18n/translate.ts).
+            if (localeFromPath === locale) {
+                setActiveMessages(messages);
+                return;
+            }
+            let cancelled = false;
+            void loadMessages(localeFromPath).then((loaded) => {
+                if (!cancelled) setActiveMessages(loaded);
+            });
+            return () => {
+                cancelled = true;
+            };
         }
 
         setActiveClientLocale(locale);
@@ -53,7 +64,7 @@ export function LocaleProvider({ children, locale, messages }: { children: React
                 localStorage.setItem(localeStorageKey, nextLocale);
                 setActiveClientLocale(nextLocale);
                 setActiveLocale(nextLocale);
-                setActiveMessages(getMessages(nextLocale));
+                void loadMessages(nextLocale).then(setActiveMessages);
             },
         };
     }, [activeLocale, activeMessages]);
