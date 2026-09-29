@@ -63,8 +63,8 @@ namespace GGHub.Infrastructure.Services
                 (usernameKey != "" && u.UsernameNormalized == usernameKey));
 
             // PasswordHash/Salt are null for social-only (Google/Apple) accounts → treat as invalid credentials.
-            // AI bot hesaplariyla giris YOK (sifreleri de yok; bu satir ek emniyet).
-            if (user == null || user.IsAiAgent || user.PasswordHash == null || user.PasswordSalt == null ||
+            // AI bot hesaplariyla ve silinmis hesaplarla giris YOK (sifreleri de yok; bu satir ek emniyet).
+            if (user == null || user.IsAiAgent || user.IsDeleted || user.PasswordHash == null || user.PasswordSalt == null ||
                 !VerifyPasswordHash(userForLoginDto.Password, user.PasswordHash, user.PasswordSalt))
             {
                 return null;
@@ -103,7 +103,8 @@ namespace GGHub.Infrastructure.Services
                 .Include(rt => rt.User) 
                 .FirstOrDefaultAsync(rt => rt.Token == token);
 
-            if (refreshToken == null || refreshToken.ExpiresAt <= DateTime.UtcNow || refreshToken.RevokedAt != null)
+            if (refreshToken == null || refreshToken.ExpiresAt <= DateTime.UtcNow || refreshToken.RevokedAt != null ||
+                refreshToken.User.IsDeleted)
             {
                 return null;
             }
@@ -539,6 +540,16 @@ namespace GGHub.Infrastructure.Services
             User? user = provider == "Google"
                 ? await _context.Users.FirstOrDefaultAsync(u => u.GoogleId == providerKey)
                 : await _context.Users.FirstOrDefaultAsync(u => u.AppleId == providerKey);
+
+            // Silinmis hesap geri ACILMAZ. Yeni silmeler saglayici kimligini zaten temizliyor;
+            // bu dal eski kayitlar icin: baglantiyi kopar (tekil indeks yeni hesabi engellemesin)
+            // ve asagida sifirdan hesap acilsin.
+            if (user != null && user.IsDeleted)
+            {
+                if (provider == "Google") user.GoogleId = null; else user.AppleId = null;
+                await _context.SaveChangesAsync();
+                user = null;
+            }
 
             // 2) Existing account with the same email → link this provider.
             if (user == null && !string.IsNullOrWhiteSpace(email))

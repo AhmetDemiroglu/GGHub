@@ -451,17 +451,33 @@ namespace GGHub.Infrastructure.Services
             user.LastName = null;
             user.Bio = null;
             user.ProfileImageUrl = null;
+            user.HeaderImageUrl = null;
             user.DateOfBirth = null;
             user.Status = null;
             user.PhoneNumber = null;
             user.IsEmailVerified = false;
             user.EmailVerificationToken = null;
+            user.PasswordResetToken = null;
+            user.PasswordResetTokenExpiry = null;
 
-            user.PasswordHash = new byte[0];
-            user.PasswordSalt = new byte[0];
+            // Giris yollarinin hepsi kapanir: sifre (null hash = gecersiz), Google/Apple
+            // (saglayici kimligi kopar; ayni Apple ID ile tekrar girilirse YENI hesap acilir).
+            user.PasswordHash = null;
+            user.PasswordSalt = null;
+            user.GoogleId = null;
+            user.AppleId = null;
 
             user.IsDeleted = true;
             user.UpdatedAt = DateTime.UtcNow;
+
+            // Diger cihazlardaki acik oturumlar da dussun; access token en fazla 1 saat yasar.
+            var activeTokens = await _context.RefreshTokens
+                .Where(rt => rt.UserId == userId && rt.RevokedAt == null)
+                .ToListAsync();
+            foreach (var token in activeTokens)
+            {
+                token.RevokedAt = DateTime.UtcNow;
+            }
 
             await _context.SaveChangesAsync();
         }
