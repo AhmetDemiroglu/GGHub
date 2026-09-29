@@ -16,6 +16,7 @@ export interface TopbarRefs {
     rimSvg: RefObject<SVGSVGElement | null>;
     rimGlass: RefObject<SVGPathElement | null>;
     rimDepth: RefObject<SVGPathElement | null>;
+    shine: RefObject<HTMLDivElement | null>;
 }
 
 export function useTopbarMotion(refs: TopbarRefs) {
@@ -30,6 +31,7 @@ export function useTopbarMotion(refs: TopbarRefs) {
         const rim = refs.rimGlass.current;
         const svg = refs.rimSvg.current;
         const depth = refs.rimDepth.current;
+        const shine = refs.shine.current;
         const layers = [refs.shadow.current, refs.skinSolid.current, refs.skinGlass.current];
         if (!main || !header || !body || !content || !rim || !svg || layers.some(layer => !layer)) return;
 
@@ -58,6 +60,13 @@ export function useTopbarMotion(refs: TopbarRefs) {
                 content.style.right = `${state.inset}px`;
                 content.style.top = `${state.top}px`;
                 content.style.height = `${state.height}px`;
+                if (shine) {
+                    shine.style.left = `${state.inset}px`;
+                    shine.style.right = `${state.inset}px`;
+                    shine.style.top = `${state.top}px`;
+                    shine.style.height = `${state.height}px`;
+                    shine.style.borderRadius = `${state.radius}px`;
+                }
                 lastPath = outline.fill;
                 if (lensImage) {
                     lensImage.setAttribute("x", String(state.inset));

@@ -534,22 +534,39 @@
 }
 
 /* Topbar: an elastic band that tears off the walls, followed by a quiet glass capsule.
-   Surface clips live on the layers themselves to preserve backdrop sampling. */
+   Surface clips live on the layers themselves to preserve backdrop sampling.
+   Glass follows the approved lens recipe: clear tint, thin blur, refraction only at the rim. */
 :root {
     --topbar-h: 3.5rem;
     --topbar-reserve: 48px;
-    --glass-tint-a: rgba(255, 255, 255, 0.42);
-    --glass-tint-b: rgba(248, 250, 255, 0.22);
+    --glass-tint-a: rgba(255, 255, 255, 0.28);
+    --glass-tint-b: rgba(250, 247, 238, 0.16);
+    --glass-frost-a: rgba(255, 255, 255, 0.52);
+    --glass-frost-b: rgba(250, 247, 238, 0.36);
     --glass-rim: rgba(255, 255, 255, 0.72);
     --glass-rim-soft: rgba(255, 255, 255, 0.18);
     --glass-shadow: rgba(30, 24, 60, 0.16);
+    --glass-spec: rgba(255, 255, 255, 0.85);
+    --glass-spec-soft: rgba(255, 255, 255, 0.45);
+    --glass-spec-side: rgba(255, 255, 255, 0.34);
+    --glass-sheen: rgba(255, 255, 255, 0.2);
+    --glass-under: rgba(19, 24, 38, 0.1);
+    --glass-under-soft: rgba(19, 24, 38, 0.22);
 }
 .dark {
-    --glass-tint-a: rgba(30, 36, 58, 0.46);
-    --glass-tint-b: rgba(13, 18, 34, 0.3);
+    --glass-tint-a: rgba(255, 255, 255, 0.1);
+    --glass-tint-b: rgba(255, 255, 255, 0.035);
+    --glass-frost-a: rgba(30, 36, 58, 0.62);
+    --glass-frost-b: rgba(13, 18, 34, 0.46);
     --glass-rim: rgba(255, 255, 255, 0.38);
     --glass-rim-soft: rgba(255, 255, 255, 0.09);
     --glass-shadow: rgba(2, 4, 16, 0.32);
+    --glass-spec: rgba(255, 255, 255, 0.5);
+    --glass-spec-soft: rgba(255, 255, 255, 0.16);
+    --glass-spec-side: rgba(255, 255, 255, 0.2);
+    --glass-sheen: rgba(255, 255, 255, 0.09);
+    --glass-under: rgba(0, 0, 0, 0.3);
+    --glass-under-soft: rgba(0, 0, 0, 0.42);
 }
 .topbar-body {
     position: absolute;
@@ -568,15 +585,15 @@
     background: var(--background);
     opacity: calc(1 - var(--peel, 0));
 }
+/* Frosted base for every browser. It thins out where real refraction is available. */
 .topbar-skin-glass {
     opacity: var(--peel, 0);
-    -webkit-backdrop-filter: blur(16px) saturate(1.45);
-    backdrop-filter: blur(16px) saturate(1.45);
-    background: linear-gradient(180deg, var(--glass-tint-a), var(--glass-tint-b) 72%);
+    backdrop-filter: blur(20px) saturate(1.6);
+    background: linear-gradient(180deg, var(--glass-frost-a), var(--glass-frost-b));
 }
 .topbar-body:has(.glass-surface[data-lens="true"]) .topbar-skin-glass {
-    -webkit-backdrop-filter: blur(2.5px) saturate(1.5);
-    backdrop-filter: blur(2.5px) saturate(1.5);
+    backdrop-filter: blur(1.8px) saturate(1.5);
+    background: linear-gradient(180deg, var(--glass-tint-a), var(--glass-tint-b));
 }
 .topbar-shadow-wrap {
     position: absolute;
@@ -598,6 +615,27 @@
     /* Opacity on the leaf, not its parent: parent opacity would create a backdrop root. */
     opacity: var(--lens-reveal, 0);
 }
+/* Specular layer: a sharp line of light on top, the shade of the glass thickness below
+   and a sheen from the corner. It only exists once the body is a capsule. */
+.topbar-shine {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: var(--topbar-h);
+    opacity: var(--lens-reveal, 0);
+    pointer-events: none;
+    background:
+        linear-gradient(115deg, var(--glass-sheen) 0%, transparent 26%),
+        radial-gradient(140% 190% at 86% -45%, var(--glass-sheen), transparent 55%);
+    box-shadow:
+        inset 0 1px 0 var(--glass-spec),
+        inset 0 2px 7px var(--glass-spec-soft),
+        inset 1px 0 0 var(--glass-spec-side),
+        inset -1px 0 0 var(--glass-spec-side),
+        inset 0 -1px 0 var(--glass-under),
+        inset 0 -7px 14px -9px var(--glass-under-soft);
+}
 .topbar-rim {
     position: absolute;
     inset: 0;
@@ -612,15 +650,25 @@
     stroke-linejoin: round;
     vector-effect: non-scaling-stroke;
 }
+/* The stroke carries the edge while stretching, then hands over to the specular layer. */
 .topbar-rim-glass {
-    opacity: calc(var(--peel, 0) * 0.85);
+    opacity: calc(var(--peel, 0) * 0.85 * (1 - var(--lens-reveal, 0) * 0.75));
 }
 /* Wide, soft inner stroke: reads as the thickness of the glass edge. */
 .topbar-rim path.topbar-rim-depth {
     stroke: var(--glass-rim);
     stroke-width: 9;
     filter: blur(2.5px);
-    opacity: calc(var(--peel, 0) * 0.16);
+    opacity: calc(var(--peel, 0) * 0.16 * (1 - var(--lens-reveal, 0)));
+}
+@media (prefers-reduced-transparency: reduce) {
+    .topbar-body .topbar-skin-glass {
+        backdrop-filter: none !important;
+        background: color-mix(in oklab, var(--background) 96%, transparent) !important;
+    }
+    .topbar-body .glass-refract {
+        display: none;
+    }
 }
 .topbar-content {
     position: absolute;

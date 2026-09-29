@@ -3,9 +3,9 @@
 import { useId, useLayoutEffect, useRef, useState } from "react";
 
 /** A narrow edge lens; the center stays optically quiet and the controls sit above it. */
-const EDGE_BAND = 12;
+const EDGE_BAND = 14;
 const EDGE_POWER = 3.2;
-export const LENS_SCALE = 34;
+export const LENS_SCALE = 48;
 /** Neutral SVG works consistently across engines and does not add a second displacement pass. */
 const NEUTRAL_MAP = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'%3E%3Cpath fill='%23808080' d='M0 0h1v1H0z'/%3E%3C/svg%3E";
 
@@ -86,12 +86,12 @@ export function GlassSurface({ active = true }: { active?: boolean }) {
     return (
         <div ref={ref} aria-hidden="true" data-active={active} data-lens={lens} className="glass-surface">
             <svg width="0" height="0" className="absolute" focusable="false">
-                <filter id={id} x="-5%" y="-30%" width="110%" height="160%" colorInterpolationFilters="sRGB">
+                <filter id={id} x="-5%" y="-50%" width="110%" height="200%" colorInterpolationFilters="sRGB">
                     <feImage data-glass="lens" href={NEUTRAL_MAP} x="0" y="0" width="1" height="1" preserveAspectRatio="none" result="lensMap" />
                     <feDisplacementMap in="SourceGraphic" in2="lensMap" scale={LENS_SCALE} xChannelSelector="R" yChannelSelector="G" />
                 </filter>
             </svg>
-            <div data-glass="refract" className="glass-refract" style={{ backdropFilter: active && lens ? `url(#${id})` : "none" }} />
+            <div data-glass="refract" className="glass-refract" style={{ backdropFilter: active && lens ? `url(#${id}) brightness(1.03)` : "none" }} />
         </div>
     );
 }

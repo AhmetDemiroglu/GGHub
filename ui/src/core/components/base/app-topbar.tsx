@@ -38,6 +38,7 @@ export function AppTopbar() {
         rimSvg: React.createRef<SVGSVGElement>(),
         rimGlass: React.createRef<SVGPathElement>(),
         rimDepth: React.createRef<SVGPathElement>(),
+        shine: React.createRef<HTMLDivElement>(),
     }).current;
     const { floating, engaged, scrollbar } = useTopbarMotion(refs);
 
@@ -59,6 +60,7 @@ export function AppTopbar() {
                 <GlassSurface active={engaged} />
                 <div ref={refs.skinSolid} className="topbar-skin topbar-skin-solid" />
                 <div ref={refs.skinGlass} className="topbar-skin topbar-skin-glass" />
+                <div ref={refs.shine} className="topbar-shine" />
                 <svg ref={refs.rimSvg} className="topbar-rim" focusable="false">
                     <defs>
                         <linearGradient id={rimGradientId} x1="0" y1="0" x2="0" y2="1">
