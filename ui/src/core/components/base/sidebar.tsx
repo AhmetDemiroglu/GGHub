@@ -45,7 +45,6 @@ import { toast } from "sonner";
 import logoSrc from "@core/assets/logo.png";
 import { useAuth } from "@core/hooks/use-auth";
 import { useSidebar } from "@/core/contexts/sidebar-context";
-import { useMediaQuery } from "@/core/hooks/use-media-query";
 import { useNavigationData, useNotifications, useRecentMessages } from "@/core/hooks/use-navigation-data";
 import { getImageUrl } from "@/core/lib/get-image-url";
 import { displayName } from "@/core/lib/display-name";
@@ -160,29 +159,29 @@ export function SidebarTrigger() {
 // ─── Main Sidebar ─────────────────────────────────────────────────────────────
 export function Sidebar() {
     const { isCollapsed, isMobileOpen, setMobileOpen } = useSidebar();
-    const isMobile = useMediaQuery("(max-width: 767px)");
 
-    const sidebarContent = <SidebarInner isMobile={isMobile} />;
-
-    if (isMobile) {
-        return (
+    // Mobil/masaustu ayrimi CSS ile (md:), JS media query ile DEGIL. Eski hali useMediaQuery'ye
+    // bakiyordu ve o hook SSR'da hep false donuyor: telefona giden HTML'de 240 px'lik masaustu
+    // kenar cubugu ciziliyor, hero 172 px'e sikisiyor, hydration'dan sonra cubuk kaybolup icerik
+    // sola kayiyordu (Playwright'ta baslik x=116 -> 44). Simdi HTML ilk andan dogru: masaustu
+    // <aside> telefonda display:none, Sheet ise kapaliyken DOM'a hicbir sey basmaz.
+    return (
+        <>
             <Sheet open={isMobileOpen} onOpenChange={setMobileOpen}>
-                <SheetContent side="left" className="w-72 p-0">
+                <SheetContent side="left" className="w-72 p-0 md:hidden">
                     <SheetTitle className="sr-only">Menu</SheetTitle>
                     <SheetDescription className="sr-only">Navigation menu</SheetDescription>
-                    {sidebarContent}
+                    <SidebarInner isMobile />
                 </SheetContent>
             </Sheet>
-        );
-    }
 
-    return (
-        <aside
-            data-collapsed={isCollapsed}
-            className={`relative flex h-full shrink-0 flex-col border-r border-border/40 bg-background/95 backdrop-blur-sm transition-[width] duration-300 ease-in-out ${isCollapsed ? "w-[72px]" : "w-60"} overflow-hidden`}
-        >
-            {sidebarContent}
-        </aside>
+            <aside
+                data-collapsed={isCollapsed}
+                className={`relative hidden h-full shrink-0 flex-col border-r border-border/40 bg-background/95 backdrop-blur-sm transition-[width] duration-300 ease-in-out md:flex ${isCollapsed ? "w-[72px]" : "w-60"} overflow-hidden`}
+            >
+                <SidebarInner isMobile={false} />
+            </aside>
+        </>
     );
 }
 
