@@ -37,58 +37,72 @@ export function AppTopbar() {
     const rimGradientId = `topbarRim${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
 
     const refs = useRef<TopbarRefs>({
+        header: React.createRef<HTMLElement>(),
         body: React.createRef<HTMLDivElement>(),
+        shadow: React.createRef<HTMLDivElement>(),
         skinSolid: React.createRef<HTMLDivElement>(),
         skinGlass: React.createRef<HTMLDivElement>(),
-        capsule: React.createRef<HTMLDivElement>(),
         content: React.createRef<HTMLDivElement>(),
+        neck: React.createRef<HTMLSpanElement>(),
         rimSvg: React.createRef<SVGSVGElement>(),
         rimGlass: React.createRef<SVGPathElement>(),
+        rimGlow: React.createRef<SVGPathElement>(),
+        rimTear: React.createRef<SVGPathElement>(),
         rimLine: React.createRef<SVGPathElement>(),
     }).current;
-    const { floating, scrollbar } = useTopbarMotion(refs);
+    const { floating, engaged, scrollbar } = useTopbarMotion(refs);
 
     // Sayfa degisince mobil arama modu kapanir.
     useEffect(() => setMobileSearch(false), [pathname]);
 
     return (
         <header
+            ref={refs.header}
             data-floating={floating}
-            style={{ "--topbar-sb": `${scrollbar}px` } as React.CSSProperties}
+            style={{ "--topbar-sb": `${scrollbar}px`, "--peel": 0 } as React.CSSProperties}
             className="pointer-events-none absolute left-0 right-(--topbar-sb) top-0 z-40 h-(--topbar-h)"
         >
-            {/* Kopma ani: ust kenarda kalan iz cizgisi ve kapsulu bir an ust kenara baglayan boyun. */}
+            {/* Kopma ani: ust kenarda kalan iz cizgisi ve koptugu yerde kalan boyun kalintisi. */}
             <span aria-hidden className="topbar-edge" />
-            <span aria-hidden className="topbar-neck" />
+            <span ref={refs.neck} aria-hidden className="topbar-neck" />
 
-            {/* Govde: esnek siluet. Alt payi (--topbar-reserve) sarkma icin; kirpma her katmanda ayri ayri. */}
+            {/* Govde: esnek siluet. Her katman ayni clip-path'i kendi uzerinde tasir (golge, deri, cam, rim);
+                rijit bir kapsul yok, sarkma payi (--topbar-reserve) icinde her sey birlikte egilir. */}
             <div ref={refs.body} aria-hidden className="topbar-body">
+                <div className="topbar-shadow-wrap">
+                    <div ref={refs.shadow} className="topbar-shadow" />
+                </div>
                 <div ref={refs.skinSolid} className="topbar-skin topbar-skin-solid" />
                 <div ref={refs.skinGlass} className="topbar-skin topbar-skin-glass" />
-                <div ref={refs.capsule} className="topbar-geo topbar-capsule">
-                    <GlassSurface active={floating} />
-                </div>
+                <GlassSurface active={engaged} />
                 <svg ref={refs.rimSvg} className="topbar-rim" focusable="false">
                     <defs>
-                        {/* CSS rim'in (glass-shine::before) birebir karsiligi: ustte keskin isik, altta yumusak. */}
+                        {/* Eski CSS rim'in birebir karsiligi: ustte keskin isik, altta yumusak. */}
                         <linearGradient id={rimGradientId} x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0" style={{ stopColor: "var(--glass-rim)" }} />
                             <stop offset="0.3" style={{ stopColor: "var(--glass-rim-soft)" }} />
                             <stop offset="0.55" style={{ stopColor: "rgba(255, 255, 255, 0.05)" }} />
                             <stop offset="1" style={{ stopColor: "var(--glass-rim-soft)" }} />
                         </linearGradient>
+                        {/* Ic parilti: genis, bulanik cizgi; siluetle kirpilinca yalniz icerideki yarisi kalir. */}
+                        <filter id={`${rimGradientId}Glow`} x="-5%" y="-40%" width="110%" height="180%">
+                            <feGaussianBlur stdDeviation="5" />
+                        </filter>
                     </defs>
+                    <path ref={refs.rimGlow} className="topbar-rim-glow" filter={`url(#${rimGradientId}Glow)`} />
                     <path ref={refs.rimGlass} className="topbar-rim-glass" stroke={`url(#${rimGradientId})`} />
+                    <path ref={refs.rimTear} className="topbar-rim-tear" />
                     <path ref={refs.rimLine} className="topbar-rim-line" />
                 </svg>
             </div>
 
-            {/* Icerik: kapsulle ayni koreografi (topbar-geo) ama kirpilmaz; tiklamalar burada. */}
-            <div ref={refs.content} className="topbar-geo topbar-content">
+            {/* Icerik: govdeyle ayni geometriyi JS'ten alir ama kirpilmaz (arama listesi asagi tasar); tiklamalar burada.
+                data-follow parcalari kendi konumlarindaki sarkmayi izler: cubuk egilince icindekiler de egilir. */}
+            <div ref={refs.content} className="topbar-content">
                 <div className="relative z-10 flex h-full items-center gap-2 px-3 md:gap-4 md:px-4">
                     {mobileSearch ? (
                         /* Mobil arama modu: cubuk tamamen aramaya ayrilir. */
-                        <div className="flex w-full items-center gap-1 md:hidden">
+                        <div data-follow className="flex w-full items-center gap-1 md:hidden">
                             <button
                                 type="button"
                                 aria-label={t("topbar.closeSearch")}
@@ -103,7 +117,7 @@ export function AppTopbar() {
 
                     <div className={cn("flex w-full items-center gap-2 md:gap-4", mobileSearch && "hidden md:flex")}>
                         {/* Sol: mobil menu + logo */}
-                        <div className="flex shrink-0 items-center gap-1 md:gap-2">
+                        <div data-follow className="flex shrink-0 items-center gap-1 md:gap-2">
                             <SidebarTrigger />
                             <Link href={localizeHref("/")} aria-label="GGHub" className="flex items-center rounded-md px-1">
                                 <Image src={logoSrc} alt="GGHub" width={35} height={22} priority className="h-6 w-auto md:h-7" />
@@ -111,13 +125,13 @@ export function AppTopbar() {
                         </div>
 
                         {/* Orta: arama (masaustu) */}
-                        <div className="hidden min-w-0 flex-1 justify-center md:flex">
+                        <div data-follow className="hidden min-w-0 flex-1 justify-center md:flex">
                             <TopbarSearch className="w-full max-w-md" />
                         </div>
                         <div className="flex-1 md:hidden" />
 
                         {/* Sag: mobil arama, uygulama rozeti, bildirimler */}
-                        <div className="flex shrink-0 items-center gap-1 md:gap-2">
+                        <div data-follow className="flex shrink-0 items-center gap-1 md:gap-2">
                             <button
                                 type="button"
                                 aria-label={t("topbar.openSearch")}

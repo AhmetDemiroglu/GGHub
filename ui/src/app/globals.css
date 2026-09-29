@@ -535,27 +535,27 @@
 
 /* ── Topbar + Liquid Glass ─────────────────────────────────────────────────
    Ust cubuk sayfanin en ustune yapisik dogar (duz, kenardan kenara, sidebar
-   yokmus gibi tek parca). Kaydirma onu CEKER; siluet yay fizigiyle esner
-   (topbar-motion.ts hesaplar, topbar-outline.ts cizer, buradaki katmanlar
-   clip-path ile o silueti giyer):
-     1. Gerilme (0..44px): cubuk yapisik kalir, alt kenari isaretcinin oldugu
-        noktada zar gibi asagi uzar; hizli kaydirma daha cok ceker.
-     2. Kopma (esikte): zar bir anda birakilir, kapsul yayla dusup salinir
-        (keyframe yok; gercek hizdan gelen yay), ustte ince iz ve kisa boyun kalir.
-     3. Kapsul: cam katmani acilir; kaydirdikca kapsul cekilen yerden suner,
-        uclari egilir, birakinca sonumle oturur. Alttan akan icerik rim'de kirilir.
-   Geri donus (8px altinda): kapsul yukari kayip ust kenara yeniden kaynar.
+   yokmus gibi tek parca). Geometri ve esneme JS'te (topbar-motion.ts yaylari,
+   topbar-outline.ts silueti); buradaki katmanlar o silueti clip-path ile giyer,
+   CSS yalniz renk/opaklik gecislerini ve kopma kalintilarini animasyonlar:
+     1. Soyulma (0..44px, kaydirmaya kilitli): uclar yuvarlanip iceri cekilir,
+        govde asagi kayar, isaretcinin oldugu yerden boyunla ust kenara asili kalir.
+     2. Kopma (esikte): boyun birakilir, cubuk asagi savrulup yayla geri gelir;
+        ustte ince iz (topbar-edge) ve koptugu yerde kucuk boyun kalintisi (topbar-neck).
+     3. Kapsul: cam acilir; kaydirdikca cekilen yerden suner, uclari egilir. Golge,
+        deri, cam ve rim ayni silueti izler: rijit hicbir kenar yok.
+   Geri donus (8px altinda): ayni yol tersine, cubuk ust kenara yeniden kaynar.
 
    Katman kurali: clip-path tasiyan bir eleman, altindaki backdrop-filter icin
    "backdrop root" olur ve cam sayfayi goremez. Bu yuzden kirpma ortak ataya
-   degil, her katmanin KENDISINE yazilir (skin, cam katmanlari, rim). */
+   degil, her katmanin KENDISINE yazilir. */
 :root {
+    /* Su dordu topbar-motion.ts'teki sayilarla AYNI olmali (BAR_HEIGHT, FLOAT_*). */
     --topbar-h: 3.5rem;
     --topbar-float-inset: 0.75rem;
     --topbar-float-top: 0.5rem;
-    /* Govdenin alt payi: sarkma buraya cizilir (zar 14px + cekme 24px). */
-    --topbar-reserve: 40px;
-    --topbar-ease: cubic-bezier(0.32, 1.35, 0.5, 1);
+    /* Govdenin alt payi: sarkma buraya cizilir (cekme tavani 40px + kopma darbesi/salinim). */
+    --topbar-reserve: 64px;
     --glass-tint-a: rgba(255, 255, 255, 0.28);
     --glass-tint-b: rgba(250, 247, 238, 0.16);
     --glass-rim: rgba(255, 255, 255, 0.9);
@@ -581,29 +581,6 @@
     }
 }
 
-/* Ortak koreografi: cam kapsul (govdede) ve icerik kutusu (govde disinda) ayni yolu izler. */
-.topbar-geo {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 0;
-    height: var(--topbar-h);
-    border-radius: 0;
-    transition:
-        left 620ms var(--topbar-ease),
-        right 620ms var(--topbar-ease),
-        top 620ms var(--topbar-ease),
-        height 620ms var(--topbar-ease),
-        border-radius 480ms var(--topbar-ease);
-}
-[data-floating="true"] .topbar-geo {
-    left: var(--topbar-float-inset);
-    right: var(--topbar-float-inset);
-    top: var(--topbar-float-top);
-    height: calc(var(--topbar-h) - var(--topbar-float-top));
-    border-radius: 9999px;
-}
-
 /* Govde: siluetin ciziledigi kutu; alt pay sarkma icin. Tiklama icerik kutusunda. */
 .topbar-body {
     position: absolute;
@@ -614,62 +591,55 @@
     pointer-events: none;
 }
 
-/* Deri: yapisik evrede opak arka plan, kapsulde cam tabani. Ikisi de esnek siluetle kirpilir;
-   JS gelene kadar dikdortgen (alt pay gorunmesin). */
-.topbar-skin {
+/* Deri: yapisik evrede opak arka plan, kapsulde cam tabani + ust parilti. Ikisi de esnek siluetle
+   kirpilir; JS gelene kadar dikdortgen (alt pay gorunmesin). */
+.topbar-skin,
+.topbar-shadow,
+.glass-refract {
     position: absolute;
     inset: 0;
     clip-path: inset(0 0 var(--topbar-reserve) 0);
     will-change: clip-path;
 }
+/* Opakliklar soyulmaya kilitli (--peel, JS her karede yazar): gecis yok, geometriyle ayni anda. */
 .topbar-skin-solid {
     background: var(--background);
-    transition: opacity 300ms ease;
+    opacity: calc(1 - var(--peel, 0));
 }
-[data-floating="true"] .topbar-skin-solid {
-    opacity: 0;
-}
-/* Cam tabani (glass-base'in aynisi) burada yasar: kapsulun rijit kutusu degil, esneyen siluet. */
 .topbar-skin-glass {
-    opacity: 0;
+    opacity: var(--peel, 0);
     backdrop-filter: blur(1.8px) saturate(1.5);
-    background: linear-gradient(180deg, var(--glass-tint-a) var(--topbar-float-top), var(--glass-tint-b) var(--topbar-h));
-    transition: opacity 360ms ease 80ms;
+    background:
+        linear-gradient(180deg, var(--glass-sheen) var(--topbar-float-top), transparent calc(var(--topbar-h) * 0.55)),
+        linear-gradient(180deg, var(--glass-tint-a) var(--topbar-float-top), var(--glass-tint-b) var(--topbar-h));
 }
-[data-floating="true"] .topbar-skin-glass {
-    opacity: 1;
-}
-/* Lens yoksa (Chromium disi) buzlu cam, glass-base'deki kuralla ayni. */
+/* Lens yoksa (Chromium disi) buzlu cam: kirilma olmayinca netlik yerine yumusaklik. */
 .topbar-body:has(.glass-surface[data-lens="false"]) .topbar-skin-glass {
     backdrop-filter: blur(14px) saturate(1.6);
 }
 
-/* Cam kapsul: lens (kirilma) ve parilti katmanlari; taban ve CSS rim gorevini skin + SVG rim aldi. */
-.topbar-capsule {
-    background: transparent;
-    transition:
-        left 620ms var(--topbar-ease),
-        right 620ms var(--topbar-ease),
-        top 620ms var(--topbar-ease),
-        height 620ms var(--topbar-ease),
-        border-radius 480ms var(--topbar-ease),
-        box-shadow 480ms ease;
+/* Golge: siluetin bulanik kopyasi; bulanikligi kirpilmayan sarmalayici verir. */
+.topbar-shadow-wrap {
+    position: absolute;
+    inset: 0;
+    filter: blur(14px);
+    transform: translateY(10px);
+    opacity: var(--peel, 0);
+    pointer-events: none;
 }
-[data-floating="true"] .topbar-capsule {
-    box-shadow:
-        0 22px 44px -20px var(--glass-shadow),
-        0 2px 8px -3px var(--glass-shadow);
-}
-.topbar-body .glass-base,
-.topbar-body .glass-shine::before {
-    display: none;
-}
-.topbar-body .glass-refract,
-.topbar-body .glass-shine {
-    will-change: clip-path;
+.topbar-shadow {
+    background: var(--glass-shadow);
 }
 
-/* Rim: siluetin kenarini izleyen SVG cizgi. 2px kalinlik, siluetle kirpilinca 1px ic cizgi kalir. */
+/* Cam (kirilma) katmani: govdenin tamamini kaplar, gorunen sekli clip-path verir. */
+.glass-surface {
+    position: absolute;
+    inset: 0;
+    opacity: var(--peel, 0);
+    pointer-events: none;
+}
+
+/* Rim: siluetin kenarini izleyen SVG cizgiler. Kalinlik 2px, siluetle kirpilinca 1px ic cizgi kalir. */
 .topbar-rim {
     position: absolute;
     inset: 0;
@@ -677,6 +647,7 @@
     height: 100%;
     overflow: visible;
     pointer-events: none;
+    clip-path: inset(0 0 var(--topbar-reserve) 0);
 }
 .topbar-rim path {
     fill: none;
@@ -684,35 +655,45 @@
     vector-effect: non-scaling-stroke;
 }
 .topbar-rim-glass {
-    opacity: 0;
-    transition: opacity 360ms ease 80ms;
+    opacity: var(--peel, 0);
 }
-[data-floating="true"] .topbar-rim-glass {
-    opacity: 1;
+/* Ic parilti (eski glass-shine'in inset golgesi): genis, bulanik, silueti izler. */
+.topbar-rim-glow {
+    stroke: var(--glass-rim-soft);
+    stroke-width: 14;
+    opacity: calc(var(--peel, 0) * 0.7);
 }
-/* Yapisik cubugun ince alt cizgisi; zarla birlikte esner. */
+/* Yapisik cubugun ince cizgileri: alt kenar hep, yirtik kenar (uclar + ust) soyuldukca (opaklik JS). */
 .topbar-rim-line {
     stroke: color-mix(in oklab, var(--border) 70%, transparent);
-    transition: opacity 160ms ease;
+    opacity: calc(1 - var(--peel, 0));
 }
-[data-floating="true"] .topbar-rim-line {
-    opacity: 0;
+/* Yirtik kenar cam rim'inden parlak: boyun ve soyulan uclar koyu sayfada da okunsun. */
+.topbar-rim-tear {
+    stroke: var(--glass-rim);
 }
 
-/* Icerik kutusu: kirpilmaz (arama listesi asagi tasar), cekmeyi kismen izler (translateY, JS). */
+/* Icerik kutusu: geometrisi JS'ten (govdeyle ayni), kirpilmaz, cekmeyi kismen izler. */
 .topbar-content {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: var(--topbar-h);
     z-index: 1;
     pointer-events: auto;
+}
+.topbar-content [data-follow] {
     will-change: transform;
 }
 
-/* Boyun: kopma aninda kapsulu ust kenara baglayan, hizla incelip kaybolan zar parcasi. */
+/* Boyun kalintisi: kopma aninda koptugu yerde (left JS) kalan, hizla incelip kaybolan zar parcasi. */
 .topbar-neck {
     position: absolute;
     top: 0;
-    left: 22%;
-    right: 22%;
-    height: calc(var(--topbar-float-top) + 6px);
+    left: 50%;
+    width: 48px;
+    height: calc(var(--topbar-float-top) + 8px);
     background: var(--background);
     border-radius: 0 0 50% 50% / 0 0 100% 100%;
     opacity: 0;
@@ -738,14 +719,13 @@
     }
 }
 
-/* Kopma izi: cubuk ayrilinca en ustte kalan ince isik cizgisi, once parlar sonra sakinlesir. */
+/* Kopma izi: cubugun ayrildigi ust kenar. Soyulurken belirir (aradaki bosluk okunsun), kopunca parlar. */
 .topbar-edge {
     position: absolute;
     inset: 0 0 auto 0;
     height: 1px;
     background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--foreground) 22%, transparent) 25%, color-mix(in oklab, var(--foreground) 22%, transparent) 75%, transparent);
-    opacity: 0;
-    transition: opacity 300ms ease;
+    opacity: var(--peel, 0);
 }
 [data-floating="true"] .topbar-edge {
     animation: topbar-edge 900ms ease-out both;
@@ -774,51 +754,6 @@
     background-color: color-mix(in oklab, var(--background) 55%, transparent);
 }
 
-.glass-surface {
-    opacity: 0;
-    transition: opacity 360ms ease 80ms;
-}
-[data-floating="true"] .glass-surface {
-    opacity: 1;
-}
-
-.glass-base,
-.glass-refract,
-.glass-shine {
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-}
-
-.glass-base {
-    backdrop-filter: blur(1.8px) saturate(1.5);
-    background: linear-gradient(180deg, var(--glass-tint-a), var(--glass-tint-b));
-}
-
-/* Lens yoksa (Chromium disi) buzlu cam: kirilma olmayinca netlik yerine yumusaklik. */
-.glass-surface[data-lens="false"] .glass-base {
-    backdrop-filter: blur(14px) saturate(1.6);
-}
-
-/* Cam kenari: ustte keskin isik, altta yumusak; icte alt kenara dogru hafif parilti (kalin cam). */
-.glass-shine {
-    background: linear-gradient(180deg, var(--glass-sheen) 0%, transparent 48%);
-    box-shadow:
-        inset 0 -8px 14px -10px var(--glass-rim-soft),
-        inset 0 1px 0 var(--glass-rim-soft);
-}
-.glass-shine::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(180deg, var(--glass-rim) 0%, var(--glass-rim-soft) 30%, rgba(255, 255, 255, 0.05) 55%, var(--glass-rim-soft) 100%);
-    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    mask-composite: exclude;
-    pointer-events: none;
-}
-
 /* Arama sonuclari: girdinin hemen altina acilir, kapsulle birlikte hareket eder. */
 .topbar-dropdown {
     transform-origin: top center;
@@ -836,14 +771,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .topbar-geo,
-    .topbar-capsule,
-    .topbar-skin-solid,
-    .topbar-skin-glass,
-    .topbar-rim-glass,
-    .topbar-rim-line,
-    .topbar-edge,
-    .glass-surface {
+    .topbar-edge {
         transition: none;
     }
     .topbar-neck,
