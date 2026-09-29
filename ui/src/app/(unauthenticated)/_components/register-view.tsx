@@ -170,7 +170,7 @@ function RegisterPageContent() {
                                 {t("auth.registerHaveAccount")}
                                 <Link
                                     href={`/login?returnUrl=${encodeURIComponent(returnUrl)}`}
-                                    className="ml-1 font-semibold text-cyan-400 underline-offset-4 hover:underline"
+                                    className="ml-1 font-semibold text-cyan-600 dark:text-cyan-400 underline-offset-4 hover:underline"
                                 >
                                     {t("auth.loginTitle")}
                                 </Link>
