@@ -13,6 +13,7 @@ export default async function SupportPage({ params }: { params?: Promise<{ local
     return (
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
         <div className="w-full p-5">
             <div className="flex flex-col items-center gap-4 pt-2 text-center">
                 <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500/15 to-violet-500/15 text-cyan-600 dark:text-cyan-400">
@@ -36,14 +37,19 @@ export default async function SupportPage({ params }: { params?: Promise<{ local
 =======
 =======
 >>>>>>> origin/claude/admiring-davinci-786hxg
+=======
+>>>>>>> 46d388f505caa4da61a847d8c5e266a9a28972e7
         <>
             {/* FAQPage: Google SSS zengin sonucu; yapay zeka aramalari 'GGHub nedir?' cevabini buradan alir. */}
             <JsonLd data={faqJsonLd(faqs.map((item) => ({ question: item.q, answer: item.a })))} />
             <SupportView />
         </>
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> origin/claude/admiring-davinci-786hxg
 =======
 >>>>>>> origin/claude/admiring-davinci-786hxg
+=======
+>>>>>>> 46d388f505caa4da61a847d8c5e266a9a28972e7
     );
 }

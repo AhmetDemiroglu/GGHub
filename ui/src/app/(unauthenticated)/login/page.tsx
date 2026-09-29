@@ -3,6 +3,7 @@ import { staticPageMetadata } from "@/core/seo/page-metadata";
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 import Link from "next/link";
 import { trackAction } from "@/core/lib/site-analytics";
 import { Suspense, useEffect, useRef } from "react";
@@ -199,6 +200,9 @@ export const generateMetadata = staticPageMetadata("/login", "login");
 =======
 export const generateMetadata = staticPageMetadata("/login", "login");
 >>>>>>> origin/claude/admiring-davinci-786hxg
+=======
+export const generateMetadata = staticPageMetadata("/login", "login");
+>>>>>>> 46d388f505caa4da61a847d8c5e266a9a28972e7
 
 export default function LoginPage() {
     return <LoginView />;

@@ -3,6 +3,7 @@ import { staticPageMetadata } from "@/core/seo/page-metadata";
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { Trash2, Globe, Smartphone, Mail, Database, Scale, Check } from "lucide-react";
 import { useCurrentLocale } from "@/core/contexts/locale-context";
 
@@ -202,12 +203,17 @@ export default function DataDeletionPage() {
 =======
 =======
 >>>>>>> origin/claude/admiring-davinci-786hxg
+=======
+>>>>>>> 46d388f505caa4da61a847d8c5e266a9a28972e7
 export const generateMetadata = staticPageMetadata("/data-deletion", "dataDeletion");
 
 export default function DataDeletionPage() {
     return <DataDeletionView />;
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> origin/claude/admiring-davinci-786hxg
 =======
 >>>>>>> origin/claude/admiring-davinci-786hxg
+=======
+>>>>>>> 46d388f505caa4da61a847d8c5e266a9a28972e7
 }

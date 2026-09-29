@@ -3,6 +3,7 @@ import { staticPageMetadata } from "@/core/seo/page-metadata";
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { FileText, Handshake, Gamepad2, UserCog, ShieldAlert, MessageSquare, Flag, Copyright, Plug, AlertTriangle, LogOut, Scale, X, Bot } from "lucide-react";
 import { AppDownloadCTA } from "@core/components/other/public/app-cta";
 import { useCurrentLocale } from "@/core/contexts/locale-context";
@@ -205,12 +206,17 @@ export default function TermsPage() {
 =======
 =======
 >>>>>>> origin/claude/admiring-davinci-786hxg
+=======
+>>>>>>> 46d388f505caa4da61a847d8c5e266a9a28972e7
 export const generateMetadata = staticPageMetadata("/terms", "terms");
 
 export default function TermsPage() {
     return <TermsView />;
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> origin/claude/admiring-davinci-786hxg
 =======
 >>>>>>> origin/claude/admiring-davinci-786hxg
+=======
+>>>>>>> 46d388f505caa4da61a847d8c5e266a9a28972e7
 }

@@ -3,6 +3,7 @@ import { staticPageMetadata } from "@/core/seo/page-metadata";
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { Shield, Info, Database, Target, Cookie, Share2, Clock, UserCheck, Lock, RefreshCw, Mail, Check, Trash2, Globe, Smartphone, Bot, Plane } from "lucide-react";
 import Link from "next/link";
 import { AppDownloadCTA } from "@core/components/other/public/app-cta";
@@ -361,12 +362,17 @@ export default function PrivacyPage() {
 =======
 =======
 >>>>>>> origin/claude/admiring-davinci-786hxg
+=======
+>>>>>>> 46d388f505caa4da61a847d8c5e266a9a28972e7
 export const generateMetadata = staticPageMetadata("/privacy", "privacy");
 
 export default function PrivacyPage() {
     return <PrivacyView />;
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> origin/claude/admiring-davinci-786hxg
 =======
 >>>>>>> origin/claude/admiring-davinci-786hxg
+=======
+>>>>>>> 46d388f505caa4da61a847d8c5e266a9a28972e7
 }

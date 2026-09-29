@@ -3,6 +3,7 @@ import { staticPageMetadata } from "@/core/seo/page-metadata";
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { useRouter, useSearchParams } from "next/navigation";
 import { trackAction } from "@/core/lib/site-analytics";
 import { useForm } from "react-hook-form";
@@ -191,6 +192,9 @@ export const generateMetadata = staticPageMetadata("/register", "register");
 =======
 export const generateMetadata = staticPageMetadata("/register", "register");
 >>>>>>> origin/claude/admiring-davinci-786hxg
+=======
+export const generateMetadata = staticPageMetadata("/register", "register");
+>>>>>>> 46d388f505caa4da61a847d8c5e266a9a28972e7
 
 export default function RegisterPage() {
     return <RegisterView />;

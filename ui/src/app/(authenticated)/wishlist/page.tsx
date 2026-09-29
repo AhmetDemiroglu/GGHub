@@ -6,6 +6,7 @@ export const generateMetadata = staticPageMetadata("/wishlist", "wishlist", { no
 export default function WishlistPage() {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     const t = useI18n();
     const queryClient = useQueryClient();
     const [visibleCount, setVisibleCount] = useState(8);
@@ -179,4 +180,7 @@ export default function WishlistPage() {
 =======
     return <WishlistView />;
 >>>>>>> origin/claude/admiring-davinci-786hxg
+=======
+    return <WishlistView />;
+>>>>>>> 46d388f505caa4da61a847d8c5e266a9a28972e7
 }

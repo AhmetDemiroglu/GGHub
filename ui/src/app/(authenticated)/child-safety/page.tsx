@@ -3,6 +3,7 @@ import { staticPageMetadata } from "@/core/seo/page-metadata";
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { ShieldCheck, Ban, Flag, Scale, Mail, Check } from "lucide-react";
 import { useCurrentLocale } from "@/core/contexts/locale-context";
 
@@ -167,12 +168,17 @@ export default function ChildSafetyPage() {
 =======
 =======
 >>>>>>> origin/claude/admiring-davinci-786hxg
+=======
+>>>>>>> 46d388f505caa4da61a847d8c5e266a9a28972e7
 export const generateMetadata = staticPageMetadata("/child-safety", "childSafety");
 
 export default function ChildSafetyPage() {
     return <ChildSafetyView />;
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> origin/claude/admiring-davinci-786hxg
 =======
 >>>>>>> origin/claude/admiring-davinci-786hxg
+=======
+>>>>>>> 46d388f505caa4da61a847d8c5e266a9a28972e7
 }
