@@ -336,6 +336,11 @@ export const enUSMessages = {
         highlights: "Highlights",
         tbaTitle: "Date not announced",
         tbaHint: "Highly anticipated",
+        searchPlaceholder: "Search games",
+        searchClear: "Clear search",
+        searchResults: "Search results",
+        searchHint: "Searches every month and unannounced dates",
+        searchEmpty: "No game found with this name.",
     },
     notFound: {
         badge: "The page you were looking for could not be found",

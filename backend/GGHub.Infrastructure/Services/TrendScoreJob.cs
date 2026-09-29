@@ -61,55 +61,17 @@ namespace GGHub.Infrastructure.Services
             var context = scope.ServiceProvider.GetRequiredService<GGHubDbContext>();
             var steam = scope.ServiceProvider.GetRequiredService<ISteamCatalogService>();
 
+            var igdb = scope.ServiceProvider.GetRequiredService<IIgdbCatalogService>();
+
             var now = DateTime.UtcNow;
-            var d7 = now.AddDays(-7);
-            var d30 = now.AddDays(-30);
-            var d90 = now.AddDays(-90);
             var today = now.ToString("yyyy-MM-dd");
             var lastYear = now.AddYears(-1).ToString("yyyy-MM-dd");
 
-            // 1) GGHub hareketi: inceleme (agirlikli) + liste/istek listesi eklemeleri.
-            // AI bot incelemeleri trend sinyali DEGIL: botlar bir oyunu gundeme tasimamali.
-            var reviewActivity = await context.Reviews
-                .AsNoTracking()
-                .Where(r => r.CreatedAt >= d90 && !r.User.IsAiAgent)
-                .GroupBy(r => r.GameId)
-                .Select(g => new
-                {
-                    GameId = g.Key,
-                    Score = g.Sum(r => r.CreatedAt >= d7 ? 60 : r.CreatedAt >= d30 ? 30 : 10),
-                })
-                .ToListAsync(ct);
-
-            var listActivity = await context.UserListGames
-                .AsNoTracking()
-                .Where(x => x.AddedAt >= d90)
-                .GroupBy(x => x.GameId)
-                .Select(g => new
-                {
-                    GameId = g.Key,
-                    Score = g.Sum(x => x.AddedAt >= d7 ? 25 : x.AddedAt >= d30 ? 12 : 4),
-                })
-                .ToListAsync(ct);
-
-            var activityByGameId = new Dictionary<int, double>();
-            foreach (var item in reviewActivity)
-                activityByGameId[item.GameId] = activityByGameId.GetValueOrDefault(item.GameId) + item.Score;
-            foreach (var item in listActivity)
-                activityByGameId[item.GameId] = activityByGameId.GetValueOrDefault(item.GameId) + item.Score;
-
-            // 2) Steam en cok satanlar: sira ne kadar ustteyse o kadar guclu sinyal.
-            //    DIKKAT: yalnizca PC'yi kapsar; agirligi bilerek sinirli (bkz. 3).
-            var topSellers = await steam.GetTopSellerAppIdsAsync(150, ct);
-            var sellerRank = topSellers
-                .Select((appId, index) => (appId, index))
-                .ToDictionary(x => x.appId, x => x.index);
-
-            // 3) IGDB + Twitch populerlik sinyalleri: PLATFORM BAGIMSIZ. Steam listesi tek
-            //    basina kullanildiginda PS5/Xbox ozel yapimlari (GTA VI, Wolverine) siralamada
-            //    hic gorunmuyordu; bu sinyal dengeyi kuruyor.
-            var igdb = scope.ServiceProvider.GetRequiredService<IIgdbCatalogService>();
-            var igdbPopularity = await igdb.GetPopularitySignalsAsync(500, ct);
+            // GGHub hareketi + Steam en cok satanlar + IGDB/Twitch. HypeScoreJob ile ortak.
+            var signals = await PopularitySignalCollector.CollectAsync(context, steam, igdb, now, ct);
+            var activityByGameId = signals.ActivityByGameId;
+            var sellerRank = signals.SteamSellerRank;
+            var igdbPopularity = signals.IgdbPopularity;
 
             _logger.LogInformation(
                 "[Trend] Sinyaller: {Activity} oyunda GGHub hareketi, {Sellers} Steam en cok satan, {Igdb} IGDB/Twitch populerlik.",

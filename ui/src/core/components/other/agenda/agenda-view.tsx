@@ -3,13 +3,15 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowDown, CalendarDays, Flame, Hourglass, Sparkles } from "lucide-react";
+import { ArrowDown, CalendarDays, Flame, Hourglass, Search, Sparkles, X } from "lucide-react";
 import { agendaApi } from "@/api/agenda/agenda.api";
 import type { AgendaContent } from "@/models/agenda/agenda.model";
 import type { Game } from "@/models/gaming/game.model";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/core/components/ui/select";
 import { Skeleton } from "@/core/components/ui/skeleton";
 import { Button } from "@/core/components/ui/button";
+import { Input } from "@/core/components/ui/input";
+import { useDebounce } from "@/core/hooks/use-debounce";
 import { PlatformIcons } from "@/core/components/other/platform-icons";
 import { IgdbLogo } from "@/core/components/other/igdb-logo";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
@@ -74,6 +76,24 @@ export const AgendaView = ({ initialContent, initialYear, initialMonth }: Agenda
         meta: { suppressGlobalToast: true },
     });
 
+    // Arama ay filtresinden bağımsızdır: aylık liste 180 oyunla sınırlı olduğu için
+    // aranan oyun sayfada hiç görünmüyor olabilir, bu yüzden sunucuda aranır.
+    const [searchInput, setSearchInput] = useState("");
+    const searchTerm = useDebounce(searchInput.trim(), 350);
+    const isSearching = searchTerm.length >= 2;
+
+    const {
+        data: searchData,
+        isLoading: isSearchLoading,
+        isError: isSearchError,
+    } = useQuery({
+        queryKey: ["agenda-search", searchTerm],
+        queryFn: () => agendaApi.search(searchTerm),
+        enabled: isSearching,
+        staleTime: 5 * 60 * 1000,
+        meta: { suppressGlobalToast: true },
+    });
+
     const monthFormatter = new Intl.DateTimeFormat(locale, { month: "long" });
     const dayFormatter = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" });
     const fullDayFormatter = new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", weekday: "long" });
@@ -134,6 +154,16 @@ export const AgendaView = ({ initialContent, initialYear, initialMonth }: Agenda
     }, [visibleGames, month]);
 
     const totalCount = data ? data.counts.released + data.counts.upcoming : 0;
+
+    const searchGames = useMemo<AgendaGame[]>(() => {
+        const today = todayStr();
+        // Tarihi açıklanmamış oyun henüz çıkmamıştır.
+        return (searchData ?? []).map((game) => ({ ...game, isUpcoming: !game.released || game.released > today }));
+    }, [searchData]);
+
+    // Eşiği geçen oyun azsa (ör. büyük bir çıkışın gölgesindeki ay) kartlar satırı doldursun.
+    const highlightColumns =
+        highlights.length >= 3 ? "md:grid-cols-3" : highlights.length === 2 ? "md:grid-cols-2" : "md:grid-cols-1";
 
     const tbaGames = useMemo<AgendaGame[]>(
         () => (data?.tba ?? []).map((game) => ({ ...game, isUpcoming: true })),
@@ -280,40 +310,88 @@ export const AgendaView = ({ initialContent, initialYear, initialMonth }: Agenda
                         ) : null}
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <Select value={String(month)} onValueChange={(value) => setMonth(Number(value))}>
-                            <SelectTrigger className="w-[150px] cursor-pointer border-white/15 bg-black/40 text-white backdrop-blur-md" aria-label={t("agenda.month")}>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="0" className="cursor-pointer font-semibold">
-                                    {t("agenda.allYear")}
-                                </SelectItem>
-                                {Array.from({ length: 12 }, (_, index) => index + 1).map((m) => (
-                                    <SelectItem key={m} value={String(m)} className="cursor-pointer capitalize">
-                                        {monthLabel(m)}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <div className="relative sm:w-[230px]">
+                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
+                            <Input
+                                type="search"
+                                value={searchInput}
+                                onChange={(event) => setSearchInput(event.target.value)}
+                                placeholder={t("agenda.searchPlaceholder")}
+                                aria-label={t("agenda.searchPlaceholder")}
+                                maxLength={60}
+                                className="border-white/15 bg-black/40 pl-9 pr-9 text-white backdrop-blur-md placeholder:text-white/45 [&::-webkit-search-cancel-button]:hidden"
+                            />
+                            {searchInput ? (
+                                <button
+                                    type="button"
+                                    onClick={() => setSearchInput("")}
+                                    aria-label={t("agenda.searchClear")}
+                                    className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+                                >
+                                    <X className="h-3.5 w-3.5" />
+                                </button>
+                            ) : null}
+                        </div>
 
-                        <Select value={String(year)} onValueChange={(value) => setYear(Number(value))}>
-                            <SelectTrigger className="w-[110px] cursor-pointer border-white/15 bg-black/40 text-white backdrop-blur-md" aria-label={t("agenda.year")}>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {years.map((y) => (
-                                    <SelectItem key={y} value={String(y)} className="cursor-pointer tabular-nums">
-                                        {y}
+                        <div className="flex items-center gap-2">
+                            <Select value={String(month)} onValueChange={(value) => setMonth(Number(value))}>
+                                <SelectTrigger className="w-[150px] cursor-pointer border-white/15 bg-black/40 text-white backdrop-blur-md" aria-label={t("agenda.month")}>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="0" className="cursor-pointer font-semibold">
+                                        {t("agenda.allYear")}
                                     </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                                    {Array.from({ length: 12 }, (_, index) => index + 1).map((m) => (
+                                        <SelectItem key={m} value={String(m)} className="cursor-pointer capitalize">
+                                            {monthLabel(m)}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+
+                            <Select value={String(year)} onValueChange={(value) => setYear(Number(value))}>
+                                <SelectTrigger className="w-[110px] cursor-pointer border-white/15 bg-black/40 text-white backdrop-blur-md" aria-label={t("agenda.year")}>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {years.map((y) => (
+                                        <SelectItem key={y} value={String(y)} className="cursor-pointer tabular-nums">
+                                            {y}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {isLoading ? (
+            {isSearching ? (
+                <section className="space-y-5">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Search className="h-5 w-5 text-primary" />
+                        <h2 className="text-xl font-bold text-foreground">{t("agenda.searchResults")}</h2>
+                        <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
+                            {t("agenda.searchHint")}
+                        </span>
+                    </div>
+                    {isSearchLoading ? (
+                        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                            {Array.from({ length: 10 }).map((_, index) => (
+                                <Skeleton key={index} className="aspect-video w-full rounded-xl" />
+                            ))}
+                        </div>
+                    ) : isSearchError ? (
+                        <p className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">{t("agenda.loadError")}</p>
+                    ) : searchGames.length === 0 ? (
+                        <p className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">{t("agenda.searchEmpty")}</p>
+                    ) : (
+                        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">{searchGames.map(gameCard)}</div>
+                    )}
+                </section>
+            ) : isLoading ? (
                 <AgendaSkeleton />
             ) : isError || !data ? (
                 <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed p-10 text-center">
@@ -336,7 +414,7 @@ export const AgendaView = ({ initialContent, initialYear, initialMonth }: Agenda
                                 <Flame className="h-5 w-5 text-amber-400" />
                                 <h2 className="text-xl font-bold text-foreground">{t("agenda.highlights")}</h2>
                             </div>
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">{highlights.map(featuredCard)}</div>
+                            <div className={`grid grid-cols-1 gap-4 ${highlightColumns}`}>{highlights.map(featuredCard)}</div>
                         </section>
                     ) : null}
 

@@ -337,6 +337,11 @@ export const trMessages = {
         highlights: "Öne çıkanlar",
         tbaTitle: "Tarihi belli olmayanlar",
         tbaHint: "Beklenen büyük çıkışlar",
+        searchPlaceholder: "Oyun ara",
+        searchClear: "Aramayı temizle",
+        searchResults: "Arama sonuçları",
+        searchHint: "Tüm aylarda ve tarihi belli olmayanlarda aranır",
+        searchEmpty: "Bu isimle bir oyun bulunamadı.",
     },
     notFound: {
         badge: "Aradığın sayfa bulunamadı",

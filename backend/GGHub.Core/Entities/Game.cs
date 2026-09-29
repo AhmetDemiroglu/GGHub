@@ -71,6 +71,36 @@
         public DateTime? TrendScoreUpdatedAt { get; set; }
 
         /// <summary>
+        /// Oyunun GERCEK ilgi kaniti (0 = iz yok, ~100 = yilin en buyuk cikislari). Gundem
+        /// vitrini ("One cikanlar") bununla siralanir.
+        ///
+        /// TrendScore'dan AYRI tutuluyor cunku TrendScore her yeni/yaklasan oyuna sabit bir
+        /// yenilik primi (+90/+120) veriyor: kesfet icin dogru, ama sonucta katalogdaki HER
+        /// guncel oyunun skoru sifirdan buyuk oluyor ve "bu oyun konusuluyor mu" sorusuna cevap
+        /// veremiyor (olculdu: Eylul 2026 vitrini 6 rastgele indie oyundu, ayni ay cikan
+        /// Marvel's Wolverine ve Control Resonant yoktu). Burada taban primi YOK: hicbir
+        /// kaynakta izi olmayan oyunun skoru 0'dir. HypeScoreJob hesaplar.
+        /// </summary>
+        public double HypeScore { get; set; }
+
+        public DateTime? HypeScoreUpdatedAt { get; set; }
+
+        /// <summary>
+        /// Eslesen Ingilizce Wikipedia makalesinin basligi. Bos ise oyunun makalesi yok:
+        /// bu da bir bilgidir, cunku Wikipedia'da makalesi olan oyun tanimi geregi kayda degerdir.
+        /// </summary>
+        public string? WikipediaTitle { get; set; }
+
+        /// <summary>
+        /// Makalenin son 30 gundeki okunma sayisi. Platform bagimsiz tek hype olcusu: Steam
+        /// yalnizca PC'yi, IGDB listeleri yalnizca ilk 500'u goruyor; okunma sayisi PS5 ozel
+        /// yapimini da PC oyununu da ayni terazide tartiyor.
+        /// </summary>
+        public int? WikipediaViews30d { get; set; }
+
+        public DateTime? WikipediaViewsUpdatedAt { get; set; }
+
+        /// <summary>
         /// Gelecek tarihli bir cikisin IGDB'ye karsi en son ne zaman DOGRULANDIGI.
         /// release_dates ucundaki platform/surum satirlari ana oyunun tarihi sanilarak yazilinca
         /// eski oyunlar "gelecekte cikacak" gorunmustu (Elden Ring 2022 -> 2026). Bu alan hem

@@ -53,6 +53,23 @@ namespace GGHub.WebAPI.Controllers
         }
 
         /// <summary>
+        /// Gundemde ada gore arama. Ay filtresi YOK: kullanici Eylul sayfasindayken Kasim'da
+        /// cikacak oyunu da bulabilmeli. Literal "agenda/search" {idOrSlug} rotasindan once eslesir.
+        /// </summary>
+        [HttpGet("agenda/search")]
+        public async Task<IActionResult> SearchAgenda([FromQuery] string? q)
+        {
+            var term = (q ?? string.Empty).Trim();
+            if (term.Length < 2 || term.Length > 60)
+            {
+                return Ok(new List<GGHub.Application.Dtos.GameDto>());
+            }
+
+            var result = await _agendaService.SearchAsync(term);
+            return Ok(result);
+        }
+
+        /// <summary>
         /// DB-merkezli discover feed. RAWG live API kullanmaz.
         /// Filtresiz modda kalite skoru + haftalık rotasyon; filtreli modda deterministik sıralama.
         /// </summary>

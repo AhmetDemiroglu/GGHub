@@ -78,6 +78,17 @@ builder.Services.Configure<IgdbSettings>(builder.Configuration.GetSection("Igdb"
 builder.Services.AddHttpClient("Igdb", client => client.Timeout = TimeSpan.FromSeconds(30));
 builder.Services.AddScoped<IIgdbCatalogService, IgdbCatalogService>();
 
+// Wikipedia: gundem vitrininin hype olcusu. Anahtarsiz; Wikimedia tanimlayici bir
+// User-Agent istiyor, varsayilan (bos) User-Agent ile istekler reddediliyor.
+builder.Services.Configure<HypeScoreSettings>(builder.Configuration.GetSection("Jobs:HypeScore"));
+builder.Services.AddHttpClient("Wikipedia", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("GGHubCatalogBot/1.0 (https://gghub.social)");
+});
+builder.Services.AddScoped<IWikipediaHypeService, WikipediaHypeService>();
+builder.Services.AddScoped<HypeScoreCalculator>();
+
 // Kosulsuz kaydediyoruz; "acik mi kapali mi" sorusunun tek cevap yeri appsettings.json olsun.
 // Bunun calismasi icin her job'in Enabled bayragini KENDI ICINDE kontrol etmesi sart. Bayraklar
 // eskiden burada (WebAPI Program.cs) kontrol ediliyordu; kayit yeri degisince kontrol tamamen
@@ -93,6 +104,7 @@ builder.Services.AddHostedService<IgdbSyncJob>();
 builder.Services.AddHostedService<IgdbEnrichJob>();
 builder.Services.AddHostedService<CatalogDedupeJob>();
 builder.Services.AddHostedService<TrendScoreJob>();
+builder.Services.AddHostedService<HypeScoreJob>();
 
 // RawgImportJob (genisleme/breadth) BILEREK kayitli degil. 4 stratejide de ~950. sayfada duruyor;
 // oradaki oyunlari RAWG'de 13 kisi eklemis, kendi MinAdded=20 esigimizin altinda. Sayfa 5000'de
@@ -108,6 +120,26 @@ var host = builder.Build();
 if (args.Contains("--status"))
 {
     await WorkerStatus.PrintAsync(host.Services);
+    return 0;
+}
+
+// "--hype-report <yil> <ay>": o ayin oyunlarini hype skoruna gore siralar ve skorun hangi
+// kaynaktan geldigini basar. HICBIR SEY YAZMAZ. "Bu oyun neden one cikti / neden cikmadi"
+// sorusunun cevabi burada; agirliklari degistirmeden once ve sonra calistirilir.
+// Hype kolonlarini okumadigi icin migration uygulanmadan once de calisir.
+if (args.Contains("--hype-report"))
+{
+    var idx = Array.IndexOf(args, "--hype-report");
+    if (idx + 2 >= args.Length
+        || !int.TryParse(args[idx + 1], out var reportYear)
+        || !int.TryParse(args[idx + 2], out var reportMonth)
+        || reportMonth < 1 || reportMonth > 12)
+    {
+        Console.WriteLine("Kullanim: --hype-report <yil> <ay 1-12>");
+        return 1;
+    }
+
+    await HypeReport.PrintAsync(host.Services, reportYear, reportMonth);
     return 0;
 }
 
