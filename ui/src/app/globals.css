@@ -447,26 +447,44 @@
     animation-delay: var(--ai-twinkle-delay, 0s);
 }
 
+/* Serit deseni ::before katmaninda TRANSFORM ile kayar. Onceki hali background-position
+   animasyonuydu: compositor'a tasinamaz, her karede ana is parcaciginda yeniden boyanir
+   (Lighthouse "non-composited animation"). 56 px = bir desen periyodu, dongu dikissiz. */
 @keyframes ai-tape {
     from {
-        background-position: 0 0;
+        transform: translateX(0);
     }
     to {
-        background-position: 56px 0;
+        transform: translateX(-56px);
     }
 }
 
 .ai-tape {
+    overflow: hidden;
+}
+
+.ai-tape::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -56px;
+    width: calc(100% + 112px);
     background-image: repeating-linear-gradient(-45deg, #facc15 0 14px, #111827 14px 28px);
     background-size: 56px 100%;
     animation: ai-tape 2.4s linear infinite;
+    will-change: transform;
+}
+
+.ai-tape > * {
+    position: relative;
 }
 
 @media (prefers-reduced-motion: reduce) {
     .ai-float,
     .ai-typing-dot,
     .ai-twinkle,
-    .ai-tape {
+    .ai-tape::before {
         animation: none;
     }
 

@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 import { cn } from "@/core/lib/utils";
 import { AI_BOT_USERNAMES, aiBotAvatarUrl, aiPromoScript } from "@/core/lib/ai-bots";
@@ -182,6 +182,23 @@ export function AiChatDemo({ className, compact = false, lines }: { className?: 
     const locale = useCurrentLocale();
     const [step, setStep] = useState(0);
     const [typing, setTyping] = useState(false);
+    // Yalniz GORUNURKEN calis. Kart telefonda "hidden md:block" ile gizli ama bilesen mount
+    // oluyor ve 3.2 sn'de bir state guncelleyip React'i yeniden render ettiriyordu; Lighthouse
+    // mobil izinde bosuna ana is parcacigi isiydi. display:none IntersectionObserver'da hic
+    // kesismez, ekran disi kart da durur.
+    const rootRef = useRef<HTMLDivElement>(null);
+    const [visible, setVisible] = useState(false);
+
+    useEffect(() => {
+        const el = rootRef.current;
+        if (!el || typeof IntersectionObserver === "undefined") {
+            setVisible(true);
+            return;
+        }
+        const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold: 0.1 });
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, []);
 
     const live = !!lines && lines.length >= 2;
     const script = live
@@ -194,6 +211,7 @@ export function AiChatDemo({ className, compact = false, lines }: { className?: 
             setStep(2);
             return;
         }
+        if (!visible) return;
         let typingTimer: ReturnType<typeof setTimeout> | undefined;
         const timer = setInterval(() => {
             setTyping(true);
@@ -206,7 +224,7 @@ export function AiChatDemo({ className, compact = false, lines }: { className?: 
             clearInterval(timer);
             if (typingTimer) clearTimeout(typingTimer);
         };
-    }, []);
+    }, [visible]);
 
     const visibleCount = compact ? 2 : 3;
     const shown = Array.from({ length: visibleCount }, (_, i) => {
@@ -218,6 +236,7 @@ export function AiChatDemo({ className, compact = false, lines }: { className?: 
 
     return (
         <div
+            ref={rootRef}
             className={cn(
                 "w-full rounded-2xl border border-white/15 bg-black/35 p-3 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] backdrop-blur-md",
                 className,

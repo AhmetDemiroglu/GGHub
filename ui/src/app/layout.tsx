@@ -104,7 +104,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     const locale = await resolveLocaleFromCookies();
     const messages = getMessages(locale);
     const gaId = process.env.NEXT_PUBLIC_GA_ID;
-    const clarityId = process.env.NEXT_PUBLIC_CLARITY_ID;
+    // Microsoft Clarity KALDIRILDI (29 Eyl 2026, Ahmet): site ici davranis olcumu artik kendi
+    // SiteEvents altyapimizda (/behavior, /traffic). Lighthouse'ta 311 ms CPU + 27 KB + 76 ms
+    // ana is parcacigi blokaji vardi, karsiliginda kullandigimiz tek bir veri yoktu.
 
     return (
         <html lang={locale} suppressHydrationWarning>
@@ -112,7 +114,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 {apiOrigin ? <link rel="preconnect" href={apiOrigin} crossOrigin="anonymous" /> : null}
                 <link rel="preconnect" href="https://assets.gghub.social" />
                 <link rel="dns-prefetch" href="https://accounts.google.com" />
-                <link rel="dns-prefetch" href="https://www.clarity.ms" />
                 <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
 
                 {gaId ? (
@@ -134,21 +135,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     </>
                 ) : null}
 
-                {clarityId ? (
-                    <Script
-                        id="clarity-init"
-                        strategy="lazyOnload"
-                        dangerouslySetInnerHTML={{
-                            __html: `
-                                (function(c,l,a,r,i,t,y){
-                                    c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-                                    t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-                                    y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-                                })(window, document, "clarity", "script", "${clarityId}");
-                            `,
-                        }}
-                    />
-                ) : null}
             </head>
             <body className={inter.className}>
                 <Suspense fallback={null}>
