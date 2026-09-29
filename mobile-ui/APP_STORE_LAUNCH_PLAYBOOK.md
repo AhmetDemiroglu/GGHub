@@ -169,7 +169,7 @@ App Store Connect → sürüm → build seç → **Add for Review → Submit**.
 - **IDFA**: Hayır (reklam yok).
 - Hazır cevaplar:
   - **4.8 (Sign in with Apple)**: "Apple ile Giriş, Google ile birlikte sunuluyor; gizlilik dostu seçenek mevcut." ✅ (zaten karşılanıyor)
-  - **5.1.1 (hesap silme)**: "Uygulama içi hesap silme: Ayarlar → Tehlikeli Alan → Hesabı Sil (`DELETE /api/profile/me`)." ✅
+  - **5.1.1 (hesap silme)**: "Uygulama içi hesap silme: Avatar (sol üst) → Profil yönetimi → en alt, Tehlikeli Alan → Hesabımı Sil (`DELETE /api/profile/me`)." ✅ Notlarda yolu **tam** yaz; 1.3.0 (15) "Profile > Settings" yazıldığı için reviewer bulamadı ve 5.1.1(v) uyarısı geldi. Fiziksel cihazda çekilmiş ekran kaydını nota ekle.
   - **1.2 (UGC)**: "Raporlama + kullanıcı engelleme + moderasyon mevcut." ✅
   - **2.1 (eksik bilgi)**: Demo hesabı + review notları sağlandı.
   - **3.1.1**: Dijital ödeme/IAP yok (v1).
