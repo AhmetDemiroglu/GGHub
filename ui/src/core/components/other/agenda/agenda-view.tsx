@@ -33,6 +33,9 @@ interface AgendaGame extends Game {
 /** Grid'de bir seferde gosterilen kart sayisi (2-5 sutun x ~6 satir). */
 const GRID_PAGE_SIZE = 30;
 
+/** Vitrinde ilk acilista ve her "daha fazla" tiklamasinda eklenen kart sayisi (3 sutun x 2 satir). */
+const HIGHLIGHT_PAGE_SIZE = 6;
+
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
 /** Kronolojik karışık liste: çıkanlar ve çıkacaklar tarih sırasıyla iç içe. */
@@ -124,7 +127,14 @@ export const AgendaView = ({ initialContent, initialYear, initialMonth }: Agenda
         }));
     }, [data]);
 
-    const highlightIds = useMemo(() => new Set(highlights.map((g) => g.id)), [highlights]);
+    // Ay görünümünde backend 18'e kadar öne çıkan döner; ilk 6'sı görünür, gerisi butonla açılır.
+    const [visibleHighlightCount, setVisibleHighlightCount] = useState(HIGHLIGHT_PAGE_SIZE);
+    const visibleHighlights = useMemo(() => highlights.slice(0, visibleHighlightCount), [highlights, visibleHighlightCount]);
+    const hiddenHighlightCount = Math.max(highlights.length - visibleHighlightCount, 0);
+
+    // Yalnız GÖRÜNEN vitrin kartları gridden çıkarılır: gizli kalanlar gridde yerinde durmalı,
+    // yoksa vitrin kapalıyken NBA 2K27 gibi oyunlar sayfadan tamamen kaybolurdu.
+    const highlightIds = useMemo(() => new Set(visibleHighlights.map((g) => g.id)), [visibleHighlights]);
 
     const gridGames = useMemo(() => {
         const rest = mixed.filter((g) => !highlightIds.has(g.id));
@@ -144,6 +154,10 @@ export const AgendaView = ({ initialContent, initialYear, initialMonth }: Agenda
     useEffect(() => {
         setVisibleCount(GRID_PAGE_SIZE);
     }, [year, month, statusFilter]);
+
+    useEffect(() => {
+        setVisibleHighlightCount(HIGHLIGHT_PAGE_SIZE);
+    }, [year, month]);
 
     const gridByMonth = useMemo(() => {
         if (month !== 0) return null;
@@ -167,7 +181,7 @@ export const AgendaView = ({ initialContent, initialYear, initialMonth }: Agenda
 
     // Eşiği geçen oyun azsa (ör. büyük bir çıkışın gölgesindeki ay) kartlar satırı doldursun.
     const highlightColumns =
-        highlights.length >= 3 ? "md:grid-cols-3" : highlights.length === 2 ? "md:grid-cols-2" : "md:grid-cols-1";
+        visibleHighlights.length >= 3 ? "md:grid-cols-3" : visibleHighlights.length === 2 ? "md:grid-cols-2" : "md:grid-cols-1";
 
     const tbaGames = useMemo<AgendaGame[]>(
         () => (data?.tba ?? []).map((game) => ({ ...game, isUpcoming: true })),
@@ -418,7 +432,25 @@ export const AgendaView = ({ initialContent, initialYear, initialMonth }: Agenda
                                 <Flame className="h-5 w-5 text-amber-400" />
                                 <h2 className="text-xl font-bold text-foreground">{t("agenda.highlights")}</h2>
                             </div>
-                            <div className={`grid grid-cols-1 gap-4 ${highlightColumns}`}>{highlights.map(featuredCard)}</div>
+                            <div className={`grid grid-cols-1 gap-4 ${highlightColumns}`}>{visibleHighlights.map(featuredCard)}</div>
+                            {highlights.length > HIGHLIGHT_PAGE_SIZE ? (
+                                <div className="flex justify-center pt-1">
+                                    <Button
+                                        variant="outline"
+                                        className="cursor-pointer gap-2"
+                                        onClick={() =>
+                                            setVisibleHighlightCount((prev) =>
+                                                hiddenHighlightCount > 0 ? prev + HIGHLIGHT_PAGE_SIZE : HIGHLIGHT_PAGE_SIZE,
+                                            )
+                                        }
+                                    >
+                                        <Flame className="h-4 w-4 text-amber-400" />
+                                        {hiddenHighlightCount > 0
+                                            ? t("agenda.highlightsMore", { count: Math.min(hiddenHighlightCount, HIGHLIGHT_PAGE_SIZE) })
+                                            : t("agenda.highlightsLess")}
+                                    </Button>
+                                </div>
+                            ) : null}
                         </section>
                     ) : null}
 

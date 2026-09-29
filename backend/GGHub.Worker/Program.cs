@@ -123,6 +123,26 @@ if (args.Contains("--status"))
     return 0;
 }
 
+// "--check-schema": bu derlemenin bekledigi migration'lar DB'de uygulanmis mi? Uygulanmissa 0,
+// degilse 1 doner. HICBIR SEY YAZMAZ. Otomatik guncelleyici (gghub-bot autoupdate) yeni derlemeyi
+// devreye almadan once bunu sorar: Railway yeni migration'i henuz uygulamadiysa eski bot calismaya
+// devam eder, yeni derleme bir sonraki denemeye kalir.
+if (args.Contains("--check-schema"))
+{
+    using var schemaScope = host.Services.CreateScope();
+    var schemaDb = schemaScope.ServiceProvider.GetRequiredService<GGHubDbContext>();
+    var pendingForCheck = (await schemaDb.Database.GetPendingMigrationsAsync()).ToList();
+
+    if (pendingForCheck.Count > 0)
+    {
+        Console.WriteLine($"Bekleyen migration: {string.Join(", ", pendingForCheck)}");
+        return 1;
+    }
+
+    Console.WriteLine("Sema guncel.");
+    return 0;
+}
+
 // "--hype-report <yil> <ay>": o ayin oyunlarini hype skoruna gore siralar ve skorun hangi
 // kaynaktan geldigini basar. HICBIR SEY YAZMAZ. "Bu oyun neden one cikti / neden cikmadi"
 // sorusunun cevabi burada; agirliklari degistirmeden once ve sonra calistirilir.
