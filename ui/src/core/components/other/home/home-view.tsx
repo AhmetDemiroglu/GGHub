@@ -89,6 +89,9 @@ export default function HomeView({ initialContent = null }: { initialContent?: H
 
     return (
         <div className="space-y-5 pb-10">
+            {/* Gorsel olarak gizli h1: sayfanin tek ana basligi. Hero slaytlari h2 kalir; onceden
+                ana sayfada hic h1 yoktu (Lighthouse SEO / erisilebilirlik). */}
+            <h1 className="sr-only">{t("seo.homeTitle")}</h1>
             <section>
                 <HeroSlider games={content?.heroGames ?? []} />
             </section>

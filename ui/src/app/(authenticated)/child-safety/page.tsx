@@ -1,5 +1,7 @@
-"use client";
+import { ChildSafetyView } from "@/core/components/other/public/child-safety-view";
+import { staticPageMetadata } from "@/core/seo/page-metadata";
 
+<<<<<<< HEAD
 import { ShieldCheck, Ban, Flag, Scale, Mail, Check } from "lucide-react";
 import { useCurrentLocale } from "@/core/contexts/locale-context";
 
@@ -161,4 +163,10 @@ export default function ChildSafetyPage() {
             </div>
         </div>
     );
+=======
+export const generateMetadata = staticPageMetadata("/child-safety", "childSafety");
+
+export default function ChildSafetyPage() {
+    return <ChildSafetyView />;
+>>>>>>> origin/claude/admiring-davinci-786hxg
 }

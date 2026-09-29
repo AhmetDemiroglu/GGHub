@@ -1,5 +1,7 @@
-"use client";
+import { RegisterView } from "../_components/register-view";
+import { staticPageMetadata } from "@/core/seo/page-metadata";
 
+<<<<<<< HEAD
 import { useRouter, useSearchParams } from "next/navigation";
 import { trackAction } from "@/core/lib/site-analytics";
 import { useForm } from "react-hook-form";
@@ -182,11 +184,10 @@ function RegisterPageContent() {
         </div>
     );
 }
+=======
+export const generateMetadata = staticPageMetadata("/register", "register");
+>>>>>>> origin/claude/admiring-davinci-786hxg
 
 export default function RegisterPage() {
-    return (
-        <Suspense fallback={<div />}>
-            <RegisterPageContent />
-        </Suspense>
-    );
+    return <RegisterView />;
 }

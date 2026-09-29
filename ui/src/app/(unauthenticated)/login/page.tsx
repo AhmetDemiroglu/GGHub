@@ -1,5 +1,7 @@
-"use client";
+import { LoginView } from "../_components/login-view";
+import { staticPageMetadata } from "@/core/seo/page-metadata";
 
+<<<<<<< HEAD
 import Link from "next/link";
 import { trackAction } from "@/core/lib/site-analytics";
 import { Suspense, useEffect, useRef } from "react";
@@ -190,11 +192,10 @@ function LoginPageContent() {
         </div>
     );
 }
+=======
+export const generateMetadata = staticPageMetadata("/login", "login");
+>>>>>>> origin/claude/admiring-davinci-786hxg
 
 export default function LoginPage() {
-    return (
-        <Suspense fallback={<div />}>
-            <LoginPageContent />
-        </Suspense>
-    );
+    return <LoginView />;
 }

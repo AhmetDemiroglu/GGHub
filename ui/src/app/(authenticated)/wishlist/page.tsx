@@ -1,21 +1,10 @@
-"use client";
+import { WishlistView } from "@/core/components/other/lists/wishlist-view";
+import { staticPageMetadata } from "@/core/seo/page-metadata";
 
-import Image from "next/image";
-import Link from "next/link";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/core/components/ui/button";
-import { Skeleton } from "@/core/components/ui/skeleton";
-import { Gift } from "lucide-react";
-import type { UserListDetail } from "@/models/list/list.model";
-import { useState } from "react";
-import { toast } from "sonner";
-import { getMyWishlist, toggleWishlist } from "@/api/list/list.api";
-import logoSrc from "@core/assets/logo.png";
-import rawgLogoSrc from "@core/assets/rawg_logo.png";
-import metacriticLogoSrc from "@core/assets/metacritic_logo.png";
-import { useI18n } from "@/core/contexts/locale-context";
+export const generateMetadata = staticPageMetadata("/wishlist", "wishlist", { noIndex: true });
 
 export default function WishlistPage() {
+<<<<<<< HEAD
     const t = useI18n();
     const queryClient = useQueryClient();
     const [visibleCount, setVisibleCount] = useState(8);
@@ -183,4 +172,7 @@ export default function WishlistPage() {
             </div>
         </div>
     );
+=======
+    return <WishlistView />;
+>>>>>>> origin/claude/admiring-davinci-786hxg
 }

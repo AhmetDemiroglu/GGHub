@@ -1,5 +1,7 @@
-"use client";
+import { MarketingView } from "@/core/components/other/public/marketing-view";
+import { staticPageMetadata } from "@/core/seo/page-metadata";
 
+<<<<<<< HEAD
 import { Gamepad2, ListChecks, Star, Users, MessageCircle, Trophy, Sparkles } from "lucide-react";
 import { AppDownloadCTA } from "@core/components/other/public/app-cta";
 import { useCurrentLocale } from "@/core/contexts/locale-context";
@@ -84,4 +86,10 @@ export default function MarketingPage() {
             <p className="mt-8 text-center text-xs text-muted-foreground/60">{t.footer}</p>
         </div>
     );
+=======
+export const generateMetadata = staticPageMetadata("/marketing", "marketing");
+
+export default function MarketingPage() {
+    return <MarketingView />;
+>>>>>>> origin/claude/admiring-davinci-786hxg
 }

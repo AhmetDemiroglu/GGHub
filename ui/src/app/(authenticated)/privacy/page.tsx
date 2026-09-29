@@ -1,5 +1,7 @@
-"use client";
+import { PrivacyView } from "@/core/components/other/public/privacy-view";
+import { staticPageMetadata } from "@/core/seo/page-metadata";
 
+<<<<<<< HEAD
 import { Shield, Info, Database, Target, Cookie, Share2, Clock, UserCheck, Lock, RefreshCw, Mail, Check, Trash2, Globe, Smartphone, Bot, Plane } from "lucide-react";
 import Link from "next/link";
 import { AppDownloadCTA } from "@core/components/other/public/app-cta";
@@ -355,4 +357,10 @@ export default function PrivacyPage() {
             </div>
         </div>
     );
+=======
+export const generateMetadata = staticPageMetadata("/privacy", "privacy");
+
+export default function PrivacyPage() {
+    return <PrivacyView />;
+>>>>>>> origin/claude/admiring-davinci-786hxg
 }

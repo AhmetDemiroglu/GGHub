@@ -1,16 +1,18 @@
+"use client";
+
 import { Game } from "@/models/gaming/game.model";
-import { Globe, Users, ShoppingBag, Info } from "lucide-react";
+import { Globe, ShoppingBag, Info } from "lucide-react";
 import React from "react";
 import { ScoreBadge } from "../score-badge";
+import { useI18n } from "@/core/contexts/locale-context";
 
+/** Kunye paneli. Etiketler arayuz dilinde: eskiden hepsi sabit Turkceydi, Ingilizce sayfa karisik cikiyordu. */
 export const GameSidebar = ({ game }: { game: Game }) => {
+    const t = useI18n();
 
     const getStoreInfo = (store: { url?: string; domain?: string }) => {
-        const href = store.url && store.url.length > 0
-            ? store.url
-            : store.domain ? `https://${store.domain}` : "#";
-
-        const label = store.url && store.url.length > 0 ? "İncele" : "Mağazaya Git";
+        const href = store.url && store.url.length > 0 ? store.url : store.domain ? `https://${store.domain}` : "#";
+        const label = store.url && store.url.length > 0 ? t("gameDetail.storeView") : t("gameDetail.storeGo");
 
         return { href, label };
     };
@@ -19,16 +21,17 @@ export const GameSidebar = ({ game }: { game: Game }) => {
         <div className="space-y-8">
             {/* 1. Puanlama Rozetleri (Badge) */}
             <div className="space-y-3">
+<<<<<<< HEAD
                 <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Puanlar</h3>
+=======
+                <h3 className="text-sm font-medium text-zinc-500 uppercase tracking-wider">{t("gameDetail.ratingsTitle")}</h3>
+>>>>>>> origin/claude/admiring-davinci-786hxg
                 <div className="flex flex-wrap gap-4">
-                    {/* Metacritic */}
                     <ScoreBadge type="metacritic" score={game.metacritic} />
-                    {/* RAWG */}
                     <ScoreBadge type="rawg" score={game.rating} />
                     {/* IGDB: diğer rozetler gibi HER ZAMAN görünür; puan yoksa "-" yazar.
                         Gizlemek "eksik/bozuk" hissi veriyordu. */}
                     <ScoreBadge type="igdb" score={game.igdbRating ?? null} />
-                    {/* GGHub topluluk puanı */}
                     <ScoreBadge type="gghub" score={game.gghubRating || null} />
                 </div>
             </div>
@@ -37,55 +40,53 @@ export const GameSidebar = ({ game }: { game: Game }) => {
 
             {/* 2. Künye Bilgileri (Grid) */}
             <div className="grid grid-cols-1 gap-y-6">
-
-                {/* Platformlar */}
                 <div>
-                    <div className="text-sm text-muted-foreground mb-2">Platformlar</div>
-                    <div className="flex flex-wrap gap-2 text-sm text-foreground leading-relaxed"> {/* text-white yerine text-foreground */}
-                        {game.platforms?.map((p, i) => (
-                            <span key={p.slug}>
-                                <span className="underline decoration-muted-foreground/50 underline-offset-4 hover:decoration-foreground transition-all cursor-pointer">
-                                    {p.name}
+                    <div className="text-sm text-muted-foreground mb-2">{t("gameDetail.platforms")}</div>
+                    <div className="flex flex-wrap gap-2 text-sm text-foreground leading-relaxed">
+                        {game.platforms?.length ? (
+                            game.platforms.map((p, i) => (
+                                <span key={p.slug}>
+                                    <span className="underline decoration-muted-foreground/50 underline-offset-4 hover:decoration-foreground transition-all cursor-pointer">
+                                        {p.name}
+                                    </span>
+                                    {i < game.platforms.length - 1 && <span className="text-muted-foreground mx-1">,</span>}
                                 </span>
-                                {i < game.platforms.length - 1 && <span className="text-muted-foreground mx-1">,</span>}
-                            </span>
-                        )) || <span className="text-muted-foreground">Belirtilmemiş</span>}
+                            ))
+                        ) : (
+                            <span className="text-muted-foreground">{t("gameDetail.notSpecified")}</span>
+                        )}
                     </div>
                 </div>
 
-                {/* Türler */}
                 <div>
-                    <div className="text-sm text-muted-foreground mb-2">Türler</div>
+                    <div className="text-sm text-muted-foreground mb-2">{t("gameDetail.genres")}</div>
                     <div className="flex flex-wrap gap-2">
-                        {game.genres?.map((g) => (
-                            // bg-zinc-800 -> bg-secondary, text-zinc-300 -> text-secondary-foreground
-                            <span key={g.slug} className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded border border-border hover:border-foreground/20 transition-colors cursor-pointer">
-                                {g.name}
-                            </span>
-                        )) || <span className="text-muted-foreground text-sm">-</span>}
+                        {game.genres?.length ? (
+                            game.genres.map((g) => (
+                                <span key={g.slug} className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded border border-border hover:border-foreground/20 transition-colors cursor-pointer">
+                                    {g.name}
+                                </span>
+                            ))
+                        ) : (
+                            <span className="text-muted-foreground text-sm">-</span>
+                        )}
                     </div>
                 </div>
 
-                {/* Geliştirici & Yayıncı */}
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <div className="text-sm text-muted-foreground mb-1">Geliştirici</div>
-                        <div className="text-sm text-foreground font-medium"> {/* text-white -> text-foreground */}
-                            {game.developers?.map(d => d.name).join(", ") || "-"}
-                        </div>
+                        <div className="text-sm text-muted-foreground mb-1">{t("gameDetail.developer")}</div>
+                        <div className="text-sm text-foreground font-medium">{game.developers?.map((d) => d.name).join(", ") || "-"}</div>
                     </div>
                     <div>
-                        <div className="text-sm text-muted-foreground mb-1">Yayıncı</div>
-                        <div className="text-sm text-foreground font-medium">
-                            {game.publishers?.map(p => p.name).join(", ") || "-"}
-                        </div>
+                        <div className="text-sm text-muted-foreground mb-1">{t("gameDetail.publisher")}</div>
+                        <div className="text-sm text-foreground font-medium">{game.publishers?.map((p) => p.name).join(", ") || "-"}</div>
                     </div>
                 </div>
 
-                {/* Yaş Sınırı (ESRB) */}
                 {game.esrbRating && (
                     <div>
-                        <div className="text-sm text-muted-foreground mb-1">Yaş Sınırı</div>
+                        <div className="text-sm text-muted-foreground mb-1">{t("gameDetail.ageRating")}</div>
                         <div className="inline-flex items-center gap-2 px-3 py-1 bg-secondary rounded-full text-xs font-bold text-secondary-foreground border border-border">
                             <Info size={14} />
                             {game.esrbRating}
@@ -100,7 +101,7 @@ export const GameSidebar = ({ game }: { game: Game }) => {
             {game.stores && game.stores.length > 0 && (
                 <div className="space-y-3">
                     <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                        <ShoppingBag size={16} /> Satın Al
+                        <ShoppingBag size={16} /> {t("gameDetail.buyTitle")}
                     </h3>
                     <div className="grid grid-cols-1 gap-2">
                         {game.stores.map((store) => {
@@ -111,12 +112,10 @@ export const GameSidebar = ({ game }: { game: Game }) => {
                                     key={store.storeName}
                                     href={href}
                                     target="_blank"
-                                    rel="noopener noreferrer"
+                                    rel="noopener noreferrer nofollow"
                                     className="flex items-center justify-between p-3 rounded-lg bg-card/50 hover:bg-secondary border border-border hover:border-foreground/20 transition-all group"
                                 >
-                                    <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
-                                        {store.storeName}
-                                    </span>
+                                    <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">{store.storeName}</span>
                                     <span className="text-xs text-muted-foreground group-hover:text-primary transition-colors flex items-center gap-1">
                                         {label}
                                         <ShoppingBag size={12} className="ml-1" />
@@ -131,14 +130,9 @@ export const GameSidebar = ({ game }: { game: Game }) => {
             {/* 4. Dış Bağlantılar */}
             {game.websiteUrl && (
                 <div className="pt-2">
-                    <a
-                        href={game.websiteUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
+                    <a href={game.websiteUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
                         <Globe size={14} />
-                        Resmi Web Sitesi
+                        {t("gameDetail.officialWebsite")}
                     </a>
                 </div>
             )}

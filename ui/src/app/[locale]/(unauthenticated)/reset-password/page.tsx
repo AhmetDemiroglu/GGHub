@@ -1,1 +1,1 @@
-export { default } from "../../../(unauthenticated)/reset-password/page";
+export { default, generateMetadata } from "../../../(unauthenticated)/reset-password/page";

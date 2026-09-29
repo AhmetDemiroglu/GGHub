@@ -1,5 +1,7 @@
-"use client";
+import { TermsView } from "@/core/components/other/public/terms-view";
+import { staticPageMetadata } from "@/core/seo/page-metadata";
 
+<<<<<<< HEAD
 import { FileText, Handshake, Gamepad2, UserCog, ShieldAlert, MessageSquare, Flag, Copyright, Plug, AlertTriangle, LogOut, Scale, X, Bot } from "lucide-react";
 import { AppDownloadCTA } from "@core/components/other/public/app-cta";
 import { useCurrentLocale } from "@/core/contexts/locale-context";
@@ -199,4 +201,10 @@ export default function TermsPage() {
             </div>
         </div>
     );
+=======
+export const generateMetadata = staticPageMetadata("/terms", "terms");
+
+export default function TermsPage() {
+    return <TermsView />;
+>>>>>>> origin/claude/admiring-davinci-786hxg
 }

@@ -1,1 +1,1 @@
-export { default } from "../../../(authenticated)/messages/layout";
+export { default, generateMetadata } from "../../../(authenticated)/messages/layout";

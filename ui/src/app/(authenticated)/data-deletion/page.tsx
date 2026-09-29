@@ -1,5 +1,7 @@
-"use client";
+import { DataDeletionView } from "@/core/components/other/public/data-deletion-view";
+import { staticPageMetadata } from "@/core/seo/page-metadata";
 
+<<<<<<< HEAD
 import { Trash2, Globe, Smartphone, Mail, Database, Scale, Check } from "lucide-react";
 import { useCurrentLocale } from "@/core/contexts/locale-context";
 
@@ -196,4 +198,10 @@ export default function DataDeletionPage() {
             </div>
         </div>
     );
+=======
+export const generateMetadata = staticPageMetadata("/data-deletion", "dataDeletion");
+
+export default function DataDeletionPage() {
+    return <DataDeletionView />;
+>>>>>>> origin/claude/admiring-davinci-786hxg
 }
