@@ -78,69 +78,72 @@ export default function HomeView({ initialContent = null }: { initialContent?: H
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthenticated, authLoading, locale, retryCount]);
 
-    // Sunucu içeriği varken auth'un yüklenmesini bekleme: içerik zaten ekranda olmalı.
-    if ((loading || authLoading) && content === null) {
-        return <HomeSkeleton />;
-    }
+    // Hero HER durumda cizilir, veri gelmeden once sabit slaytlarla. Lighthouse'ta LCP elemani
+    // hero'daki promo basligi ve LCP'nin %90'i "render delay" olculdu (8 sn): sunucu fetch'i
+    // basarisiz olunca (Railway yeniden deploy aninda 5xx, zaman asimi) sayfa komple iskelete
+    // dusuyor, baslik ancak hydration + istemci fetch'i sonrasi boyaniyordu. Sabit slaytlar
+    // veriden bagimsiz; oyun slaytlari icerik gelince eklenir (embla slayt degisimini izler).
+    // fade-in de YOK: icerik fallback'teki promo slaytinin yerine oturuyor, 500 ms opacity 0
+    // hero'yu bir an bosaltirdi (Lighthouse bunu "non-composited" diye de isaretliyordu).
+    const isPending = content === null && (loading || authLoading);
 
-    // Ana içerik alınamadı. Eskiden burada null dönülüyordu: kullanıcı sessizce BOMBOŞ
-    // bir sayfa görüyor ve F5 atmak zorunda kalıyordu. Artık hata + tekrar dene gösterilir.
-    if (!content) {
-        return (
-            <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
-                <p className="text-muted-foreground text-sm">{t("common.genericError")}</p>
-                <Button variant="outline" onClick={() => setRetryCount((count) => count + 1)}>
-                    {t("common.tryAgain")}
-                </Button>
-            </div>
-        );
-    }
-
-    // fade-in YOK: icerik akisla gelip fallback'teki promo slaytinin yerine oturuyor; 500 ms
-    // opacity 0'dan baslamak hero'yu bir an bosaltirdi. Lighthouse ayrica bu animasyonu
-    // "non-composited" (filter) diye isaretliyordu.
     return (
         <div className="space-y-5 pb-10">
             <section>
-                <HeroSlider games={content.heroGames} />
+                <HeroSlider games={content?.heroGames ?? []} />
             </section>
 
-            {content.siteStats ? (
-                <section>
-                    <HomeStatsBar stats={content.siteStats} />
-                </section>
-            ) : null}
+            {content ? (
+                <>
+                    {content.siteStats ? (
+                        <section>
+                            <HomeStatsBar stats={content.siteStats} />
+                        </section>
+                    ) : null}
 
-            {isAuthenticated && (suggestions.length > 0 || agentSuggestions.length > 0) ? (
-                <HomePeopleSuggestions suggestions={suggestions} agents={agentSuggestions} />
-            ) : null}
+                    {isAuthenticated && (suggestions.length > 0 || agentSuggestions.length > 0) ? (
+                        <HomePeopleSuggestions suggestions={suggestions} agents={agentSuggestions} />
+                    ) : null}
 
-            <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-                {/* Feed sütunu: mobilde trending/liderlik kompakt şeritler üstte,
-                    ardından akış en altta kesintisiz sonsuz scroll olarak akar. */}
-                <div className="space-y-5 xl:col-span-8">
-                    <div className="xl:hidden">
-                        <HomeMobileRails trending={content.trendingLocal} leaders={content.topGamers} />
+                    <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+                        {/* Feed sütunu: mobilde trending/liderlik kompakt şeritler üstte,
+                            ardından akış en altta kesintisiz sonsuz scroll olarak akar. */}
+                        <div className="space-y-5 xl:col-span-8">
+                            <div className="xl:hidden">
+                                <HomeMobileRails trending={content.trendingLocal} leaders={content.topGamers} />
+                            </div>
+                            <HomeSocialFeed isAuthenticated={isAuthenticated} />
+                        </div>
+
+                        {/* Desktop sidebar: viewport'a sabit; içeriği taşarsa sayfa dışına
+                            çıkmak yerine kendi içinde kayar (liderlik tablosu hep erişilebilir). */}
+                        <aside className="hidden xl:col-span-4 xl:block">
+                            <div className="no-scrollbar sticky top-4 max-h-[calc(100dvh-2rem)] overflow-y-auto">
+                                <HomeRightSidebar trending={content.trendingLocal} leaders={content.topGamers} />
+                            </div>
+                        </aside>
                     </div>
-                    <HomeSocialFeed isAuthenticated={isAuthenticated} />
+                </>
+            ) : isPending ? (
+                <HomeSkeleton />
+            ) : (
+                // Ana içerik alınamadı. Eskiden burada null dönülüyordu: kullanıcı sessizce BOMBOŞ
+                // bir sayfa görüyor ve F5 atmak zorunda kalıyordu. Artık hata + tekrar dene gösterilir.
+                <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 text-center">
+                    <p className="text-muted-foreground text-sm">{t("common.genericError")}</p>
+                    <Button variant="outline" onClick={() => setRetryCount((count) => count + 1)}>
+                        {t("common.tryAgain")}
+                    </Button>
                 </div>
-
-                {/* Desktop sidebar: viewport'a sabit; içeriği taşarsa sayfa dışına
-                    çıkmak yerine kendi içinde kayar (liderlik tablosu hep erişilebilir). */}
-                <aside className="hidden xl:col-span-4 xl:block">
-                    <div className="no-scrollbar sticky top-4 max-h-[calc(100dvh-2rem)] overflow-y-auto">
-                        <HomeRightSidebar trending={content.trendingLocal} leaders={content.topGamers} />
-                    </div>
-                </aside>
-            </div>
+            )}
         </div>
     );
 }
 
+/** Hero'nun ALTINDAKI bolumlerin iskeleti; hero'nun kendisi her zaman gercek cizilir. */
 function HomeSkeleton() {
     return (
         <div className="space-y-5">
-            <Skeleton className="h-[340px] w-full rounded-2xl md:h-[420px]" />
             <Skeleton className="h-12 w-full rounded-xl" />
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
                 <div className="space-y-3 xl:col-span-8">

@@ -36,12 +36,17 @@ export async function getHomeContentServer(locale: AppLocale): Promise<HomeConte
             signal: AbortSignal.timeout(SERVER_FETCH_TIMEOUT_MS),
         });
 
-        if (!response.ok) return null;
+        if (!response.ok) {
+            // Vercel fonksiyon loglarinda gorunsun: sunucu tarafi fetch neden dustu?
+            console.error(`[home.server] ${response.status} ${response.statusText} from API`);
+            return null;
+        }
 
         return (await response.json()) as HomeContent;
-    } catch {
+    } catch (error) {
         // API erişilemezse sayfayı düşürme: HomeView istemcide kendi isteğini yapıp
         // skeleton'dan devam eder, yani eski davranışa geri düşülür.
+        console.error("[home.server] fetch failed:", error instanceof Error ? `${error.name}: ${error.message}` : error);
         return null;
     }
 }

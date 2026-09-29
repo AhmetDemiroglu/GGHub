@@ -26,11 +26,16 @@ export async function getAgendaServer(locale: AppLocale, year: number, month: nu
             signal: AbortSignal.timeout(SERVER_FETCH_TIMEOUT_MS),
         });
 
-        if (!response.ok) return null;
+        if (!response.ok) {
+            // Vercel fonksiyon loglarinda gorunsun: sunucu tarafi fetch neden dustu?
+            console.error(`[agenda.server] ${response.status} ${response.statusText} from API`);
+            return null;
+        }
 
         return (await response.json()) as AgendaContent;
-    } catch {
+    } catch (error) {
         // API erişilemezse sayfayı düşürme: AgendaView istemcide kendi isteğini yapar.
+        console.error("[agenda.server] fetch failed:", error instanceof Error ? `${error.name}: ${error.message}` : error);
         return null;
     }
 }
