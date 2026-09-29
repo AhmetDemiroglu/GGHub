@@ -21,19 +21,7 @@ export const GameSidebar = ({ game }: { game: Game }) => {
         <div className="space-y-8">
             {/* 1. Puanlama Rozetleri (Badge) */}
             <div className="space-y-3">
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Puanlar</h3>
-=======
-                <h3 className="text-sm font-medium text-zinc-500 uppercase tracking-wider">{t("gameDetail.ratingsTitle")}</h3>
->>>>>>> origin/claude/admiring-davinci-786hxg
-=======
                 <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{t("gameDetail.ratingsTitle")}</h3>
->>>>>>> origin/claude/admiring-davinci-786hxg
-=======
-                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{t("gameDetail.ratingsTitle")}</h3>
->>>>>>> 46d388f505caa4da61a847d8c5e266a9a28972e7
                 <div className="flex flex-wrap gap-4">
                     <ScoreBadge type="metacritic" score={game.metacritic} />
                     <ScoreBadge type="rawg" score={game.rating} />

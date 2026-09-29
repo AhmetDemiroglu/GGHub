@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -19,14 +19,26 @@ import { AppDownloadBadge } from "@/core/components/base/app-download-badge";
 /** Kaydirma kabinin id'si; layout'taki <main> bunu tasir (pencere degil, main kayar). */
 export const APP_SCROLL_ID = "app-main";
 
-// Histerezis: esik etrafinda titremesin. Kopma 40px'te, geri yapisma 8px'te.
-const DETACH_AT = 40;
+// Histerezis: esik etrafinda titremesin. Kopma 44px'te, geri yapisma 8px'te.
+const DETACH_AT = 44;
 const ATTACH_AT = 8;
 
-/** Kaydirma kabini izler; cubugun "yapisik / kopuk" halini verir. */
-function useFloating() {
+interface TopbarMotion {
+    /** Cubuk ust kenardan kopmus, kapsul halinde. */
+    floating: boolean;
+    /** Kopmadan onceki gerilme: 0 (yapisik) .. 1 (kopma esigi). Kaydirmaya kilitli. */
+    stretch: number;
+    /** Kaydirma kabinin dikey kaydirma cubugu genisligi (px); cubuk onun ustune binmez. */
+    scrollbar: number;
+}
+
+/**
+ * Kaydirma kabini izler. Ilk 44px'te cubuk yapisik kalir ama asagi dogru gerilir (zar gibi);
+ * esik asilinca kopar ve kapsule donusur. Geri donus 8px'te: esik etrafinda titreme olmaz.
+ */
+function useTopbarMotion(): TopbarMotion {
     const pathname = usePathname();
-    const [floating, setFloating] = useState(false);
+    const [motion, setMotion] = useState<TopbarMotion>({ floating: false, stretch: 0, scrollbar: 0 });
 
     useEffect(() => {
         const main = document.getElementById(APP_SCROLL_ID);
@@ -36,26 +48,37 @@ function useFloating() {
         const update = () => {
             frame = 0;
             const top = main.scrollTop;
-            setFloating((current) => (current ? top > ATTACH_AT : top > DETACH_AT));
+            const scrollbar = main.offsetWidth - main.clientWidth;
+            setMotion((current) => {
+                const floating = current.floating ? top > ATTACH_AT : top > DETACH_AT;
+                const stretch = floating ? 0 : Math.min(top / DETACH_AT, 1);
+                if (floating === current.floating && stretch === current.stretch && scrollbar === current.scrollbar) return current;
+                return { floating, stretch, scrollbar };
+            });
         };
-        const onScroll = () => {
+        const schedule = () => {
             if (!frame) frame = requestAnimationFrame(update);
         };
 
         update();
-        main.addEventListener("scroll", onScroll, { passive: true });
+        main.addEventListener("scroll", schedule, { passive: true });
+        // Kaydirma cubugu icerikle gelip gidebilir (kisa sayfa / uzun sayfa).
+        const observer = new ResizeObserver(schedule);
+        observer.observe(main);
         return () => {
-            main.removeEventListener("scroll", onScroll);
+            main.removeEventListener("scroll", schedule);
+            observer.disconnect();
             if (frame) cancelAnimationFrame(frame);
         };
     }, [pathname]);
 
-    return floating;
+    return motion;
 }
 
 /**
  * Ust cubuk. Sayfanin en ustunde duz ve tek parca durur (sidebar yokmus gibi); icerik
- * kaydirilinca ust kenardan kopup cam kapsule donusur (globals.css: .topbar-shell).
+ * kaydirilinca once asagi dogru gerilir, sonra ust kenardan kopup cam kapsule donusur
+ * (koreografi globals.css: .topbar-shell, ::after zar, .topbar-neck, topbar-snap).
  * Logo, arama, mobil uygulama rozeti ve bildirimler burada; kenar cubugu altindan baslar.
  */
 export function AppTopbar() {
@@ -63,15 +86,21 @@ export function AppTopbar() {
     const localizeHref = useLocalizedHref();
     const pathname = usePathname();
     const { isAuthenticated } = useAuth();
-    const floating = useFloating();
+    const { floating, stretch, scrollbar } = useTopbarMotion();
     const [mobileSearch, setMobileSearch] = useState(false);
 
     // Sayfa degisince mobil arama modu kapanir.
     useEffect(() => setMobileSearch(false), [pathname]);
 
     return (
-        <header data-floating={floating} className="pointer-events-none absolute inset-x-0 top-0 z-40 h-(--topbar-h)">
+        <header
+            data-floating={floating}
+            style={{ "--stretch": stretch, "--topbar-sb": `${scrollbar}px` } as React.CSSProperties}
+            className="pointer-events-none absolute left-0 right-(--topbar-sb) top-0 z-40 h-(--topbar-h)"
+        >
+            {/* Kopma ani: ust kenarda kalan iz cizgisi ve kapsulu bir an ust kenara baglayan boyun. */}
             <span aria-hidden className="topbar-edge" />
+            <span aria-hidden className="topbar-neck" />
             <div className="topbar-shell pointer-events-auto">
                 <GlassSurface active={floating} />
 

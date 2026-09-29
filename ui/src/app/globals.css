@@ -535,9 +535,13 @@
 
 /* ── Topbar + Liquid Glass ─────────────────────────────────────────────────
    Ust cubuk sayfanin en ustune yapisik dogar (duz, kenardan kenara, sidebar
-   yokmus gibi tek parca). Icerik kaydirilinca ust kenardan kopar: kenarlardan
-   iceri cekilir, kapsule donusur ve alttan akan icerigi cam gibi kirar.
-   Gecis egrisi hafif tasmali (spring): damla gibi kopup yerine oturur. */
+   yokmus gibi tek parca). Koreografi uc evre:
+     1. Gerilme (0..44px, kaydirmaya kilitli): cubuk yapisik kalir ama alt
+        kenari zar gibi asagi uzar, alt koseleri yuvarlanir (::after).
+     2. Kopma (esikte): zar bir anda cekilir, kapsul dusup jole gibi salinir
+        (topbar-snap), ust kenarda ince bir iz ve kisa bir boyun kalir.
+     3. Kapsul: cam katmani acilir, alttan akan icerik rim'de kirilir.
+   Geri donus (8px altinda): kapsul yukari kayip ust kenara yeniden kaynar. */
 :root {
     --topbar-h: 3.5rem;
     --topbar-float-inset: 0.75rem;
@@ -545,17 +549,20 @@
     --topbar-ease: cubic-bezier(0.32, 1.35, 0.5, 1);
     --glass-tint-a: rgba(255, 255, 255, 0.28);
     --glass-tint-b: rgba(250, 247, 238, 0.16);
-    --glass-rim: rgba(255, 255, 255, 0.55);
-    --glass-rim-soft: rgba(255, 255, 255, 0.18);
-    --glass-sheen: rgba(255, 255, 255, 0.22);
+    --glass-rim: rgba(255, 255, 255, 0.9);
+    --glass-rim-soft: rgba(255, 255, 255, 0.35);
+    --glass-sheen: rgba(255, 255, 255, 0.26);
+    --glass-shadow: rgba(30, 24, 60, 0.28);
 }
 
 .dark {
-    --glass-tint-a: rgba(62, 70, 100, 0.3);
-    --glass-tint-b: rgba(18, 22, 40, 0.16);
-    --glass-rim: rgba(255, 255, 255, 0.28);
-    --glass-rim-soft: rgba(255, 255, 255, 0.09);
-    --glass-sheen: rgba(255, 255, 255, 0.1);
+    /* Koyu temada cam neredeyse renksiz kalir: hafif serin ton, alttaki icerik net. */
+    --glass-tint-a: rgba(120, 132, 180, 0.14);
+    --glass-tint-b: rgba(24, 28, 52, 0.1);
+    --glass-rim: rgba(255, 255, 255, 0.55);
+    --glass-rim-soft: rgba(255, 255, 255, 0.14);
+    --glass-sheen: rgba(255, 255, 255, 0.12);
+    --glass-shadow: rgba(2, 4, 16, 0.6);
 }
 
 @media (max-width: 767px) {
@@ -573,15 +580,35 @@
     height: var(--topbar-h);
     border-radius: 0;
     background: var(--background);
-    box-shadow: 0 1px 0 color-mix(in oklab, var(--border) 70%, transparent);
+    transform-origin: 50% 0;
     transition:
-        left 560ms var(--topbar-ease),
-        right 560ms var(--topbar-ease),
-        top 560ms var(--topbar-ease),
-        height 560ms var(--topbar-ease),
-        border-radius 560ms var(--topbar-ease),
-        background-color 320ms ease,
-        box-shadow 420ms ease;
+        left 620ms var(--topbar-ease),
+        right 620ms var(--topbar-ease),
+        top 620ms var(--topbar-ease),
+        height 620ms var(--topbar-ease),
+        border-radius 480ms var(--topbar-ease),
+        background-color 300ms ease,
+        box-shadow 480ms ease;
+}
+
+/* Gerilme zari: yapisik cubugun alt kenari kaydirmayla asagi uzar; ince alt cizgi burada. */
+.topbar-shell::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    height: calc(var(--stretch, 0) * 14px);
+    background: var(--background);
+    border-radius: 0 0 calc(var(--stretch, 0) * 30px) calc(var(--stretch, 0) * 30px);
+    box-shadow:
+        0 1px 0 color-mix(in oklab, var(--border) 70%, transparent),
+        0 calc(var(--stretch, 0) * 14px) calc(var(--stretch, 0) * 22px) calc(var(--stretch, 0) * -14px) var(--glass-shadow);
+    transition:
+        height 120ms ease-out,
+        border-radius 120ms ease-out,
+        box-shadow 120ms ease-out,
+        opacity 160ms ease;
 }
 
 [data-floating="true"] .topbar-shell {
@@ -592,8 +619,99 @@
     border-radius: 9999px;
     background: transparent;
     box-shadow:
-        0 18px 40px -18px rgba(8, 10, 24, 0.45),
-        0 2px 6px -2px rgba(8, 10, 24, 0.2);
+        0 22px 44px -20px var(--glass-shadow),
+        0 2px 8px -3px var(--glass-shadow);
+    animation: topbar-snap 780ms cubic-bezier(0.22, 0.7, 0.2, 1) both;
+}
+
+[data-floating="true"] .topbar-shell::after {
+    height: 0;
+    opacity: 0;
+    box-shadow: none;
+}
+
+/* Damla: kopunca once biraz duser, sonra dikeyde salinip durulur (yuzey gerilimi). */
+@keyframes topbar-snap {
+    0% {
+        translate: 0 -10px;
+        scale: 1.012 0.9;
+    }
+    32% {
+        translate: 0 5px;
+        scale: 0.992 1.07;
+    }
+    58% {
+        translate: 0 -2px;
+        scale: 1.004 0.975;
+    }
+    80% {
+        translate: 0 1px;
+        scale: 0.999 1.012;
+    }
+    100% {
+        translate: 0 0;
+        scale: 1 1;
+    }
+}
+
+/* Boyun: kopma aninda kapsulu ust kenara baglayan, hizla incelip kaybolan zar parcasi. */
+.topbar-neck {
+    position: absolute;
+    top: 0;
+    left: 22%;
+    right: 22%;
+    height: calc(var(--topbar-float-top) + 6px);
+    background: var(--background);
+    border-radius: 0 0 50% 50% / 0 0 100% 100%;
+    opacity: 0;
+    transform-origin: 50% 0;
+    transform: scaleY(0);
+    pointer-events: none;
+}
+[data-floating="true"] .topbar-neck {
+    animation: topbar-neck 520ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+@keyframes topbar-neck {
+    0% {
+        opacity: 1;
+        transform: scaleY(1) scaleX(1);
+    }
+    45% {
+        opacity: 0.85;
+        transform: scaleY(0.55) scaleX(0.55);
+    }
+    100% {
+        opacity: 0;
+        transform: scaleY(0) scaleX(0.2);
+    }
+}
+
+/* Kopma izi: cubuk ayrilinca en ustte kalan ince isik cizgisi, once parlar sonra sakinlesir. */
+.topbar-edge {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--foreground) 22%, transparent) 25%, color-mix(in oklab, var(--foreground) 22%, transparent) 75%, transparent);
+    opacity: 0;
+    transition: opacity 300ms ease;
+}
+[data-floating="true"] .topbar-edge {
+    animation: topbar-edge 900ms ease-out both;
+    opacity: 1;
+}
+@keyframes topbar-edge {
+    0% {
+        opacity: 0;
+        transform: scaleX(0.6);
+    }
+    30% {
+        opacity: 1;
+        transform: scaleX(1.02);
+    }
+    100% {
+        opacity: 1;
+        transform: scaleX(1);
+    }
 }
 
 /* Kapsul parlak icerigin ustune gelince alanlar biraz daha dolgun olur: metin okunur kalir. */
@@ -601,25 +719,12 @@
     transition: background-color 320ms ease;
 }
 [data-floating="true"] .topbar-field {
-    background-color: color-mix(in oklab, var(--background) 62%, transparent);
-}
-
-/* Kopma izi: cubuk ayrilinca en ustte kalan ince isik cizgisi. */
-.topbar-edge {
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--foreground) 18%, transparent) 30%, color-mix(in oklab, var(--foreground) 18%, transparent) 70%, transparent);
-    opacity: 0;
-    transition: opacity 400ms ease 120ms;
-}
-[data-floating="true"] .topbar-edge {
-    opacity: 1;
+    background-color: color-mix(in oklab, var(--background) 55%, transparent);
 }
 
 .glass-surface {
     opacity: 0;
-    transition: opacity 360ms ease;
+    transition: opacity 360ms ease 80ms;
 }
 [data-floating="true"] .glass-surface {
     opacity: 1;
@@ -643,12 +748,23 @@
     backdrop-filter: blur(14px) saturate(1.6);
 }
 
+/* Cam kenari: ustte keskin isik, altta yumusak; icte alt kenara dogru hafif parilti (kalin cam). */
 .glass-shine {
+    background: linear-gradient(180deg, var(--glass-sheen) 0%, transparent 48%);
     box-shadow:
-        inset 0 1px 0 var(--glass-rim),
-        inset 0 -1px 0 var(--glass-rim-soft),
-        inset 0 0 0 1px var(--glass-rim-soft);
-    background: linear-gradient(180deg, var(--glass-sheen) 0%, transparent 55%);
+        inset 0 -8px 14px -10px var(--glass-rim-soft),
+        inset 0 1px 0 var(--glass-rim-soft);
+}
+.glass-shine::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(180deg, var(--glass-rim) 0%, var(--glass-rim-soft) 30%, rgba(255, 255, 255, 0.05) 55%, var(--glass-rim-soft) 100%);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 /* Arama sonuclari: girdinin hemen altina acilir, kapsulle birlikte hareket eder. */
@@ -669,10 +785,14 @@
 
 @media (prefers-reduced-motion: reduce) {
     .topbar-shell,
+    .topbar-shell::after,
     .topbar-edge,
     .glass-surface {
         transition: none;
     }
+    .topbar-shell,
+    .topbar-neck,
+    .topbar-edge,
     .topbar-dropdown {
         animation: none;
     }
