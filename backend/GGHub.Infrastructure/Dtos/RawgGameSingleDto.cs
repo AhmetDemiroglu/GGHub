@@ -51,6 +51,9 @@ namespace GGHub.Infrastructure.Dtos
 
         [JsonPropertyName("stores")]
         public List<RawgStoreWrapperDto>? Stores { get; set; }
+
+        [JsonPropertyName("tags")]
+        public List<RawgTagDto>? Tags { get; set; }
     }
     public class RawgEsrbDto
     {

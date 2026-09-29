@@ -16,6 +16,7 @@ namespace GGHub.WebAPI.Controllers
         private readonly IDiscoverService _discoverService;
         private readonly IReviewService _reviewService;
         private readonly IAgendaService _agendaService;
+        private readonly ISimilarGamesService _similarGames;
         private readonly ILogger<GamesController> _logger;
 
         public GamesController(
@@ -23,12 +24,14 @@ namespace GGHub.WebAPI.Controllers
             IDiscoverService discoverService,
             IReviewService reviewService,
             IAgendaService agendaService,
+            ISimilarGamesService similarGames,
             ILogger<GamesController> logger)
         {
             _gameService = gameService;
             _discoverService = discoverService;
             _reviewService = reviewService;
             _agendaService = agendaService;
+            _similarGames = similarGames;
             _logger = logger;
         }
 
@@ -196,7 +199,7 @@ namespace GGHub.WebAPI.Controllers
         {
             try
             {
-                var result = await _gameService.GetSimilarGamesAsync(id);
+                var result = await _similarGames.GetSimilarGamesAsync(id);
                 return Ok(result);
             }
             catch (Exception ex)

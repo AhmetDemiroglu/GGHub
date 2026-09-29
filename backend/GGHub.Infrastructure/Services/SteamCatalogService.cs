@@ -1,4 +1,4 @@
-using GGHub.Application.Interfaces;
+﻿using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
 using GGHub.Infrastructure.Dtos;
 using GGHub.Infrastructure.Persistence;
@@ -446,7 +446,7 @@ namespace GGHub.Infrastructure.Services
 
             string? Serialize<T>(List<T> list) => list.Count > 0 ? System.Text.Json.JsonSerializer.Serialize(list) : null;
 
-            return new Game
+            var game = new Game
             {
                 RawgId = -appId,
                 SteamAppId = appId,
@@ -471,6 +471,8 @@ namespace GGHub.Infrastructure.Services
                 // appdetails'ten tam geldigi icin ayrica backfill gerekmez.
                 DetailSyncedAt = DateTime.UtcNow,
             };
+            GameTagWriter.Attach(game, GameTagWriter.SourceSteam, GameTagWriter.FromSteam(data.Categories));
+            return game;
         }
 
         /// <summary>

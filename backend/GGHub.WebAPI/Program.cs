@@ -129,6 +129,7 @@ builder.Services.AddOptions<ResendClientOptions>().Configure(options =>
 builder.Services.AddHttpClient<IResend, ResendClient>();
 
 builder.Services.AddScoped<IGameService, RawgGameService>();
+builder.Services.AddScoped<ISimilarGamesService, SimilarGamesService>();
 builder.Services.AddScoped<IDiscoverService, DiscoverService>();
 builder.Services.AddScoped<IAgendaService, AgendaService>();
 builder.Services.AddScoped<IAuthService, AuthService>();

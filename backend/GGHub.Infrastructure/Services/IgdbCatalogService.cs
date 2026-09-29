@@ -1,4 +1,4 @@
-using GGHub.Application.Interfaces;
+﻿using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
 using GGHub.Infrastructure.Dtos;
 using GGHub.Infrastructure.Persistence;
@@ -553,6 +553,72 @@ namespace GGHub.Infrastructure.Services
             }
 
             return result;
+        }
+
+        public async Task<int> SyncTagsAsync(int batchSize, CancellationToken ct = default)
+        {
+            if (!IsConfigured) return 0;
+
+            var now = DateTime.UtcNow;
+            var cutoff = now.AddDays(-_settings.TagRefreshDays);
+
+            // IX_Games_TagSyncQueue (partial, IgdbId IS NOT NULL) bu sorguyu karsiliyor.
+            // Populer once: kota/kesinti olursa en cok gezilen oyunlar etiketlenmis olur.
+            var queue = await _context.Games
+                .AsNoTracking()
+                .Where(g => g.IgdbId != null && (g.TagsSyncedAt == null || g.TagsSyncedAt < cutoff))
+                .OrderByDescending(g => g.RawgAdded ?? 0)
+                .Take(batchSize)
+                .Select(g => new { g.Id, IgdbId = g.IgdbId!.Value })
+                .ToListAsync(ct);
+
+            if (queue.Count == 0) return 0;
+
+            var processed = 0;
+            foreach (var chunk in queue.Chunk(_settings.PageSize))
+            {
+                ct.ThrowIfCancellationRequested();
+
+                var idList = string.Join(",", chunk.Select(x => x.IgdbId));
+                var dtos = await QueryGamesAsync(
+                    "fields id, themes.name, themes.slug, keywords.name, keywords.slug, game_modes.name, game_modes.slug, " +
+                    $"player_perspectives.name, player_perspectives.slug, similar_games; where id = ({idList}); limit {chunk.Length};", ct);
+
+                if (dtos == null)
+                {
+                    // 429 veya ag hatasi: kuyrugu yakmadan cik, sonraki kosuda ayni yerden devam eder.
+                    _logger.LogWarning("[IGDB-Tags] Toplu sorgu basarisiz; kosu kesildi ({Processed} islendi).", processed);
+                    break;
+                }
+
+                var byIgdbId = dtos.ToDictionary(d => d.Id);
+                var gameIds = chunk.Select(x => x.Id).ToList();
+                var rows = await _context.Games.Where(g => gameIds.Contains(g.Id)).ToListAsync(ct);
+                var tagsByGame = (await _context.GameTags.Where(t => gameIds.Contains(t.GameId)).ToListAsync(ct))
+                    .GroupBy(t => t.GameId)
+                    .ToDictionary(g => g.Key, g => g.ToList());
+
+                foreach (var row in rows)
+                {
+                    // Cevap gelmese de isaretle: IGDB'de silinmis kayit kuyrugu sonsuza dek tikamasin.
+                    row.TagsSyncedAt = now;
+                    if (!byIgdbId.TryGetValue(row.IgdbId!.Value, out var dto)) continue;
+
+                    GameTagWriter.Replace(_context, row.Id, GameTagWriter.SourceIgdb, GameTagWriter.FromIgdb(dto),
+                        tagsByGame.GetValueOrDefault(row.Id) ?? new List<GameTag>());
+                    row.IgdbSimilarJson = System.Text.Json.JsonSerializer.Serialize((dto.SimilarGames ?? new List<int>()).Take(20));
+                }
+
+                await _context.SaveChangesAsync(ct);
+                // 500 oyun x onlarca etiket: izleyiciyi bosaltmazsak sonraki parti yavaslar ve bellek sisar.
+                _context.ChangeTracker.Clear();
+                processed += rows.Count;
+
+                await Task.Delay(_settings.DelayBetweenRequestsMs, ct);
+            }
+
+            _logger.LogInformation("[IGDB-Tags] {Count} oyunun etiketleri ve benzer listesi yazildi.", processed);
+            return processed;
         }
 
         public async Task<int> RepairShiftedReleaseDatesAsync(int batchSize, CancellationToken ct = default)

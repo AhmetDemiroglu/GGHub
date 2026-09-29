@@ -1,4 +1,4 @@
-using GGHub.Core.Entities;
+﻿using GGHub.Core.Entities;
 using GGHub.Infrastructure.Dtos;
 using GGHub.Infrastructure.Persistence;
 using GGHub.Infrastructure.Settings;
@@ -173,6 +173,14 @@ namespace GGHub.Infrastructure.Services
                     dirty = true;
                 }
 
+                // Liste ucu etiketleri de tasiyor; RAWG etiketi olmayan satirlar buradan kazanir.
+                // Replace idempotent: etiketler aynıysa izleyicide degisiklik olusmaz.
+                if (dto.Tags?.Count > 0)
+                {
+                    await GameTagWriter.ReplaceAsync(context, existing.Id, GameTagWriter.SourceRawg, GameTagWriter.FromRawg(dto.Tags), ct);
+                    dirty = dirty || context.ChangeTracker.HasChanges();
+                }
+
                 if (!dirty) return UpsertOutcome.Skipped;
                 await context.SaveChangesAsync(ct);
                 return UpsertOutcome.Updated;
@@ -214,6 +222,7 @@ namespace GGHub.Infrastructure.Services
                 PlatformsJson = platforms != null ? JsonSerializer.Serialize(platforms) : null,
                 GenresJson = genres != null ? JsonSerializer.Serialize(genres) : null,
             };
+            GameTagWriter.Attach(newGame, GameTagWriter.SourceRawg, GameTagWriter.FromRawg(dto.Tags));
 
             try
             {

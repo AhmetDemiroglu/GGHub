@@ -126,5 +126,20 @@
         /// yazsaydi butun metacritic kuyrugu bozulurdu.
         /// </summary>
         public DateTime? DetailSyncedAt { get; set; }
+
+        /// <summary>
+        /// IGDB'nin bu oyun icin verdigi "similar_games" id listesi (JSON int dizisi, IGDB id'leri).
+        /// Kuratorlu bir benzerlik sinyali; benzer oyunlar algoritmasinda en guclu tekil kanit.
+        /// GameTagSyncJob doldurur. Bos dizi de bir cevaptir (IGDB'nin listesi yok).
+        /// </summary>
+        public string? IgdbSimilarJson { get; set; }
+
+        /// <summary>
+        /// Etiketlerin (GameTags) ve IgdbSimilarJson'in IGDB'den en son ne zaman cekildigi.
+        /// GameTagSyncJob kuyrugu: IgdbId dolu ve bu alan bos (veya eski) olan satirlar.
+        /// </summary>
+        public DateTime? TagsSyncedAt { get; set; }
+
+        public ICollection<GameTag> Tags { get; set; } = new List<GameTag>();
     }
 }

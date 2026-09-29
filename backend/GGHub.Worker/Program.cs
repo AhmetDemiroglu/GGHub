@@ -1,4 +1,4 @@
-using GGHub.Application.Interfaces;
+﻿using GGHub.Application.Interfaces;
 using GGHub.Infrastructure.Persistence;
 using GGHub.Infrastructure.Services;
 using GGHub.Infrastructure.Settings;
@@ -102,6 +102,7 @@ builder.Services.AddHostedService<SteamNewReleasesSyncJob>();
 builder.Services.AddHostedService<RawgUpcomingSyncJob>();
 builder.Services.AddHostedService<IgdbSyncJob>();
 builder.Services.AddHostedService<IgdbEnrichJob>();
+builder.Services.AddHostedService<GameTagSyncJob>();
 builder.Services.AddHostedService<CatalogDedupeJob>();
 builder.Services.AddHostedService<TrendScoreJob>();
 builder.Services.AddHostedService<HypeScoreJob>();

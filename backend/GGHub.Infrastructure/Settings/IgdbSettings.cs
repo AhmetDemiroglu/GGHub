@@ -1,4 +1,4 @@
-namespace GGHub.Infrastructure.Settings
+﻿namespace GGHub.Infrastructure.Settings
 {
     /// <summary>
     /// IGDB (Twitch) katalog ayarlari. Steam yalnizca PC'yi kapsiyor; konsol ozel yapimlar
@@ -54,5 +54,14 @@ namespace GGHub.Infrastructure.Settings
         /// kuyruk populerlige gore siralandigindan degerli oyunlar ilk gunlerde biter.
         /// </summary>
         public int EnrichBatchSize { get; set; } = 300;
+
+        /// <summary>
+        /// GameTagSyncJob kosu basi oyun sayisi. Id ile toplu sorgu 500 oyun/istek tasidigi icin
+        /// 2000 oyun = 4 istek; ilk dolum (IGDB'ye bagli tum katalog) dakikalar icinde biter.
+        /// </summary>
+        public int TagSyncBatchSize { get; set; } = 2000;
+
+        /// <summary>Etiketler ve benzer oyun listesi kac gunde bir tazelensin.</summary>
+        public int TagRefreshDays { get; set; } = 60;
     }
 }

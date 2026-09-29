@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 
 namespace GGHub.Infrastructure.Dtos
 {
@@ -74,6 +74,10 @@ namespace GGHub.Infrastructure.Dtos
 
         [JsonPropertyName("genres")]
         public List<SteamGenreDto>? Genres { get; set; }
+
+        /// <summary>"Single-player", "Co-op", "PvP", "Steam Achievements"... (magaza kategorileri, etiket olarak yazilir).</summary>
+        [JsonPropertyName("categories")]
+        public List<SteamGenreDto>? Categories { get; set; }
 
         [JsonPropertyName("screenshots")]
         public List<SteamScreenshotDto>? Screenshots { get; set; }

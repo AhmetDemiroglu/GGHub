@@ -14,6 +14,7 @@ namespace GGHub.Infrastructure.Persistence
         {
         }
         public DbSet<Game> Games { get; set; }
+        public DbSet<GameTag> GameTags { get; set; }
         public DbSet<User> Users { get; set; }
         public DbSet<Review> Reviews { get; set; }
         public DbSet<ReviewVote> ReviewVotes { get; set; }
@@ -321,6 +322,32 @@ namespace GGHub.Infrastructure.Persistence
                 .HasIndex(g => new { g.DetailSyncedAt, g.RawgAdded })
                 .HasFilter("\"DetailSyncedAt\" IS NULL")
                 .HasDatabaseName("IX_Games_DetailBackfillQueue");
+
+            // GameTagSyncJob kuyrugu: IGDB'ye bagli ama etiketi hic cekilmemis (veya eski) satirlar.
+            // Partial: IgdbId olmayan satirlar (katalogun buyuk kismi) index'e girmez.
+            modelBuilder.Entity<Game>()
+                .HasIndex(g => new { g.TagsSyncedAt, g.RawgAdded })
+                .HasFilter("\"IgdbId\" IS NOT NULL")
+                .HasDatabaseName("IX_Games_TagSyncQueue");
+
+            // GameTag: oyun basina slug tekil (iki kaynak ayni etiketi verirse tek satir).
+            // Slug index'i benzer oyunlar aday sorgusunun ("bu etiketleri tasiyan oyunlar")
+            // ve etiket yayginligi (IDF) hesabinin dayanagi.
+            modelBuilder.Entity<GameTag>(entity =>
+            {
+                entity.Property(t => t.Slug).HasMaxLength(120).IsRequired();
+                entity.Property(t => t.Name).HasMaxLength(160).IsRequired();
+                entity.Property(t => t.Source).HasMaxLength(16).IsRequired();
+                entity.HasOne(t => t.Game)
+                    .WithMany(g => g.Tags)
+                    .HasForeignKey(t => t.GameId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasIndex(t => new { t.GameId, t.Slug })
+                    .IsUnique()
+                    .HasDatabaseName("IX_GameTags_GameId_Slug");
+                entity.HasIndex(t => t.Slug)
+                    .HasDatabaseName("IX_GameTags_Slug");
+            });
 
             // GeminiUsage: (gun, kaynak, model) satir kimligi. Unique index ON CONFLICT upsert'inin dayanagi.
             // Kaynak ve model sonradan geldi (AI botlari, Eyl 2026): her kaynagin kendi TL tavani var

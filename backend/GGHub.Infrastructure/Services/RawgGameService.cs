@@ -167,6 +167,8 @@ namespace GGHub.Infrastructure.Services
                     gameInDb.EsrbRating = dto.EsrbRating?.Name;
 
                     _context.Games.Update(gameInDb);
+                    if (dto.Tags != null)
+                        await GameTagWriter.ReplaceAsync(_context, gameInDb.Id, GameTagWriter.SourceRawg, GameTagWriter.FromRawg(dto.Tags));
                 }
                 else
                 {
@@ -191,6 +193,7 @@ namespace GGHub.Infrastructure.Services
                         WebsiteUrl = dto.Website,
                         EsrbRating = dto.EsrbRating?.Name
                     };
+                    GameTagWriter.Attach(newGame, GameTagWriter.SourceRawg, GameTagWriter.FromRawg(dto.Tags));
                     await _context.Games.AddAsync(newGame);
                     gameInDb = newGame;
                 }
@@ -452,11 +455,16 @@ namespace GGHub.Infrastructure.Services
                         gameInDb.Metacritic = SanitizeMetacritic(fullDto.Metacritic, fullDto.Released);
                     else if (IsFutureRelease(fullDto.Released))
                         gameInDb.Metacritic = null;
+
+                    if (fullDto.Tags != null)
+                        await GameTagWriter.ReplaceAsync(_context, gameInDb.Id, GameTagWriter.SourceRawg, GameTagWriter.FromRawg(fullDto.Tags));
                 }
                 else if (rawgDto != null && string.IsNullOrEmpty(gameInDb.GenresJson))
                 {
                     gameInDb.GenresJson = SerializeIfNotNull(rawgDto.Genres?.Select(g => new { g.Name, g.Slug }).ToList());
                     gameInDb.PlatformsJson = SerializeIfNotNull(rawgDto.Platforms?.Select(p => new { p.Platform.Name, p.Platform.Slug }).ToList());
+                    if (rawgDto.Tags != null)
+                        await GameTagWriter.ReplaceAsync(_context, gameInDb.Id, GameTagWriter.SourceRawg, GameTagWriter.FromRawg(rawgDto.Tags));
 
                     if (gameInDb.Metacritic == null)
                         gameInDb.Metacritic = SanitizeMetacritic(rawgDto.Metacritic, rawgDto.Released);
@@ -496,6 +504,7 @@ namespace GGHub.Infrastructure.Services
                 newGame.StoresJson = SerializeIfNotNull(fullDto.Stores?.Select(s => new { StoreName = s.Store.Name, Domain = s.Store.Domain, Url = s.Url }).ToList());
 
                 newGame.Metacritic = SanitizeMetacritic(fullDto.Metacritic, fullDto.Released);
+                GameTagWriter.Attach(newGame, GameTagWriter.SourceRawg, GameTagWriter.FromRawg(fullDto.Tags));
             }
             else if (rawgDto != null)
             {
@@ -509,6 +518,7 @@ namespace GGHub.Infrastructure.Services
                 newGame.PlatformsJson = SerializeIfNotNull(rawgDto.Platforms?.Select(p => new { p.Platform.Name, p.Platform.Slug }).ToList());
 
                 newGame.Metacritic = SanitizeMetacritic(rawgDto.Metacritic, rawgDto.Released);
+                GameTagWriter.Attach(newGame, GameTagWriter.SourceRawg, GameTagWriter.FromRawg(rawgDto.Tags));
             }
 
             try
@@ -567,124 +577,6 @@ namespace GGHub.Infrastructure.Services
             await _context.SaveChangesAsync();
 
             return translatedText;
-        }
-
-        /// <summary>
-        /// Benzer oyunlar, tamamen yerel DB'den. Eski surum RAWG'in tur listesine canli
-        /// gidiyordu ve DB fallback'i olmadigi icin RAWG coktugunde bu uc da dusuyordu.
-        /// DB'deki kalite-filtreli katalog ayni isi gorur: kaynak oyunun ilk turune gore
-        /// en yuksek puanli 10 oyun. Sonuc 6 saat cache'lenir.
-        /// </summary>
-        public async Task<List<GameDto>> GetSimilarGamesAsync(int rawgGameId)
-        {
-            var cacheKey = $"similar-games:{rawgGameId}";
-            if (_cache.TryGetValue(cacheKey, out List<GameDto>? cached) && cached != null)
-            {
-                return cached;
-            }
-
-            var sourceGame = await _context.Games
-                .AsNoTracking()
-                .Where(g => g.RawgId == rawgGameId)
-                .Select(g => new { g.Id, g.RawgId, g.Name, g.GenresJson, g.PlatformsJson, g.Released, g.Metacritic })
-                .FirstOrDefaultAsync();
-
-            if (sourceGame == null)
-            {
-                return new List<GameDto>();
-            }
-
-            var genres = DeserializeGenres(sourceGame.GenresJson);
-            var genreSlugs = genres.Select(g => g.Slug).Where(s => !string.IsNullOrEmpty(s)).Take(3).ToList();
-            var platformSlugs = DeserializePlatforms(sourceGame.PlatformsJson)
-                .Select(p => p.Slug).Where(s => !string.IsNullOrEmpty(s)).Take(3).ToList();
-            var sourceYear = sourceGame.Released != null && sourceGame.Released.Length >= 4
-                && int.TryParse(sourceGame.Released[..4], out var sy) ? sy : (int?)null;
-
-            var query = _context.Games
-                .AsNoTracking()
-                .Where(g => g.RawgId != rawgGameId
-                    && g.Id != sourceGame.Id
-                    && g.BackgroundImage != null
-                    // Kalite kapisi: dort kaynaktan biri yeterli (IGDB puani da sayilir,
-                    // boylece Metacritic'i olmayan ama IGDB'de begenilen oyunlar da onerilebilir).
-                    && (g.Metacritic >= 60 || g.Rating >= 3.5 || g.IgdbRating >= 70));
-
-            if (genreSlugs.Count > 0)
-            {
-                // En az bir tur ortak olmali (eskiden yalnizca ILK tur kullaniliyordu, bu da
-                // "Action" gibi genis bir turde alakasiz onerilere yol aciyordu).
-                var primary = genreSlugs[0];
-                query = query.Where(g => g.GenresJson != null && EF.Functions.Like(g.GenresJson, $"%\"Slug\":\"{primary}\"%"));
-            }
-            else
-            {
-                var startDate = DateTime.UtcNow.AddYears(-2).ToString("yyyy-MM-dd");
-                query = query.Where(g => g.Released != null && string.Compare(g.Released, startDate) >= 0);
-            }
-
-            // Aday havuzu genis tutulup skorlama BELLEKTE yapiliyor: tur ortakligi, platform
-            // ortakligi ve donem yakinligi SQL'de ifade edilemeyecek kadar karisik.
-            var candidates = await query
-                .OrderByDescending(g => g.Metacritic ?? 0)
-                .ThenByDescending(g => g.IgdbRating ?? 0)
-                .ThenByDescending(g => g.Rating ?? 0)
-                .Take(60)
-                .Select(g => new
-                {
-                    g.Id, g.RawgId, g.Name, g.Slug, g.Released,
-                    g.BackgroundImage, g.Rating, g.Metacritic,
-                    g.AverageRating, g.RatingCount, g.IgdbRating, g.IgdbRatingCount,
-                    g.GenresJson, g.PlatformsJson,
-                })
-                .ToListAsync();
-
-            var sourceKey = GameTitleMatcher.Normalize(sourceGame.Name);
-
-            var similar = candidates
-                // Ayni oyunun surumleri/kopyalari oneri olarak gosterilmemeli.
-                .Where(g => GameTitleMatcher.Normalize(g.Name) != sourceKey)
-                .Select(g =>
-                {
-                    var gGenres = DeserializeGenres(g.GenresJson).Select(x => x.Slug).ToList();
-                    var gPlatforms = DeserializePlatforms(g.PlatformsJson).Select(x => x.Slug).ToList();
-                    var gYear = g.Released != null && g.Released.Length >= 4
-                        && int.TryParse(g.Released[..4], out var gy) ? gy : (int?)null;
-
-                    var score = 0.0;
-                    score += genreSlugs.Count(s => gGenres.Contains(s)) * 30;          // tur ortakligi
-                    score += platformSlugs.Count(s => gPlatforms.Contains(s)) * 8;     // platform ortakligi
-                    score += (g.Metacritic ?? 0) * 0.5;
-                    score += (g.IgdbRating ?? 0) * 0.4;
-                    score += (g.Rating ?? 0) * 6;
-                    if (sourceYear != null && gYear != null)
-                        score += Math.Max(0, 20 - Math.Abs(sourceYear.Value - gYear.Value) * 2); // donem yakinligi
-
-                    return new { Game = g, Score = score };
-                })
-                .OrderByDescending(x => x.Score)
-                .Take(10)
-                .Select(x => x.Game)
-                .ToList();
-
-            var result = similar.Select(g => new GameDto
-            {
-                Id = g.Id,
-                RawgId = g.RawgId,
-                Name = g.Name,
-                Slug = g.Slug,
-                Released = g.Released,
-                BackgroundImage = g.BackgroundImage,
-                Rating = g.Rating,
-                Metacritic = g.Metacritic,
-                GghubRating = g.AverageRating,
-                GghubRatingCount = g.RatingCount,
-                IgdbRating = g.IgdbRating,
-                IgdbRatingCount = g.IgdbRatingCount
-            }).ToList();
-
-            _cache.Set(cacheKey, result, TimeSpan.FromHours(6));
-            return result;
         }
 
         /// <summary>

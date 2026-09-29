@@ -1,4 +1,4 @@
-namespace GGHub.Application.Interfaces
+﻿namespace GGHub.Application.Interfaces
 {
     /// <summary>
     /// IGDB (Twitch) tabanli katalog senkronu. Steam yalnizca PC'yi kapsadigi ve RAWG
@@ -72,5 +72,12 @@ namespace GGHub.Application.Interfaces
         /// Duzeltilen kayit sayisini dondurur.
         /// </summary>
         Task<int> RepairShiftedReleaseDatesAsync(int batchSize, CancellationToken ct = default);
+
+        /// <summary>
+        /// IGDB'ye bagli oyunlarin etiketlerini (tema, mod, bakis acisi, anahtar kelime) ve
+        /// IGDB'nin "benzer oyunlar" listesini ceker; GameTags + Game.IgdbSimilarJson yazar.
+        /// Id ile toplu sorgu (500 oyun/istek) oldugu icin ucuzdur. Islenen oyun sayisini dondurur.
+        /// </summary>
+        Task<int> SyncTagsAsync(int batchSize, CancellationToken ct = default);
     }
 }

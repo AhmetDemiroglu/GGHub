@@ -1,4 +1,4 @@
-using GGHub.Infrastructure.Dtos;
+﻿using GGHub.Infrastructure.Dtos;
 using GGHub.Infrastructure.Persistence;
 using GGHub.Infrastructure.Settings;
 using Microsoft.EntityFrameworkCore;
@@ -240,6 +240,8 @@ namespace GGHub.Infrastructure.Services
                 }
 
                 var hasDescription = ApplyDetail(context, game, dto);
+                if (dto.Tags != null)
+                    await GameTagWriter.ReplaceAsync(context, game.Id, GameTagWriter.SourceRawg, GameTagWriter.FromRawg(dto.Tags), ct);
                 await context.SaveChangesAsync(ct);
 
                 return hasDescription ? Outcome.AppliedWithDescription : Outcome.Applied;

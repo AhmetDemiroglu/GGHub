@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 
 namespace GGHub.Infrastructure.Dtos
 {
@@ -102,6 +102,28 @@ namespace GGHub.Infrastructure.Dtos
 
         [JsonPropertyName("parent_game")]
         public IgdbGameDto? ParentGame { get; set; }
+
+        // --- Etiket alanlari (GameTagSyncJob). Tur disindaki yapisal siniflandirma. ---
+
+        /// <summary>Tema: "Fantasy", "Horror", "Open world", "Stealth"... (IGDB'de ~20 deger).</summary>
+        [JsonPropertyName("themes")]
+        public List<IgdbNamedDto>? Themes { get; set; }
+
+        /// <summary>Serbest anahtar kelimeler: "souls-like", "roguelike", "dark fantasy"... (gurultulu, IDF ile tartilir).</summary>
+        [JsonPropertyName("keywords")]
+        public List<IgdbNamedDto>? Keywords { get; set; }
+
+        /// <summary>"Single player", "Multiplayer", "Co-operative", "Battle Royale", "MMO"...</summary>
+        [JsonPropertyName("game_modes")]
+        public List<IgdbNamedDto>? GameModes { get; set; }
+
+        /// <summary>"First person", "Third person", "Isometric", "Side view", "Virtual Reality"...</summary>
+        [JsonPropertyName("player_perspectives")]
+        public List<IgdbNamedDto>? PlayerPerspectives { get; set; }
+
+        /// <summary>IGDB'nin kendi benzer oyun listesi (IGDB id'leri, genisletilmemis).</summary>
+        [JsonPropertyName("similar_games")]
+        public List<int>? SimilarGames { get; set; }
     }
 
     /// <summary>

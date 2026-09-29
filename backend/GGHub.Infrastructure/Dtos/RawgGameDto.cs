@@ -49,5 +49,8 @@ namespace GGHub.Infrastructure.Dtos
 
         [JsonPropertyName("tba")]
         public bool Tba { get; set; }
+
+        [JsonPropertyName("tags")]
+        public List<RawgTagDto>? Tags { get; set; }
     }
 }
