@@ -8,6 +8,7 @@ using GGHub.WebAPI.Filters;
 using GGHub.WebAPI.Hubs;
 using GGHub.WebAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -278,20 +279,57 @@ builder.Services.AddAuthorization(options =>
 options.AddPolicy("Admin", policy => policy.RequireRole("Admin"));
 });
 
+// Railway TLS'i kendi proxy'sinde sonlandirip container'a duz HTTP ile gelir; gercek istemci
+// IP'si ve semasi X-Forwarded-* basliklarinda tasinir. Bu ayar olmadan RemoteIpAddress herkes
+// icin proxy'nin IP'siydi (IP bazli rate limit tek kovaya cokuyordu, asagidaki notlar). Known*
+// listeleri bilerek bos: Railway'de container'a proxy disinda erisim yok, ForwardedForHeaderLimit
+// varsayilani (1) ise yalnizca proxy'nin EKLEDIGI en sagdaki degeri okur, istemcinin kendi
+// yazdigi sahte X-Forwarded-For degerleri dikkate alinmaz.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
+static string ClientIpPartition(HttpContext httpContext) =>
+    httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
 builder.Services.AddRateLimiter(options =>
 {
-    options.AddFixedWindowLimiter(policyName: "LoginPolicy", opt =>
-    {
-        opt.PermitLimit = 30;
-        opt.Window = TimeSpan.FromMinutes(1);
-        opt.QueueLimit = 0;
-    });
+    // Kimlik uclari (login/register/sifre): IP basina 30/dk.
+    // ONCEKI HALI HATALIYDI: AddFixedWindowLimiter GLOBAL tek kovadir; tum kullanicilarin
+    // login + register + refresh istekleri ayni 30'u paylasiyordu. Trafik artinca /auth/refresh
+    // 429 aliyor, web istemcisi bunu oturum reddi sanip kullaniciyi cikisa atiyordu
+    // (mobil 429'u gecici hata saydigi icin orada gorunmuyordu). IP artik guvenilir cunku
+    // UseForwardedHeaders Railway'in X-Forwarded-For'unu isliyor.
+    options.AddPolicy("LoginPolicy", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: ClientIpPartition(httpContext),
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+
+    // Token yenileme ayri kova: 64 baytlik rastgele token kaba kuvvetle bulunamaz, limit
+    // yalnizca kotuye kullanim freni. Paylasimli NAT (ofis, okul) arkasindaki onlarca
+    // oturum ayni IP'den yenilenir; 120/dk onlara bol pay birakir.
+    options.AddPolicy("RefreshPolicy", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: ClientIpPartition(httpContext),
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 120,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
 
     // Ceviri ucu Gemini'ye para harcatan tek public yol. Aylik butce tavani zarari sinirliyor,
     // ama tavani yakan biri mesru cevirileri de durdurur; o yuzden kullanici basina sert limit.
-    // Partition anahtari kullanici kimligi: Railway proxy'si arkasinda RemoteIpAddress herkes icin
-    // ayni cikardi (ForwardedHeaders yapilandirilmis degil) ve IP basina limit tek kovaya coker.
-    // Uc zaten [Authorize] oldugu icin kimlik her zaman var.
+    // Partition anahtari kullanici kimligi: uc zaten [Authorize], kimlik her zaman var ve
+    // kullanici basina tavan IP'den daha adil (ayni NAT arkasindaki iki kisi birbirini yakmaz).
     options.AddPolicy("TranslatePolicy", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "anonymous",
@@ -303,10 +341,10 @@ builder.Services.AddRateLimiter(options =>
             }));
 
     // /download-app telemetri girisi anonim; kotuye kullanimi sinirlamak gerek.
-    // Partition anahtari proxy'nin ilettigi ziyaretci hash'i, IP DEGIL: yukaridaki
-    // yorumda anlatildigi gibi Railway arkasinda RemoteIpAddress herkes icin ayni
-    // cikar ve IP basina limit tek kovaya coker. Gercek bir ziyaret en fazla 3 olay
-    // gonderir; 60 limiti paylasimli NAT'a bol pay birakir.
+    // Partition anahtari proxy'nin ilettigi ziyaretci hash'i (IP + UA + gun), IP DEGIL:
+    // istek Next.js proxy'sinden gelir, yani buradaki RemoteIpAddress Vercel'in IP'sidir;
+    // gercek ziyaretciyi yalniz proxy gorur ve hash olarak iletir. Gercek bir ziyaret en
+    // fazla 3 olay gonderir; 60 limiti paylasimli NAT'a bol pay birakir.
     // Site geneli telemetri: bir gezinti sayfa basina 2 olay (goruntuleme + ayrilma) + etkilesimler
     // uretir; 5 dakikada 240, hizli gezen gercek bir kullaniciya bol pay birakir.
     options.AddPolicy("SiteTrackPolicy", httpContext =>
@@ -371,9 +409,13 @@ builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
 {
     options.Level = CompressionLevel.Fastest;
 });
+// Fastest, SmallestSize DEGIL: sikistirma her yanit icin CPU harcar ve Railway container'inin
+// paylasimli cekirdeginde SmallestSize bir JSON yanitini 5-10 kat daha uzun sikistirir; kazanc
+// birkac yuzde bayt. Tarayicilar zaten Brotli'yi tercih eder; gzip'i sunucu tarafi fetch
+// (Vercel SSR) ve eski istemciler kullanir, orada da gecikme boyuttan daha kritik.
 builder.Services.Configure<GzipCompressionProviderOptions>(options =>
 {
-    options.Level = CompressionLevel.SmallestSize;
+    options.Level = CompressionLevel.Fastest;
 });
 
 builder.Services.AddMemoryCache();
@@ -492,6 +534,9 @@ if (app.Environment.IsProduction())
         await UsernameNormalizationSeeder.SeedAsync(context, seederLogger, auditService);
     }
 }
+
+// Ilk middleware olmali: sonraki her sey (rate limit, log, HSTS) gercek istemci IP'sini gormeli.
+app.UseForwardedHeaders();
 
 app.UseSerilogRequestLogging();
 

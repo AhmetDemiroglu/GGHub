@@ -222,29 +222,41 @@ namespace GGHub.Infrastructure.Services
             }) ?? new SiteStatsDto();
 
             // Bot sayisi izleyicinin arayuz dilindeki acik botlar (AI Kulubu ve akisla ayni kume);
-            // onbellekteki nesne diller arasinda paylasildigi icin kopyalanir, sayi onbelleksiz (ucuz).
+            // onbellekteki nesne diller arasinda paylasildigi icin kopyalanir. Sayi dil basina
+            // 5 dk onbellekte: ucuz bir sorgu ama ana sayfanin her acilisinda kosuyordu ve
+            // bot listesi gunde birkac kez degisir.
             var viewerLang = AiLanguage.Viewer();
+            var totalAiAgents = await _cache.GetOrCreateAsync($"site-stats-ai-agents:{viewerLang}", async entry =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5);
+                return await _context.AiAgentProfiles.CountAsync(p =>
+                    p.IsEnabled && p.Language == viewerLang && !p.User.IsDeleted && !p.User.IsBanned);
+            });
             viewModel.SiteStats = new SiteStatsDto
             {
                 TotalGames = siteStats.TotalGames,
                 TotalUsers = siteStats.TotalUsers,
                 TotalReviews = siteStats.TotalReviews,
                 TotalLists = siteStats.TotalLists,
-                TotalAiAgents = await _context.AiAgentProfiles.CountAsync(p =>
-                    p.IsEnabled && p.Language == viewerLang && !p.User.IsDeleted && !p.User.IsBanned)
+                TotalAiAgents = totalAiAgents
             };
 
             return viewModel;
         }
 
+        /// <summary>
+        /// Istenen dilde aciklama yoksa DIGER dile duser. Onceki hali Turkce isteyen icin
+        /// DescriptionTr bossa null donuyordu; web hero'su da bu bosluklari doldurmak icin her
+        /// oyun basina /games/{slug} cagiriyordu (5 slayt = 5 istek, hepsi ayni satiri okuyup
+        /// yine null buluyordu). Cevirisi olmayan oyunda Ingilizce metin, bos slayttan iyidir.
+        /// </summary>
         private static string? ResolveDescription(string? descriptionEn, string? descriptionTr, bool preferTurkish)
         {
-            if (preferTurkish)
-            {
-                return !string.IsNullOrWhiteSpace(descriptionTr) ? descriptionTr : null;
-            }
+            var primary = preferTurkish ? descriptionTr : descriptionEn;
+            var fallback = preferTurkish ? descriptionEn : descriptionTr;
 
-            return !string.IsNullOrWhiteSpace(descriptionEn) ? descriptionEn : null;
+            if (!string.IsNullOrWhiteSpace(primary)) return primary;
+            return !string.IsNullOrWhiteSpace(fallback) ? fallback : null;
         }
     }
 }

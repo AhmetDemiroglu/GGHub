@@ -14,6 +14,14 @@ import { AppLocale } from "@/i18n/config";
  */
 const REVALIDATE_SECONDS = 300;
 
+/**
+ * Sunucu tarafi fetch'in ust siniri. Onceden sinir YOKTU: API soguk ya da yavassa Vercel
+ * fonksiyonu cevabi bekliyor, loading iskeleti (ya da /tr'de bos sayfa) o kadar suruyordu.
+ * Sure dolunca null doner, HomeView istemcide kendi istegini yapar; sayfa en gec 5 sn'de
+ * iskeletten cikar. Data Cache dolu oldugunda bu yol hic islemez.
+ */
+const SERVER_FETCH_TIMEOUT_MS = 5000;
+
 export async function getHomeContentServer(locale: AppLocale): Promise<HomeContent | null> {
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
     if (!baseUrl) return null;
@@ -22,6 +30,7 @@ export async function getHomeContentServer(locale: AppLocale): Promise<HomeConte
         const response = await fetch(`${baseUrl}/api/home/content`, {
             headers: { "Accept-Language": locale },
             next: { revalidate: REVALIDATE_SECONDS, tags: [`home-content-${locale}`] },
+            signal: AbortSignal.timeout(SERVER_FETCH_TIMEOUT_MS),
         });
 
         if (!response.ok) return null;

@@ -1,4 +1,6 @@
 using GGHub.Application.Interfaces;
+using GGHub.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -71,6 +73,17 @@ namespace GGHub.Infrastructure.Services
                     var siteDeleted = await siteService.PurgeOlderThanAsync(siteCutoff, BatchSize, stoppingToken);
                     if (siteDeleted > 0)
                         _logger.LogInformation("site-analytics retention: {Deleted} satir silindi ({Days} gun oncesi)", siteDeleted, siteRetentionDays);
+
+                    // Suresi dolmus ya da iptal edilmis refresh token'lar. Yenileme bunlari bir daha
+                    // kabul etmez; tabloda kalmalarinin tek etkisi Token aramasini (her yenilemede)
+                    // yavaslatmakti. 7 gunluk pay denetim/geri izleme icin.
+                    var db = scope.ServiceProvider.GetRequiredService<GGHubDbContext>();
+                    var tokenCutoff = DateTime.UtcNow.AddDays(-7);
+                    var tokensDeleted = await db.RefreshTokens
+                        .Where(rt => (rt.RevokedAt != null && rt.RevokedAt < tokenCutoff) || rt.ExpiresAt < tokenCutoff)
+                        .ExecuteDeleteAsync(stoppingToken);
+                    if (tokensDeleted > 0)
+                        _logger.LogInformation("refresh-token retention: {Deleted} satir silindi", tokensDeleted);
                 }
                 catch (OperationCanceledException)
                 {

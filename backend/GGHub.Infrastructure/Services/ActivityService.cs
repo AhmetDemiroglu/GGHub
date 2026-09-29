@@ -278,17 +278,19 @@ namespace GGHub.Infrastructure.Services
         }
 
         /// <summary>
-        /// Takip edilmeyen AI botlarinin herkese acik kok gonderileri. Botlar herkese acik yasar;
-        /// kimse onlari takip etmese de akista gorunmeleri gerekir (29 Eyl 2026, Ahmet). Dolgu yalniz
-        /// izleyicinin arayuz dilindeki botlardan gelir (Ingilizce arayuze Turkce bot sohbeti dusmez).
-        /// Takip edilen botlar bu kuralin disinda: onlar normal takip akisindan gelir.
+        /// Takip edilmeyen AI botlarinin herkese acik kok gonderileri (yalniz KIMLIK). Botlar herkese
+        /// acik yasar; kimse onlari takip etmese de akista gorunmeleri gerekir (29 Eyl 2026, Ahmet).
+        /// Dolgu yalniz izleyicinin arayuz dilindeki botlardan gelir (Ingilizce arayuze Turkce bot
+        /// sohbeti dusmez). Takip edilen botlar bu kuralin disinda: onlar normal takip akisindan gelir.
+        /// Ikinci donus elemani dolguya giren bot kimlikleri: Kesfet bunlari zevk/ortak takip/trend
+        /// kaynaklarindan dislar ki ayni bot iki kaynaktan gelmesin.
         /// </summary>
-        private async Task<List<(ActivityDto Dto, int Engagement)>> BuildAgentPostCandidatesAsync(
+        private async Task<(List<int> PostIds, List<int> AgentIds)> QueryAgentPostCandidateIdsAsync(
             int currentUserId, ICollection<int> exclude, int limit, DateTime? cursor)
         {
             var agentIds = (await _aiDirectory.GetAgentIdsAsync(AiLanguage.Viewer())).Where(id => !exclude.Contains(id)).ToList();
-            if (agentIds.Count == 0) return new List<(ActivityDto, int)>();
-            return await BuildPostCandidatesAsync(currentUserId, agentIds, limit, cursor);
+            if (agentIds.Count == 0) return (new List<int>(), agentIds);
+            return (await QueryPostCandidateIdsAsync(currentUserId, agentIds, limit, cursor), agentIds);
         }
 
         /// <summary>Izleyicinin arayuz dili disindaki botlar (AiLanguage.Viewer).</summary>
@@ -351,19 +353,17 @@ namespace GGHub.Infrastructure.Services
             int currentUserId, int limit, DateTime? cursor)
         {
             var (followingIds, blockedSet, mutualIds) = await LoadSocialGraphAsync(currentUserId);
-            var candidates = await BuildPostCandidatesAsync(currentUserId, followingIds, limit, cursor);
+            var postIds = await QueryPostCandidateIdsAsync(currentUserId, followingIds, limit, cursor);
 
             // Takip akisi sayfayi dolduramiyorsa herkese acik bot gonderileriyle tamamlanir:
             // kimseyi takip etmeyen ya da sessiz bir ag, bos akis yerine botlarin sohbetini gorur.
-            if (candidates.Count < limit)
+            if (postIds.Count < limit)
             {
-                var seen = candidates.Select(c => ActivityKey(c.Dto)).ToHashSet();
-                foreach (var c in await BuildAgentPostCandidatesAsync(currentUserId, followingIds, limit, cursor))
-                {
-                    if (seen.Add(ActivityKey(c.Dto))) candidates.Add(c);
-                }
+                var (agentPostIds, _) = await QueryAgentPostCandidateIdsAsync(currentUserId, followingIds, limit, cursor);
+                postIds = postIds.Union(agentPostIds).ToList();
             }
 
+            var candidates = (await HydratePostCandidatesAsync(postIds, currentUserId)).Values.ToList();
             return await FinalizeAsync(candidates, currentUserId, limit, mutualIds, null);
         }
 
@@ -375,6 +375,13 @@ namespace GGHub.Infrastructure.Services
         /// Maliyet kontrolu: her aday sorgusunda sabit Take var, zevk kumesi
         /// TasteGameCap ile kirpiliyor. Istek basina sorgu sayisi gonderi
         /// sayisindan BAGIMSIZ.
+        ///
+        /// SORGU BUTCESI: gonderi adaylari once yalnizca KIMLIK olarak toplanir (kaynak
+        /// etiketiyle) ve en sonda TEK seferde yuklenir. Onceki tasarimda her kaynak kendi
+        /// Include zincirini (AsSplitQuery: 9 sorgu) ve MapAsync'ini (8 sorgu) calistiriyordu;
+        /// alti gonderi kaynagiyla bir Kesfet sayfasi 100'un uzerinde ARDISIK veritabani
+        /// gidis-donusu demekti ve bu, ana sayfanin varsayilan sekmesi. Simdi kaynak basina
+        /// 1 hafif kimlik sorgusu + sayfa basina 1 yukleme + 1 esleme.
         /// </summary>
         private async Task<IEnumerable<ActivityDto>> GetDiscoverFeedAsync(
             int currentUserId, int limit, DateTime? cursor)
@@ -382,7 +389,14 @@ namespace GGHub.Infrastructure.Services
             var (followingIds, blockedSet, mutualIds) = await LoadSocialGraphAsync(currentUserId);
             var taste = await BuildTasteProfileAsync(currentUserId);
 
-            // --- (a) AG ICI: eski sekmelerin icerigi ---
+            // Gonderi kimlikleri: ilk goren kaynak etiketi kazanir (TryAdd).
+            var postSources = new Dictionary<int, DiscoverSource>();
+            void AddPostIds(IEnumerable<int> ids, DiscoverSource source)
+            {
+                foreach (var id in ids) postSources.TryAdd(id, source);
+            }
+
+            // Gonderi disi adaylar (inceleme, liste, takip) dogrudan DTO olarak gelir.
             var candidates = new List<(ActivityDto Dto, int Engagement)>();
             var sourceOf = new Dictionary<ActivityDto, DiscoverSource>();
             var seenKeys = new HashSet<string>();
@@ -403,7 +417,11 @@ namespace GGHub.Infrastructure.Services
                 }
             }
 
-            Add(await BuildPostCandidatesAsync(currentUserId, followingIds, limit, cursor), DiscoverSource.InNetwork);
+            // "Sayfa kisa kaldi mi" kararlari icin: yuklenmemis gonderi kimlikleri de sayilir.
+            int CandidateCount() => candidates.Count + postSources.Count;
+
+            // --- (a) AG ICI: eski sekmelerin icerigi ---
+            AddPostIds(await QueryPostCandidateIdsAsync(currentUserId, followingIds, limit, cursor), DiscoverSource.InNetwork);
             Add(await BuildReviewCandidatesAsync(currentUserId, followingIds, limit, cursor), DiscoverSource.InNetwork);
             Add(await BuildListCandidatesAsync(followingIds, limit, cursor), DiscoverSource.InNetwork);
             Add(await BuildFollowCandidatesAsync(followingIds, blockedSet, limit, cursor), DiscoverSource.InNetwork);
@@ -412,9 +430,10 @@ namespace GGHub.Infrastructure.Services
 
             // --- AI: botlarin herkese acik sohbetleri, takip edilmeseler de Kesfet'te gorunur.
             // Sayfadaki payi ApplyAiSharePolicyAsync ve kaynak cesitliligi sinirlar.
-            var agentPosts = await BuildAgentPostCandidatesAsync(currentUserId, seenIds, limit, cursor);
-            Add(agentPosts, DiscoverSource.Ai);
-            foreach (var c in agentPosts) if (c.Dto.Actor?.Id is int agentActor) seenIds.Add(agentActor);
+            var (agentPostIds, agentIds) = await QueryAgentPostCandidateIdsAsync(currentUserId, seenIds, limit, cursor);
+            AddPostIds(agentPostIds, DiscoverSource.Ai);
+            // Botlar Ai kaynagindan geldi; zevk/ortak takip/trend kaynaklari onlari yeniden cekmesin.
+            foreach (var id in agentIds) seenIds.Add(id);
 
             // --- (b) AG DISI ZEVK: ilgilendigim oyunlar hakkinda yazanlar ---
             if (taste.GameIds.Count > 0)
@@ -443,7 +462,7 @@ namespace GGHub.Infrastructure.Services
                 var tasteIds = tasteAuthorIds.Concat(mentionAuthorIds).Distinct().ToList();
                 if (tasteIds.Count > 0)
                 {
-                    Add(await BuildPostCandidatesAsync(currentUserId, tasteIds, limit, cursor), DiscoverSource.Taste);
+                    AddPostIds(await QueryPostCandidateIdsAsync(currentUserId, tasteIds, limit, cursor), DiscoverSource.Taste);
                     Add(await BuildReviewCandidatesAsync(currentUserId, tasteIds, limit, cursor), DiscoverSource.Taste);
                     foreach (var id in tasteIds) seenIds.Add(id);
                 }
@@ -464,13 +483,13 @@ namespace GGHub.Infrastructure.Services
             if (fofCounts.Count > 0)
             {
                 var fofIds = fofCounts.Keys.ToList();
-                Add(await BuildPostCandidatesAsync(currentUserId, fofIds, limit, cursor), DiscoverSource.FriendOfFriend);
+                AddPostIds(await QueryPostCandidateIdsAsync(currentUserId, fofIds, limit, cursor), DiscoverSource.FriendOfFriend);
                 Add(await BuildReviewCandidatesAsync(currentUserId, fofIds, limit, cursor), DiscoverSource.FriendOfFriend);
                 foreach (var id in fofIds) seenIds.Add(id);
             }
 
             // --- (d) TREND: yalnizca sayfa kisa kalirsa (soguk acilis) ---
-            if (candidates.Count < limit)
+            if (CandidateCount() < limit)
             {
                 var trendingAuthorIds = await _context.Posts
                     .AsNoTracking()
@@ -485,7 +504,7 @@ namespace GGHub.Infrastructure.Services
                     .ToListAsync();
 
                 if (trendingAuthorIds.Count > 0)
-                    Add(await BuildPostCandidatesAsync(currentUserId, trendingAuthorIds, limit, cursor), DiscoverSource.Trending);
+                    AddPostIds(await QueryPostCandidateIdsAsync(currentUserId, trendingAuthorIds, limit, cursor), DiscoverSource.Trending);
             }
 
             // --- (e) TABAN: hala kisaysa, herkese acik son gonderiler ---
@@ -500,8 +519,15 @@ namespace GGHub.Infrastructure.Services
             // Bu kaynakta authorIds = null, yani yazar suzgeci YOK ve zaman
             // penceresi YOK; yalnizca gorunurluk ve cursor uygulanir. Boylece
             // herkese acik gonderi kaldigi surece Kesfet sayfalanmaya devam eder.
-            if (candidates.Count < limit)
-                Add(await BuildPostCandidatesAsync(currentUserId, null, limit * 2, cursor), DiscoverSource.Trending);
+            if (CandidateCount() < limit)
+                AddPostIds(await QueryPostCandidateIdsAsync(currentUserId, null, limit * 2, cursor), DiscoverSource.Trending);
+
+            // Tum kaynaklarin gonderileri TEK yuklemeyle karta cevrilir; kaynak etiketi kimlikten tasinir.
+            var hydrated = await HydratePostCandidatesAsync(postSources.Keys.ToList(), currentUserId);
+            foreach (var (postId, source) in postSources)
+            {
+                if (hydrated.TryGetValue(postId, out var candidate)) Add(new[] { candidate }, source);
+            }
 
             // Ag disi kaynaklar (zevk, ortak takip, trend, taban) yazar suzgecsiz calisabiliyor: izleyicinin
             // arayuz dilinde olmayan botlarin kartlari burada elenir. Takip edilen botlar ag icinde, kalir.
@@ -926,11 +952,13 @@ namespace GGHub.Infrastructure.Services
         }
 
         /// <summary>
-        /// Gonderi ve repost adaylari. Gorunurluk suzgeci EF tarafinda
-        /// PostQueryExtensions.WhereVisibleTo ile uygulaniyor; repost zinciri de
-        /// orada kontrol ediliyor.
+        /// Bir kaynagin gonderi/repost adaylarini yalnizca KIMLIK olarak ceker: gorunurluk
+        /// suzgeci (PostQueryExtensions.WhereVisibleTo, repost zinciri dahil), kok seviye,
+        /// cursor ve yazar kumesi burada; Include zinciri ve DTO eslemesi YOK. Toplanan
+        /// kimlikler HydratePostCandidatesAsync ile tek seferde yuklenir (gerekce
+        /// GetDiscoverFeedAsync'in ozetinde). authorIds null ise ag disi arama (Kesfet tabani).
         /// </summary>
-        private async Task<List<(ActivityDto Dto, int Engagement)>> BuildPostCandidatesAsync(
+        private async Task<List<int>> QueryPostCandidateIdsAsync(
             int currentUserId, List<int>? authorIds, int limit, DateTime? cursor)
         {
             var query = _context.Posts
@@ -938,17 +966,29 @@ namespace GGHub.Infrastructure.Services
                 .WhereRootLevel()
                 .WhereVisibleTo(_context, currentUserId);
 
-            // authorIds null ise ag disi arama (Kesfet); dolu ise ag ici.
             if (authorIds != null) query = query.Where(p => authorIds.Contains(p.UserId));
 
             query = PostService.ApplyCursor(query, cursor);
 
-            var posts = await PostService.WithIncludes(query)
+            return await query
                 .OrderByDescending(p => p.CreatedAt)
                 .Take(limit)
+                .Select(p => p.Id)
                 .ToListAsync();
+        }
 
-            if (posts.Count == 0) return new List<(ActivityDto, int)>();
+        /// <summary>
+        /// Kimlikleri gonderi kartina cevirir. Include zinciri (PostService.WithIncludes) ve
+        /// MapAsync sayfa basina BIR kez calisir. Anahtar gonderi Id'si, deger kart + etkilesim.
+        /// </summary>
+        private async Task<Dictionary<int, (ActivityDto Dto, int Engagement)>> HydratePostCandidatesAsync(
+            List<int> postIds, int currentUserId)
+        {
+            if (postIds.Count == 0) return new Dictionary<int, (ActivityDto, int)>();
+
+            var posts = await PostService.WithIncludes(
+                    _context.Posts.AsNoTracking().Where(p => postIds.Contains(p.Id)))
+                .ToListAsync();
 
             var mapped = await _postService.MapAsync(posts, currentUserId);
 
@@ -956,19 +996,21 @@ namespace GGHub.Infrastructure.Services
             // Repost'un isi "bunu su kisi one cikardi" demek; orijinali zaten
             // goruyorsan ayni icerigi ikinci kez gostermekten baska bir sey
             // yapmiyor. Kendi gonderini repost etmek tam olarak bu durumu uretiyor.
+            // Kural artik sayfanin TUM kaynaklari uzerinden uygulanir (eskiden kaynak basina).
             var rootIds = mapped.Where(p => p.RepostOf == null).Select(p => p.Id).ToHashSet();
-            mapped = mapped.Where(p => p.RepostOf == null || !rootIds.Contains(p.RepostOf.Id)).ToList();
 
-            return mapped.Select(p => (
-                new ActivityDto
-                {
-                    Id = p.Id,
-                    Type = p.RepostOf != null ? ActivityType.Repost : ActivityType.Post,
-                    OccurredAt = p.CreatedAt,
-                    Actor = p.Author,
-                    PostData = p
-                },
-                p.LikeCount + p.ReplyCount + p.RepostCount)).ToList();
+            return mapped
+                .Where(p => p.RepostOf == null || !rootIds.Contains(p.RepostOf.Id))
+                .ToDictionary(
+                    p => p.Id,
+                    p => (new ActivityDto
+                    {
+                        Id = p.Id,
+                        Type = p.RepostOf != null ? ActivityType.Repost : ActivityType.Post,
+                        OccurredAt = p.CreatedAt,
+                        Actor = p.Author,
+                        PostData = p
+                    }, p.LikeCount + p.ReplyCount + p.RepostCount));
         }
 
         private static double ComputeFeedScore(ActivityDto activity, int engagement, DateTime now, HashSet<int> mutualIds)

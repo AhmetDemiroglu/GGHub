@@ -5,6 +5,7 @@ import { jwtDecode } from "jwt-decode";
 import { useQueryClient } from "@tanstack/react-query";
 import { AuthenticatedUser } from "@/models/auth/auth.model";
 import { setAuthContextRef } from "@core/lib/axios";
+import { isAuthRejectionStatus } from "@core/lib/auth-rejection";
 import { AppLocale } from "@/i18n/config";
 import { getClientLocale } from "@core/lib/client-locale";
 
@@ -31,6 +32,14 @@ interface AuthContextValue {
 const authStorageKey = "auth-storage";
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
+
+/** Yenileme HTTP hatasi; durum kodu cikis kararini verir (isAuthRejectionStatus). */
+class RefreshFailedError extends Error {
+    constructor(public readonly status: number) {
+        super(`Refresh failed: ${status}`);
+        this.name = "RefreshFailedError";
+    }
+}
 
 const getTokenMinutesRemaining = (token: string): number => {
     try {
@@ -62,10 +71,41 @@ export function AuthProvider({ children, locale }: { children: ReactNode; locale
         setIsLoading(false);
     }, []);
 
+    // Ilk okuma bitmeden YAZMA. Eskiden bu efekt ilk render'da bos state'i (null, null, null)
+    // localStorage'a yaziyor, bir sonraki render'da okunan degerleri geri koyuyordu. Sekmeler
+    // arasi senkron eklendigi icin o gecici null yazimi diger sekmeleri cikisa dusururdu.
     useEffect(() => {
+        if (isLoading) return;
         const data = { accessToken, refreshToken, user };
         localStorage.setItem(authStorageKey, JSON.stringify(data));
-    }, [accessToken, refreshToken, user]);
+    }, [accessToken, refreshToken, user, isLoading]);
+
+    // Sekmeler arasi senkron. Refresh token TEK KULLANIMLIK (backend her yenilemede eskisini
+    // iptal eder). Iki sekme acikken A yenileyince B'nin bellekteki token'i gecersiz kaliyor,
+    // B'nin ilk yenilemesi 401 aliyor ve kullanici o sekmede sebepsiz cikisa dusuyordu.
+    // "storage" olayi yalniz DIGER sekmelerde tetiklenir, yazan sekme kendini tekrar tetiklemez.
+    useEffect(() => {
+        const onStorage = (event: StorageEvent) => {
+            if (event.key !== authStorageKey) return;
+            if (!event.newValue) {
+                setAccessToken(null);
+                setRefreshToken(null);
+                setUser(null);
+                return;
+            }
+            try {
+                const parsed = JSON.parse(event.newValue);
+                // Esit degerde state degistirme: aksi halde bu sekme ayni veriyi yeniden yazar.
+                setAccessToken((prev) => (prev === (parsed.accessToken ?? null) ? prev : parsed.accessToken ?? null));
+                setRefreshToken((prev) => (prev === (parsed.refreshToken ?? null) ? prev : parsed.refreshToken ?? null));
+                setUser((prev) => (JSON.stringify(prev) === JSON.stringify(parsed.user ?? null) ? prev : parsed.user ?? null));
+            } catch {
+                // Bozuk kayit: bu sekmenin durumu degismez, bir sonraki yazim duzeltir.
+            }
+        };
+        window.addEventListener("storage", onStorage);
+        return () => window.removeEventListener("storage", onStorage);
+    }, []);
 
     const login = ({ accessToken: nextAccessToken, refreshToken: nextRefreshToken }: { accessToken: string; refreshToken: string }) => {
         const decodedToken = jwtDecode<DecodedToken>(nextAccessToken);
@@ -112,7 +152,7 @@ export function AuthProvider({ children, locale }: { children: ReactNode; locale
             });
 
             if (!response.ok) {
-                throw new Error(`Refresh failed: ${response.status}`);
+                throw new RefreshFailedError(response.status);
             }
 
             const data = await response.json();
@@ -123,11 +163,16 @@ export function AuthProvider({ children, locale }: { children: ReactNode; locale
 
         const minutesRemaining = getTokenMinutesRemaining(accessToken);
 
-        // Token zaten suresi dolmussa: once yenilemeyi dene, yalnizca basarisizsa cikis yap.
-        // (Onceden dogrudan logout ediliyordu; bu yuzden tarayiciyi 1 saatten sonra acan
-        //  kullanici gecerli refresh token'i olsa bile aninda cikis goruyordu.)
+        // Token zaten suresi dolmussa: once yenilemeyi dene, YALNIZCA gercek kimlik reddinde
+        // cikis yap. Ag hatasi, timeout, 429 ya da 5xx'te oturum korunur; axios interceptor bir
+        // sonraki 401'de yeniden dener. (Onceden her hata cikisa donusuyordu: API'nin yavas
+        // oldugu her an gecerli oturumlu kullaniciyi disari atiyordu.)
         if (minutesRemaining <= 0) {
-            doRefresh().catch(() => logout());
+            doRefresh().catch((error) => {
+                if (error instanceof RefreshFailedError && isAuthRejectionStatus(error.status)) {
+                    logout();
+                }
+            });
             return () => {
                 cancelled = true;
             };

@@ -160,6 +160,21 @@ namespace GGHub.Infrastructure.Persistence
                 .HasIndex(r => new { r.UserId, r.GameId })
                 .IsUnique();
 
+            // Akis aday sorgusu (ActivityService.BuildReviewCandidatesAsync): yazar kumesi
+            // suzgeci + CreatedAt sirali sayfa. (UserId, GameId) index'i siralamaya yardim etmiyordu.
+            modelBuilder.Entity<Review>()
+                .HasIndex(r => new { r.UserId, r.CreatedAt })
+                .HasDatabaseName("IX_Reviews_UserId_CreatedAt");
+
+            // AuthService.RefreshTokenAsync her yenilemede Token ile arar. Index yokken bu arama
+            // tam tablo taramasiydi ve tablo her giris/yenilemede buyuyordu (iptal edilen satir
+            // silinmiyordu; artik DownloadEventRetentionJob buduyor), yani yenileme zamanla
+            // yavasliyordu. Unique DEGIL, bilerek: Migrate() Program.cs'te yutulan bir try/catch
+            // icinde calisiyor; olasi bir cift kayit acilista migration'i patlatmasin.
+            modelBuilder.Entity<RefreshToken>()
+                .HasIndex(rt => rt.Token)
+                .HasDatabaseName("IX_RefreshTokens_Token");
+
             // NOT (Kesfet zevk grafigi icin): "su oyunlari iceren listeler" ve
             // "su oyunlar hakkindaki incelemeler" sorgulari GameId uzerinden ters
             // okuma yapiyor. Ikisinin de indeksi ZATEN VAR: EF her FK kolonuna

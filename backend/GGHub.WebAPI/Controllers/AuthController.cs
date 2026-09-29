@@ -105,6 +105,9 @@ namespace GGHub.WebAPI.Controllers
             }
         }
 
+        // Sinif seviyesindeki LoginPolicy'yi EZER: yenileme login ile ayni kovada olmamali,
+        // gerekce Program.cs'teki RefreshPolicy notunda.
+        [EnableRateLimiting("RefreshPolicy")]
         [HttpPost("refresh")]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto refreshTokenDto)
         {

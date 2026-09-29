@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { gameApi } from "@/api/gaming/game.api";
 import { agendaApi } from "@/api/agenda/agenda.api";
 import type { Game } from "@/models/gaming/game.model";
 import { HomeGame } from "@/models/home/home.model";
@@ -72,7 +71,6 @@ export default function HeroSlider({ games = [] }: HeroSliderProps) {
     const [isHovering, setIsHovering] = useState(false);
     // Hover'dan çıkınca autoplay tam süreden yeniden başlar; progress barı da aynı anda sıfırlıyoruz.
     const [progressCycle, setProgressCycle] = useState(0);
-    const [descriptionOverrides, setDescriptionOverrides] = useState<Record<string, string>>({});
 
     // 3 sabit slayt: AI Kulübü, Oyun Gündemi, mobil uygulama. Oyun slaytları 4. sıradan başlar.
     const FIXED_SLIDES = 3;
@@ -128,60 +126,11 @@ export default function HeroSlider({ games = [] }: HeroSliderProps) {
         return () => clearInterval(timer);
     }, [api, isHovering, selectedIndex, progressCycle]);
 
-    useEffect(() => {
-        let cancelled = false;
-
-        const gamesNeedingDescription = games.filter((game) => {
-            const key = `${locale}:${game.id || game.rawgId}`;
-            return !normalizeDescription(game.description) && !descriptionOverrides[key];
-        });
-
-        if (gamesNeedingDescription.length === 0) {
-            return;
-        }
-
-        const fillMissingDescriptions = async () => {
-            const resolvedEntries = await Promise.all(
-                gamesNeedingDescription.map(async (game) => {
-                    try {
-                        const detail = await gameApi.getById(game.slug || String(game.rawgId));
-                        const localizedDescription = locale === "tr"
-                            ? normalizeDescription(detail.descriptionTr)
-                            : normalizeDescription(detail.description);
-
-                        return localizedDescription
-                            ? [`${locale}:${game.id || game.rawgId}`, localizedDescription] as const
-                            : null;
-                    } catch {
-                        return null;
-                    }
-                }),
-            );
-
-            if (cancelled) {
-                return;
-            }
-
-            const nextOverrides = resolvedEntries.reduce<Record<string, string>>((accumulator, entry) => {
-                if (!entry) {
-                    return accumulator;
-                }
-
-                accumulator[entry[0]] = entry[1];
-                return accumulator;
-            }, {});
-
-            if (Object.keys(nextOverrides).length > 0) {
-                setDescriptionOverrides((current) => ({ ...current, ...nextOverrides }));
-            }
-        };
-
-        void fillMissingDescriptions();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [games, locale, descriptionOverrides]);
+    // Aciklama artik yalniz /home/content'ten gelir. Onceden aciklamasi bos gelen her slayt icin
+    // istemci /games/{slug} cagiriyordu (5 slayt = ana sayfa acilisinda 5 ek agir istek; Turkce
+    // arayuzde neredeyse hep, cunku ceviri yoksa sunucu null donuyordu ve detay ucu da ayni
+    // satiri okuyup yine null buluyordu). Sunucu simdi ceviri yoksa Ingilizce metne dusuyor
+    // (HomeService.ResolveDescription); bos kalirsa slayt aciklamasiz cizilir.
 
     const handleMouseEnter = useCallback(() => {
         setIsHovering(true);
@@ -361,8 +310,7 @@ export default function HeroSlider({ games = [] }: HeroSliderProps) {
                     </CarouselItem>
 
                     {games.map((game, index) => {
-                        const descriptionKey = `${locale}:${game.id || game.rawgId}`;
-                        const resolvedDescription = normalizeDescription(game.description) ?? descriptionOverrides[descriptionKey] ?? null;
+                        const resolvedDescription = normalizeDescription(game.description);
                         const isActive = selectedIndex === index + FIXED_SLIDES;
                         const releaseYear = game.releaseDate ? new Date(game.releaseDate).getFullYear() : null;
 
@@ -376,7 +324,11 @@ export default function HeroSlider({ games = [] }: HeroSliderProps) {
                                             alt={game.name}
                                             fill
                                             className={`object-cover ${isActive ? "hero-kenburns" : "scale-[1.02]"}`}
-                                            priority={index === 0}
+                                            // priority YOK: oyun slaytlari 4. siradan baslar, acilista hic gorunmez.
+                                            // priority tam ekran bir gorseli preload ettiriyor ve LCP ile bant
+                                            // genisligi icin yarisiyordu (Lighthouse: "Defer offscreen images").
+                                            // Ilk oyun slayti eager: autoplay ona gelmeden inmis olsun, flash olmasin.
+                                            loading={index === 0 ? "eager" : "lazy"}
                                             sizes="(max-width: 1600px) 100vw, 1600px"
                                         />
                                         {/* Katmanlı karartma: alt ağırlıklı + sol vurgulu, metin her görselde okunur */}

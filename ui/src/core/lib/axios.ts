@@ -1,5 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { AuthContext } from "@core/contexts/auth-context";
+import { isAuthRejectionStatus } from "@core/lib/auth-rejection";
 import { getClientLocale } from "@core/lib/client-locale";
 import { AI_CONSENT_ERROR_CODE, AiConsentReason, requestAiConsent } from "@core/lib/ai-consent-bridge";
 
@@ -21,7 +22,18 @@ export const axiosInstance = axios.create({
     timeout: 15000,
 });
 
-const skipRefreshPaths = ["/auth/login", "/auth/register", "/auth/verify-email", "/auth/google", "/auth/apple"];
+// Yenileme icin INTERCEPTOR'SUZ ayri istemci (mobil client.ts'teki refreshClient ile ayni).
+// Onceden yenileme axiosInstance uzerinden gidiyordu ve /auth/refresh skipRefreshPaths'te
+// degildi: yenileme 401 dondugunde (iptal edilmis/suresi dolmus token, iki sekme yarisi)
+// interceptor onu da "yenilenecek istek" sanip failedQueue'ya atiyordu; kuyrugu bosaltacak
+// olan ise o an bekleyen yenilemenin kendisiydi. Sonuc: isRefreshing sonsuza dek true,
+// sonraki her 401 kuyrukta asili, sayfa "takili" ve yalniz F5 kurtariyordu.
+const refreshClient = axios.create({
+    baseURL: `${process.env.NEXT_PUBLIC_API_BASE_URL}/api`,
+    timeout: 15000,
+});
+
+const skipRefreshPaths = ["/auth/login", "/auth/register", "/auth/verify-email", "/auth/google", "/auth/apple", "/auth/refresh"];
 
 let authContextRef: React.ContextType<typeof AuthContext> | null = null;
 
@@ -107,7 +119,11 @@ axiosInstance.interceptors.response.use(
                     return Promise.reject(error);
                 }
 
-                const response = await axiosInstance.post("/auth/refresh", { refreshToken });
+                const response = await refreshClient.post(
+                    "/auth/refresh",
+                    { refreshToken },
+                    { headers: { "Accept-Language": getClientLocale() } },
+                );
                 const { accessToken: newAccessToken, refreshToken: newRefreshToken } = response.data;
 
                 authContextRef.login({ accessToken: newAccessToken, refreshToken: newRefreshToken });
@@ -118,7 +134,11 @@ axiosInstance.interceptors.response.use(
                 return axiosInstance(originalRequest);
             } catch (refreshError) {
                 processQueue(refreshError, null);
-                authContextRef?.logout();
+                // Yalnizca gercek kimlik reddinde cikis (mobil ile ayni kural). Timeout, ag
+                // hatasi, 429 ve 5xx gecicidir; oturum korunur, sonraki 401 yeniden dener.
+                if (isAuthRejectionStatus((refreshError as AxiosError).response?.status)) {
+                    authContextRef?.logout();
+                }
                 return Promise.reject(refreshError);
             } finally {
                 isRefreshing = false;
