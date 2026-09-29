@@ -94,7 +94,7 @@ export const trMessages = {
         game: "Oyun",
         openSearch: "Aramayı aç",
         closeSearch: "Aramayı kapat",
-        appBadge: "Mobil uygulamayı denedin mi?",
+        appBadge: "Mobil uygulamamızı denedin mi?",
         appBadgeAria: "GGHub mobil uygulamasını indir",
         appStore: "App Store'dan indir",
         googlePlay: "Google Play'den indir",
