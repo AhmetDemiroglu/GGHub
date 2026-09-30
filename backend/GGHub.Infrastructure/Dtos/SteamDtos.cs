@@ -77,7 +77,7 @@ namespace GGHub.Infrastructure.Dtos
 
         /// <summary>"Single-player", "Co-op", "PvP", "Steam Achievements"... (magaza kategorileri, etiket olarak yazilir).</summary>
         [JsonPropertyName("categories")]
-        public List<SteamGenreDto>? Categories { get; set; }
+        public List<SteamCategoryDto>? Categories { get; set; }
 
         [JsonPropertyName("screenshots")]
         public List<SteamScreenshotDto>? Screenshots { get; set; }
@@ -111,6 +111,20 @@ namespace GGHub.Infrastructure.Dtos
     {
         [JsonPropertyName("id")]
         public string? Id { get; set; }
+
+        [JsonPropertyName("description")]
+        public string? Description { get; set; }
+    }
+
+    /// <summary>
+    /// Magaza kategorisi. SteamGenreDto'dan AYRI cunku Steam kategori id'sini SAYI olarak
+    /// donduruyor (genres'te metin). Ayni DTO kullanilinca kategorisi olan her oyunun
+    /// appdetails yaniti deserialize edilemiyor ve oyun hic ingest edilmiyordu (29 Eyl 2026).
+    /// </summary>
+    public class SteamCategoryDto
+    {
+        [JsonPropertyName("id")]
+        public int? Id { get; set; }
 
         [JsonPropertyName("description")]
         public string? Description { get; set; }

@@ -144,7 +144,7 @@ namespace GGHub.Infrastructure.Services
         }
 
         /// <summary>Steam magaza kategorileri -> temiz liste (slug addan uretilir).</summary>
-        public static List<(string Slug, string Name)> FromSteam(IEnumerable<Dtos.SteamGenreDto>? categories)
+        public static List<(string Slug, string Name)> FromSteam(IEnumerable<Dtos.SteamCategoryDto>? categories)
         {
             if (categories == null) return new();
             return Clean(categories.Select(c => ((string?)null, c.Description)));
