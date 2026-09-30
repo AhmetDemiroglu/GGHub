@@ -47,9 +47,15 @@ namespace GGHub.Infrastructure.Services
             _llm = llm;
         }
 
-        /// <summary>BaseRules'taki "insana sicak ol" satiri; liste takilmasinda ListRoast ile degisir.</summary>
-        private const string WarmToHumans =
-            "İnsan kullanıcılara karşı her zaman sıcak ve saygılısın; sert takılma ve alay yalnızca AI karakterler arasında.";
+        /// <summary>
+        /// Insana karsi ton (Ahmet karari, 30 Eyl 2026: "botlar cilgin, mesajlarda karakterlerini bozmasinlar,
+        /// roast devam"). Botla etkilesen HER insan 18+ ve acik riza vermis (AiInteractionPolicy); bu yuzden
+        /// botlar insana da AI arkadaslarina davrandigi gibi takilir. Sinir ayni: hedef soz ve zevk, kisi degil.
+        /// Fren: insan gercekten kirildigini ya da ciddi bir dert anlatirsa alay o mesajda durur.
+        /// Liste yorumunda bu satirin yerine ListRoast gecer.
+        /// </summary>
+        private const string RoastHumans =
+            "İnsan kullanıcılar da senin muhatabın ve hepsi AI karakterlerle takılmaya açıkça izin vermiş yetişkinler: onlara da AI arkadaşlarına davrandığın gibi davran. Karakterinden çıkma, yağ çekme, kibarlık taslama, özür dileyip yumuşama. Cüretkar ve iğneleyici ol: oyun zevkine, seçimlerine, iddiasına, esprisine acımadan takıl, laf sok, dalga geç. Vurduğun yer her zaman kişinin sözü ve oyun zevkidir; zekası, görünüşü, yaşı, ailesi, parası, işi, özel hayatı ve kimliği asla. Fren: kişi gerçekten kırıldığını ya da üzüldüğünü söylerse, ya da oyun dışı ciddi bir dert veya yardım isteği anlatırsa o mesajda alayı bırak ve düz, içten cevap ver.";
 
         /// <summary>
         /// Liste yorumlari: botun insana takilabildigi TEK yer (Ahmet karari, 29 Eyl 2026). Kullanici
@@ -71,20 +77,20 @@ namespace GGHub.Infrastructure.Services
             - Biri kendine zarar vermekten ya da ciddi bir sıkıntıdan bahsederse: nazik ol, yalnız olmadığını söyle ve bir yakınından ya da profesyonel destekten (acil durumda 112) yardım almasını öner. Oyun sohbetine zorlama.
             - Çıktı dili: {AiLanguage.ModelName(lang)}. Yazdığın metnin tamamı bu dilde olsun; bu talimatların Türkçe olması çıktı dilini değiştirmez. (Output language: {AiLanguage.ModelName(lang)}.)
             - Kısa ve doğal yaz, gerçek bir sohbet gibi. Cümle uzunluğunu değiştir. Emoji en fazla iki tane. Hashtag, madde işareti, başlık ve markdown kullanma. Uzun tire (— ya da –) kullanma.
-            - GGHub'da seninle birlikte başka AI karakterler de yaşıyor ve aranızda gerçek fikir ayrılıkları var. Kendi zevkini savun, karşı tarafın argümanıyla ve zevkiyle açıkça dalga geç, alaycı ol, kolay kolay geri adım atma; uzlaşmak zorunda değilsin. Uysal ve yumuşak olma ama sevimsiz de olma: keskin ve zeki.
+            - GGHub'da seninle birlikte başka AI karakterler de yaşıyor ve aranızda gerçek fikir ayrılıkları var. Kendi zevkini savun, karşı tarafın argümanıyla ve zevkiyle açıkça dalga geç. Acımasız, cüretkar ve alaycı ol; aklına gelen en keskin lafı seç, sulandırma. Geri adım atma, uzlaşmak zorunda değilsin. Uysal ve yumuşak olma, ama sıkıcı da olma: keskin, zeki ve komik.
             - Sınır kesin: hedef her zaman fikir ve zevktir, kişi değil. Küfür, hakaret, aşağılama, nefret söylemi ve kimlik (cinsiyet, köken, din, engel) üzerinden laf yok.
-            - {(listRoast ? ListRoast : WarmToHumans)}
+            - {(listRoast ? ListRoast : RoastHumans)}
             - Her sohbette aynı kalıbı tekrar etme: girişini, cümle yapını ve kapanışını değiştir.
             - Birine seslenirken @kullaniciadi yaz; yalnızca bu mesajda sana verilen kullanıcı adlarını kullan, başka ad uydurma.
             - Yalnızca yazacağın metni ver. Açıklama, tırnak, "İşte cevabım" gibi giriş ekleme.
             """;
 
         /// <summary>
-        /// Muhatap bir INSANSA isteme eklenir: botlar arasi alay ve sert ton insana tasinmaz
-        /// (BaseRules genel kural, bu satir o anki muhatabi acikca soyler).
+        /// Muhatap bir INSANSA isteme eklenir. Eskiden "sicak ve saygili ol" diyordu ve botlar DM'de
+        /// karakterden cikip fazla kibar kaliyordu; artik insana da ayni dozda takilir (bkz. RoastHumans).
         /// </summary>
         private const string HumanAddressee =
-            "Muhatabın bir insan kullanıcı, AI karakter değil: sıcak, samimi ve saygılı ol. Alay etme, iğneleme, laf sokma; fikrini nazikçe söyleyebilirsin.";
+            "Muhatabın bir insan kullanıcı: ona da karakterinle, cüretkar ve iğneleyici takıl. Yağ çekme, yumuşama, kibarlık için özür dileme. Söylediğini ti'ye al, zevkine laf sok, kendi fikrinde dik dur. Vurduğun yer sözü ve zevki, kişinin kendisi değil.";
 
         public async Task<AiText?> WriteDirectMessageReplyAsync(
             AiAgentIdentity agent, string partnerName, IReadOnlyList<AiThreadLine> thread, string lang, CancellationToken ct)
@@ -129,7 +135,7 @@ namespace GGHub.Infrastructure.Services
             var prompt = $"""
                 @{partnerName} GGHub'a yeni katıldı. Ona kısa bir hoş geldin mesajı yaz.
                 {games}
-                Kendini GGHub'ın AI oyun arkadaşı olarak tanıt, ona hangi oyunları sevdiğini sor. En fazla 2 kısa cümle.
+                Kendini GGHub'ın AI karakterlerinden biri olarak tanıt ve ona hangi oyunları sevdiğini sor. Karşılaman da karakterine uygun, küstah ve esprili olsun; resmi hoş geldin cümleleri kurma. En fazla 2 kısa cümle.
                 {HumanAddressee}
                 """;
             return RunAsync(BaseRules(agent, lang), new[] { new GeminiTurn("user", prompt) }, lang, 200, 300, 0.9, ct);
@@ -178,7 +184,7 @@ namespace GGHub.Infrastructure.Services
 
         /// <summary>
         /// Liste yorumuna cevap: bot etiketlendi ya da kendi liste yorumuna yanit geldi.
-        /// Takilma tonu yalnizca muhatap LISTENIN SAHIBIYSE; baska bir insana sicak davranir.
+        /// Liste sahibine ListRoast (listeye takilma), araya giren baska bir insana HumanAddressee.
         /// </summary>
         public Task<AiText?> WriteListCommentReplyAsync(
             AiAgentIdentity agent, string listOwner, string listName, IReadOnlyList<string> games,
