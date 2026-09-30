@@ -47,6 +47,7 @@ import type { Review } from '@/src/models/review';
 import type { UserList } from '@/src/models/list';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
 import { MentionText } from '@/src/components/common/MentionText';
+import { invalidateFollowGraph } from '@/src/utils/query-invalidation';
 
 type ProfileTab = 'overview' | 'posts' | 'reviews' | 'lists';
 
@@ -112,8 +113,9 @@ export default function PublicProfileScreen() {
       } else {
         haptics.success();
       }
-      queryClient.invalidateQueries({ queryKey: ['publicProfile', username] });
-      queryClient.invalidateQueries({ queryKey: ['userStats', username] });
+      // Yalnizca bu profil degil: kendi takip sayim, takipci pencereleri ve ana
+      // sayfadaki oneri seridi de ayni iliskiyi gosteriyor.
+      invalidateFollowGraph(queryClient);
     },
   });
 

@@ -39,6 +39,8 @@ import { getFeedByTab, type FeedTabKey } from '@/src/api/activity';
 import { Activity, ActivityType } from '@/src/models/activity';
 import { onReviewVote } from '@/src/utils/review-vote-bus';
 import { onPostCreated, postToActivity } from '@/src/utils/post-created-bus';
+import { applyPostUpdate, onPostUpdate } from '@/src/utils/post-update-bus';
+import { onReviewCommentCount } from '@/src/utils/review-comment-bus';
 import * as haptics from '@/src/utils/haptics';
 
 /**
@@ -360,6 +362,66 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
           changed = true;
         }
 
+        return changed ? next : prev;
+      });
+    });
+  }, []);
+
+  // Gonderi guncellemeleri: detayda yazilan yanit, baska bir kopyada verilen
+  // begeni/repost/anket oyu ve silme akistaki karta da islenir. Eskiden detaydan
+  // geri donunce yanit sayaci "0" kaliyordu; begeni ise kart yeniden cizilince
+  // akisin eski nesnesinden baslayip kayboluyordu.
+  useEffect(() => {
+    return onPostUpdate((event) => {
+      setFeeds((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        for (const tab of TAB_ORDER) {
+          let tabChanged = false;
+          const items: Activity[] = [];
+          for (const activity of prev[tab].items) {
+            const post = activity.postData ? applyPostUpdate(activity.postData, event) : undefined;
+            if (post === activity.postData) {
+              items.push(activity);
+              continue;
+            }
+            tabChanged = true;
+            if (post) items.push({ ...activity, postData: post });
+          }
+          if (!tabChanged) continue;
+          changed = true;
+          next[tab] = { ...prev[tab], items };
+        }
+        return changed ? next : prev;
+      });
+    });
+  }, []);
+
+  // Inceleme detayinda eklenen/silinen kok yorum, inceleme kartinin sayacina.
+  useEffect(() => {
+    return onReviewCommentCount((event) => {
+      setFeeds((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        for (const tab of TAB_ORDER) {
+          const items = prev[tab].items;
+          if (!items.some((a) => a.reviewData?.reviewId === event.reviewId)) continue;
+          changed = true;
+          next[tab] = {
+            ...prev[tab],
+            items: items.map((a) =>
+              a.reviewData?.reviewId === event.reviewId
+                ? {
+                    ...a,
+                    reviewData: {
+                      ...a.reviewData,
+                      commentCount: Math.max(0, (a.reviewData.commentCount ?? 0) + event.delta),
+                    },
+                  }
+                : a,
+            ),
+          };
+        }
         return changed ? next : prev;
       });
     });

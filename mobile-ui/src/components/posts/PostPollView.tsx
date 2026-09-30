@@ -9,6 +9,7 @@ import { useLocale } from '@/src/hooks/use-locale';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useToast } from '@/src/components/common/Toast';
 import * as haptics from '@/src/utils/haptics';
+import { emitPostUpdate } from '@/src/utils/post-update-bus';
 import type { PostPoll } from '@/src/models/post';
 
 interface PostPollViewProps {
@@ -50,6 +51,9 @@ export function PostPollView({ postId, poll: incomingPoll, canVote }: PostPollVi
     onSuccess: (updated) => {
       haptics.success();
       setPoll(updated);
+      // Ayni gonderinin diger kopyalari da oyu gorsun; yoksa kart yeniden cizilince
+      // anket oysuz gorunuyor ve tekrar oy verilebiliyordu.
+      emitPostUpdate({ postId, changes: { poll: updated } });
     },
     onError: () => showToast('error', messages.posts.poll.voteError),
   });

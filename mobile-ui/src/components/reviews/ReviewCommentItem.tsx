@@ -9,6 +9,7 @@ import {
   createReviewComment,
 } from '@/src/api/review-comment';
 import type { ReviewComment } from '@/src/models/review-comment';
+import { emitReviewCommentCount } from '@/src/utils/review-comment-bus';
 
 interface ReviewCommentItemProps {
   comment: ReviewComment;
@@ -32,7 +33,10 @@ export function ReviewCommentItem({ comment, reviewId }: ReviewCommentItemProps)
     [reviewId],
   );
 
-  const handlers = useCommentMutations<ReviewComment>(['reviewComments', reviewId], api);
+  // Kok yorum silinince akistaki/oyun sayfasindaki inceleme kartinin sayaci da dussun.
+  const handlers = useCommentMutations<ReviewComment>(['reviewComments', reviewId], api, {
+    onRootDeleted: () => emitReviewCommentCount({ reviewId, delta: -1 }),
+  });
 
   return <CommentThreadItem comment={comment} {...handlers} />;
 }

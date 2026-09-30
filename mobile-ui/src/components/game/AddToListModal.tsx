@@ -18,6 +18,7 @@ import * as haptics from '@/src/utils/haptics';
 import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
 import { getMyLists, addGameToList, removeGameFromList } from '@/src/api/list';
 import type { UserList } from '@/src/models/list';
+import { invalidateListSummaries } from '@/src/utils/query-invalidation';
 
 interface AddToListModalProps {
   visible: boolean;
@@ -42,7 +43,9 @@ export function AddToListModal({ visible, onClose, gameId }: AddToListModalProps
     mutationFn: (listId: number) => addGameToList(listId, gameId),
     onSuccess: () => {
       haptics.success();
-      queryClient.invalidateQueries({ queryKey: ['myLists', gameId] });
+      // Onek: bu pencerenin ['myLists', gameId] sorgusu ve Listelerim'deki oyun sayilari.
+      invalidateListSummaries(queryClient);
+      queryClient.invalidateQueries({ queryKey: ['listDetail'] });
       showToast('success', messages.games.gameAddedToList);
     },
   });
@@ -51,7 +54,8 @@ export function AddToListModal({ visible, onClose, gameId }: AddToListModalProps
     mutationFn: (listId: number) => removeGameFromList(listId, gameId),
     onSuccess: () => {
       haptics.impactLight();
-      queryClient.invalidateQueries({ queryKey: ['myLists', gameId] });
+      invalidateListSummaries(queryClient);
+      queryClient.invalidateQueries({ queryKey: ['listDetail'] });
       showToast('info', messages.games.gameRemovedFromList);
     },
   });

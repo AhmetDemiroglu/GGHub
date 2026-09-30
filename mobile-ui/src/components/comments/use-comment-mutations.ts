@@ -28,6 +28,14 @@ function isNotFound(error: unknown): boolean {
   return (error as { response?: { status?: number } }).response?.status === 404;
 }
 
+export interface CommentMutationOptions {
+  /**
+   * Bir KOK yorum silinince cagrilir. Sayaclar (or. inceleme kartindaki yorum
+   * sayisi) backend'de yalnizca kok yorumlari sayar; yanit silmek onlari degistirmez.
+   */
+  onRootDeleted?: () => void;
+}
+
 /**
  * Bir yorum agacinin tum mutasyonlari. Oy ve silme OPTIMISTIK calisir (dokunusla
  * birlikte ekran degisir, hata olursa geri alinir); duzenleme ve yanit sunucu
@@ -37,6 +45,7 @@ function isNotFound(error: unknown): boolean {
 export function useCommentMutations<T extends CommentNode<T>>(
   queryKey: readonly unknown[],
   api: CommentApi<T>,
+  options?: CommentMutationOptions,
 ) {
   const { messages } = useLocale();
   const { showToast } = useToast();
@@ -111,20 +120,27 @@ export function useCommentMutations<T extends CommentNode<T>>(
     mutationFn: (commentId: number) => api.remove(commentId),
     onMutate: async (commentId) => {
       const previous = await snapshot();
+      const isRoot = !!previous?.pages.some((page) =>
+        page.items.some((item) => item.id === commentId),
+      );
       queryClient.setQueryData<CommentPages<T>>(queryKey, (old) =>
         removeCommentFromPages(old, commentId),
       );
-      return { previous };
+      return { previous, isRoot };
     },
     onError: (error, _commentId, context) => {
       if (isNotFound(error)) {
         showToast('success', t.deleted);
+        if (context?.isRoot) options?.onRootDeleted?.();
         return;
       }
       rollback(context?.previous);
       showToast('error', fillErrorTemplate(t.deleteError));
     },
-    onSuccess: () => showToast('success', t.deleted),
+    onSuccess: (_data, _commentId, context) => {
+      showToast('success', t.deleted);
+      if (context?.isRoot) options?.onRootDeleted?.();
+    },
     onSettled: () => queryClient.invalidateQueries({ queryKey }),
   });
 

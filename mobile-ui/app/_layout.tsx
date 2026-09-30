@@ -20,6 +20,7 @@ import { AppSidebar } from '@/src/components/shell';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useAuth } from '@/src/hooks/use-auth';
 import { usePushNotifications } from '@/src/hooks/use-push-notifications';
+import { useCacheSync } from '@/src/hooks/use-cache-sync';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -46,6 +47,9 @@ function RootLayoutNav() {
   const [bootTimedOut, setBootTimedOut] = useState(false);
 
   usePushNotifications();
+  // Bir ekranda degisen sayac/durum (yanit, begeni, oy, yorum) diger ekranlarin
+  // cache'ine de islensin: geri donuste bayat sayi gorunmesin.
+  useCacheSync();
 
   useEffect(() => {
     if (!isLoading) return;

@@ -145,10 +145,12 @@ export function SignalRProvider({ children }: { children: React.ReactNode }) {
 
     connection.onreconnected(() => {
       setConnectionStatus('connected');
-      // Baglanti kopukken kacirilan event'ler icin sayac + konusma listesini tazele.
+      // Baglanti kopukken kacirilan event'ler icin sayac, konusma ve bildirim listesini
+      // tazele. Bildirim listesi eksikti: rozet yeni sayiyi gosterirken liste eski kaliyordu.
       queryClient.invalidateQueries({ queryKey: ['unread-message-count'] });
       queryClient.invalidateQueries({ queryKey: ['unread-notification-count'] });
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
     });
 
     connection.onclose(() => {

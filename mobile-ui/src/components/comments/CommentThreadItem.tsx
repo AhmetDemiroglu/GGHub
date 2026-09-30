@@ -6,7 +6,7 @@ import { useLocale } from '@/src/hooks/use-locale';
 import { useAuth } from '@/src/hooks/use-auth';
 import { Button } from '@/src/components/common/Button';
 import { MentionText } from '@/src/components/common/MentionText';
-import { CommentComposer } from '@/src/components/comments/CommentComposer';
+import { ReplyComposerModal } from '@/src/components/comments/ReplyComposerModal';
 import { UserLinkAvatar, UserLinkName, type LinkableUser } from '@/src/components/common/UserLink';
 import { useConfirm } from '@/src/components/common/ConfirmDialog';
 import { formatTimeAgo } from '@/src/utils/format';
@@ -123,7 +123,7 @@ export function CommentThreadItem({
     }
   };
 
-  // Ayni gerekce: yanit kutusu ancak gonderim BASARILI olunca temizlenip kapanir
+  // Ayni gerekce: yanit penceresi ancak gonderim BASARILI olunca temizlenip kapanir
   // ve yeni yanit hemen gorunur olsun diye alt agac aciliyor.
   const handleSendReply = async () => {
     const next = replyContent.trim();
@@ -266,30 +266,29 @@ export function CommentThreadItem({
 
         {canReply ? (
           <Pressable
-            onPress={() => setIsReplying((prev) => !prev)}
+            onPress={() => setIsReplying(true)}
             style={styles.replyButton}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel={isReplying ? messages.common.cancel : t.reply}
+            accessibilityLabel={t.reply}
           >
             <Ionicons name="arrow-undo-outline" size={14} color={colors.textMuted} />
-            <Text style={[styles.replyText, { color: colors.textMuted }]}>
-              {isReplying ? messages.common.cancel : t.reply}
-            </Text>
+            <Text style={[styles.replyText, { color: colors.textMuted }]}>{t.reply}</Text>
           </Pressable>
         ) : null}
       </View>
 
-      {isReplying ? (
-        <CommentComposer
+      {/* Yanit yorumun altinda ikinci bir kutuda DEGIL, X'teki gibi kendi
+          penceresinde yazilir; alttaki sabit kok yorum kutusu yerinde kalir. */}
+      {canReply ? (
+        <ReplyComposerModal
+          visible={isReplying}
+          target={comment}
           value={replyContent}
           onChangeText={setReplyContent}
-          placeholder={t.replyPlaceholder.replace('{username}', comment.owner.username)}
           onSend={handleSendReply}
+          onCancel={() => setIsReplying(false)}
           isSending={isSubmittingReply}
-          autoFocus
-          compact
-          style={styles.replyComposer}
         />
       ) : null}
 
@@ -419,9 +418,6 @@ const styles = StyleSheet.create({
   replyText: {
     fontSize: FontSize.sm,
     fontWeight: '600',
-  },
-  replyComposer: {
-    marginTop: Spacing.sm,
   },
   repliesToggle: {
     flexDirection: 'row',

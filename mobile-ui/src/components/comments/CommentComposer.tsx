@@ -28,14 +28,12 @@ export interface CommentComposerProps {
   onSend: () => void;
   /** Gonderim surerken: buton spinner'a doner ve tekrar basilamaz. */
   isSending?: boolean;
-  autoFocus?: boolean;
-  /** Yanit kutusu kok kutudan bir tik kucuk cizilir. */
-  compact?: boolean;
   style?: StyleProp<ViewStyle>;
 }
 
 /**
- * Yorum/yanit yazma kutusu.
+ * Alta sabit kok yorum kutusu (DockedCommentComposer). Yanitlar kendi
+ * penceresinde yazilir, bkz. ReplyComposerModal.
  *
  * Oneri seridi bilerek cerceveli hapin DISINDA, ustunde durur: seridin iceride
  * cizildigi eski duzende "@a" yazar yazmaz hap ~40px sisiyor, silince geri
@@ -49,8 +47,6 @@ export function CommentComposer({
   placeholder,
   onSend,
   isSending = false,
-  autoFocus,
-  compact = false,
   style,
 }: CommentComposerProps) {
   const { colors, isDark } = useTheme();
@@ -73,7 +69,6 @@ export function CommentComposer({
       <View
         style={[
           styles.pill,
-          compact && styles.pillCompact,
           { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder },
         ]}
       >
@@ -87,7 +82,6 @@ export function CommentComposer({
           placeholderTextColor={colors.placeholder}
           multiline
           maxLength={MAX_LENGTH}
-          autoFocus={autoFocus}
         >
           {parseMentions(value ?? '').map((part) =>
             part.kind === 'mention' ? (
@@ -113,7 +107,7 @@ export function CommentComposer({
           ) : (
             <Ionicons
               name="send"
-              size={compact ? 18 : 20}
+              size={20}
               color={value.trim() ? colors.primary : colors.textMuted}
             />
           )}
@@ -131,9 +125,6 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
-  },
-  pillCompact: {
-    paddingVertical: Spacing.xs,
   },
   input: {
     flex: 1,

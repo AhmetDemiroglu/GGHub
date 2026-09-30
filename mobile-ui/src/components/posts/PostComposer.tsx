@@ -25,6 +25,7 @@ import { useLocale } from '@/src/hooks/use-locale';
 import { useTheme } from '@/src/hooks/use-theme';
 import { shrinkForUpload } from '@/src/utils/image';
 import { emitPostCreated } from '@/src/utils/post-created-bus';
+import { emitPostUpdate } from '@/src/utils/post-update-bus';
 import {
   segmentComposerText,
   toTokenizedContent,
@@ -181,9 +182,17 @@ export function PostComposer({ parentPostId, placeholder, autoFocus, onCreated }
       // Profildeki gonderi listesi react-query'de: yeni gonderi orada da gorunsun.
       queryClient.invalidateQueries({ queryKey: ['userPosts'] });
 
-      // Ana sayfa akisini haberdar et. YALNIZCA kok gonderiler: akis
-      // WhereRootLevel() ile suzuluyor, yanitlar zaten oraya girmez.
-      if (!parentPostId) emitPostCreated(post);
+      if (parentPostId) {
+        // Yanit: ust gonderinin yanit sayaci akista ve diger ekranlarda da artsin.
+        // Eskiden detaydan geri donulunce akista hala "0" yaziyordu.
+        emitPostUpdate({ postId: parentPostId, replyDelta: 1 });
+      } else {
+        // Ana sayfa akisini haberdar et. YALNIZCA kok gonderiler: akis
+        // WhereRootLevel() ile suzuluyor, yanitlar zaten oraya girmez.
+        emitPostCreated(post);
+        // Profilde postCount 0 iken Gonderiler sekmesi gizli; ilk gonderiden sonra acilsin.
+        queryClient.invalidateQueries({ queryKey: ['publicProfile'] });
+      }
 
       onCreated?.(post);
     },

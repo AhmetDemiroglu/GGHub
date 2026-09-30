@@ -23,6 +23,7 @@ import { getFollowers, getFollowing, followUser, unfollowUser } from '@/src/api/
 import { displayName } from '@/src/utils/display-name';
 import type { SocialProfile } from '@/src/models/social';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
+import { invalidateFollowGraph } from '@/src/utils/query-invalidation';
 
 interface FollowersModalProps {
   visible: boolean;
@@ -62,18 +63,14 @@ export function FollowersModal({
 
   const followMutation = useMutation({
     mutationFn: (targetUsername: string) => followUser(targetUsername),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['followers', username] });
-      queryClient.invalidateQueries({ queryKey: ['following', username] });
-    },
+    // Pencerenin kendi listeleri (followers/following) dahil; takip edilen kisinin
+    // profili ve kendi takip sayim da tazelenir.
+    onSuccess: () => invalidateFollowGraph(queryClient),
   });
 
   const unfollowMutation = useMutation({
     mutationFn: (targetUsername: string) => unfollowUser(targetUsername),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['followers', username] });
-      queryClient.invalidateQueries({ queryKey: ['following', username] });
-    },
+    onSuccess: () => invalidateFollowGraph(queryClient),
   });
 
   const data = activeTab === 'followers' ? followersQuery.data : followingQuery.data;

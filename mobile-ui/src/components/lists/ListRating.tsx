@@ -9,6 +9,7 @@ import { useRequireAuth } from '@/src/contexts/auth-prompt-context';
 import { useToast } from '@/src/components/common/Toast';
 import { submitListRating, getMyListRating } from '@/src/api/list-rating';
 import { Spacing, FontSize } from '@/src/constants/theme';
+import { invalidateListSummaries } from '@/src/utils/query-invalidation';
 
 interface ListRatingProps {
   listId: number;
@@ -39,6 +40,8 @@ export function ListRating({ listId, averageRating, ratingCount }: ListRatingPro
     onSuccess: (_, value) => {
       queryClient.invalidateQueries({ queryKey: ['myListRating', listId] });
       queryClient.invalidateQueries({ queryKey: ['listDetail', listId] });
+      // Kartlardaki puan ortalamasi (Listeler sekmesi, profil) da degisti.
+      invalidateListSummaries(queryClient);
       showToast('success', messages.listDetail.ratingSaved.replace('{rating}', String(value)));
     },
     onError: () => {

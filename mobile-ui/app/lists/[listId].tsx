@@ -34,6 +34,7 @@ import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { useKeyboardDock } from '@/src/hooks/use-keyboard-dock';
 import { getListDetail, followList, unfollowList, removeGameFromList } from '@/src/api/list';
 import { useRequireAuth } from '@/src/contexts/auth-prompt-context';
+import { invalidateListSummaries } from '@/src/utils/query-invalidation';
 import { getImageUrl } from '@/src/utils/image';
 import { ListCategory } from '@/src/models/list';
 import type { Game } from '@/src/models/game';
@@ -102,6 +103,8 @@ export default function ListDetailScreen() {
     mutationFn: () => followList(numericId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['listDetail', numericId] });
+      // Listeler sekmesindeki kartin takipci sayisi ve "Takip ettiklerim" de degisti.
+      invalidateListSummaries(queryClient);
       showToast(
         'success',
         messages.listDetail.followSuccess.replace(
@@ -119,6 +122,7 @@ export default function ListDetailScreen() {
     mutationFn: () => unfollowList(numericId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['listDetail', numericId] });
+      invalidateListSummaries(queryClient);
       showToast(
         'success',
         messages.listDetail.unfollowSuccess.replace(
@@ -136,7 +140,7 @@ export default function ListDetailScreen() {
     mutationFn: (gameId: number) => removeGameFromList(numericId, gameId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['listDetail', numericId] });
-      queryClient.invalidateQueries({ queryKey: ['myLists'] });
+      invalidateListSummaries(queryClient);
     },
     onError: () => {
       showToast('error', messages.common?.genericError ?? 'Error');

@@ -24,6 +24,7 @@ import { getImageUrl } from '@/src/utils/image';
 import * as haptics from '@/src/utils/haptics';
 import type { Game } from '@/src/models/game';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
+import { invalidateListSummaries } from '@/src/utils/query-invalidation';
 
 interface AddGameToListModalProps {
   visible: boolean;
@@ -110,6 +111,8 @@ export function AddGameToListModal({
     mutationFn: (rawgId: number) => addGameToList(listId, rawgId),
     onSuccess: async () => {
       showToast('success', messages.listDetail.gameAdded);
+      // Listelerim/profildeki oyun sayisi ve oyun sayfasindaki "listeye ekle" isaretleri.
+      invalidateListSummaries(queryClient);
       // Butonu refetch tamamlanana kadar kilitli tut; ağ hızlıysa art arda gelen
       // sonraki dokunuşun yeni görünen eksi butonunu tetiklemesini de önler.
       await queryClient
@@ -127,6 +130,7 @@ export function AddGameToListModal({
     mutationFn: (rawgId: number) => removeGameFromList(listId, rawgId),
     onSuccess: async () => {
       showToast('success', messages.listDetail.gameRemoved);
+      invalidateListSummaries(queryClient);
       await queryClient
         .invalidateQueries({ queryKey: ['listDetail', listId] })
         .catch(() => undefined);

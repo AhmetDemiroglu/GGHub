@@ -17,6 +17,7 @@ import {
   type UserList, type UserListForCreation, type UserListForUpdate,
 } from '@/src/models/list';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
+import { invalidateListSummaries } from '@/src/utils/query-invalidation';
 
 interface ListFormModalProps {
   visible: boolean;
@@ -72,7 +73,7 @@ export function ListFormModal({ visible, onClose, editingList }: ListFormModalPr
   const createMutation = useMutation({
     mutationFn: (data: UserListForCreation) => createList(data),
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['myLists'] });
+      invalidateListSummaries(queryClient);
       showToast('success', messages.lists.createSuccess.replace('{name}', result.name));
       onClose();
     },
@@ -84,7 +85,7 @@ export function ListFormModal({ visible, onClose, editingList }: ListFormModalPr
   const updateMutation = useMutation({
     mutationFn: (data: UserListForUpdate) => updateList(editingList!.id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['myLists'] });
+      invalidateListSummaries(queryClient);
       queryClient.invalidateQueries({ queryKey: ['listDetail'] });
       showToast('success', messages.lists.updateSuccess.replace('{name}', name));
       onClose();

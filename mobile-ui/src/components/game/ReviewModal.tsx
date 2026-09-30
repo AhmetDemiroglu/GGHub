@@ -54,6 +54,9 @@ export function ReviewModal({ visible, onClose, gameId, gameSlug, existingReview
       queryClient.invalidateQueries({ queryKey: ['gameReviews', gameId] });
       queryClient.invalidateQueries({ queryKey: ['myReview', gameId] });
       queryClient.invalidateQueries({ queryKey: ['game', gameSlug] });
+      // Profildeki incelemeler sekmesi ve inceleme sayisi.
+      queryClient.invalidateQueries({ queryKey: ['userReviews'] });
+      queryClient.invalidateQueries({ queryKey: ['userStats'] });
       showToast('success', messages.games.reviewSaved, `${rating}/10`);
       onClose();
     },
@@ -65,6 +68,9 @@ export function ReviewModal({ visible, onClose, gameId, gameSlug, existingReview
       queryClient.invalidateQueries({ queryKey: ['gameReviews', gameId] });
       queryClient.invalidateQueries({ queryKey: ['myReview', gameId] });
       queryClient.invalidateQueries({ queryKey: ['game', gameSlug] });
+      // Ayni incelemenin detay sayfasi ve profildeki kopyasi eski puanla kalmasin.
+      queryClient.invalidateQueries({ queryKey: ['review', existingReview!.id] });
+      queryClient.invalidateQueries({ queryKey: ['userReviews'] });
       showToast('success', messages.games.reviewUpdated, `${rating}/10`);
       onClose();
     },

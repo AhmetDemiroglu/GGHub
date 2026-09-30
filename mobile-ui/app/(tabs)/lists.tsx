@@ -63,6 +63,19 @@ type MySubTab = 'my' | 'following';
 
 // ── Ana Bileşen ───────────────────────────────────────────────────────────────
 
+/**
+ * Sonraki sayfayi biriken listeye katar. Zaten gorunen bir liste tekrar gelirse
+ * TAZE hali yazilir: takip/puan sonrasi gecersizlestirilen sorgu yeniden
+ * cekildiginde kartin takipci sayisi ve puani da guncellensin. Eskiden var olan
+ * id'ler atiliyor ve kart eski sayiyla kaliyordu.
+ */
+function mergeListPage(current: UserListPublic[], incoming: UserListPublic[]): UserListPublic[] {
+  const fresh = new Map(incoming.map((item) => [item.id, item]));
+  const merged = current.map((item) => fresh.get(item.id) ?? item);
+  const seen = new Set(current.map((item) => item.id));
+  return [...merged, ...incoming.filter((item) => !seen.has(item.id))];
+}
+
 export default function ListsTabScreen() {
   const { colors } = useTheme();
   const { messages } = useLocale();
@@ -109,13 +122,9 @@ export default function ListsTabScreen() {
       });
 
       setDiscoverTotal(result.totalCount);
-      setDiscoverLists((current) => {
-        if (discoverPage === 1) return result.items;
-
-        const existingIds = new Set(current.map((item) => item.id));
-        const newItems = result.items.filter((item) => !existingIds.has(item.id));
-        return [...current, ...newItems];
-      });
+      setDiscoverLists((current) =>
+        discoverPage === 1 ? result.items : mergeListPage(current, result.items),
+      );
 
       return result;
     },
@@ -143,13 +152,9 @@ export default function ListsTabScreen() {
       const result = await getFollowedListsByMe({ page: followingPage, pageSize });
 
       setFollowedTotal(result.totalCount);
-      setFollowedLists((current) => {
-        if (followingPage === 1) return result.items;
-
-        const existingIds = new Set(current.map((item) => item.id));
-        const newItems = result.items.filter((item) => !existingIds.has(item.id));
-        return [...current, ...newItems];
-      });
+      setFollowedLists((current) =>
+        followingPage === 1 ? result.items : mergeListPage(current, result.items),
+      );
 
       return result;
     },

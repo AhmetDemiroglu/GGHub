@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { deleteList } from '@/src/api/list';
 import type { Messages } from '@/src/i18n';
 import type { ConfirmFn } from '@/src/components/common/ConfirmDialog';
+import { invalidateListSummaries } from '@/src/utils/query-invalidation';
 
 type ToastFn = (type: 'success' | 'error' | 'info', title: string, message?: string) => void;
 
@@ -34,7 +35,7 @@ export async function showDeleteListDialog({
 
   try {
     await deleteList(listId);
-    queryClient.invalidateQueries({ queryKey: ['myLists'] });
+    invalidateListSummaries(queryClient);
     showToast('success', messages.lists.deleteSuccess.replace('{name}', listName));
     onSuccess?.();
   } catch {

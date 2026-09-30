@@ -18,6 +18,7 @@ import { HorizontalScrollGuard } from '@/src/components/home/HorizontalScrollGua
 import { displayName } from '@/src/utils/display-name';
 import type { SuggestedUser } from '@/src/models/social';
 import * as haptics from '@/src/utils/haptics';
+import { invalidateFollowGraph } from '@/src/utils/query-invalidation';
 
 interface PeopleYouMayKnowProps {
   suggestions: SuggestedUser[];
@@ -60,8 +61,17 @@ export function PeopleYouMayKnow({ suggestions, agents = [] }: PeopleYouMayKnowP
   const [followState, setFollowState] = useState<Record<number, boolean>>({});
   const [pending, setPending] = useState<Set<number>>(new Set());
 
-  const followMutation = useMutation({ mutationFn: (username: string) => followUser(username) });
-  const unfollowMutation = useMutation({ mutationFn: (username: string) => unfollowUser(username) });
+  // Profil sayaclari ve takipci pencereleri tazelenir; serit kendi cache'ini
+  // removeFromSuggestions ile yonettigi icin burada yeniden cekilmez.
+  const refreshFollowGraph = () => invalidateFollowGraph(queryClient, { includeSuggestions: false });
+  const followMutation = useMutation({
+    mutationFn: (username: string) => followUser(username),
+    onSuccess: refreshFollowGraph,
+  });
+  const unfollowMutation = useMutation({
+    mutationFn: (username: string) => unfollowUser(username),
+    onSuccess: refreshFollowGraph,
+  });
 
   const removalTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
   useEffect(() => {

@@ -20,7 +20,8 @@ import { useTheme } from '@/src/hooks/use-theme';
 import { formatRelativeTime } from '@/src/utils/date';
 import { displayName } from '@/src/utils/display-name';
 import * as haptics from '@/src/utils/haptics';
-import type { Post } from '@/src/models/post';
+import { emitPostUpdate } from '@/src/utils/post-update-bus';
+import type { Post, PostInteractionResult } from '@/src/models/post';
 
 interface PostCardProps {
   post: Post;
@@ -61,11 +62,26 @@ export function PostCard({ post, variant = 'feed', onDeleted }: PostCardProps) {
     setRepostCount(subject.repostCount);
   }
 
+  // Sunucu cevabi ayni gonderinin TUM kopyalarina yayilir (akis, detay, profil).
+  // Yalnizca yerel state'te kalinca kart yeniden cizildiginde (sekme degisimi,
+  // liste sanallastirmasi) akistaki eski nesneden baslayip begeniyi "geri aliyordu".
+  const broadcastInteraction = (result: PostInteractionResult) =>
+    emitPostUpdate({
+      postId: result.postId,
+      changes: {
+        likeCount: result.likeCount,
+        isLiked: result.isLiked,
+        repostCount: result.repostCount,
+        isReposted: result.isReposted,
+      },
+    });
+
   const likeMutation = useMutation({
     mutationFn: (next: boolean) => setPostLike(subject.id, next),
     onSuccess: (result) => {
       setLiked(result.isLiked);
       setLikeCount(result.likeCount);
+      broadcastInteraction(result);
     },
     onError: () => {
       // Iyimser guncelleme geri alinir; sunucu gercegi kazanir.
@@ -80,6 +96,7 @@ export function PostCard({ post, variant = 'feed', onDeleted }: PostCardProps) {
     onSuccess: (result) => {
       setReposted(result.isReposted);
       setRepostCount(result.repostCount);
+      broadcastInteraction(result);
     },
     onError: () => {
       setReposted(subject.isReposted);
@@ -94,6 +111,10 @@ export function PostCard({ post, variant = 'feed', onDeleted }: PostCardProps) {
       setDeleted(true);
       onDeleted?.(post.id);
       showToast('success', messages.posts.deleted);
+      // Akis ve profil listesi kendi kopyasindan silinmis gonderiyi geri getirmesin.
+      emitPostUpdate({ postId: post.id, deleted: true });
+      // Silinen bir yanitsa ust gonderinin sayaci da duser (backend ayni sekilde dusuruyor).
+      if (post.parentPostId) emitPostUpdate({ postId: post.parentPostId, replyDelta: -1 });
     },
     onError: () => showToast('error', messages.posts.deleteError),
   });
