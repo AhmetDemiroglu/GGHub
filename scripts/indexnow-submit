@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+"""
+IndexNow: sitemap'teki URL'leri Bing, Yandex ve diger IndexNow motorlarina bildirir.
+
+NEDEN VAR: ChatGPT arama tarafinda buyuk olcude Bing dizinini kullaniyor. Bing'in sitemap'i
+kendi hizinda taramasini beklemek yerine URL'ler dogrudan bildirilir. Anahtar dosyasi
+ui/public/<KEY>.txt olarak sitede yayinda (IndexNow anahtari tasarim geregi herkese acik).
+
+Kullanim:
+  scripts/indexnow-submit                 sitemap'teki TUM URL'ler (ilk kurulum, buyuk degisiklik)
+  scripts/indexnow-submit --only games    yalniz /sitemaps/games-*.xml parcalari
+  scripts/indexnow-submit URL [URL...]    yalniz verilen URL'ler
+  scripts/indexnow-submit --dry-run       gondermeden say
+
+Ayni URL'yi degismeden tekrar tekrar gondermek Bing'in kurallarina aykiri; tam gonderim yalniz
+ilk kurulumda ya da toplu icerik degisikliginde yapilir.
+"""
+
+import json
+import re
+import sys
+import urllib.error
+import urllib.request
+
+HOST = "gghub.social"
+SITE = f"https://{HOST}"
+KEY = "0d9dcdee6eca4a47b9c5ade81124cbc0"
+KEY_LOCATION = f"{SITE}/{KEY}.txt"
+ENDPOINT = "https://api.indexnow.org/indexnow"
+BATCH = 10000  # IndexNow tek istekte en fazla 10.000 URL kabul ediyor.
+UA = "GGHub-IndexNow/1.0"
+
+
+def fetch(url: str) -> str:
+    req = urllib.request.Request(url, headers={"User-Agent": UA})
+    with urllib.request.urlopen(req, timeout=60) as res:
+        return res.read().decode("utf-8")
+
+
+def locs(xml: str) -> list[str]:
+    return re.findall(r"<loc>([^<]+)</loc>", xml)
+
+
+def sitemap_urls(only: str | None) -> list[str]:
+    urls: list[str] = []
+    for part in locs(fetch(f"{SITE}/sitemap.xml")):
+        name = part.rsplit("/", 1)[-1]
+        if only and not name.startswith(f"{only}-") and name != f"{only}.xml":
+            continue
+        found = locs(fetch(part))
+        print(f"  {name}: {len(found)} URL")
+        urls.extend(found)
+    return urls
+
+
+def submit(batch: list[str]) -> None:
+    body = json.dumps({"host": HOST, "key": KEY, "keyLocation": KEY_LOCATION, "urlList": batch}).encode()
+    req = urllib.request.Request(
+        ENDPOINT,
+        data=body,
+        method="POST",
+        headers={"Content-Type": "application/json; charset=utf-8", "User-Agent": UA},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=60) as res:
+            print(f"  {len(batch)} URL -> HTTP {res.status}")
+    except urllib.error.HTTPError as err:
+        # 400 bicim, 403 anahtar gecersiz, 422 URL host'a ait degil, 429 cok sik gonderim.
+        print(f"  {len(batch)} URL -> HTTP {err.code} {err.read().decode(errors='ignore')[:300]}")
+        sys.exit(1)
+
+
+def main() -> None:
+    args = sys.argv[1:]
+    dry_run = "--dry-run" in args
+    args = [a for a in args if a != "--dry-run"]
+    only = None
+    if args[:1] == ["--only"]:
+        only = args[1] if len(args) > 1 else None
+        args = args[2:]
+
+    if fetch(KEY_LOCATION).strip() != KEY:
+        print(f"Anahtar dosyasi yayinda degil ya da icerigi yanlis: {KEY_LOCATION}")
+        sys.exit(1)
+
+    if args:
+        urls = args
+    else:
+        print("Sitemap okunuyor:")
+        urls = sitemap_urls(only)
+
+    urls = [u for u in dict.fromkeys(urls) if u.startswith(f"{SITE}/") or u == SITE]
+    print(f"Toplam {len(urls)} URL.")
+    if dry_run or not urls:
+        return
+
+    for start in range(0, len(urls), BATCH):
+        submit(urls[start : start + BATCH])
+
+
+if __name__ == "__main__":
+    main()
