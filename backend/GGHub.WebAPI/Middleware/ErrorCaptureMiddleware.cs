@@ -79,7 +79,10 @@ namespace GGHub.WebAPI.Middleware
             {
                 _queue.Enqueue(RequestErrorContext.ForMessage(
                     $"Http{context.Response.StatusCode}",
-                    $"HTTP {context.Response.StatusCode}: uc exception'i yuttu ya da loglamadan hata dondu.",
+                    context.Response.StatusCode == StatusCodes.Status503ServiceUnavailable
+                        // Bilincli 503'ler: dis katalog (RAWG + DB kopyasi + IGDB) ya da ceviri servisi yanit veremedi.
+                        ? "HTTP 503: uc gecici olarak hizmet veremedi (dis katalog ya da ceviri servisi). Tekrarliyorsa kaynak cokmus olabilir."
+                        : $"HTTP {context.Response.StatusCode}: uc exception'i yuttu ya da loglamadan hata dondu.",
                     context, logger: null, ErrorSource.Api, context.Response.StatusCode, _environment));
             }
         }

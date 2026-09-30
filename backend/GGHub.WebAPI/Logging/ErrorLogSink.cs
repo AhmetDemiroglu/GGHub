@@ -16,6 +16,11 @@ namespace GGHub.WebAPI.Logging
     ///     cagiranin logu ya da middleware ile (GGHub stack'iyle birlikte) zaten kaydedilir.
     ///   - Hata kaydinin kendi siniflari (dongu olmasin).
     ///   - Istemcinin baglantiyi kesmesi (OperationCanceledException).
+    ///   - Polly (RAWG/Steam/IGDB dayaniklilik boru hatti): her zaman asimi ve yeniden denemeyi Error
+    ///     seviyesinde loglar ama istek cogunlukla basariyla biter (yeniden deneme, DB kopyasi, IGDB).
+    ///     30 Eyl 2026'da tek bir RAWG zaman asimi "yeni hata" bildirimi uretti, kullanici ise sayfayi
+    ///     sorunsuz gordu. Gercek kesinti (her kaynak coktu) uc 503 catalog_unavailable donunce
+    ///     middleware'in "ciplak 5xx" kaydiyla yakalanir.
     /// </summary>
     public class ErrorLogSink : ILogEventSink
     {
@@ -23,6 +28,7 @@ namespace GGHub.WebAPI.Logging
         {
             "Serilog.AspNetCore.RequestLoggingMiddleware",
             "Microsoft.EntityFrameworkCore",
+            "Polly",
             "GGHub.Infrastructure.Logging",
             "GGHub.WebAPI.Logging",
             "GGHub.WebAPI.Middleware.ErrorCaptureMiddleware"
