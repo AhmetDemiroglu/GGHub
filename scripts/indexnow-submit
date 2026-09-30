@@ -79,7 +79,11 @@ def main() -> None:
         only = args[1] if len(args) > 1 else None
         args = args[2:]
 
-    if fetch(KEY_LOCATION).strip() != KEY:
+    try:
+        key_ok = fetch(KEY_LOCATION).strip() == KEY
+    except urllib.error.URLError:
+        key_ok = False
+    if not key_ok:
         print(f"Anahtar dosyasi yayinda degil ya da icerigi yanlis: {KEY_LOCATION}")
         sys.exit(1)
 
