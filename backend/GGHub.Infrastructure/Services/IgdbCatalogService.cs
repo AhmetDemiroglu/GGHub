@@ -448,6 +448,7 @@ namespace GGHub.Infrastructure.Services
             // Zaten kontrol edilmis veya kaynagi IGDB olan satirda is yok.
             if (!IsConfigured || game.IgdbCheckedAt != null || game.IgdbId != null) return;
 
+            Game? tracked = null;
             try
             {
                 var safeName = game.Name.Replace("\"", string.Empty);
@@ -456,7 +457,7 @@ namespace GGHub.Infrastructure.Services
 
                 var match = PickBestMatch(matches, game.Name, game.Released);
 
-                var tracked = await _context.Games.FirstOrDefaultAsync(g => g.Id == game.Id, ct);
+                tracked = await _context.Games.FirstOrDefaultAsync(g => g.Id == game.Id, ct);
                 if (tracked == null) return;
 
                 tracked.IgdbCheckedAt = DateTime.UtcNow;
@@ -483,6 +484,18 @@ namespace GGHub.Infrastructure.Services
             {
                 // Detay sayfasi IGDB yuzunden ASLA dusmemeli.
                 _logger.LogWarning(ex, "[IGDB] Anlik zenginlestirme basarisiz ({Name})", game.Name);
+            }
+            finally
+            {
+                // Takipli kopya context'ten cikarilir. Cagiran (RawgGameService) ayni satirin
+                // AsNoTracking kopyasini sonra _context.Games.Update ile ekliyor; takipli ikiz
+                // kalirsa EF "another instance with the same key value is already being tracked"
+                // firlatiyordu (30 Eyl 2026, /api/games/drip-drip 500). Basarisiz kayitta da
+                // cikarilir ki cagiranin sonraki SaveChanges'i yarim degisikligi tekrar yazmasin.
+                if (tracked != null && !ReferenceEquals(tracked, game))
+                {
+                    _context.Entry(tracked).State = EntityState.Detached;
+                }
             }
         }
 
