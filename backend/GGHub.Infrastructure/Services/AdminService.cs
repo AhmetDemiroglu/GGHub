@@ -1,4 +1,5 @@
-﻿using GGHub.Application.Dtos;
+﻿using GGHub.Core.Utilities;
+using GGHub.Application.Dtos;
 using GGHub.Application.DTOs.Common;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Enums;
@@ -540,7 +541,7 @@ namespace GGHub.Infrastructure.Services
                 {
                     Id = p.Id,
                     ContentPreview = readable != null && readable.Length > 100
-                        ? readable.Substring(0, 100) + "..."
+                        ? SafeText.Truncate(readable, 100) + "..."
                         : readable,
                     FullContent = readable,
                     CreatedAt = p.CreatedAt,

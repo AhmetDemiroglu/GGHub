@@ -1,3 +1,4 @@
+using GGHub.Core.Utilities;
 using GGHub.Application.Interfaces;
 using GGHub.Infrastructure.Settings;
 using Microsoft.Extensions.Logging;
@@ -155,13 +156,13 @@ namespace GGHub.Infrastructure.Services
                     _logger.LogWarning(
                         "[Gemini] 429 ({Model}): GOOGLE HESABININ BAKIYESI BITMIS (kota degil). Kredi "
                         + "yuklenene kadar ucretli cagrilar duracak. https://ai.studio/projects {Body}",
-                        model, quotaBody.Length > 300 ? quotaBody[..300] : quotaBody);
+                        model, SafeText.Truncate(quotaBody, 300));
                 }
                 else
                 {
                     _logger.LogWarning(
                         "[Gemini] 429 kota/hiz limiti ({Model}). {Body}",
-                        model, quotaBody.Length > 300 ? quotaBody[..300] : quotaBody);
+                        model, SafeText.Truncate(quotaBody, 300));
                 }
 
                 throw new GeminiQuotaExceededException(
@@ -178,7 +179,7 @@ namespace GGHub.Infrastructure.Services
                     "[Gemini] HTTP {Status} ({Model}): {Body}",
                     (int)response.StatusCode,
                     model,
-                    body.Length > 300 ? body[..300] : body);
+                    SafeText.Truncate(body, 300));
                 return null;
             }
 

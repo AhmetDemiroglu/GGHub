@@ -1,3 +1,4 @@
+using GGHub.Core.Utilities;
 using GGHub.Application.Dtos;
 using GGHub.Application.DTOs.Common;
 using GGHub.Application.Interfaces;
@@ -117,7 +118,7 @@ namespace GGHub.Infrastructure.Services
             if (dto.Note is not null)
             {
                 var note = dto.Note.Trim();
-                group.Note = note.Length == 0 ? null : (note.Length > 1000 ? note[..1000] : note);
+                group.Note = note.Length == 0 ? null : SafeText.Truncate(note, 1000);
             }
 
             await _context.SaveChangesAsync(cancellationToken);

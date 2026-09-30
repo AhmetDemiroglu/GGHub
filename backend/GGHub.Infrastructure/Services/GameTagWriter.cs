@@ -1,4 +1,5 @@
-﻿using GGHub.Core.Entities;
+﻿using GGHub.Core.Utilities;
+using GGHub.Core.Entities;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
@@ -75,7 +76,7 @@ namespace GGHub.Infrastructure.Services
                 var slug = string.IsNullOrWhiteSpace(rawSlug) ? Slugify(name) : Slugify(rawSlug);
                 if (slug.Length < 2 || slug.Length > 120 || Noise.Contains(slug)) continue;
                 if (!seen.Add(slug)) continue;
-                result.Add((slug, name.Length > 160 ? name[..160] : name));
+                result.Add((slug, SafeText.Truncate(name, 160)));
                 if (result.Count >= max) break;
             }
             return result;

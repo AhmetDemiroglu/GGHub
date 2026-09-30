@@ -1,3 +1,4 @@
+using GGHub.Core.Utilities;
 using GGHub.Application.Dtos;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
@@ -151,7 +152,7 @@ namespace GGHub.Infrastructure.Services
         {
             var text = raw?.Trim();
             if (string.IsNullOrEmpty(text)) return null;
-            return text.Length > MaxMessageLength ? text[..MaxMessageLength] : text;
+            return SafeText.Truncate(text, MaxMessageLength);
         }
 
         private async Task<AppReleasePolicy> GetRowAsync(CancellationToken ct)

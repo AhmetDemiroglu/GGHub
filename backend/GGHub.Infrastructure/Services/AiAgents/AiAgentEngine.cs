@@ -1,3 +1,4 @@
+using GGHub.Core.Utilities;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
 using GGHub.Core.Enums;
@@ -176,6 +177,28 @@ namespace GGHub.Infrastructure.Services
                 task.CompletedAt = DateTime.UtcNow;
             }
 
+            task.ResultSummary = Truncate(task.ResultSummary, 300);
+            task.Error = Truncate(task.Error, 500);
+
+            try
+            {
+                await WriteResultAsync(task);
+            }
+            catch (Exception ex) when (!ct.IsCancellationRequested)
+            {
+                // Sonuc satiri yazilamazsa gorev Running KALMAMALI: 10 dk sonra kurtarilip yeniden
+                // islenir ve is zaten yapildiysa (gonderi yayinlandi) ikinci kez yapilir. Metin
+                // alanlari olmadan durumu yazmayi bir kez daha dene. Hata tikin geri kalanini da
+                // durdurmaz (eskiden ayni tikteki diger gorevler islenmeden kaliyordu).
+                _logger.LogError(ex, "[AiAgents] Gorev {Id} sonucu yazilamadi; ozet olmadan yeniden deneniyor.", task.Id);
+                task.ResultSummary = null;
+                task.Error = "Sonuc ozeti yazilamadi: " + ex.GetType().Name;
+                await WriteResultAsync(task);
+            }
+        }
+
+        private async Task WriteResultAsync(AiAgentTask task)
+        {
             // Sonucu TEMIZ bir scope'ta yaz: islem yarida kaldiysa (orn. gonderi kaydi patladi)
             // ayni DbContext'te izlenen yarim varliklar kalmis olabilir ve SaveChanges onlari tekrar
             // yazmaya calisirdi. ExecuteUpdate yalnizca gorev satirina dokunur.
@@ -189,6 +212,7 @@ namespace GGHub.Infrastructure.Services
                 .SetProperty(t => t.TargetPostId, task.TargetPostId)
                 .SetProperty(t => t.TargetGameId, task.TargetGameId)
                 .SetProperty(t => t.TargetReviewId, task.TargetReviewId)
+                .SetProperty(t => t.TargetListId, task.TargetListId)
                 .SetProperty(t => t.ConversationId, task.ConversationId)
                 .SetProperty(t => t.ResultEntityId, task.ResultEntityId)
                 .SetProperty(t => t.ResultSummary, task.ResultSummary)
@@ -208,7 +232,8 @@ namespace GGHub.Infrastructure.Services
                     .SetProperty(t => t.Error, "Yarida kaldi (yeniden baslatma ya da zaman asimi)."), ct);
         }
 
-        private static string? Truncate(string? s, int max) => s is null ? null : (s.Length <= max ? s : s[..max]);
+        /// <summary>Surrogate-guvenli kisaltma + yarim karakter temizligi (DB'ye yazilmadan once son savunma).</summary>
+        private static string? Truncate(string? s, int max) => SafeText.RemoveLoneSurrogates(SafeText.TruncateOrNull(s, max));
 
         private static async Task SafeDelay(TimeSpan delay, CancellationToken ct)
         {

@@ -1,3 +1,4 @@
+using GGHub.Core.Utilities;
 using System.Security.Cryptography;
 using System.Text;
 using GGHub.Core.Enums;
@@ -44,7 +45,7 @@ namespace GGHub.Infrastructure.Logging
         public static string Truncate(string? value, int max)
         {
             if (string.IsNullOrEmpty(value)) return string.Empty;
-            return value.Length <= max ? value : value[..max];
+            return SafeText.Truncate(value, max);
         }
 
         public static string? InnerChain(Exception exception)

@@ -1,3 +1,4 @@
+using GGHub.Core.Utilities;
 using System.Globalization;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
@@ -220,7 +221,7 @@ namespace GGHub.Infrastructure.Logging
         {
             if (string.IsNullOrEmpty(fullName)) return null;
             // Exception'siz log kaydi: tip yerine log sablonu gelir, noktadan bolunmez.
-            if (fullName.StartsWith("LogError:", StringComparison.Ordinal)) return fullName.Length > 80 ? fullName[..80] : fullName;
+            if (fullName.StartsWith("LogError:", StringComparison.Ordinal)) return SafeText.Truncate(fullName, 80);
             var index = fullName.LastIndexOf('.');
             return index >= 0 && index < fullName.Length - 1 ? fullName[(index + 1)..] : fullName;
         }

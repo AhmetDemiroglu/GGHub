@@ -1083,6 +1083,6 @@ namespace GGHub.Infrastructure.Services
             return i < 0 ? text : text[..i] + replacement + text[(i + search.Length)..];
         }
 
-        private static string Summary(string text) => text.Length <= 280 ? text : text[..277] + "...";
+        private static string Summary(string text) => SafeText.Ellipsis(text, 280);
     }
 }

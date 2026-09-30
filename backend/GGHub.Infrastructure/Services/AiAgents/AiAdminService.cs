@@ -1,3 +1,4 @@
+using GGHub.Core.Utilities;
 using GGHub.Application.Dtos;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
@@ -381,10 +382,10 @@ namespace GGHub.Infrastructure.Services
                 ? ("I'm an AI, not a real person.", "real person")
                 : ("Yapay zekayım, gerçek bir kişi değilim.", "Yapay zeka");
             if (!bio.Contains(marker, StringComparison.OrdinalIgnoreCase)) bio = $"{bio} {aiNote}".Trim();
-            if (bio.Length > 300) bio = bio[..300];
+            bio = SafeText.Truncate(bio, 300);
             var persona = dto.Persona.Trim();
-            if (persona.Length > 2000) persona = persona[..2000];
-            var displayName = dto.DisplayName.Trim().Length > 40 ? dto.DisplayName.Trim()[..40] : dto.DisplayName.Trim();
+            persona = SafeText.Truncate(persona, 2000);
+            var displayName = SafeText.Truncate(dto.DisplayName.Trim(), 40);
 
             var user = NewBotUser(username, displayName, bio, language);
             _context.Users.Add(user);
@@ -417,7 +418,7 @@ namespace GGHub.Infrastructure.Services
             if (string.IsNullOrWhiteSpace(dto.Persona)) throw new ArgumentException("Persona boş olamaz.");
 
             profile.IsEnabled = dto.IsEnabled;
-            profile.Persona = dto.Persona.Trim().Length > 2000 ? dto.Persona.Trim()[..2000] : dto.Persona.Trim();
+            profile.Persona = SafeText.Truncate(dto.Persona.Trim(), 2000);
             profile.FavoriteGenres = (dto.FavoriteGenres ?? string.Empty).Trim();
             profile.RatingBias = Math.Clamp(dto.RatingBias, -2, 2);
             profile.DailyActionQuota = Math.Clamp(dto.DailyActionQuota, 0, 50);

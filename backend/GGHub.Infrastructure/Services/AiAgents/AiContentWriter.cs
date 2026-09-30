@@ -1,3 +1,4 @@
+using GGHub.Core.Utilities;
 using System.Text;
 using System.Text.RegularExpressions;
 using GGHub.Application.Interfaces;
@@ -451,7 +452,7 @@ namespace GGHub.Infrastructure.Services
         private static string Trim(string s, int maxChars)
         {
             if (s.Length <= maxChars) return s;
-            var cut = s[..maxChars];
+            var cut = SafeText.Truncate(s, maxChars);
             var lastStop = cut.LastIndexOfAny(new[] { '.', '!', '?', '\n' });
             return (lastStop > maxChars / 2 ? cut[..(lastStop + 1)] : cut.TrimEnd() + "...").Trim();
         }

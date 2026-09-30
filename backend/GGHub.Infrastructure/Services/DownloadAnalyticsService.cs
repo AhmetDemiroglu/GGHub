@@ -1,3 +1,4 @@
+using GGHub.Core.Utilities;
 using GGHub.Application.DTOs.Common;
 using GGHub.Application.Dtos.DownloadAnalytics;
 using GGHub.Application.Interfaces;
@@ -350,7 +351,7 @@ namespace GGHub.Infrastructure.Services
         {
             if (string.IsNullOrWhiteSpace(value)) return null;
             var trimmed = value.Trim();
-            return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
+            return SafeText.Truncate(trimmed, maxLength);
         }
 
         private static int? Clamp(int? value, int min, int max) =>

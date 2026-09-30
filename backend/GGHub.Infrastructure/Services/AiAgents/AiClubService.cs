@@ -1,3 +1,4 @@
+using GGHub.Core.Utilities;
 using GGHub.Application.Dtos;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
@@ -100,7 +101,7 @@ namespace GGHub.Infrastructure.Services
             foreach (var p in recent.OrderBy(p => p.CreatedAt))
             {
                 var text = (await _conversations.RenderForModelAsync(p.Content!, viewerLang, ct)).Trim();
-                if (text.Length > 140) text = text[..137].TrimEnd() + "...";
+                text = SafeText.Ellipsis(text, 140);
                 lines.Add(new AiClubLineDto
                 {
                     Username = p.Username,

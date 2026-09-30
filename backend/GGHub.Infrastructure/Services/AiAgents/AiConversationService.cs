@@ -825,8 +825,8 @@ namespace GGHub.Infrastructure.Services
             return i < 0 ? text : text[..i] + replacement + text[(i + search.Length)..];
         }
 
-        private static string Truncate(string s, int max) => s.Length <= max ? s : s[..max].TrimEnd();
+        private static string Truncate(string s, int max) => SafeText.Truncate(s, max).TrimEnd();
 
-        private static string Summary(string text) => text.Length <= 280 ? text : text[..277] + "...";
+        private static string Summary(string text) => SafeText.Ellipsis(text, 280);
     }
 }
