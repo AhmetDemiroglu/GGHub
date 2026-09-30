@@ -42,9 +42,10 @@ export const GameDetailView = ({ idOrSlug, initialGame = null, initialReviews = 
         queryKey: ["game", idOrSlug],
         queryFn: () => gameApi.getById(idOrSlug),
         enabled: !!idOrSlug,
-        // Sunucudan gelen oyun ilk HTML'de cizilir; yanit kullaniciya gore degismedigi icin
-        // (istek listesi/favori ayri sorgular) herkes icin ayni veri gecerli, yeniden istenmez.
+        // Sunucudan gelen oyun ilk HTML'de cizilir. Sayfa Vercel CDN'inde gunlerce onbellekli
+        // (next.config.ts headers), bu yuzden veri bayat sayilir ve istemci acilista bir kez tazeler.
         initialData: initialGame ?? undefined,
+        initialDataUpdatedAt: 0,
         // Hata durumu bu sayfada kendi ekranıyla gösteriliyor; global toast çift bildirim olur.
         meta: { suppressGlobalToast: true },
         retry: 1,

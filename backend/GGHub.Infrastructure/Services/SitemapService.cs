@@ -25,6 +25,11 @@ namespace GGHub.Infrastructure.Services
         private const int MinMetacritic = 60;
         private const int MinAdded = 500;
 
+        // Esigi gecen ~46 bin oyun x 2 dil = ~92 bin URL, her biri sunucuda cizilen sayfa. Botlarin tek
+        // tam turu Vercel Hobby'nin aylik 4 CPU saatini tek basina bitiriyordu (30 Eyl 2026). Sitemap'e
+        // yalniz en degerli 10 bin oyun girer; geri kalanlar sayfa ici linklerle yine bulunabilir.
+        private const int MaxGames = 10000;
+
         private readonly GGHubDbContext _context;
         private readonly IMemoryCache _cache;
 
@@ -44,6 +49,13 @@ namespace GGHub.Infrastructure.Services
                     || (g.RawgAdded != null && g.RawgAdded >= MinAdded)
                     || g.ImportSource == "steam"
                     || g.TrendScore > 0)
+                // Deger sirasi: gundemdeki oyunlar (HypeScore), Metacritic'li oyunlar, sonra RAWG'da en cok
+                // eklenenler. Secilen dilim sayfalama icin Id'ye gore siralanir (sayfalar arasi kayma olmasin).
+                .OrderByDescending(g => g.HypeScore > 0)
+                .ThenByDescending(g => g.Metacritic != null)
+                .ThenByDescending(g => g.RawgAdded ?? 0)
+                .ThenBy(g => g.Id)
+                .Take(MaxGames)
                 .OrderBy(g => g.Id)
                 .Select(g => new SitemapEntryDto { Key = g.Slug, LastModified = g.LastSyncedAt });
 

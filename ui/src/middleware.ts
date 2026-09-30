@@ -37,6 +37,13 @@ const resolveLocale = (request: NextRequest) => {
     return defaultLocale;
 };
 
+/**
+ * Vercel CDN'inde onbelleklenen yollar (next.config.ts headers() ile ayni desen). Set-Cookie tasiyan
+ * yanit CDN'e yazilmaz, bu yollarda dil cerezi yazilmaz. Kayip yok: dil zaten URL'de, cerez yalniz
+ * dil secici (manual) ile anlam kazaniyor.
+ */
+const cdnCachedPathPattern = /^\/(tr|en-US)\/games\/[^/]+$/;
+
 const withLocaleHeader = (request: NextRequest, locale: string) => {
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set(localeHeaderName, locale);
@@ -64,6 +71,9 @@ export function middleware(request: NextRequest) {
         // Dil, ISTEK basligina da yazilir: sunucu bilesenleri ilk ziyarette bile dogru dili gorsun
         // (cerez yalniz yanita gider; gerekce i18n/config.ts localeHeaderName).
         const response = NextResponse.next({ request: { headers: withLocaleHeader(request, pathnameLocale) } });
+        if (cdnCachedPathPattern.test(pathname)) {
+            return response;
+        }
         response.cookies.set(localeCookieName, pathnameLocale, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
         return response;
     }

@@ -30,6 +30,8 @@ export const ReviewList = ({ gameId, gameName, gameSlug, initialReviews = null, 
         queryKey: ["game-reviews", gameId],
         queryFn: () => getGameReviews(gameId),
         initialData: initialReviews ?? undefined,
+        // Sayfa CDN'de onbellekli (next.config.ts headers): sunucu verisi gunlerce eski olabilir, acilista tazelenir.
+        initialDataUpdatedAt: 0,
     });
 
     // Sunucu verisi anonimdir: kullanicinin kendi oyu (currentUserVote) icinde yok. Kimlik

@@ -7,6 +7,23 @@ const nextConfig: NextConfig = {
     eslint: {
         ignoreDuringBuilds: true,
     },
+    /**
+     * Oyun detayi Vercel CDN'inde onbellekli. Kok layout headers() okudugu icin sayfa her istekte
+     * sunucuda ciziliyor (ISR yok); ~92 bin oyun URL'sini gezen botlar Hobby'nin aylik 4 CPU saatini
+     * iki gunde bitirdi (30 Eyl 2026). Vercel-CDN-Cache-Control, Next'in "private, no-store"
+     * Cache-Control'unden once gelir ve tarayiciya gitmez. 3 gun taze, sonra 7 gun eskisi sunulurken
+     * arkada yenilenir: bir URL en fazla 3 gunde bir cizilir, tum botlar ayni kopyayi alir.
+     * Kosul: yanitta Set-Cookie olmamali (middleware bu yolda dil cerezi yazmaz, cdnCachedPathPattern).
+     * Istemci initialData'yi bayat sayip veriyi tazeler (game-detail-view, review-list).
+     */
+    async headers() {
+        return [
+            {
+                source: "/:locale(tr|en-US)/games/:id",
+                headers: [{ key: "Vercel-CDN-Cache-Control", value: "s-maxage=259200, stale-while-revalidate=604800" }],
+            },
+        ];
+    },
     webpack(config) {
         config.module.rules.push({
             test: /\.svg$/,
