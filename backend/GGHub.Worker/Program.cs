@@ -89,6 +89,12 @@ builder.Services.AddHttpClient("Wikipedia", client =>
 builder.Services.AddScoped<IWikipediaHypeService, WikipediaHypeService>();
 builder.Services.AddScoped<HypeScoreCalculator>();
 
+// IndexNow: yeni inceleme/liste sayfalarini Bing'e bildirir. Son gonderim zamani bot dizininde
+// durur (app/ dizininde degil, "gghub-bot update" onu siliyor).
+builder.Services.Configure<IndexNowSettings>(builder.Configuration.GetSection("Jobs:IndexNow"));
+builder.Services.PostConfigure<IndexNowSettings>(s => s.StatePath ??= Path.Combine(botHome, "indexnow-state.json"));
+builder.Services.AddHttpClient("IndexNow", client => client.Timeout = TimeSpan.FromSeconds(60));
+
 // Kosulsuz kaydediyoruz; "acik mi kapali mi" sorusunun tek cevap yeri appsettings.json olsun.
 // Bunun calismasi icin her job'in Enabled bayragini KENDI ICINDE kontrol etmesi sart. Bayraklar
 // eskiden burada (WebAPI Program.cs) kontrol ediliyordu; kayit yeri degisince kontrol tamamen
@@ -106,6 +112,7 @@ builder.Services.AddHostedService<GameTagSyncJob>();
 builder.Services.AddHostedService<CatalogDedupeJob>();
 builder.Services.AddHostedService<TrendScoreJob>();
 builder.Services.AddHostedService<HypeScoreJob>();
+builder.Services.AddHostedService<IndexNowJob>();
 
 // RawgImportJob (genisleme/breadth) BILEREK kayitli degil. 4 stratejide de ~950. sayfada duruyor;
 // oradaki oyunlari RAWG'de 13 kisi eklemis, kendi MinAdded=20 esigimizin altinda. Sayfa 5000'de
