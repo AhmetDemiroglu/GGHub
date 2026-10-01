@@ -120,14 +120,23 @@ namespace GGHub.Infrastructure.Services
                 else
                 {
                     allExact = false;
-                    if (nameWords.Any(w => w.StartsWith(token, StringComparison.Ordinal))) score += isLast ? 8 : 5;
-                    else if (keyWords.Any(w => w.StartsWith(token, StringComparison.Ordinal))) score += isLast ? 7 : 4;
+                    // Onek puani kelimenin ne kadarini kapladigina gore: "v" -> "vi" yarim puan,
+                    // "witch" -> "witcher" neredeyse tam. Tek harf GTA VI'yi GTA V'nin onune koymasin.
+                    var prefixWord = nameWords.Where(w => w.StartsWith(token, StringComparison.Ordinal))
+                        .Concat(keyWords.Where(w => w.StartsWith(token, StringComparison.Ordinal)))
+                        .OrderBy(w => w.Length)
+                        .FirstOrDefault();
+                    if (prefixWord != null)
+                    {
+                        var coverage = (double)token.Length / prefixWord.Length;
+                        score += (isLast ? 8 : 5) * coverage;
+                    }
                     else if (normalizedName.Contains(token, StringComparison.Ordinal)) score += 2;
                 }
             }
 
             // Her kelime tam oturuyorsa guclu bonus: "gta v" GTA V'yi, "vi" ile baslayan GTA VI'nin onune koyar.
-            if (allExact && parsed.Tokens.Count > 0) score += 20;
+            if (allExact && parsed.Tokens.Count > 0) score += 30;
             if (normalizedName == parsed.NormalizedQuery) score += 30;
             else if (normalizedName.StartsWith(parsed.NormalizedQuery + " ", StringComparison.Ordinal)) score += 6;
 

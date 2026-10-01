@@ -22,7 +22,8 @@ namespace GGHub.WebAPI.Controllers
         [HttpGet]
         public async Task<IActionResult> Search([FromQuery] string query)
         {
-            if (string.IsNullOrWhiteSpace(query) || query.Length < 3)
+            // 2 karakter: "r6", "cs", "ow" gibi kisaltmalar aranabilsin (mobil zaten 2'den arıyordu).
+            if (string.IsNullOrWhiteSpace(query) || query.Trim().Length < 2)
             {
                 return BadRequest(AppText.Get("search.minSearchLength"));
             }

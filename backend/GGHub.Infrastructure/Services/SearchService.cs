@@ -350,13 +350,25 @@ namespace GGHub.Infrastructure.Services
             try
             {
                 var q = parsed.NormalizedQuery;
-                // "<%" word_similarity esigi (varsayilan 0.6) ile trigram indeksini kullanir.
-                var ids = await _context.Database
-                    .SqlQuery<int>($@"SELECT ""Id"" AS ""Value"" FROM ""Games""
-                        WHERE ""SearchText"" IS NOT NULL AND {q} <% ""SearchText""
-                        ORDER BY word_similarity({q}, ""SearchText"") DESC, ""HypeScore"" DESC
-                        LIMIT 12")
-                    .ToListAsync();
+                // "<%" trigram indeksini kullanir (olculdu: 150 bin satirda <1 ms; indekssiz
+                // word_similarity() >= x tam tarama 300 ms). Varsayilan esik 0.6 "witcer 3" ->
+                // "witcher 3"u (0.58) kaciriyordu; esik yalniz bu islem icin (set_config local) 0.45.
+                // Execution strategy: baglam retry ile kuruluysa dogrudan BeginTransaction atar.
+                var strategy = _context.Database.CreateExecutionStrategy();
+                var ids = await strategy.ExecuteAsync(async () =>
+                {
+                    await using var tx = await _context.Database.BeginTransactionAsync();
+                    await _context.Database.ExecuteSqlRawAsync(
+                        "SELECT set_config('pg_trgm.word_similarity_threshold', '0.45', true)");
+                    var found = await _context.Database
+                        .SqlQuery<int>($@"SELECT ""Id"" AS ""Value"" FROM ""Games""
+                            WHERE ""SearchText"" IS NOT NULL AND {q} <% ""SearchText""
+                            ORDER BY word_similarity({q}, ""SearchText"") DESC, ""HypeScore"" DESC
+                            LIMIT 12")
+                        .ToListAsync();
+                    await tx.CommitAsync();
+                    return found;
+                });
 
                 ids = ids.Where(id => !exclude.Contains(id)).ToList();
                 if (ids.Count == 0) return new List<GameSearch.Candidate>();
