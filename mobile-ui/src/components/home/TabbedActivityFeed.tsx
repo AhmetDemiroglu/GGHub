@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   Pressable,
   StyleSheet,
-  Switch,
   useWindowDimensions,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -712,15 +711,43 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
         <SegmentedTabs<TabKey> tabs={tabItems} activeKey={activeTab} onChange={setActiveTab} progress={pillProgress} />
       </View>
 
+      {/*
+          Filtre bir cip: eskiden buyuk bir Switch kendi satirinda duruyordu,
+          sekmelerle arasi bos, alttaki gonderi kartina ise yapisikti. Cip
+          satiri ince ve sekmelere bagli; akisin bir ayari oldugu belli.
+      */}
       {isAuthenticated ? (
-        <View style={styles.humansOnlyRow}>
-          <Text style={[styles.humansOnlyText, { color: colors.textSecondary }]}>{messages.ai.humansOnly}</Text>
-          <Switch
-            value={humansOnly}
-            onValueChange={toggleHumansOnly}
-            trackColor={{ true: colors.primary, false: colors.border }}
+        <View style={styles.filterRow}>
+          <Pressable
+            onPress={() => {
+              haptics.selection();
+              toggleHumansOnly(!humansOnly);
+            }}
+            hitSlop={6}
+            style={[
+              styles.filterChip,
+              humansOnly
+                ? { backgroundColor: `${colors.primary}1A`, borderColor: colors.primary }
+                : { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: humansOnly }}
             accessibilityLabel={messages.ai.humansOnly}
-          />
+          >
+            <Ionicons
+              name={humansOnly ? 'checkmark-circle' : 'people-outline'}
+              size={15}
+              color={humansOnly ? colors.primary : colors.textSecondary}
+            />
+            <Text
+              style={[
+                styles.filterChipText,
+                { color: humansOnly ? colors.primary : colors.textSecondary },
+              ]}
+            >
+              {messages.ai.humansOnly}
+            </Text>
+          </Pressable>
         </View>
       ) : null}
 
@@ -741,11 +768,25 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
           accessibilityRole="button"
           accessibilityLabel={messages.posts.newTitle}
         >
-          <Avatar uri={user?.profileImageUrl} name={user?.username ?? ''} size={36} />
-          <Text style={[styles.composerEntryText, { color: colors.textSecondary }]} numberOfLines={1}>
-            {messages.posts.placeholder}
-          </Text>
-          <Ionicons name="images-outline" size={18} color={colors.textSecondary} />
+          {/* X deseni: ustte avatar + buyuk "Neler oluyor?", altta eklenebilecekler
+              ve Paylas. Eskiden tek satirlik kucuk gri yazi bir arama kutusuna
+              benziyordu, gonderi yazilacak yer oldugu anlasilmiyordu. */}
+          <View style={styles.composerTop}>
+            <Avatar uri={user?.profileImageUrl} name={user?.username ?? ''} size={40} />
+            <Text style={[styles.composerEntryText, { color: colors.textSecondary }]} numberOfLines={1}>
+              {messages.posts.placeholder}
+            </Text>
+          </View>
+          <View style={[styles.composerBottom, { borderTopColor: colors.border }]}>
+            <View style={styles.composerIcons}>
+              <Ionicons name="image-outline" size={20} color={colors.primary} />
+              <Ionicons name="stats-chart-outline" size={19} color={colors.primary} />
+              <Ionicons name="at-outline" size={20} color={colors.primary} />
+            </View>
+            <View style={[styles.composerShare, { backgroundColor: colors.primary }]}>
+              <Text style={styles.composerShareText}>{messages.posts.share}</Text>
+            </View>
+          </View>
         </Pressable>
       ) : null}
     </View>
@@ -890,37 +931,75 @@ export function TabbedActivityFeed({ header, onRefreshHome, refreshingHome, cont
 }
 
 const styles = StyleSheet.create({
-  humansOnlyRow: {
+  filterRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.md,
+  },
+  filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: 8,
-    paddingHorizontal: 16,
-    marginTop: 6,
+    gap: 6,
+    height: 30,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
   },
-  humansOnlyText: { fontSize: 12 },
+  filterChipText: {
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+  },
   root: {
     flex: 1,
   },
   tabBarWrap: {
     paddingHorizontal: Spacing.lg,
     marginTop: Spacing.lg,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
   },
   composerEntry: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
     marginHorizontal: Spacing.lg,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.lg,
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.sm,
     borderRadius: BorderRadius.lg,
     borderWidth: StyleSheet.hairlineWidth,
   },
+  composerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
   composerEntryText: {
     flex: 1,
+    fontSize: FontSize.xl,
+  },
+  composerBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: Spacing.md,
+    paddingTop: Spacing.sm,
+    // Ikonlar metnin hizasindan baslar (avatar 40 + bosluk 12).
+    marginLeft: 40 + Spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  composerIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.lg,
+  },
+  composerShare: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.full,
+  },
+  composerShareText: {
+    color: '#ffffff',
     fontSize: FontSize.sm,
+    fontWeight: '700',
   },
   pinnedBar: {
     position: 'absolute',
