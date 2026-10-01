@@ -20,7 +20,8 @@ import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useTabBarHeight } from '@/src/hooks/use-tab-bar-height';
 import { gameApi } from '@/src/api/game';
-import { calendarMonthName, formatCalendarDate } from '@/src/utils/date';
+import { calendarMonthName, formatCalendarDate, formatShortCalendarDate } from '@/src/utils/date';
+import { isUnreleased } from '@/src/utils/game-release';
 import * as haptics from '@/src/utils/haptics';
 import type { Game } from '@/src/models/game';
 import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
@@ -269,6 +270,7 @@ export default function AgendaScreen() {
                     renderItem={({ item: game }) => (
                       <View style={styles.highlightCard}>
                         <GameCard game={game} variant="compact" />
+                        <ReleaseBadge released={game.released} locale={locale} tbaLabel={messages.common.tba} />
                       </View>
                     )}
                   />
@@ -307,7 +309,49 @@ export default function AgendaScreen() {
   );
 }
 
+/**
+ * Vitrin kartinin sag ust kosesindeki cikis tarihi rozeti. Renk web gundemiyle ayni:
+ * cikmamis amber, cikmis yesil, tarihsiz notr. Dokunmayi karta birakir (pointerEvents none).
+ */
+function ReleaseBadge({ released, locale, tbaLabel }: { released: string | null; locale: string; tbaLabel: string }) {
+  const [y, m, d] = (released ?? '').split('-').map(Number);
+  const hasDate = !!y && !!m && !!d;
+  const upcoming = hasDate && isUnreleased(released);
+  const label = hasDate ? formatShortCalendarDate(y, m, d, locale) : tbaLabel;
+  const background = !hasDate ? 'rgba(15,23,42,0.85)' : upcoming ? 'rgba(251,191,36,0.95)' : 'rgba(52,211,153,0.95)';
+  const foreground = !hasDate ? '#ffffff' : '#000000';
+
+  return (
+    <View pointerEvents="none" style={[styles.releaseBadge, { backgroundColor: background }]}>
+      <Ionicons name={upcoming || !hasDate ? 'calendar-outline' : 'checkmark-circle-outline'} size={12} color={foreground} />
+      <Text style={[styles.releaseBadgeText, { color: foreground }]}>{label}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  releaseBadge: {
+    position: 'absolute',
+    top: Spacing.sm,
+    right: Spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  releaseBadgeText: {
+    fontSize: FontSize.xs,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
   controls: {
     flexDirection: 'row',
     gap: Spacing.sm,

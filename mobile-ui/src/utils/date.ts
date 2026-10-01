@@ -41,6 +41,19 @@ export const formatCalendarMonthDay = (
   });
 
 /** 1..12 -> ["Ocak", ...]. Ay secicisinin etiketleri buradan gelir. */
+/** Kisa takvim tarihi: tr "19 Kas", en "Nov 19". Rozetler icin. */
+export const formatShortCalendarDate = (
+  year: number,
+  month: number,
+  day: number,
+  locale: string = 'en-US',
+): string =>
+  new Date(Date.UTC(year, month - 1, day)).toLocaleDateString(resolveLocale(locale), {
+    day: 'numeric',
+    month: 'short',
+    timeZone: CALENDAR_TZ,
+  });
+
 export const calendarMonthName = (month: number, locale: string = 'en-US'): string =>
   new Date(Date.UTC(2000, month - 1, 1)).toLocaleDateString(resolveLocale(locale), {
     month: 'long',
