@@ -17,7 +17,7 @@ import { GameSimilarSlider } from "@/core/components/other/game-detail/game-simi
 import { Button } from "@/core/components/ui/button";
 import type { Game } from "@/models/gaming/game.model";
 import type { Review } from "@/models/review/review.model";
-import { isUnreleased } from "@/core/lib/game-release";
+import { isGameUnreleased } from "@/core/lib/game-release";
 
 interface GameDetailViewProps {
     idOrSlug: string;
@@ -52,7 +52,7 @@ export const GameDetailView = ({ idOrSlug, initialGame = null, initialReviews = 
     });
 
     // Cikmamis oyuna inceleme yok: butonlar kilit metni gosterir, tiklayan aciklama gorur.
-    const reviewLocked = isUnreleased(game?.released);
+    const reviewLocked = isGameUnreleased(game);
 
     const handleOpenReviewModal = () => {
         if (!isAuthenticated) {

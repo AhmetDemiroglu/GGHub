@@ -1,5 +1,6 @@
 ﻿using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
+using GGHub.Core.Specifications;
 using GGHub.Infrastructure.Dtos;
 using GGHub.Infrastructure.Persistence;
 using GGHub.Infrastructure.Settings;
@@ -162,10 +163,12 @@ namespace GGHub.Infrastructure.Services
 
             // Isim+yil ile mevcut bir RAWG satiri varsa yeni satir acma; appid'yi ona bagla
             // ve tarihini Steam'in (yayinci verisi) tarihiyle tazele.
-            var linked = await TryLinkToExistingGameAsync(data.Name, releaseYear, steamAppId, released, popularityHint, ct);
+            var comingSoon = data.ReleaseDate?.ComingSoon;
+            var linked = await TryLinkToExistingGameAsync(data.Name, releaseYear, steamAppId, released, comingSoon, popularityHint, ct);
             if (linked != null) return linked;
 
             var newGame = BuildGame(data, released);
+            GameRelease.ApplyUpcomingSignal(newGame, comingSoon, DateTime.UtcNow);
             if (popularityHint is > 0) newGame.RawgAdded = popularityHint;
 
             // Slug carpismasina karsi deterministik son ek (Slug'da unique index yok ama
@@ -308,6 +311,7 @@ namespace GGHub.Infrastructure.Services
             if (!needsCheck && popularityHint is not > 0) return;
 
             string? steamReleased = null;
+            bool? comingSoon = null;
             if (needsCheck)
             {
                 try
@@ -315,7 +319,10 @@ namespace GGHub.Infrastructure.Services
                     var url = $"{_settings.BaseUrl}appdetails?appids={steamAppId}&cc={_settings.Country}&l={_settings.Language}";
                     var envelope = await _httpClient.GetFromJsonAsync<Dictionary<string, SteamAppDetailsEnvelopeDto>>(url, ct);
                     if (envelope != null && envelope.TryGetValue(steamAppId.ToString(), out var entry) && entry.Success)
+                    {
                         steamReleased = ParseReleaseDate(entry.Data?.ReleaseDate);
+                        comingSoon = entry.Data?.ReleaseDate?.ComingSoon;
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -324,7 +331,8 @@ namespace GGHub.Infrastructure.Services
                 }
             }
 
-            var dirty = false;
+            // "Cikmadi" isareti (tarihsiz "Q4 2026"/"To be announced" oyunlarda inceleme kilidi).
+            var dirty = GameRelease.ApplyUpcomingSignal(existing, comingSoon, DateTime.UtcNow);
             if (ShouldPreferSteamDate(existing.Released, steamReleased))
             {
                 existing.Released = steamReleased;
@@ -340,7 +348,7 @@ namespace GGHub.Infrastructure.Services
             if (dirty) await _context.SaveChangesAsync(ct);
         }
 
-        private async Task<Game?> TryLinkToExistingGameAsync(string name, int? releaseYear, int steamAppId, string? steamReleased, int? popularityHint, CancellationToken ct)
+        private async Task<Game?> TryLinkToExistingGameAsync(string name, int? releaseYear, int steamAppId, string? steamReleased, bool? comingSoon, int? popularityHint, CancellationToken ct)
         {
             // ILIKE ile dar bir aday kumesi cek, normalize edilmis isimle bellek icinde karsilastir.
             var candidates = await _context.Games
@@ -375,7 +383,7 @@ namespace GGHub.Infrastructure.Services
 
             {
                 var candidate = chosen;
-                var dirty = false;
+                var dirty = GameRelease.ApplyUpcomingSignal(candidate, comingSoon, DateTime.UtcNow);
                 if (candidate.SteamAppId == null)
                 {
                     candidate.SteamAppId = steamAppId;

@@ -22,6 +22,10 @@ namespace GGHub.Infrastructure.Dtos
         [JsonPropertyName("released")]
         public string? Released { get; set; }
 
+        /// <summary>RAWG "to be announced": cikmamis, tarihi belli degil.</summary>
+        [JsonPropertyName("tba")]
+        public bool? Tba { get; set; }
+
         [JsonPropertyName("background_image")]
         public string? BackgroundImage { get; set; }
 

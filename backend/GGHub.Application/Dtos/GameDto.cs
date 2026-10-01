@@ -26,6 +26,12 @@
         public List<StoreDto> Stores { get; set; } = new();
         public bool IsInWishlist { get; set; }
         public string? DescriptionTr { get; set; }
+
+        /// <summary>
+        /// Oyun henuz cikmadi (gelecek tarih ya da tarihsiz + kaynak "yakinda" diyor). Istemciler
+        /// inceleme dugmesini buna gore kilitler; kural GameRelease'te. Yalniz detay ucu doldurur.
+        /// </summary>
+        public bool? IsUnreleased { get; set; }
     }
     public class DeveloperDto
     {

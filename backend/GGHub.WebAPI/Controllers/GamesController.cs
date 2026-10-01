@@ -126,6 +126,7 @@ namespace GGHub.WebAPI.Controllers
                 Metacritic = game.Metacritic,
                 Description = game.Description,
                 DescriptionTr = game.DescriptionTr,
+                IsUnreleased = GGHub.Core.Specifications.GameRelease.IsUnreleased(game, DateTime.UtcNow),
                 CoverImage = game.CoverImage,
                 WebsiteUrl = game.WebsiteUrl,
                 EsrbRating = game.EsrbRating,

@@ -1,5 +1,6 @@
 ﻿using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
+using GGHub.Core.Specifications;
 using GGHub.Infrastructure.Dtos;
 using GGHub.Infrastructure.Persistence;
 using GGHub.Infrastructure.Settings;
@@ -907,6 +908,10 @@ namespace GGHub.Infrastructure.Services
                     dirty = true;
                 }
 
+                // "Cikmadi" isareti: tarihsiz ama bekleneni olan oyunda inceleme kilidi.
+                if (GameRelease.ApplyUpcomingSignal(existing, GameRelease.IgdbSignal(dto.FirstReleaseDate, dto.Hypes), DateTime.UtcNow))
+                    dirty = true;
+
                 if (string.IsNullOrEmpty(existing.BackgroundImage) && dto.Cover?.ImageId != null)
                 {
                     existing.BackgroundImage = BackgroundUrl(dto);
@@ -1028,6 +1033,7 @@ namespace GGHub.Infrastructure.Services
                 // icin ayrica isaretliyoruz.
                 DetailSyncedAt = DateTime.UtcNow,
             };
+            GameRelease.ApplyUpcomingSignal(newGame, GameRelease.IgdbSignal(dto.FirstReleaseDate, dto.Hypes), DateTime.UtcNow);
 
             // Toplu senkronda kayit HEMEN yazilmaz: her oyun icin ayri SaveChanges uzak
             // Postgres'te kosuyu saatlere cikariyordu (olculdu: takvim senkronu hic bitmedi).

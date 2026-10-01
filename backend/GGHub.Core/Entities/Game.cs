@@ -148,6 +148,14 @@
         /// </summary>
         public string? SearchText { get; set; }
 
+        /// <summary>
+        /// Bir kaynagin (Steam coming_soon, RAWG tba, IGDB tarihsiz + bekleyen) bu oyun icin
+        /// "henuz cikmadi, tarih belli degil" dedigi son an. Kaynak "cikti" derse null'a doner.
+        /// Yalniz tarih (Released) YOKKEN anlamlidir: tarih varsa o belirler. 180 gun tazelenmezse
+        /// gecersiz sayilir (GameRelease). Cikmamis oyuna inceleme kilidi bunu kullanir.
+        /// </summary>
+        public DateTime? UpcomingSeenAt { get; set; }
+
         public ICollection<GameTag> Tags { get; set; } = new List<GameTag>();
     }
 }

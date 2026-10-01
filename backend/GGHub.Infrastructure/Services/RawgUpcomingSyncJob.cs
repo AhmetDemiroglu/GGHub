@@ -1,4 +1,5 @@
 ﻿using GGHub.Core.Entities;
+using GGHub.Core.Specifications;
 using GGHub.Infrastructure.Dtos;
 using GGHub.Infrastructure.Persistence;
 using GGHub.Infrastructure.Settings;
@@ -165,6 +166,7 @@ namespace GGHub.Infrastructure.Services
                 // Cikis tarihi ertelemeleri ve gorsel degisimleri gundem icin kritik.
                 var dirty = false;
                 if (dto.Released != null && existing.Released != dto.Released) { existing.Released = dto.Released; dirty = true; }
+                if (GameRelease.ApplyUpcomingSignal(existing, GameRelease.RawgSignal(dto.Tba, dto.Released), DateTime.UtcNow)) dirty = true;
                 if (dto.BackgroundImage != null && existing.BackgroundImage != dto.BackgroundImage) { existing.BackgroundImage = dto.BackgroundImage; dirty = true; }
                 if (dto.Added > 0 && existing.RawgAdded != dto.Added) { existing.RawgAdded = dto.Added; dirty = true; }
                 if (string.IsNullOrEmpty(existing.GenresJson) && dto.Genres != null && dto.Genres.Any())
@@ -192,6 +194,7 @@ namespace GGHub.Infrastructure.Services
             {
                 steamRow.RawgId = dto.Id;
                 if (dto.Released != null) steamRow.Released = dto.Released;
+                GameRelease.ApplyUpcomingSignal(steamRow, GameRelease.RawgSignal(dto.Tba, dto.Released), DateTime.UtcNow);
                 steamRow.RawgAdded = dto.Added;
                 steamRow.RawgRatingsCount = dto.RatingsCount;
                 if (steamRow.Rating == null) steamRow.Rating = dto.Rating;
@@ -223,6 +226,7 @@ namespace GGHub.Infrastructure.Services
                 GenresJson = genres != null ? JsonSerializer.Serialize(genres) : null,
             };
             GameTagWriter.Attach(newGame, GameTagWriter.SourceRawg, GameTagWriter.FromRawg(dto.Tags));
+            GameRelease.ApplyUpcomingSignal(newGame, GameRelease.RawgSignal(dto.Tba, dto.Released), DateTime.UtcNow);
 
             try
             {

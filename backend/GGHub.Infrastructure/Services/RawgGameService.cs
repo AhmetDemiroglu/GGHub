@@ -3,6 +3,7 @@ using GGHub.Application.DTOs.Common;
 using GGHub.Application.Exceptions;
 using GGHub.Application.Interfaces;
 using GGHub.Core.Entities;
+using GGHub.Core.Specifications;
 using GGHub.Core.Enums;
 using GGHub.Infrastructure.Dtos;
 using GGHub.Infrastructure.Localization;
@@ -155,6 +156,7 @@ namespace GGHub.Infrastructure.Services
                         gameInDb.Metacritic = null;
                     }
                     gameInDb.Released = dto.Released;
+                    GameRelease.ApplyUpcomingSignal(gameInDb, GameRelease.RawgSignal(dto.Tba, dto.Released), DateTime.UtcNow);
                     gameInDb.BackgroundImage = dto.BackgroundImage;
                     gameInDb.CoverImage = dto.CoverImage;
                     gameInDb.LastSyncedAt = DateTime.UtcNow;
@@ -193,6 +195,7 @@ namespace GGHub.Infrastructure.Services
                         WebsiteUrl = dto.Website,
                         EsrbRating = dto.EsrbRating?.Name
                     };
+                    GameRelease.ApplyUpcomingSignal(newGame, GameRelease.RawgSignal(dto.Tba, dto.Released), DateTime.UtcNow);
                     GameTagWriter.Attach(newGame, GameTagWriter.SourceRawg, GameTagWriter.FromRawg(dto.Tags));
                     await _context.Games.AddAsync(newGame);
                     gameInDb = newGame;

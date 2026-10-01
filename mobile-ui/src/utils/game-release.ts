@@ -1,8 +1,13 @@
 /**
- * "Oyun cikti mi?" Backend'deki GameRelease.IsUnreleased ile ayni kural: tarih gelecekteyse
- * cikmamistir, tarih yoksa cikmis sayilir (katalogda tarihsiz eski oyunlar var).
- * Cikmamis oyuna inceleme yazilamaz; backend de reddeder.
+ * "Oyun cikti mi?" Asil karar sunucuda (GameRelease): tarih yoksa kaynaklarin "yakinda"
+ * isaretine de bakar ve detay ucunda `isUnreleased` olarak gelir. Bu fonksiyon o alan
+ * gelmediginde (eski yanit) yalniz tarihe bakan yedektir.
  */
+export function isGameUnreleased(game: { released: string | null; isUnreleased?: boolean | null } | null | undefined): boolean {
+  if (!game) return false;
+  return game.isUnreleased ?? isUnreleased(game.released);
+}
+
 export function isUnreleased(released: string | null | undefined): boolean {
   if (!released || released.length < 10) return false;
   const now = new Date();

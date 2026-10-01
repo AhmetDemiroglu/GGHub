@@ -37,7 +37,7 @@ namespace GGHub.Infrastructure.Services
 
             // Cikmamis oyuna inceleme yok. Istemciler butonu zaten kapatiyor; bu kapi eski
             // mobil surumler ve dogrudan API cagrilari icin.
-            if (GameRelease.IsUnreleased(game.Released, DateTime.UtcNow))
+            if (GameRelease.IsUnreleased(game, DateTime.UtcNow))
             {
                 throw new InvalidOperationException(AppText.Get("reviews.gameNotReleased"));
             }

@@ -37,7 +37,7 @@ import { useRequireAuth } from '@/src/contexts/auth-prompt-context';
 import type { Game } from '@/src/models/game';
 import { SwipeBackEdge } from '@/src/components/common/SwipeBackEdge';
 import { useToast } from '@/src/components/common/Toast';
-import { isUnreleased } from '@/src/utils/game-release';
+import { isGameUnreleased } from '@/src/utils/game-release';
 
 export default function GameDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -150,7 +150,7 @@ export default function GameDetailScreen() {
     );
   }
 
-  const reviewLocked = isUnreleased(game.released);
+  const reviewLocked = isGameUnreleased(game);
 
   return (
     <SwipeBackEdge>

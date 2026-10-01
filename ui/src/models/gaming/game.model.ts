@@ -31,6 +31,8 @@ export interface Game {
     slug: string;
     name: string;
     released: string | null;
+    /** Sunucunun karari: gelecek tarih ya da tarihsiz + kaynak "yakinda". Yalniz detay ucu doldurur. */
+    isUnreleased?: boolean | null;
     backgroundImage: string | null;
     rating: number | null;
     metacritic: number | null;
