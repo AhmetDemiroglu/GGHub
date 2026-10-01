@@ -22,18 +22,21 @@ namespace GGHub.Core.Specifications
         /// </summary>
         public static readonly TimeSpan UpcomingSignalLifetime = TimeSpan.FromDays(180);
 
+        private const int TurkeyUtcOffsetHours = 3;
+
         public static bool IsUnreleased(Game game, DateTime utcNow) =>
             IsUnreleased(game.Released, game.UpcomingSeenAt, utcNow);
 
         /// <summary>
-        /// Gun sinirinda en erken saat dilimi (UTC+14) esas: oyun dunyanin herhangi bir yerinde
-        /// ciktigi an inceleme acilir.
+        /// Gun siniri Turkiye saati (UTC+3, yaz saati yok): kullanicilarin cogu orada ve istemciler
+        /// de cihazin yerel tarihine bakiyor. Ilk surum UTC+14 kullaniyordu; Turkiye'de ertesi gun
+        /// cikacak oyun ("Infinite Museum", 2 Ekim) 1 Ekim ogleden sonra "cikti" sayiliyordu.
         /// </summary>
         public static bool IsUnreleased(string? released, DateTime? upcomingSeenAt, DateTime utcNow)
         {
             if (TryParseFullDate(released, out var date))
             {
-                return date > DateOnly.FromDateTime(utcNow.AddHours(14));
+                return date > DateOnly.FromDateTime(utcNow.AddHours(TurkeyUtcOffsetHours));
             }
 
             return upcomingSeenAt.HasValue && upcomingSeenAt.Value > utcNow - UpcomingSignalLifetime;
