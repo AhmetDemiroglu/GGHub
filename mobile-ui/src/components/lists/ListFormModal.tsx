@@ -1,15 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View, Text, StyleSheet, Modal, ScrollView, Pressable,
-} from 'react-native';
-// RN'inki degil: Android'de Modal icinde no-op. Bkz. common/BottomSheet import notu.
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { Input } from '@/src/components/common/Input';
 import { Button } from '@/src/components/common/Button';
+import { BottomSheet, BottomSheetScrollView } from '@/src/components/common/BottomSheet';
 import { useToast } from '@/src/components/common/Toast';
 import { createList, updateList } from '@/src/api/list';
 import {
@@ -44,11 +40,17 @@ const categoryOptions = [
   { value: ListCategory.Horror, labelKey: 'horror' as const },
 ];
 
-export function ListFormModal({ visible, onClose, editingList }: ListFormModalProps) {
+export function ListFormModal({ visible, onClose, editingList: editingListProp }: ListFormModalProps) {
   const { colors } = useTheme();
   const { messages } = useLocale();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
+  // Ust bilesen kapatirken editingList'i hemen null yapiyor. Pencere kapanis
+  // animasyonu boyunca acik oldugu haliyle kalsin: baslik "Yeni Liste"ye
+  // donmesin, form bosalmasin. Yalnizca acikken gelen deger alinir.
+  const editingRef = useRef(editingListProp);
+  if (visible) editingRef.current = editingListProp;
+  const editingList = editingRef.current;
   const isEditing = !!editingList;
 
   const [name, setName] = useState('');
@@ -57,6 +59,7 @@ export function ListFormModal({ visible, onClose, editingList }: ListFormModalPr
   const [category, setCategory] = useState<ListCategory>(ListCategory.Other);
 
   useEffect(() => {
+    if (!visible) return;
     if (editingList) {
       setName(editingList.name);
       setDescription(editingList.description ?? '');
@@ -68,7 +71,9 @@ export function ListFormModal({ visible, onClose, editingList }: ListFormModalPr
       setVisibility(ListVisibilitySetting.Public);
       setCategory(ListCategory.Other);
     }
-  }, [editingList, visible]);
+    // id'ye bagli: liste detayi arkada tazelenince (yeni nesne) yazilanlar silinmesin.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingList?.id, visible]);
 
   const createMutation = useMutation({
     mutationFn: (data: UserListForCreation) => createList(data),
@@ -119,123 +124,108 @@ export function ListFormModal({ visible, onClose, editingList }: ListFormModalPr
   };
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={[styles.container, { backgroundColor: colors.background }]}
-        behavior="padding"
+    // Diger tum alt pencerelerle ayni kabuk (BottomSheet): ayni tutamak, baslik,
+    // kose ve cekip kapatma. Eskiden iOS pageSheet + elle cizilmis baslik/X
+    // kullaniyordu; ust kenar digerlerinden farkli ve asimetrik duruyordu.
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      title={isEditing ? messages.lists.formEditTitle : messages.lists.formCreateTitle}
+      footer={
+        <Button
+          title={isLoading ? messages.lists.formSaving : messages.common.save}
+          onPress={handleSubmit}
+          loading={isLoading}
+          disabled={!name.trim()}
+        />
+      }
+    >
+      <BottomSheetScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.bodyContent}
       >
-        <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>
-            {isEditing ? messages.lists.formEditTitle : messages.lists.formCreateTitle}
-          </Text>
-          <Pressable onPress={onClose} hitSlop={8}>
-            <Ionicons name="close" size={24} color={colors.text} />
-          </Pressable>
+        <Input
+          label={messages.lists.formName}
+          placeholder={messages.lists.formNamePlaceholder}
+          value={name}
+          onChangeText={setName}
+          maxLength={100}
+        />
+
+        <Input
+          label={messages.lists.formDescription}
+          placeholder={messages.lists.formDescriptionPlaceholder}
+          value={description}
+          onChangeText={setDescription}
+          multiline
+          numberOfLines={3}
+          style={styles.textArea}
+          maxLength={500}
+        />
+
+        <Text style={[styles.sectionLabel, { color: colors.text }]}>
+          {messages.lists.formVisibility}
+        </Text>
+        <View style={styles.optionsRow}>
+          {visibilityOptions.map((opt) => (
+            <Pressable
+              key={opt.value}
+              style={[
+                styles.optionChip,
+                {
+                  backgroundColor: visibility === opt.value ? colors.primary : colors.surface,
+                  borderColor: visibility === opt.value ? colors.primary : colors.border,
+                },
+              ]}
+              onPress={() => setVisibility(opt.value)}
+            >
+              <Text
+                style={[
+                  styles.optionChipText,
+                  { color: visibility === opt.value ? '#ffffff' : colors.text },
+                ]}
+              >
+                {visibilityLabels[opt.labelKey]}
+              </Text>
+            </Pressable>
+          ))}
         </View>
 
-        <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
-          <Input
-            label={messages.lists.formName}
-            placeholder={messages.lists.formNamePlaceholder}
-            value={name}
-            onChangeText={setName}
-            maxLength={100}
-          />
-
-          <Input
-            label={messages.lists.formDescription}
-            placeholder={messages.lists.formDescriptionPlaceholder}
-            value={description}
-            onChangeText={setDescription}
-            multiline
-            numberOfLines={3}
-            style={styles.textArea}
-            maxLength={500}
-          />
-
-          <Text style={[styles.sectionLabel, { color: colors.text }]}>
-            {messages.lists.formVisibility}
-          </Text>
-          <View style={styles.optionsRow}>
-            {visibilityOptions.map((opt) => (
-              <Pressable
-                key={opt.value}
+        <Text style={[styles.sectionLabel, { color: colors.text }]}>
+          {messages.lists.formCategory}
+        </Text>
+        <View style={styles.optionsRow}>
+          {categoryOptions.map((opt) => (
+            <Pressable
+              key={opt.value}
+              style={[
+                styles.optionChip,
+                {
+                  backgroundColor: category === opt.value ? colors.primary : colors.surface,
+                  borderColor: category === opt.value ? colors.primary : colors.border,
+                },
+              ]}
+              onPress={() => setCategory(opt.value)}
+            >
+              <Text
                 style={[
-                  styles.optionChip,
-                  {
-                    backgroundColor: visibility === opt.value ? colors.primary : colors.surface,
-                    borderColor: visibility === opt.value ? colors.primary : colors.border,
-                  },
+                  styles.optionChipText,
+                  { color: category === opt.value ? '#ffffff' : colors.text },
                 ]}
-                onPress={() => setVisibility(opt.value)}
               >
-                <Text
-                  style={[
-                    styles.optionChipText,
-                    { color: visibility === opt.value ? '#ffffff' : colors.text },
-                  ]}
-                >
-                  {visibilityLabels[opt.labelKey]}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
-          <Text style={[styles.sectionLabel, { color: colors.text }]}>
-            {messages.lists.formCategory}
-          </Text>
-          <View style={styles.optionsRow}>
-            {categoryOptions.map((opt) => (
-              <Pressable
-                key={opt.value}
-                style={[
-                  styles.optionChip,
-                  {
-                    backgroundColor: category === opt.value ? colors.primary : colors.surface,
-                    borderColor: category === opt.value ? colors.primary : colors.border,
-                  },
-                ]}
-                onPress={() => setCategory(opt.value)}
-              >
-                <Text
-                  style={[
-                    styles.optionChipText,
-                    { color: category === opt.value ? '#ffffff' : colors.text },
-                  ]}
-                >
-                  {messages.lists.categories[opt.labelKey]}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </ScrollView>
-
-        <View style={[styles.footer, { borderTopColor: colors.border }]}>
-          <Button
-            title={isLoading ? messages.lists.formSaving : messages.common.save}
-            onPress={handleSubmit}
-            loading={isLoading}
-            disabled={!name.trim()}
-          />
+                {messages.lists.categories[opt.labelKey]}
+              </Text>
+            </Pressable>
+          ))}
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+      </BottomSheetScrollView>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-  },
-  headerTitle: { fontSize: FontSize.xl, fontWeight: '700' },
-  body: { flex: 1 },
-  bodyContent: { padding: Spacing.lg },
+  // Yatay bosluk pencerenin kendisinden gelir (BottomSheet paddingHorizontal).
+  bodyContent: { paddingTop: Spacing.xs },
   textArea: { height: 80, textAlignVertical: 'top' },
   sectionLabel: {
     fontSize: FontSize.sm,
@@ -256,5 +246,4 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   optionChipText: { fontSize: FontSize.sm, fontWeight: '500' },
-  footer: { padding: Spacing.lg, borderTopWidth: 1 },
 });

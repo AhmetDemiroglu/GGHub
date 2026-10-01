@@ -8,7 +8,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { BottomSheet } from '@/src/components/common/BottomSheet';
+import { BottomSheet, BottomSheetScrollView } from '@/src/components/common/BottomSheet';
 import { MentionInput } from '@/src/components/common/MentionInput';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
@@ -93,108 +93,113 @@ export function ReviewModal({ visible, onClose, gameId, gameSlug, existingReview
       visible={visible}
       onClose={onClose}
       title={isEditing ? messages.games.editReview : messages.games.writeReview}
+      // Gonder alt alanda sabit: klavye acikken icerik kisalip kaysa da buton
+      // hep klavyenin ustunde gorunur.
+      footer={
+        <Pressable
+          style={[
+            styles.submitButton,
+            { backgroundColor: rating > 0 ? colors.primary : colors.textMuted },
+          ]}
+          onPress={handleSubmit}
+          disabled={rating === 0 || isPending}
+        >
+          {isPending ? (
+            <ActivityIndicator size="small" color="#ffffff" />
+          ) : (
+            <Text style={styles.submitText}>{messages.common.submit}</Text>
+          )}
+        </Pressable>
+      }
     >
-      <View style={styles.ratingSection}>
-        <Text style={[styles.ratingLabel, { color: colors.textSecondary }]}>
-          {messages.games.ratingLabel} {rating > 0 ? `(${rating}/10)` : ''}
-        </Text>
-        <View style={styles.ratingGrid}>
-          {Array.from({ length: 10 }, (_, index) => {
-            const value = index + 1;
-            const selected = value === rating;
-            const filled = rating > 0 && value <= rating;
-            const isLow = value <= 4;
-            const isMid = value === 5;
-            const activeColor = isLow ? colors.error : isMid ? colors.warning : colors.success;
+      <BottomSheetScrollView keyboardShouldPersistTaps="handled">
+        <View style={styles.ratingSection}>
+          <Text style={[styles.ratingLabel, { color: colors.textSecondary }]}>
+            {messages.games.ratingLabel} {rating > 0 ? `(${rating}/10)` : ''}
+          </Text>
+          <View style={styles.ratingGrid}>
+            {Array.from({ length: 10 }, (_, index) => {
+              const value = index + 1;
+              const selected = value === rating;
+              const filled = rating > 0 && value <= rating;
+              const isLow = value <= 4;
+              const isMid = value === 5;
+              const activeColor = isLow ? colors.error : isMid ? colors.warning : colors.success;
 
-            return (
-              <Pressable
-                key={value}
-                onPress={() => setRating(value)}
-                hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-                style={[
-                  styles.ratingButton,
-                  {
-                    width: ratingButtonWidth,
-                    height: ratingButtonWidth + 8,
-                    borderColor: filled ? activeColor : colors.border,
-                    backgroundColor: filled ? activeColor : colors.surface,
-                  },
-                  selected ? styles.ratingButtonSelected : null,
-                ]}
-              >
-                <Text
+              return (
+                <Pressable
+                  key={value}
+                  onPress={() => setRating(value)}
+                  hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
                   style={[
-                    styles.ratingButtonText,
-                    { color: filled ? '#ffffff' : colors.textMuted },
-                    filled && isMid ? styles.ratingButtonTextDark : null,
+                    styles.ratingButton,
+                    {
+                      width: ratingButtonWidth,
+                      height: ratingButtonWidth + 8,
+                      borderColor: filled ? activeColor : colors.border,
+                      backgroundColor: filled ? activeColor : colors.surface,
+                    },
+                    selected ? styles.ratingButtonSelected : null,
                   ]}
                 >
-                  {value}
-                </Text>
-              </Pressable>
-            );
-          })}
+                  <Text
+                    style={[
+                      styles.ratingButtonText,
+                      { color: filled ? '#ffffff' : colors.textMuted },
+                      filled && isMid ? styles.ratingButtonTextDark : null,
+                    ]}
+                  >
+                    {value}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <View style={styles.ratingGuide}>
+            <Text style={[styles.ratingGuideText, { color: colors.textMuted }]}>
+              {messages.games.ratingWeak}
+            </Text>
+            <View style={[styles.ratingGuideLine, { backgroundColor: colors.border }]} />
+            <Text style={[styles.ratingGuideText, { color: colors.textMuted }]}>
+              {messages.games.ratingAverage}
+            </Text>
+            <View style={[styles.ratingGuideLine, { backgroundColor: colors.border }]} />
+            <Text style={[styles.ratingGuideText, { color: colors.textMuted }]}>
+              {messages.games.ratingLegendary}
+            </Text>
+          </View>
         </View>
-        <View style={styles.ratingGuide}>
-          <Text style={[styles.ratingGuideText, { color: colors.textMuted }]}>
-            {messages.games.ratingWeak}
-          </Text>
-          <View style={[styles.ratingGuideLine, { backgroundColor: colors.border }]} />
-          <Text style={[styles.ratingGuideText, { color: colors.textMuted }]}>
-            {messages.games.ratingAverage}
-          </Text>
-          <View style={[styles.ratingGuideLine, { backgroundColor: colors.border }]} />
-          <Text style={[styles.ratingGuideText, { color: colors.textMuted }]}>
-            {messages.games.ratingLegendary}
+
+        <MentionInput
+          style={[
+            styles.textInput,
+            {
+              color: colors.text,
+              backgroundColor: colors.inputBackground,
+              borderColor: colors.inputBorder,
+            },
+          ]}
+          placeholder={messages.games.reviewPlaceholder}
+          value={content}
+          onChangeText={setContent}
+          multiline
+          numberOfLines={6}
+          textAlignVertical="top"
+          maxLength={2000}
+        />
+
+        <View style={styles.charCount}>
+          <Text style={[styles.charCountText, { color: colors.textMuted }]}>
+            {content.length}/2000
           </Text>
         </View>
-      </View>
 
-      <MentionInput
-        style={[
-          styles.textInput,
-          {
-            color: colors.text,
-            backgroundColor: colors.inputBackground,
-            borderColor: colors.inputBorder,
-          },
-        ]}
-        placeholder={messages.games.reviewPlaceholder}
-        value={content}
-        onChangeText={setContent}
-        multiline
-        numberOfLines={6}
-        textAlignVertical="top"
-        maxLength={2000}
-      />
-
-      <View style={styles.charCount}>
-        <Text style={[styles.charCountText, { color: colors.textMuted }]}>
-          {content.length}/2000
-        </Text>
-      </View>
-
-      {createMutation.isError || updateMutation.isError ? (
-        <Text style={[styles.errorText, { color: colors.error }]}>
-          {messages.common.genericError}
-        </Text>
-      ) : null}
-
-      <Pressable
-        style={[
-          styles.submitButton,
-          { backgroundColor: rating > 0 ? colors.primary : colors.textMuted },
-        ]}
-        onPress={handleSubmit}
-        disabled={rating === 0 || isPending}
-      >
-        {isPending ? (
-          <ActivityIndicator size="small" color="#ffffff" />
-        ) : (
-          <Text style={styles.submitText}>{messages.common.submit}</Text>
-        )}
-      </Pressable>
+        {createMutation.isError || updateMutation.isError ? (
+          <Text style={[styles.errorText, { color: colors.error }]}>
+            {messages.common.genericError}
+          </Text>
+        ) : null}
+      </BottomSheetScrollView>
     </BottomSheet>
   );
 }
@@ -260,7 +265,7 @@ const styles = StyleSheet.create({
   },
   charCount: {
     alignItems: 'flex-end',
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.sm,
   },
   charCountText: {
     fontSize: FontSize.xs,

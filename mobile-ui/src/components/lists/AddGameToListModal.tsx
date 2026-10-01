@@ -3,21 +3,17 @@ import {
   View,
   Text,
   StyleSheet,
-  Modal,
-  FlatList,
   Image,
   Pressable,
   ActivityIndicator,
   TextInput,
 } from 'react-native';
-// Arama alani ustte oldugu icin klavye onu ortmuyordu, ama sonuc listesi
-// Android'de klavyenin ARKASINA uzaniyordu. Bu, listeyi klavyenin ustune sigdirir.
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useToast } from '@/src/components/common/Toast';
+import { BottomSheet, BottomSheetFlatList } from '@/src/components/common/BottomSheet';
 import { gameApi } from '@/src/api/game';
 import { addGameToList, removeGameFromList } from '@/src/api/list';
 import { getImageUrl } from '@/src/utils/image';
@@ -297,106 +293,85 @@ export function AddGameToListModal({
   );
 
   return (
-    <Modal
+    // Ortak alt pencere kabugu, tam boy: arama + liste. Klavye kacinmasini
+    // BottomSheet ustlenir (sonuc listesi klavyenin ustune sigar).
+    <BottomSheet
       visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
+      onClose={onClose}
+      title={messages.listDetail.addGame}
+      size="full"
     >
-      <KeyboardAvoidingView
-        style={[styles.container, { backgroundColor: colors.background }]}
-        behavior="padding"
+      <View
+        style={[
+          styles.searchContainer,
+          {
+            backgroundColor: colors.inputBackground,
+            borderColor: colors.inputBorder,
+          },
+        ]}
       >
-        <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>
-            {messages.listDetail.addGame}
-          </Text>
-          <Pressable onPress={onClose} hitSlop={8}>
-            <Ionicons name="close" size={24} color={colors.text} />
-          </Pressable>
-        </View>
+        <Ionicons name="search" size={18} color={colors.textMuted} />
+        <TextInput
+          style={[styles.searchInput, { color: colors.text }]}
+          placeholder={messages.listDetail.searchGames}
+          placeholderTextColor={colors.placeholder}
+          value={searchTerm}
+          onChangeText={handleSearchChange}
+          autoFocus
+        />
+      </View>
 
-        <View
-          style={[
-            styles.searchContainer,
-            {
-              backgroundColor: colors.inputBackground,
-              borderColor: colors.inputBorder,
-            },
-          ]}
-        >
-          <Ionicons name="search" size={18} color={colors.textMuted} />
-          <TextInput
-            style={[styles.searchInput, { color: colors.text }]}
-            placeholder={messages.listDetail.searchGames}
-            placeholderTextColor={colors.placeholder}
-            value={searchTerm}
-            onChangeText={handleSearchChange}
-            autoFocus
+      {debouncedSearch.length >= 2 ? (
+        isSearching ? (
+          <ActivityIndicator
+            size="small"
+            color={colors.primary}
+            style={styles.loader}
           />
-        </View>
-
-        {debouncedSearch.length >= 2 ? (
-          isSearching ? (
-            <ActivityIndicator
-              size="small"
-              color={colors.primary}
-              style={styles.loader}
-            />
-          ) : searchItems.length === 0 ? (
-            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-              {messages.listDetail.noGamesFound}
-            </Text>
-          ) : (
-            <FlatList
-              data={searchItems}
-              keyExtractor={(item) => String(item.rawgId)}
-              renderItem={renderSearchResult}
-              contentContainerStyle={styles.listContent}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="on-drag"
-            />
-          )
+        ) : searchItems.length === 0 ? (
+          <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+            {messages.listDetail.noGamesFound}
+          </Text>
         ) : (
-          <>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              {messages.listDetail.currentGames} ({visibleCurrentGames.length})
-            </Text>
-            <FlatList
-              data={visibleCurrentGames}
-              keyExtractor={(item) => String(item.rawgId)}
-              renderItem={renderCurrentGame}
-              contentContainerStyle={styles.listContent}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="on-drag"
-              ListEmptyComponent={
-                <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-                  {messages.listDetail.empty}
-                </Text>
-              }
-            />
-          </>
-        )}
-      </KeyboardAvoidingView>
-    </Modal>
+          <BottomSheetFlatList
+            data={searchItems}
+            keyExtractor={(item) => String(item.rawgId)}
+            renderItem={renderSearchResult}
+            contentContainerStyle={styles.listContent}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+          />
+        )
+      ) : (
+        <>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {messages.listDetail.currentGames} ({visibleCurrentGames.length})
+          </Text>
+          <BottomSheetFlatList
+            data={visibleCurrentGames}
+            keyExtractor={(item) => String(item.rawgId)}
+            renderItem={renderCurrentGame}
+            contentContainerStyle={styles.listContent}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            ListEmptyComponent={
+              <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                {messages.listDetail.empty}
+              </Text>
+            }
+          />
+        </>
+      )}
+    </BottomSheet>
   );
 }
 
+// Yatay bosluk pencerenin kendisinden gelir (BottomSheet paddingHorizontal).
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-  },
-  headerTitle: { fontSize: FontSize.xl, fontWeight: '700' },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    margin: Spacing.lg,
+    marginBottom: Spacing.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.lg,
@@ -413,11 +388,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: FontSize.lg,
     fontWeight: '600',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
     paddingBottom: Spacing.sm,
   },
-  listContent: { paddingHorizontal: Spacing.lg },
+  listContent: { paddingBottom: Spacing.md },
   gameRow: {
     flexDirection: 'row',
     alignItems: 'center',

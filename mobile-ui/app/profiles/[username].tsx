@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { AiInteractionSetting } from '@/src/components/profile/AiInteractionSetting';
 import { useAiConsent } from '@/src/components/ai/AiConsentProvider';
 import {
@@ -68,6 +68,7 @@ export default function PublicProfileScreen() {
 
   const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
   const [followersModal, setFollowersModal] = useState<'followers' | 'following' | null>(null);
+  const reportAfterMenuRef = useRef(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const [reportVisible, setReportVisible] = useState(false);
   const [reportReason, setReportReason] = useState('');
@@ -445,16 +446,26 @@ export default function PublicProfileScreen() {
         )}
       </ScrollView>
 
-      {followersModal ? (
-        <FollowersModal
-          visible
-          onClose={() => setFollowersModal(null)}
-          username={username!}
-          initialTab={followersModal}
-        />
-      ) : null}
+      {/* Surekli cizili: kosullu cizim kapanista pencereyi animasyonsuz yok ediyordu. */}
+      <FollowersModal
+        visible={followersModal !== null}
+        onClose={() => setFollowersModal(null)}
+        username={username!}
+        initialTab={followersModal ?? 'followers'}
+      />
 
-      <BottomSheet visible={menuVisible} onClose={() => setMenuVisible(false)} title={messages.common.edit}>
+      <BottomSheet
+        visible={menuVisible}
+        onClose={() => setMenuVisible(false)}
+        title={messages.common.edit}
+        // Rapor penceresi menu tamamen kapandiktan sonra acilir; ikisi ayni anda
+        // acik kalirsa iOS ikinci Modal'i gostermeyebiliyor.
+        onDismissed={() => {
+          if (!reportAfterMenuRef.current) return;
+          reportAfterMenuRef.current = false;
+          setReportVisible(true);
+        }}
+      >
         <TouchableOpacity
           style={[styles.menuItem, { borderBottomColor: colors.border }]}
           onPress={() => blockMutation.mutate()}
@@ -471,8 +482,8 @@ export default function PublicProfileScreen() {
         <TouchableOpacity
           style={[styles.menuItem, { borderBottomColor: colors.border }]}
           onPress={() => {
+            reportAfterMenuRef.current = true;
             setMenuVisible(false);
-            setReportVisible(true);
           }}
         >
           <Ionicons name="flag-outline" size={22} color={colors.warning} />

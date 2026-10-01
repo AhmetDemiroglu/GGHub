@@ -70,6 +70,20 @@ interface BottomSheetProps {
   visible: boolean;
   onClose: () => void;
   title?: string;
+  /**
+   * 'auto': icerik kadar, en fazla ekranin %80'i (secim listeleri, menuler).
+   * 'full': sabit %90 yukseklik; icerik flex:1 alani doldurur (arama + liste,
+   * uzun formlar). Ust kenarda her zaman dokunulabilir karartma kalir.
+   */
+  size?: 'auto' | 'full';
+  /** Kaydirilan icerigin ALTINDA sabit duran alan (or. Kaydet butonu). */
+  footer?: React.ReactNode;
+  /**
+   * Kapanis animasyonu bitip pencere ekrandan tamamen kalktiginda. Bir pencereden
+   * digerine gecerken ikincisini burada ac: iOS, kapanmakta olan bir Modal
+   * dururken yenisini gostermeyi reddedebilir.
+   */
+  onDismissed?: () => void;
   children: React.ReactNode;
 }
 
@@ -92,7 +106,15 @@ interface BottomSheetProps {
  * native crash veriyordu. Tek istisna klavye kacinmasi: keyboard-controller'in
  * KeyboardAvoidingView'i iceride Reanimated kullanir ama JEST kullanmaz.
  */
-export function BottomSheet({ visible, onClose, title, children }: BottomSheetProps) {
+export function BottomSheet({
+  visible,
+  onClose,
+  title,
+  size = 'auto',
+  footer,
+  onDismissed,
+  children,
+}: BottomSheetProps) {
   const { colors } = useTheme();
   const { messages } = useLocale();
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
@@ -105,6 +127,8 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
   // uretiliyordu ve surukleme ortasinda el degistirebiliyordu.
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+  const onDismissedRef = useRef(onDismissed);
+  onDismissedRef.current = onDismissed;
   const visibleRef = useRef(visible);
   visibleRef.current = visible;
   const sheetHeightRef = useRef(SCREEN_HEIGHT * 0.5);
@@ -179,8 +203,13 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
         if (!finished || !closingRef.current) return;
         closingRef.current = false;
         // Ust bilesen kapatmayi reddettiyse (visible hala true) pencere geri gelir.
-        if (visibleRef.current) animateOpen();
-        else setMounted(false);
+        if (visibleRef.current) {
+          animateOpen();
+        } else {
+          setMounted(false);
+          // Modal'in native olarak kalkmasina bir kare birak.
+          requestAnimationFrame(() => onDismissedRef.current?.());
+        }
       });
     },
     [translateY, overlayOpacity, animateOpen],
@@ -238,28 +267,61 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
     }
   };
 
+  /** Surukleme bu jestte basladi mi; basladigi andaki g.dy (devralma ani). */
+  const draggingRef = useRef(false);
+  const dyAtStartRef = useRef(0);
+
+  const beginDrag = (g: PanResponderGestureState) => {
+    draggingRef.current = true;
+    dyAtStartRef.current = g.dy;
+    translateY.stopAnimation();
+    overlayOpacity.stopAnimation();
+    dragStartRef.current = Math.max(0, currentYRef.current);
+    Keyboard.dismiss();
+  };
+
+  const endGesture = (g: PanResponderGestureState) => {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    settle(g);
+  };
+
+  /**
+   * Iki yoldan sahiplenir, ikisi de gerekli:
+   * - Bos alanda (tutamak, baslik, bosluk) dokunusu BASTAN alir. Yalnizca
+   *   hareketle devralmaya guvenmek inceleme penceresinde calismadi: tutamaktan
+   *   cekmek hicbir sey yapmiyordu.
+   * - Dugme, satir ya da yazi alani dokunusu ustlendiyse, dikey cekiste
+   *   capture ile devralir (dokunus iptal olur, yanlislikla secim yapilmaz).
+   * Surukleme ise ancak shouldDrag dogrulandiginda baslar; bos alana dokunmak
+   * pencereyi kipirdatmaz.
+   */
   const panResponder = useRef(
     PanResponder.create({
       // Dokunus basinda kok once calisir: kaynagi sifirla, cocuk liste kendi
       // onTouchStart'inda (kabarcik asamasi) kendini isaretler.
       onStartShouldSetPanResponderCapture: () => {
         touchOriginRef.current = null;
+        draggingRef.current = false;
         return false;
       },
-      onStartShouldSetPanResponder: () => false,
-      // Capture: dugme ya da liste dokunusu ustlenmis olsa bile dikey cekiste
-      // pencere devralir (dokunus iptal olur, yanlislikla secim yapilmaz).
+      // Kabarcik asamasi: dokunusu isteyen bir cocuk (Pressable, TextInput) her
+      // zaman once sorulur; buraya yalnizca bos alan dokunuslari ulasir.
+      onStartShouldSetPanResponder: () => !closingRef.current,
       onMoveShouldSetPanResponderCapture: (_e: GestureResponderEvent, g) => shouldDrag(g),
       onMoveShouldSetPanResponder: (_e: GestureResponderEvent, g) => shouldDrag(g),
-      onPanResponderTerminationRequest: () => false,
-      onPanResponderGrant: () => {
-        translateY.stopAnimation();
-        overlayOpacity.stopAnimation();
-        dragStartRef.current = Math.max(0, currentYRef.current);
-        Keyboard.dismiss();
+      onPanResponderTerminationRequest: () => !draggingRef.current,
+      onPanResponderGrant: (_e, g) => {
+        // Hareketle devralindiysa surukleme hemen baslar; bos alana dokunusta
+        // ise ilk dikey harekete kadar beklenir.
+        if (shouldDrag(g)) beginDrag(g);
       },
       onPanResponderMove: (_e, g) => {
-        const raw = dragStartRef.current + g.dy;
+        if (!draggingRef.current) {
+          if (!shouldDrag(g)) return;
+          beginDrag(g);
+        }
+        const raw = dragStartRef.current + (g.dy - dyAtStartRef.current);
         const height = sheetHeightRef.current;
         let y = raw;
         if (raw < 0) {
@@ -270,8 +332,8 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
         translateY.setValue(y);
         overlayOpacity.setValue(Math.max(0, Math.min(1, 1 - y / height)));
       },
-      onPanResponderRelease: (_e, g) => settle(g),
-      onPanResponderTerminate: (_e, g) => settle(g),
+      onPanResponderRelease: (_e, g) => endGesture(g),
+      onPanResponderTerminate: (_e, g) => endGesture(g),
     }),
   ).current;
 
@@ -325,6 +387,7 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
             onLayout={handleSheetLayout}
             style={[
               styles.sheet,
+              size === 'full' && styles.sheetFull,
               { backgroundColor: colors.surface, transform: [{ translateY }] },
               Shadows.xl,
             ]}
@@ -341,7 +404,12 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
                 <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
               ) : null}
             </View>
-            <SheetScrollContext.Provider value={scrollContext}>{children}</SheetScrollContext.Provider>
+            <SheetScrollContext.Provider value={scrollContext}>
+              {/* auto: uzun icerik %80 sinirinda kuculur ve kendi icinde kayar.
+                  full: alan sabit, icerik (or. FlatList flex:1) onu doldurur. */}
+              <View style={size === 'full' ? styles.bodyFull : styles.bodyAuto}>{children}</View>
+            </SheetScrollContext.Provider>
+            {footer ? <View style={styles.footer}>{footer}</View> : null}
           </Animated.View>
         </KeyboardAvoidingView>
       </View>
@@ -445,6 +513,19 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.xxxl,
     paddingTop: Spacing.sm,
     maxHeight: '80%',
+  },
+  sheetFull: {
+    height: '90%',
+    maxHeight: '90%',
+  },
+  bodyAuto: {
+    flexShrink: 1,
+  },
+  bodyFull: {
+    flex: 1,
+  },
+  footer: {
+    paddingTop: Spacing.md,
   },
   underlay: {
     position: 'absolute',

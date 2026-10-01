@@ -1,20 +1,18 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { AiBadge } from '@/src/components/common/AiBadge';
 import {
   View,
   Text,
-  FlatList,
   TouchableOpacity,
   Pressable,
   TextInput,
-  Modal,
   StyleSheet,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Avatar } from '@/src/components/common/Avatar';
 import { Button } from '@/src/components/common/Button';
+import { BottomSheet, BottomSheetFlatList } from '@/src/components/common/BottomSheet';
 import { useUserLink } from '@/src/components/common/UserLink';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
@@ -42,12 +40,19 @@ export function FollowersModal({
   const { messages } = useLocale();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const insets = useSafeAreaInsets();
   const { canOpen, openProfile } = useUserLink();
   const fm = messages.profile.followersModal;
 
   const [activeTab, setActiveTab] = useState<'followers' | 'following'>(initialTab);
   const [search, setSearch] = useState('');
+
+  // Pencere artik surekli cizili (kapanis animasyonu oynasin diye); her acilista
+  // istenen sekmeden ve bos aramayla baslar.
+  useEffect(() => {
+    if (!visible) return;
+    setActiveTab(initialTab);
+    setSearch('');
+  }, [visible, initialTab]);
 
   const followersQuery = useQuery({
     queryKey: ['followers', username],
@@ -134,82 +139,58 @@ export function FollowersModal({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + Spacing.md }]}>
-          <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-            <Ionicons name="close" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>@{username}</Text>
-          <View style={styles.closeBtn} />
-        </View>
-
-        <View style={styles.tabs}>
-          {(['followers', 'following'] as const).map((tab) => (
-            <TouchableOpacity
-              key={tab}
+    // Ortak alt pencere kabugu, tam boy. Eskiden tam ekran Modal + elle cizilmis
+    // X/baslik kullaniyordu; diger pencerelerden farkli duruyor ve cekilemiyordu.
+    <BottomSheet visible={visible} onClose={onClose} title={`@${username}`} size="full">
+      <View style={[styles.tabs, { borderBottomColor: colors.border }]}>
+        {(['followers', 'following'] as const).map((tab) => (
+          <TouchableOpacity
+            key={tab}
+            style={[
+              styles.tab,
+              activeTab === tab && { borderBottomColor: colors.primary, borderBottomWidth: 2 },
+            ]}
+            onPress={() => setActiveTab(tab)}
+          >
+            <Text
               style={[
-                styles.tab,
-                activeTab === tab && { borderBottomColor: colors.primary, borderBottomWidth: 2 },
+                styles.tabText,
+                { color: activeTab === tab ? colors.primary : colors.textSecondary },
               ]}
-              onPress={() => setActiveTab(tab)}
             >
-              <Text
-                style={[
-                  styles.tabText,
-                  { color: activeTab === tab ? colors.primary : colors.textSecondary },
-                ]}
-              >
-                {tab === 'followers' ? fm.followersTab : fm.followingTab}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+              {tab === 'followers' ? fm.followersTab : fm.followingTab}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
-        <View style={[styles.searchContainer, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
-          <Ionicons name="search" size={18} color={colors.placeholder} />
-          <TextInput
-            style={[styles.searchInput, { color: colors.text }]}
-            placeholder={messages.common.search}
-            placeholderTextColor={colors.placeholder}
-            value={search}
-            onChangeText={setSearch}
-          />
-        </View>
-
-        <FlatList
-          data={filteredData}
-          renderItem={renderItem}
-          keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + Spacing.md }]}
+      <View style={[styles.searchContainer, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
+        <Ionicons name="search" size={18} color={colors.placeholder} />
+        <TextInput
+          style={[styles.searchInput, { color: colors.text }]}
+          placeholder={messages.common.search}
+          placeholderTextColor={colors.placeholder}
+          value={search}
+          onChangeText={setSearch}
         />
       </View>
-    </Modal>
+
+      <BottomSheetFlatList
+        data={filteredData}
+        renderItem={renderItem}
+        keyExtractor={(item) => String(item.id)}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.list}
+      />
+    </BottomSheet>
   );
 }
 
+// Yatay bosluk pencerenin kendisinden gelir (BottomSheet paddingHorizontal).
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-  },
-  closeBtn: {
-    width: 32,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: FontSize.lg,
-    fontWeight: '600',
-  },
   tabs: {
     flexDirection: 'row',
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   tab: {
     flex: 1,
@@ -223,7 +204,6 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: Spacing.lg,
     marginVertical: Spacing.md,
     paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.md,
@@ -236,7 +216,7 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
   },
   list: {
-    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.md,
   },
   userRow: {
     flexDirection: 'row',

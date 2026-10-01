@@ -319,14 +319,13 @@ export default function OwnProfileScreen() {
         </View>
       </ScrollView>
 
-      {followersModal ? (
-        <FollowersModal
-          visible
-          onClose={() => setFollowersModal(null)}
-          username={username}
-          initialTab={followersModal}
-        />
-      ) : null}
+      {/* Surekli cizili: kosullu cizim kapanista pencereyi animasyonsuz yok ediyordu. */}
+      <FollowersModal
+        visible={followersModal !== null}
+        onClose={() => setFollowersModal(null)}
+        username={username}
+        initialTab={followersModal ?? 'followers'}
+      />
     </ScreenWrapper>
   );
 }

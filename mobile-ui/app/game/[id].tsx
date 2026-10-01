@@ -235,7 +235,10 @@ export default function GameDetailScreen() {
           ) : (
             <Pressable
               style={[styles.actionButton, { backgroundColor: colors.primary }]}
-              onPress={() => setReviewModalVisible(true) /* TEMP-VERIFY */}
+              onPress={() => requireAuth(() => {
+                haptics.impactLight();
+                setReviewModalVisible(true);
+              })}
             >
               <Ionicons name="create-outline" size={18} color="#ffffff" />
               <Text style={[styles.actionText, { color: '#ffffff' }]} numberOfLines={1}>

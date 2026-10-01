@@ -1,15 +1,14 @@
 import React from 'react';
-import { View, Text, FlatList, Modal, TouchableOpacity, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Avatar } from '@/src/components/common/Avatar';
 import { Button } from '@/src/components/common/Button';
+import { BottomSheet, BottomSheetFlatList } from '@/src/components/common/BottomSheet';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { getBlockedUsers, unblockUser } from '@/src/api/social';
 import type { BlockedUser } from '@/src/models/social';
-import { Spacing, FontSize, BorderRadius } from '@/src/constants/theme';
+import { Spacing, FontSize } from '@/src/constants/theme';
 
 interface BlockedUsersDialogProps {
   visible: boolean;
@@ -20,7 +19,6 @@ export function BlockedUsersDialog({ visible, onClose }: BlockedUsersDialogProps
   const { colors } = useTheme();
   const { messages } = useLocale();
   const queryClient = useQueryClient();
-  const insets = useSafeAreaInsets();
   const bd = messages.profile.blockedUsersDialog;
 
   const blockedQuery = useQuery({
@@ -59,66 +57,30 @@ export function BlockedUsersDialog({ visible, onClose }: BlockedUsersDialogProps
   };
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View
-          style={[
-            styles.header,
-            {
-              borderBottomColor: colors.border,
-              paddingTop: insets.top + Spacing.md,
-            },
-          ]}
-        >
-          <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={10}>
-            <Ionicons name="close" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.text }]}>{bd.title}</Text>
-          <View style={styles.closeBtn} />
-        </View>
-
-        <FlatList
-          data={blockedQuery.data || []}
-          renderItem={renderItem}
-          keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={styles.list}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-                {bd.noUsers}
-              </Text>
-            </View>
-          }
-        />
-      </View>
-    </Modal>
+    // Ortak alt pencere kabugu. Engellenen listesi cogu zaman kisa oldugu icin
+    // icerik kadar acilir; uzunsa %80'de durup kendi icinde kayar.
+    <BottomSheet visible={visible} onClose={onClose} title={bd.title}>
+      <BottomSheetFlatList
+        data={blockedQuery.data || []}
+        renderItem={renderItem}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={styles.list}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+              {bd.noUsers}
+            </Text>
+          </View>
+        }
+      />
+    </BottomSheet>
   );
 }
 
+// Yatay bosluk pencerenin kendisinden gelir (BottomSheet paddingHorizontal).
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-  },
-  closeBtn: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: FontSize.lg,
-    fontWeight: '600',
-  },
   list: {
-    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.sm,
   },
   userRow: {
     flexDirection: 'row',
