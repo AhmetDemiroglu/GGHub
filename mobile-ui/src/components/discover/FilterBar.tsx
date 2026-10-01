@@ -4,7 +4,6 @@ import {
   Text,
   Pressable,
   TextInput,
-  FlatList,
   StyleSheet,
   ScrollView,
 } from 'react-native';
@@ -12,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { FontSize, Spacing, BorderRadius } from '@/src/constants/theme';
-import { BottomSheet } from '@/src/components/common/BottomSheet';
+import { BottomSheet, BottomSheetFlatList } from '@/src/components/common/BottomSheet';
 
 interface FilterOption {
   label: string;
@@ -51,7 +50,7 @@ function PickerSheet({
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title={title}>
-      <FlatList
+      <BottomSheetFlatList
         data={options}
         keyExtractor={(item) => item.value}
         renderItem={({ item }) => (

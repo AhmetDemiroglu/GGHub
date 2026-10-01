@@ -1,7 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   StyleSheet,
   Text,
   TextInput,
@@ -12,7 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { BottomSheet } from '@/src/components/common/BottomSheet';
+import { BottomSheet, BottomSheetFlatList } from '@/src/components/common/BottomSheet';
 import { Avatar } from '@/src/components/common/Avatar';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
@@ -163,7 +162,7 @@ export function NewMessageSheet({ visible, onClose }: NewMessageSheetProps) {
         );
       }
       return (
-        <FlatList
+        <BottomSheetFlatList
           data={searchRows}
           keyExtractor={(item) => item.key}
           renderItem={renderRow}
@@ -192,7 +191,7 @@ export function NewMessageSheet({ visible, onClose }: NewMessageSheetProps) {
       );
     }
     return (
-      <FlatList
+      <BottomSheetFlatList
         data={suggestionRows}
         keyExtractor={(item) => item.key}
         renderItem={renderRow}

@@ -14,7 +14,7 @@ import { ScreenHeader } from '@/src/components/shell';
 import { EmptyState } from '@/src/components/common/EmptyState';
 import { LoadingScreen } from '@/src/components/common/LoadingScreen';
 import { SegmentedTabs } from '@/src/components/common/SegmentedTabs';
-import { BottomSheet } from '@/src/components/common/BottomSheet';
+import { BottomSheet, BottomSheetFlatList } from '@/src/components/common/BottomSheet';
 import { GameCard } from '@/src/components/discover/GameCard';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
@@ -58,7 +58,7 @@ function ValuePickerSheet({
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title={title}>
-      <FlatList
+      <BottomSheetFlatList
         data={options}
         keyExtractor={(item) => String(item.value)}
         renderItem={({ item }) => (

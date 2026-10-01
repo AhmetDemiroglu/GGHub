@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { BottomSheet } from '@/src/components/common/BottomSheet';
+import { BottomSheet, BottomSheetScrollView } from '@/src/components/common/BottomSheet';
 import { Button } from '@/src/components/common/Button';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
@@ -128,8 +128,10 @@ export function DateField({ label, value, onChange, placeholder }: DateFieldProp
     active: number,
     onSelect: (v: number) => void,
   ) => (
-    <ScrollView
+    // Carkta dikey cekis tarih secer; pencereyi tasimamali.
+    <BottomSheetScrollView
       ref={ref}
+      lockSheetDrag
       style={styles.column}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{ paddingVertical: ROW_HEIGHT }}
@@ -158,7 +160,7 @@ export function DateField({ label, value, onChange, placeholder }: DateFieldProp
           </Pressable>
         );
       })}
-    </ScrollView>
+    </BottomSheetScrollView>
   );
 
   return (

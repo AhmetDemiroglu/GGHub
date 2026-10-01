@@ -3,14 +3,13 @@ import {
   View,
   Text,
   Pressable,
-  FlatList,
   ActivityIndicator,
   StyleSheet,
   useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { BottomSheet } from '@/src/components/common/BottomSheet';
+import { BottomSheet, BottomSheetFlatList } from '@/src/components/common/BottomSheet';
 import { useTheme } from '@/src/hooks/use-theme';
 import { useLocale } from '@/src/hooks/use-locale';
 import { useToast } from '@/src/components/common/Toast';
@@ -108,7 +107,7 @@ export function AddToListModal({ visible, onClose, gameId }: AddToListModalProps
           </Text>
         </View>
       ) : (
-        <FlatList
+        <BottomSheetFlatList
           data={lists}
           renderItem={renderItem}
           keyExtractor={(item) => item.id.toString()}
