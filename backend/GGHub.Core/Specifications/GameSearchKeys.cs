@@ -13,15 +13,18 @@ namespace GGHub.Core.Specifications
     /// "gta" ne "6" geciyor. Insanlar oyunlari kisaltmayla ve rakamla arar; bu sinif adin
     /// yanina o anahtarlari (kisaltma, rakam/Roma rakami karsiligi, bilinen takma adlar) uretir.
     ///
-    /// Kayit bicimi: "s1| grand theft auto vi | 6 gta gta6 gtavi ".
+    /// Kayit bicimi: "s2| grand theft auto vi | 6 gta gta6 gtavi | ".
     /// - Bas: surum isareti. Kurallar degisince surum artar, geri doldurma eski kayitlari yeniler.
     /// - Ilk bolum: adin kelimeleri (tam ad eslesmesi bununla olculur).
     /// - Ikinci bolum: uretilen anahtarlar.
+    /// - Ucuncu bolum: elle girilen takma adlar (CuratedAliases). Ayri tutulur cunku otomatik
+    ///   kisaltmadan GUCLU bir sinyaldir: "cs2" hem Counter-Strike 2'nin takma adi hem
+    ///   Citizen Sleeper 2'nin kisaltmasi; takma ad kazanmali.
     /// Her kelimenin onunde bosluk var: "% gta%" deseni KELIME BASI eslesmesidir, "Ragtag" eslesmez.
     /// </summary>
     public static class GameSearchKeys
     {
-        public const string Version = "s1";
+        public const string Version = "s2";
 
         /// <summary>Kayit bu onekle baslamiyorsa eski kurallarla uretilmistir, yenilenmeli.</summary>
         public const string VersionPrefix = Version + "|";
@@ -113,14 +116,20 @@ namespace GGHub.Core.Specifications
                 }
             }
 
-            // 4) Bilinen takma adlar.
+            // 4) Bilinen takma adlar: ayri bolum. Otomatik anahtarlarda da varsa oradan cikar.
+            var aliasKeys = new List<string>();
             foreach (var (prefix, aliases) in CuratedAliases)
             {
                 if (normalizedName == prefix || normalizedName.StartsWith(prefix + " ", StringComparison.Ordinal))
                 {
                     foreach (var alias in aliases)
                     {
-                        foreach (var part in alias.Split(' ', StringSplitOptions.RemoveEmptyEntries)) Add(part);
+                        foreach (var part in alias.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                        {
+                            if (part.Length < 2 || nameWords.Contains(part) || aliasKeys.Contains(part)) continue;
+                            aliasKeys.Add(part);
+                            keys.Remove(part);
+                        }
                     }
                 }
             }
@@ -128,6 +137,8 @@ namespace GGHub.Core.Specifications
             var builder = new StringBuilder(normalizedName.Length * 2 + 8);
             builder.Append(VersionPrefix).Append(' ').Append(normalizedName).Append(" |");
             foreach (var key in keys) builder.Append(' ').Append(key);
+            builder.Append(" |");
+            foreach (var alias in aliasKeys) builder.Append(' ').Append(alias);
             builder.Append(' ');
             return builder.ToString();
         }

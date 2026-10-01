@@ -375,11 +375,9 @@ namespace GGHub.Infrastructure.Services
 
                 var rows = await GameSearch.Project(_context.Games.AsNoTracking().Where(g => ids.Contains(g.Id)))
                     .ToListAsync();
-                // Benzerlik sirasini koru.
-                return ids.Select(id => rows.FirstOrDefault(r => r.Id == id))
-                    .Where(r => r != null)
-                    .Select(r => r!)
-                    .ToList();
+                // Esigi gecenler zaten benzer; aralarinda bilinen oyun one ("witcer 3" -> asil oyun,
+                // "Remastered" / "REDkit" degil).
+                return rows.OrderByDescending(GameSearch.Popularity).ToList();
             }
             catch (Exception)
             {

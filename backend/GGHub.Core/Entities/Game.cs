@@ -142,7 +142,7 @@
 
         /// <summary>
         /// Aranabilir metin: normalize edilmis ad + kisaltmalar + rakam/Roma rakami karsiliklari +
-        /// bilinen takma adlar ("s1| grand theft auto vi | 6 gta gta6 gtavi "). Bicim ve gerekce
+        /// bilinen takma adlar ("s2| grand theft auto vi | 6 gta gta6 gtavi | "). Bicim ve gerekce
         /// GameSearchKeys'te. Ad degisince DbContext kayit sirasinda yeniden uretir; eski
         /// kayitlari GameSearchTextBackfill doldurur. Elle yazilmaz.
         /// </summary>

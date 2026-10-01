@@ -105,7 +105,7 @@ namespace GGHub.Infrastructure.Services
         public static double Score(Candidate candidate, ParsedQuery parsed)
         {
             var text = candidate.SearchText ?? GameSearchKeys.Build(candidate.Name) ?? string.Empty;
-            var (nameWords, keyWords) = SplitSearchText(text);
+            var (nameWords, keyWords, aliasWords) = SplitSearchText(text);
             var normalizedName = string.Join(' ', nameWords);
 
             double score = 0;
@@ -115,7 +115,8 @@ namespace GGHub.Infrastructure.Services
                 var token = parsed.Tokens[i];
                 var isLast = i == parsed.Tokens.Count - 1;
 
-                if (nameWords.Contains(token)) score += 12;
+                if (aliasWords.Contains(token)) score += 40;
+                else if (nameWords.Contains(token)) score += 12;
                 else if (keyWords.Contains(token)) score += 11;
                 else
                 {
@@ -124,6 +125,7 @@ namespace GGHub.Infrastructure.Services
                     // "witch" -> "witcher" neredeyse tam. Tek harf GTA VI'yi GTA V'nin onune koymasin.
                     var prefixWord = nameWords.Where(w => w.StartsWith(token, StringComparison.Ordinal))
                         .Concat(keyWords.Where(w => w.StartsWith(token, StringComparison.Ordinal)))
+                        .Concat(aliasWords.Where(w => w.StartsWith(token, StringComparison.Ordinal)))
                         .OrderBy(w => w.Length)
                         .FirstOrDefault();
                     if (prefixWord != null)
@@ -161,12 +163,13 @@ namespace GGHub.Infrastructure.Services
             + (candidate.HasWikipedia ? 6 : 0)
             + (candidate.Metacritic.HasValue ? 4 : 0);
 
-        private static (HashSet<string> NameWords, HashSet<string> KeyWords) SplitSearchText(string text)
+        private static (HashSet<string> NameWords, HashSet<string> KeyWords, HashSet<string> AliasWords) SplitSearchText(string text)
         {
             var nameWords = new HashSet<string>(StringComparer.Ordinal);
             var keyWords = new HashSet<string>(StringComparer.Ordinal);
+            var aliasWords = new HashSet<string>(StringComparer.Ordinal);
             var parts = text.Split('|');
-            // parts[0] surum, parts[1] ad, parts[2] anahtarlar.
+            // parts[0] surum, parts[1] ad, parts[2] anahtarlar, parts[3] takma adlar.
             if (parts.Length >= 2)
             {
                 foreach (var w in parts[1].Split(' ', StringSplitOptions.RemoveEmptyEntries)) nameWords.Add(w);
@@ -175,7 +178,11 @@ namespace GGHub.Infrastructure.Services
             {
                 foreach (var w in parts[2].Split(' ', StringSplitOptions.RemoveEmptyEntries)) keyWords.Add(w);
             }
-            return (nameWords, keyWords);
+            if (parts.Length >= 4)
+            {
+                foreach (var w in parts[3].Split(' ', StringSplitOptions.RemoveEmptyEntries)) aliasWords.Add(w);
+            }
+            return (nameWords, keyWords, aliasWords);
         }
     }
 }
