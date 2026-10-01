@@ -137,7 +137,8 @@ namespace GGHub.Infrastructure.Services
                 Platform = UserAgentClassifier.Platform(userAgent),
                 DeviceType = UserAgentClassifier.DeviceType(userAgent),
                 Browser = UserAgentClassifier.Browser(userAgent),
-                IsBot = UserAgentClassifier.IsBot(userAgent),
+                // UA listesi + otomasyon isareti: normal Chrome kimligiyle gelen Puppeteer/Playwright da ayiklanir.
+                IsBot = UserAgentClassifier.IsBot(userAgent) || dto.Automation == true,
                 UtmSource = Clip(dto.UtmSource, 64),
                 UtmMedium = Clip(dto.UtmMedium, 64),
                 UtmCampaign = Clip(dto.UtmCampaign, 96),
@@ -146,6 +147,7 @@ namespace GGHub.Infrastructure.Services
                 Language = Clip(dto.Language, 16),
                 CountryCode = Clip(context.CountryCode, 2)?.ToUpperInvariant(),
                 VisitorHash = Clip(context.VisitorHash, 32),
+                VisitorId = Guid.TryParse(dto.VisitorId, out var visitorId) && visitorId != Guid.Empty ? visitorId : null,
                 DwellMs = eventType == "page_leave" ? Clamp(dto.DwellMs, 0, 3_600_000) : null,
                 ScrollDepth = eventType == "page_leave" ? Clamp(dto.ScrollDepth, 0, 100) : null,
             };
@@ -163,7 +165,7 @@ namespace GGHub.Infrastructure.Services
 
             var pageViews = await events.CountAsync(e => e.EventType == "page_view");
             var actions = await events.CountAsync(e => e.EventType == "action");
-            var uniqueVisitors = await events.Where(e => e.VisitorHash != null).Select(e => e.VisitorHash!).Distinct().CountAsync();
+            var uniqueVisitors = await events.Select(VisitorKey).Where(k => k != null).Distinct().CountAsync();
 
             var agg = await sessions
                 .GroupBy(_ => 1)
@@ -182,14 +184,17 @@ namespace GGHub.Infrastructure.Services
                 .FirstOrDefaultAsync();
 
             var fiveMinutesAgo = DateTime.UtcNow.AddMinutes(-5);
-            var activeNow = await _context.SiteEvents.AsNoTracking()
-                .Where(e => e.OccurredAt >= fiveMinutesAgo && (filter.IncludeBots || !e.IsBot) && (filter.IncludeInternal || !e.IsInternal))
-                .Select(e => e.SessionId).Distinct().CountAsync();
+            var recent = _context.SiteEvents.AsNoTracking().Where(e => e.OccurredAt >= fiveMinutesAgo);
+            if (!filter.IncludeBots) recent = WhereNotBot(recent);
+            if (!filter.IncludeInternal) recent = WhereNotInternal(recent);
+            var activeNow = await recent.Select(e => e.SessionId).Distinct().CountAsync();
 
             // Elenen trafik sayimi filtreden bagimsiz: "ne kadarini eledik" sorusunun cevabi.
             var unfiltered = EventQuery(filter, forceIncludeBots: true, forceIncludeInternal: true);
-            var botHits = await unfiltered.CountAsync(e => e.IsBot);
-            var internalHits = await unfiltered.CountAsync(e => e.IsInternal && !e.IsBot);
+            var allHits = await unfiltered.CountAsync();
+            var humanHits = await WhereNotBot(unfiltered).CountAsync();
+            var botHits = allHits - humanHits;
+            var internalHits = humanHits - await WhereNotInternal(WhereNotBot(unfiltered)).CountAsync();
 
             var total = agg?.Sessions ?? 0;
             return new SiteAnalyticsSummaryDto
@@ -222,7 +227,8 @@ namespace GGHub.Infrastructure.Services
                     Date = g.Key,
                     PageViews = g.Count(e => e.EventType == "page_view"),
                     Sessions = g.Select(e => e.SessionId).Distinct().Count(),
-                    UniqueVisitors = g.Where(e => e.VisitorHash != null).Select(e => e.VisitorHash).Distinct().Count(),
+                    UniqueVisitors = g.Where(e => e.VisitorId != null || e.VisitorHash != null)
+                        .Select(e => e.VisitorId != null ? e.VisitorId.Value.ToString() : e.VisitorHash).Distinct().Count(),
                     RegisteredSessions = g.Where(e => e.UserId != null).Select(e => e.SessionId).Distinct().Count(),
                     Actions = g.Count(e => e.EventType == "action"),
                 })
@@ -775,8 +781,8 @@ namespace GGHub.Infrastructure.Services
             var (start, end) = Range(filter);
             query = query.Where(e => e.OccurredAt >= start && e.OccurredAt < end);
 
-            if (!forceIncludeBots && !filter.IncludeBots) query = query.Where(e => !e.IsBot);
-            if (!forceIncludeInternal && !filter.IncludeInternal) query = query.Where(e => !e.IsInternal);
+            if (!forceIncludeBots && !filter.IncludeBots) query = WhereNotBot(query);
+            if (!forceIncludeInternal && !filter.IncludeInternal) query = WhereNotInternal(query);
             if (!string.IsNullOrWhiteSpace(filter.DeviceType)) query = query.Where(e => e.DeviceType == filter.DeviceType);
             if (!string.IsNullOrWhiteSpace(filter.Platform)) query = query.Where(e => e.Platform == filter.Platform);
             if (!string.IsNullOrWhiteSpace(filter.CountryCode)) query = query.Where(e => e.CountryCode == filter.CountryCode.ToUpperInvariant());
@@ -785,6 +791,32 @@ namespace GGHub.Infrastructure.Services
 
             return query;
         }
+
+        /// <summary>
+        /// Tekil ziyaretci anahtari: tarayici kimligi (VisitorId), yoksa (1 Eki 2026 oncesi olaylar)
+        /// gunluk hash. Hash gunluk dondugu icin eski veride ayni kisi her gun yeniden sayilir.
+        /// </summary>
+        private static readonly System.Linq.Expressions.Expression<Func<SiteEvent, string?>> VisitorKey =
+            e => e.VisitorId != null ? e.VisitorId.Value.ToString() : e.VisitorHash;
+
+        /// <summary>
+        /// Bot ayiklamasi OTURUM seviyesinde: oturumun tek bir olayi bile bot isaretliyse (UA ya da
+        /// otomasyon) oturumun tamami duser. Olay seviyesinde kalsaydi ayni oturumun yarisi sayilirdi.
+        /// </summary>
+        private IQueryable<SiteEvent> WhereNotBot(IQueryable<SiteEvent> query) =>
+            query.Where(e => !_context.SiteEvents.Any(b => b.SessionId == e.SessionId && b.IsBot));
+
+        /// <summary>
+        /// Yonetici ayiklamasi. Bir olay yoneticinin sayilir: ayni OTURUMDA, ayni TARAYICIDA (VisitorId)
+        /// ya da tarayici kimligi olmayan eski olaylarda ayni gunluk hash'te admin JWT'li bir olay varsa.
+        /// Yani yonetici bir cihazda bir kez giris yapinca o cihazin cikis yapilmis gezintisi de, giristen
+        /// onceki sayfalari da ayiklanir. Eskiden yalniz admin JWT'li olayin kendisi ayiklaniyordu.
+        /// </summary>
+        private IQueryable<SiteEvent> WhereNotInternal(IQueryable<SiteEvent> query) =>
+            query.Where(e => !_context.SiteEvents.Any(i => i.IsInternal
+                && (i.SessionId == e.SessionId
+                    || (e.VisitorId != null && i.VisitorId == e.VisitorId)
+                    || (e.VisitorId == null && e.VisitorHash != null && i.VisitorHash == e.VisitorHash))));
 
         /// <summary>Oturum basina tek satir. Ham SQL: EF GroupBy icinde sirali ilk/son secimini ceviremez.</summary>
         private IQueryable<SessionRow> SessionQuery(SiteAnalyticsFilterParams filter)
@@ -798,13 +830,13 @@ namespace GGHub.Infrastructure.Services
                        COUNT(*) FILTER (WHERE e."EventType" = 'page_view')::int AS "PageViews",
                        COUNT(*) FILTER (WHERE e."EventType" = 'action')::int AS "Actions",
                        MAX(e."UserId") AS "UserId",
-                       BOOL_OR(e."IsInternal") AS "IsInternal",
+                       BOOL_OR(e."IsInternal" OR EXISTS ({InternalDeviceSql("e")})) AS "IsInternal",
                        BOOL_OR(e."IsBot") AS "IsBot",
                        MAX(e."CountryCode") AS "CountryCode",
                        MAX(e."DeviceType") AS "DeviceType",
                        MAX(e."Browser") AS "Browser",
                        MAX(e."Platform") AS "Platform",
-                       MAX(e."VisitorHash") AS "VisitorHash",
+                       MAX(COALESCE(e."VisitorId"::text, e."VisitorHash")) AS "VisitorHash",
                        MAX(e."UtmSource") AS "UtmSource",
                        MAX(e."ClickIdSource") AS "ClickIdSource",
                        MAX(e."ReferrerHost") AS "ReferrerHost",
@@ -845,8 +877,12 @@ namespace GGHub.Infrastructure.Services
             sb.Append($" AND {alias}.\"OccurredAt\" >= {{{args.Count}}}"); args.Add(start);
             sb.Append($" AND {alias}.\"OccurredAt\" < {{{args.Count}}}"); args.Add(end);
 
-            if (!filter.IncludeBots) sb.Append($" AND NOT {alias}.\"IsBot\"");
-            if (!filter.IncludeInternal) sb.Append($" AND NOT {alias}.\"IsInternal\"");
+            // WhereNotBot / WhereNotInternal ile AYNI kurallar (EF tarafi), ham SQL karsiligi.
+            if (!filter.IncludeBots)
+                sb.Append($" AND NOT EXISTS (SELECT 1 FROM \"SiteEvents\" b WHERE b.\"SessionId\" = {alias}.\"SessionId\" AND b.\"IsBot\")");
+            if (!filter.IncludeInternal)
+                sb.Append($" AND NOT EXISTS (SELECT 1 FROM \"SiteEvents\" i WHERE i.\"IsInternal\" AND i.\"SessionId\" = {alias}.\"SessionId\")"
+                    + $" AND NOT EXISTS ({InternalDeviceSql(alias)})");
 
             if (!string.IsNullOrWhiteSpace(filter.DeviceType)) { sb.Append($" AND {alias}.\"DeviceType\" = {{{args.Count}}}"); args.Add(filter.DeviceType); }
             if (!string.IsNullOrWhiteSpace(filter.Platform)) { sb.Append($" AND {alias}.\"Platform\" = {{{args.Count}}}"); args.Add(filter.Platform); }
@@ -860,6 +896,12 @@ namespace GGHub.Infrastructure.Services
 
             return (sb.ToString(), args.ToArray());
         }
+
+        /// <summary>Ayni tarayicida (ya da eski olaylarda ayni gunluk hash'te) admin olayi var mi.</summary>
+        private static string InternalDeviceSql(string alias) =>
+            $"SELECT 1 FROM \"SiteEvents\" d WHERE d.\"IsInternal\" AND ("
+            + $"({alias}.\"VisitorId\" IS NOT NULL AND d.\"VisitorId\" = {alias}.\"VisitorId\")"
+            + $" OR ({alias}.\"VisitorId\" IS NULL AND {alias}.\"VisitorHash\" IS NOT NULL AND d.\"VisitorHash\" = {alias}.\"VisitorHash\"))";
 
         private static (DateTime Start, DateTime End) Range(SiteAnalyticsFilterParams filter)
         {

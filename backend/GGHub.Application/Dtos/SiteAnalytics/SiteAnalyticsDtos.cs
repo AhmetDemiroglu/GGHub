@@ -17,6 +17,9 @@ namespace GGHub.Application.Dtos.SiteAnalytics
         public string? Language { get; set; }
         public int? DwellMs { get; set; }
         public int? ScrollDepth { get; set; }
+        public string? VisitorId { get; set; }
+        /// <summary>navigator.webdriver: tarayici otomasyonla (Puppeteer, Playwright, Selenium) suruluyor.</summary>
+        public bool? Automation { get; set; }
     }
 
     /// <summary>Proxy + JWT'den turetilen, istemcinin uyduramayacagi sunucu tarafi baglam.</summary>

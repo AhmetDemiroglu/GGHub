@@ -69,6 +69,13 @@ namespace GGHub.Core.Entities
         /// <summary>Gunluk donen tuzla hash (bkz. DownloadPageEvent.VisitorHash). Anonim tekil ziyaretci sayimi icin.</summary>
         public string? VisitorHash { get; set; }
 
+        /// <summary>
+        /// Tarayicinin localStorage'inda duran rastgele kimlik (kisisel veri tasimaz). Gunler ve
+        /// sekmeler arasi gercek tekil ziyaretci sayimi ve "bu cihaz yoneticinin" ayiklamasi bununla
+        /// yapilir. 1 Eki 2026 oncesi olaylarda bos; onlarda VisitorHash'e dusulur.
+        /// </summary>
+        public Guid? VisitorId { get; set; }
+
         /// <summary>page_leave: sayfada kalinan sure (ms).</summary>
         public int? DwellMs { get; set; }
 

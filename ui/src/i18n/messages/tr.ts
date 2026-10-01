@@ -810,7 +810,7 @@ export const trMessages = {
             sessions: "Oturum",
             sessionsNote: "{count} oturumda",
             uniqueVisitors: "Tekil Ziyaretçi",
-            uniqueVisitorsNote: "Günlük dönen hash ile, yaklaşık",
+            uniqueVisitorsNote: "Tarayıcı başına bir kişi (1 Ekim öncesi günlük tahmin)",
             avgPages: "Sayfa / Oturum",
             avgPagesNote: "Bir oturumda gezilen ortalama sayfa",
             avgPagesNoteShort: "Oturum başına {count} sayfa",

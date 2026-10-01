@@ -1,10 +1,13 @@
 /**
  * Site geneli davranis olcumu (istemci tarafi).
  *
- * download-analytics.ts'nin sitenin tamamina genisletilmis hali. Farki: oturum kimligi
- * sessionStorage'da tutulur (sekme omru + 30 dk hareketsizlik). Bu, "kac sayfa gezdi, ne kadar
- * kaldi, nereden girdi nereden cikti" hesaplarinin tek dayanagi; sekmeler ve gunler arasi
- * baglanmaz, cihazda kalici hicbir sey yazilmaz (localStorage/cerez yok).
+ * download-analytics.ts'nin sitenin tamamina genisletilmis hali. Iki kimlik var, ikisi de
+ * localStorage'da ve kisisel veri tasimayan rastgele UUID:
+ *  - Oturum (gghub.sa.sid): 30 dk hareketsizlikte yenilenir, TUM SEKMELER ORTAK. Eskiden
+ *    sessionStorage'daydi; her yeni sekme yeni, tek sayfalik bir oturum aciyor ve hemen cikma
+ *    oranini yapay olarak sisiriyordu (1 Eki 2026).
+ *  - Tarayici (gghub.sa.vid): kalici. Gunler arasi gercek tekil ziyaretci sayimi ve "yonetici bu
+ *    cihazda bir kez giris yaptiysa cikis yapmis gezintisi de onundur" ayiklamasi bununla yapilir.
  *
  * Kimlik ISTEMCIDEN GONDERILMEZ: yalnizca Authorization basligi iletilir, kullaniciyi backend
  * JWT'den cozer. Tam URL de gonderilmez; rota SABLONU (/games/[id]) + dinamik segmentin degeri
@@ -15,6 +18,7 @@ const ENDPOINT = "/api/track/site";
 const SESSION_KEY = "gghub.sa.sid";
 const LAST_SEEN_KEY = "gghub.sa.last";
 const ENTRY_KEY = "gghub.sa.entry";
+const VISITOR_KEY = "gghub.sa.vid";
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 
 export type SiteActionName =
@@ -137,12 +141,31 @@ function externalReferrerHost(): string | undefined {
     }
 }
 
+/** localStorage; engelliyse (gizli pencere, kisitli depolama) sessionStorage'a duser. */
 function safeStorage(): Storage | null {
+    if (typeof window === "undefined") return null;
     try {
-        return typeof window !== "undefined" ? window.sessionStorage : null;
+        const storage = window.localStorage;
+        storage.setItem("gghub.sa.probe", "1");
+        storage.removeItem("gghub.sa.probe");
+        return storage;
     } catch {
-        return null;
+        try {
+            return window.sessionStorage;
+        } catch {
+            return null;
+        }
     }
+}
+
+function getVisitorId(storage: Storage | null): string | undefined {
+    if (!storage) return undefined;
+    let visitorId = storage.getItem(VISITOR_KEY);
+    if (!visitorId) {
+        visitorId = createId();
+        storage.setItem(VISITOR_KEY, visitorId);
+    }
+    return visitorId;
 }
 
 /**
@@ -204,8 +227,11 @@ function send(payload: EventPayload) {
     const body = JSON.stringify({
         ...payload,
         sessionId,
+        visitorId: getVisitorId(safeStorage()),
         ...entry,
         language: typeof navigator !== "undefined" ? navigator.language : undefined,
+        // Otomasyonla surulen tarayici (Puppeteer, Playwright, Selenium): normal Chrome kimligi tasisa da bottur.
+        automation: typeof navigator !== "undefined" && navigator.webdriver === true ? true : undefined,
     });
 
     const headers: Record<string, string> = { "Content-Type": "text/plain;charset=UTF-8" };

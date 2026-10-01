@@ -15,7 +15,10 @@ namespace GGHub.Infrastructure.Services
         /// reklam maliyeti hesabı doğrudan bozulur.
         /// </summary>
         private static readonly Regex BotPattern = new(
-            @"bot|crawl|spider|slurp|facebookexternalhit|WhatsApp|Twitterbot|TelegramBot|Discordbot|LinkedInBot|Slackbot|preview|headless|python-requests|curl|wget|Go-http-client|axios|monitoring|uptime",
+            // Ikinci satir (1 Eki 2026): JS calistiran ve "bot" kelimesi tasimayan araclar. Lighthouse,
+            // PageSpeed ve Google Inspection Tool sayfayi gercek Chrome ile cizip olay gonderiyordu.
+            @"bot|crawl|spider|slurp|facebookexternalhit|WhatsApp|Twitterbot|TelegramBot|Discordbot|LinkedInBot|Slackbot|preview|headless|python-requests|curl|wget|Go-http-client|axios|monitoring|uptime|"
+            + @"lighthouse|pagespeed|inspectiontool|googleother|google-read-aloud|mediapartners-google|apis-google|feedfetcher|chatgpt|perplexity|claude-|anthropic|meta-externalagent|meta-externalfetcher|gtmetrix|pingdom|phantomjs|selenium|puppeteer|playwright|scrapy|okhttp|node-fetch|undici|libwww|java/|prerender",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         public static bool IsBot(string? userAgent) =>

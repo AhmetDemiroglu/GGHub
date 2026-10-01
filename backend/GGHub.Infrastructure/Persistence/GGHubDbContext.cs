@@ -546,6 +546,14 @@ namespace GGHub.Infrastructure.Persistence
                 entity.HasIndex(e => new { e.UserId, e.OccurredAt })
                     .HasDatabaseName("IX_SiteEvents_UserId_OccurredAt")
                     .HasFilter("\"UserId\" IS NOT NULL");
+                // Tekil ziyaretci ve "yonetici cihazi" ayiklamasi (EXISTS alt sorgusu).
+                entity.HasIndex(e => e.VisitorId)
+                    .HasDatabaseName("IX_SiteEvents_VisitorId")
+                    .HasFilter("\"VisitorId\" IS NOT NULL");
+                // Yalniz yonetici olaylari: ayiklama alt sorgusu bu kucuk kume uzerinde doner.
+                entity.HasIndex(e => new { e.SessionId, e.VisitorId, e.VisitorHash })
+                    .HasDatabaseName("IX_SiteEvents_Internal")
+                    .HasFilter("\"IsInternal\"");
             });
 
             // DownloadPageEvent: /download-app kampanya telemetrisi.

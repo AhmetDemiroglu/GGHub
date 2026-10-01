@@ -809,7 +809,7 @@ export const enUSMessages = {
             sessions: "Sessions",
             sessionsNote: "across {count} sessions",
             uniqueVisitors: "Unique Visitors",
-            uniqueVisitorsNote: "Approximate, daily rotating hash",
+            uniqueVisitorsNote: "One per browser (daily estimate before Oct 1)",
             avgPages: "Pages / Session",
             avgPagesNote: "Average pages browsed per session",
             avgPagesNoteShort: "{count} pages per session",
