@@ -406,7 +406,7 @@ function SidebarInner({ isMobile }: { isMobile: boolean }) {
                         </AlertDialog>
                     </div>
                 ) : (
-                    <div className={`${collapsed ? "space-y-2 px-2 py-3" : "flex gap-2 px-4 py-3"}`}>
+                    <div className={`${collapsed ? "space-y-2 px-2 py-3" : "flex flex-col gap-2 px-3 py-3"}`}>
                         {collapsed ? (
                             <TooltipProvider>
                                 <Tooltip>
@@ -427,23 +427,23 @@ function SidebarInner({ isMobile }: { isMobile: boolean }) {
                             <>
                                 <Button
                                     variant="outline"
-                                    className="flex-1 cursor-pointer"
+                                    className="w-full cursor-pointer"
                                     onClick={() => {
                                         onLinkClick();
                                         window.location.href = `${localizeHref("/login")}?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`;
                                     }}
                                 >
-                                    <LogIn className="mr-1.5 h-4 w-4" />
+                                    <LogIn className="h-4 w-4" />
                                     <span className="sidebar-label">{t("nav.login")}</span>
                                 </Button>
                                 <Button
-                                    className="flex-1 cursor-pointer"
+                                    className="w-full cursor-pointer"
                                     onClick={() => {
                                         onLinkClick();
                                         window.location.href = `${localizeHref("/register")}?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`;
                                     }}
                                 >
-                                    <UserPlus className="mr-1.5 h-4 w-4" />
+                                    <UserPlus className="h-4 w-4" />
                                     <span className="sidebar-label">{t("nav.register")}</span>
                                 </Button>
                             </>
