@@ -1413,6 +1413,9 @@ export const trMessages = {
         wishlistName: "İstek Listem",
         rateEdit: "Puanını Düzenle",
         ratePrompt: "Puan vermek için tıkla",
+        rateLocked: "Oyun çıkınca puan verebilirsin",
+        lockedUntilRelease: "Bu oyun henüz çıkmadı. Çıktığında inceleme yazabilirsin.",
+        emptyLockedDescription: "{gameName} henüz çıkmadı. Çıktığında ilk incelemeyi sen yaz!",
     },
     profileOverview: {
         badgeCollection: "Rozet Koleksiyonu",

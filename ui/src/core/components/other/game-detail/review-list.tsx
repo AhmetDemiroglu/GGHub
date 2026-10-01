@@ -17,9 +17,11 @@ interface ReviewListProps {
     /** Sunucuda anonim cekilen incelemeler (page.tsx): ilk HTML'de cizilir. */
     initialReviews?: Review[] | null;
     onAddReview?: () => void;
+    /** Oyun henuz cikmadi: inceleme yazma dugmeleri gizlenir. */
+    reviewLocked?: boolean;
 }
 
-export const ReviewList = ({ gameId, gameName, gameSlug, initialReviews = null, onAddReview }: ReviewListProps) => {
+export const ReviewList = ({ gameId, gameName, gameSlug, initialReviews = null, onAddReview, reviewLocked = false }: ReviewListProps) => {
     const queryClient = useQueryClient();
     const t = useI18n();
     const { isAuthenticated } = useAuth();
@@ -132,12 +134,16 @@ export const ReviewList = ({ gameId, gameName, gameSlug, initialReviews = null, 
                 </div>
                 <h3 className="text-xl font-bold text-foreground mb-2">{t("reviewList.emptyTitle")}</h3>
                 <p className="text-muted-foreground max-w-md mx-auto mb-6">
-                    <span className="font-semibold text-foreground">{t("reviewList.emptyDescription", { gameName })}</span>
+                    <span className="font-semibold text-foreground">
+                        {t(reviewLocked ? "reviewList.emptyLockedDescription" : "reviewList.emptyDescription", { gameName })}
+                    </span>
                 </p>
-                <button onClick={onAddReview} className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg font-bold hover:bg-primary/90 transition-all flex items-center gap-2 cursor-pointer">
-                    <MessageSquare size={18} />
-                    {t("reviewList.writeFirst")}
-                </button>
+                {reviewLocked ? null : (
+                    <button onClick={onAddReview} className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg font-bold hover:bg-primary/90 transition-all flex items-center gap-2 cursor-pointer">
+                        <MessageSquare size={18} />
+                        {t("reviewList.writeFirst")}
+                    </button>
+                )}
             </div>
         );
     }
@@ -151,9 +157,11 @@ export const ReviewList = ({ gameId, gameName, gameSlug, initialReviews = null, 
                         <span className="text-sm font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full border border-border">{filteredReviews.length}</span>
                     </h3>
 
-                    <button onClick={onAddReview} className="text-xs font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer">
-                        <Plus size={14} /> {t("reviewList.write")}
-                    </button>
+                    {reviewLocked ? null : (
+                        <button onClick={onAddReview} className="text-xs font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer">
+                            <Plus size={14} /> {t("reviewList.write")}
+                        </button>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto">

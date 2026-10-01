@@ -14,7 +14,7 @@ import { cn } from "@/core/lib/utils";
 import type { SearchResult } from "@/models/search/search.model";
 import { Avatar, AvatarFallback, AvatarImage } from "@/core/components/ui/avatar";
 
-const MIN_CHARS = 3;
+const MIN_CHARS = 2;
 
 /** Yazilabilir bir alan odaktayken "/" kisayolu calismaz; kullanicinin metnini bolmeyiz. */
 function isTypingTarget(target: EventTarget | null) {
@@ -229,7 +229,9 @@ export function TopbarSearch({ onClose, autoFocus = false, className }: TopbarSe
                                             )}
                                             <span className="min-w-0 flex-1">
                                                 <span className="block truncate text-sm font-medium">{result.title}</span>
-                                                <span className="block text-xs text-muted-foreground">{t("topbar.game")}</span>
+                                                <span className="block text-xs text-muted-foreground">
+                                                    {result.subtitle ? `${t("topbar.game")} · ${result.subtitle}` : t("topbar.game")}
+                                                </span>
                                             </span>
                                         </ResultRow>
                                     );

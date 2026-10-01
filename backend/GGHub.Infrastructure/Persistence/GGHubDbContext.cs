@@ -13,6 +13,36 @@ namespace GGHub.Infrastructure.Persistence
         public GGHubDbContext(DbContextOptions<GGHubDbContext> options) : base(options)
         {
         }
+
+        public override int SaveChanges(bool acceptAllChangesOnSuccess)
+        {
+            RefreshGameSearchText();
+            return base.SaveChanges(acceptAllChangesOnSuccess);
+        }
+
+        public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+        {
+            RefreshGameSearchText();
+            return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        }
+
+        /// <summary>
+        /// Oyun eklenince veya adi degisince arama metnini yeniden uretir. Ingest yollari
+        /// (RAWG, Steam, IGDB, dedupe) cok; her birine ayri ayri yazmak yerine tek kapi burasi.
+        /// Yalniz SearchText'i guncelleyen geri doldurma satirlari (Name degismedi) atlanir:
+        /// orada Name bos bir taslak olabilir.
+        /// </summary>
+        private void RefreshGameSearchText()
+        {
+            foreach (var entry in ChangeTracker.Entries<Game>())
+            {
+                var nameChanged = entry.State == EntityState.Added
+                    || (entry.State == EntityState.Modified && entry.Property(g => g.Name).IsModified);
+                if (!nameChanged) continue;
+
+                entry.Entity.SearchText = GGHub.Core.Specifications.GameSearchKeys.Build(entry.Entity.Name);
+            }
+        }
         public DbSet<Game> Games { get; set; }
         public DbSet<GameTag> GameTags { get; set; }
         public DbSet<User> Users { get; set; }

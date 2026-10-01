@@ -17,6 +17,7 @@ import { GameSimilarSlider } from "@/core/components/other/game-detail/game-simi
 import { Button } from "@/core/components/ui/button";
 import type { Game } from "@/models/gaming/game.model";
 import type { Review } from "@/models/review/review.model";
+import { isUnreleased } from "@/core/lib/game-release";
 
 interface GameDetailViewProps {
     idOrSlug: string;
@@ -29,14 +30,6 @@ export const GameDetailView = ({ idOrSlug, initialGame = null, initialReviews = 
     const [isReviewDialogOpen, setIsReviewDialogOpen] = React.useState(false);
     const { isAuthenticated } = useAuth();
     const t = useI18n();
-
-    const handleOpenReviewModal = () => {
-        if (!isAuthenticated) {
-            toast.error("Giriş Yapmalısınız");
-            return;
-        }
-        setIsReviewDialogOpen(true);
-    };
 
     const { data: game, isLoading, isError, error, refetch } = useQuery({
         queryKey: ["game", idOrSlug],
@@ -57,6 +50,21 @@ export const GameDetailView = ({ idOrSlug, initialGame = null, initialReviews = 
         enabled: !!game && !!isAuthenticated,
         retry: false
     });
+
+    // Cikmamis oyuna inceleme yok: butonlar kilit metni gosterir, tiklayan aciklama gorur.
+    const reviewLocked = isUnreleased(game?.released);
+
+    const handleOpenReviewModal = () => {
+        if (!isAuthenticated) {
+            toast.error("Giriş Yapmalısınız");
+            return;
+        }
+        if (reviewLocked) {
+            toast.info(t("reviewList.lockedUntilRelease"));
+            return;
+        }
+        setIsReviewDialogOpen(true);
+    };
 
     if (isLoading) return null;
 
@@ -90,6 +98,7 @@ export const GameDetailView = ({ idOrSlug, initialGame = null, initialReviews = 
                 <GameHero
                     game={game}
                     onOpenReviewModal={handleOpenReviewModal}
+                    reviewLocked={reviewLocked}
                 />
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-16">
@@ -103,6 +112,7 @@ export const GameDetailView = ({ idOrSlug, initialGame = null, initialReviews = 
                                 gameSlug={game.slug}
                                 initialReviews={initialReviews}
                                 onAddReview={handleOpenReviewModal}
+                                reviewLocked={reviewLocked}
                             />
                         </div>
                     </div>

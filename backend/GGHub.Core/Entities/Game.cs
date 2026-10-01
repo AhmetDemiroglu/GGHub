@@ -140,6 +140,14 @@
         /// </summary>
         public DateTime? TagsSyncedAt { get; set; }
 
+        /// <summary>
+        /// Aranabilir metin: normalize edilmis ad + kisaltmalar + rakam/Roma rakami karsiliklari +
+        /// bilinen takma adlar ("s1| grand theft auto vi | 6 gta gta6 gtavi "). Bicim ve gerekce
+        /// GameSearchKeys'te. Ad degisince DbContext kayit sirasinda yeniden uretir; eski
+        /// kayitlari GameSearchTextBackfill doldurur. Elle yazilmaz.
+        /// </summary>
+        public string? SearchText { get; set; }
+
         public ICollection<GameTag> Tags { get; set; } = new List<GameTag>();
     }
 }

@@ -214,16 +214,13 @@ namespace GGHub.Infrastructure.Services
             var query = _context.Games.AsNoTracking()
                 .Where(g => g.BackgroundImage != null);
 
+            // Ust cubuk aramasiyla AYNI eslesme (GameSearch): kelime basi + kisaltma + rakam
+            // karsiliklari. "listeye ekle" modalinda "gta 6" de Grand Theft Auto VI'yi bulur.
+            GameSearch.ParsedQuery? parsedSearch = null;
             if (!string.IsNullOrWhiteSpace(queryParams.Search))
             {
-                // Kelime bazli ILIKE: tek parca desen "EA SPORTS FC™ 27" gibi adlari kaciriyor
-                // ve arama ucu ile discover ucu farkli sonuc veriyordu (SearchService zaten
-                // token bazliydi; uc uc de ayni davranmali).
-                foreach (var token in queryParams.Search.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-                {
-                    var pattern = $"%{token}%";
-                    query = query.Where(g => EF.Functions.ILike(g.Name, pattern));
-                }
+                parsedSearch = GameSearch.Parse(queryParams.Search);
+                query = GameSearch.WhereMatches(query, parsedSearch.Tokens);
             }
 
             if (!string.IsNullOrWhiteSpace(queryParams.Genres))
@@ -288,6 +285,12 @@ namespace GGHub.Infrastructure.Services
                 "-added"      => query.OrderByDescending(g => g.RawgAdded ?? 0),
                 "-rating"     => query.OrderByDescending(g => g.Rating ?? 0),
                 "name"        => query.OrderBy(g => g.Name),
+                // Aramada varsayilan sira: tam ad eslesmesi, sonra bilinirlik. Puana gore siralama
+                // henuz cikmamis (puansiz) buyuk yapimlari listenin sonuna atiyordu.
+                _ when parsedSearch is { IsEmpty: false } => query
+                    .OrderByDescending(g => g.SearchText != null && g.SearchText.StartsWith(GameSearch.ExactNamePrefix(parsedSearch)))
+                    .ThenByDescending(g => g.HypeScore)
+                    .ThenByDescending(g => g.RawgAdded ?? 0),
                 _             => query.OrderByDescending(g => g.Rating ?? 0).ThenByDescending(g => g.RawgAdded ?? 0),
             };
 

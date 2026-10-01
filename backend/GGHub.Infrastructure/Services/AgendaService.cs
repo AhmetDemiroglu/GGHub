@@ -304,13 +304,10 @@ namespace GGHub.Infrastructure.Services
                 .Where(g => g.BackgroundImage != null
                     && (g.Released == null || string.Compare(g.Released, windowStart) >= 0));
 
-            // Kelime bazli ILIKE (GetGamesAsync ile ayni): "blade zero" yazan "Phantom Blade
-            // Zero"yu bulur. ILIKE veritabaninda calisir, istek kulturunden etkilenmez.
-            foreach (var token in tokens)
-            {
-                var pattern = $"%{EscapeLike(token)}%";
-                query = query.Where(g => EF.Functions.ILike(g.Name, pattern, "\\"));
-            }
+            // Ust cubuk aramasiyla ayni eslesme (GameSearch): "gta 6" Grand Theft Auto VI'yi bulur.
+            var parsed = GameSearch.Parse(string.Join(' ', tokens));
+            if (parsed.IsEmpty) return new List<GameDto>();
+            query = GameSearch.WhereMatches(query, parsed.Tokens);
 
             var rows = await query
                 .OrderByDescending(g => g.HypeScore)
@@ -323,9 +320,6 @@ namespace GGHub.Infrastructure.Services
             _cache.Set(cacheKey, result, TimeSpan.FromMinutes(5));
             return result;
         }
-
-        private static string EscapeLike(string value) =>
-            value.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
 
         private sealed class AgendaRow
         {

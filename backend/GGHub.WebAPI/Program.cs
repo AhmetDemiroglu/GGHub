@@ -552,6 +552,14 @@ if (app.Environment.IsProduction())
 
         await UsernameNormalizationSeeder.SeedAsync(context, seederLogger, auditService);
     }
+
+    // Oyun arama metni (Game.SearchText) geri doldurmasi. Migration'dan SONRA (kolon onunla
+    // olusur) ve arka planda: ~100 bin satir acilisi bekletmesin. Is yoksa tek sorguda biter.
+    app.Lifetime.ApplicationStarted.Register(() =>
+    {
+        var backfillLogger = app.Services.GetRequiredService<ILogger<Program>>();
+        _ = Task.Run(() => GameSearchTextBackfill.RunAsync(app.Services, backfillLogger, app.Lifetime.ApplicationStopping));
+    });
 }
 
 // Ilk middleware olmali: sonraki her sey (rate limit, log, HSTS) gercek istemci IP'sini gormeli.

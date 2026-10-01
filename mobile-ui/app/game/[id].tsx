@@ -36,6 +36,8 @@ import { FavoriteButton } from '@/src/components/game/FavoriteButton';
 import { useRequireAuth } from '@/src/contexts/auth-prompt-context';
 import type { Game } from '@/src/models/game';
 import { SwipeBackEdge } from '@/src/components/common/SwipeBackEdge';
+import { useToast } from '@/src/components/common/Toast';
+import { isUnreleased } from '@/src/utils/game-release';
 
 export default function GameDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -46,6 +48,7 @@ export default function GameDetailScreen() {
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
   const requireAuth = useRequireAuth();
+  const { showToast } = useToast();
 
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
   const [listModalVisible, setListModalVisible] = useState(false);
@@ -147,6 +150,8 @@ export default function GameDetailScreen() {
     );
   }
 
+  const reviewLocked = isUnreleased(game.released);
+
   return (
     <SwipeBackEdge>
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -213,7 +218,21 @@ export default function GameDetailScreen() {
               </Text>
             </Pressable>
           )}
-          {isAuthenticated && (
+          {isAuthenticated && (reviewLocked ? (
+            // Cikmamis oyuna inceleme yok (backend de reddeder). Dugme yerinde kalir, kilitli gorunur.
+            <Pressable
+              style={[styles.actionButton, { backgroundColor: colors.surface }]}
+              onPress={() => {
+                haptics.impactLight();
+                showToast('info', messages.games.reviewLockedToast);
+              }}
+            >
+              <Ionicons name="lock-closed-outline" size={18} color={colors.textMuted} />
+              <Text style={[styles.actionText, { color: colors.textMuted }]} numberOfLines={1}>
+                {messages.games.reviewLockedAction}
+              </Text>
+            </Pressable>
+          ) : (
             <Pressable
               style={[styles.actionButton, { backgroundColor: colors.primary }]}
               onPress={() => requireAuth(() => {
@@ -226,7 +245,7 @@ export default function GameDetailScreen() {
                 {myReview ? messages.games.editReviewAction : messages.games.writeReviewAction}
               </Text>
             </Pressable>
-          )}
+          ))}
         </View>
 
         <GameInfo game={game} />
@@ -249,7 +268,7 @@ export default function GameDetailScreen() {
                 {messages.games.noReviews}
               </Text>
               <Text style={[styles.noReviewsDesc, { color: colors.textMuted }]}>
-                {messages.games.noReviewsDescription}
+                {reviewLocked ? messages.games.noReviewsLockedDescription : messages.games.noReviewsDescription}
               </Text>
             </View>
           )}

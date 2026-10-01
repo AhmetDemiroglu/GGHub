@@ -89,6 +89,9 @@ export interface Messages {
   gghubRating: string;
   noReviews: string;
   noReviewsDescription: string;
+  noReviewsLockedDescription: string;
+  reviewLockedAction: string;
+  reviewLockedToast: string;
   reviewPlaceholder: string;
   ratingLabel: string;
   reviewSaved: string;

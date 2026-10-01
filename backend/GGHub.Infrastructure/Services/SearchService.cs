@@ -6,7 +6,6 @@ using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace GGHub.Infrastructure.Services
@@ -16,9 +15,6 @@ namespace GGHub.Infrastructure.Services
         private readonly GGHubDbContext _context;
         private readonly IGameService _gameService;
 
-        // 4-haneli yıl token'ı (1900-2099). Query'den ayırılır; oyun ismi name'inde geçmeyebilir.
-        private static readonly Regex YearTokenRegex = new(@"\b(19|20)\d{2}\b", RegexOptions.Compiled);
-
         public SearchService(GGHubDbContext context, IGameService gameService)
         {
             _context = context;
@@ -27,42 +23,26 @@ namespace GGHub.Infrastructure.Services
 
         public async Task<IEnumerable<SearchResultDto>> SearchAsync(string query, int? currentUserId = null)
         {
-            var (nameQuery, year) = ParseQuery(query);
-            var tokens = Tokenize(nameQuery);
-
-            // Lokal DB araması: her token için ILIKE %token% AND ile birleşir. Yıl varsa Released YYYY ile başlar.
-            IQueryable<Core.Entities.Game> gameQuery = _context.Games.AsNoTracking();
-            foreach (var token in tokens)
-            {
-                var pattern = $"%{token}%";
-                gameQuery = gameQuery.Where(g => EF.Functions.ILike(g.Name, pattern));
-            }
-            if (year.HasValue)
-            {
-                var yearStr = year.Value.ToString();
-                gameQuery = gameQuery.Where(g => g.Released != null && g.Released.StartsWith(yearStr));
-            }
-
-            var localGames = await gameQuery
-                .OrderByDescending(g => g.RawgAdded ?? 0)
-                .Take(8)
+            var localGames = (await RankGamesAsync(query, 8))
                 .Select(g => new SearchResultDto
                 {
                     Type = "Oyun",
                     Id = g.Slug,
                     Title = g.Name,
+                    Subtitle = g.Year,
                     ImageUrl = g.CoverImage ?? g.BackgroundImage,
                     Link = $"/games/{g.Slug}"
                 })
-                .ToListAsync();
+                .ToList();
 
-            // Eğer lokal sonuç azsa, RAWG passthrough fallback'i ile (yine DB üzerinden) daha geniş arama
-            // dene; nameQuery + GameQueryParams kullanılır. Yıl bilgisini RAWG service "Dates" param'ına çevirebilir.
-            if (localGames.Count < 5 && tokens.Length > 0)
+            // Katalogda neredeyse hic sonuc yoksa GetGamesAsync'in Steam/IGDB anlik ingest'ine
+            // birak (katalogda olmayan oyunu oradan getirir). Iyi eslesme varken tetiklenmez;
+            // aksi halde her aramada Steam'in hayran yapimi coplerini kataloga cekiyordu.
+            if (localGames.Count < 3 && !GameSearch.Parse(query).IsEmpty)
             {
                 var rawgResults = await _gameService.GetGamesAsync(new GameQueryParams
                 {
-                    Search = nameQuery,
+                    Search = query,
                     Page = 1,
                     PageSize = 5,
                 });
@@ -76,6 +56,7 @@ namespace GGHub.Infrastructure.Services
                         Type = "Oyun",
                         Id = g.Slug,
                         Title = g.Name,
+                        Subtitle = g.Released != null && g.Released.Length >= 4 ? g.Released[..4] : null,
                         ImageUrl = g.BackgroundImage,
                         Link = $"/games/{g.Slug}"
                     });
@@ -243,27 +224,9 @@ namespace GGHub.Infrastructure.Services
 
             if (types.Contains(MentionTargetType.Game))
             {
-                // Oyunlar herkese acik katalog: gorunurluk suzgeci yok.
-                // Basi eslesenler once, sonra populerlik (RatingCount).
-                var lowered = raw.ToLower();
-                var games = await _context.Games
-                    .AsNoTracking()
-                    .Where(g => g.Name.ToLower().Contains(lowered))
-                    .Select(g => new
-                    {
-                        g.Id,
-                        g.Name,
-                        g.CoverImage,
-                        g.BackgroundImage,
-                        g.Released,
-                        g.RatingCount,
-                        IsPrefixMatch = g.Name.ToLower().StartsWith(lowered)
-                    })
-                    .OrderByDescending(g => g.IsPrefixMatch)
-                    .ThenByDescending(g => g.RatingCount)
-                    .ThenBy(g => g.Name)
-                    .Take(limit)
-                    .ToListAsync();
+                // Oyunlar herkese acik katalog: gorunurluk suzgeci yok. Ust cubuk aramasiyla
+                // ayni motor: "@gta 6" de Grand Theft Auto VI'yi onerir.
+                var games = await RankGamesAsync(raw, limit);
 
                 results.AddRange(games.Select(g => new MentionSuggestionDto
                 {
@@ -271,8 +234,7 @@ namespace GGHub.Infrastructure.Services
                     Id = g.Id,
                     Display = g.Name,
                     ImageUrl = g.CoverImage ?? g.BackgroundImage,
-                    // Released "2015-05-19" biciminde; yalnizca yil gosteriliyor.
-                    Subtitle = g.Released != null && g.Released.Length >= 4 ? g.Released[..4] : null
+                    Subtitle = g.Year
                 }));
             }
 
@@ -320,24 +282,97 @@ namespace GGHub.Infrastructure.Services
             return results;
         }
 
-        private static (string nameQuery, int? year) ParseQuery(string raw)
+        /// <summary>
+        /// Oyun aramasi, uc kademe:
+        ///   1) Kelime basi eslesmesi (ad + kisaltma + rakam karsiliklari), en iyi 80 aday.
+        ///   2) Neredeyse sonuc yoksa adin icinde harf dizisi ("craft" -> "Minecraft").
+        ///   3) Hala yoksa yazim hatasi toleransi (pg_trgm word_similarity: "witcer" -> "Witcher").
+        /// Adaylar GameSearch.Score ile siralanir: uyum + populerlik.
+        /// </summary>
+        private async Task<List<GameSearch.Candidate>> RankGamesAsync(string query, int limit)
         {
-            var match = YearTokenRegex.Match(raw);
-            if (!match.Success) return (raw.Trim(), null);
-            var year = int.Parse(match.Value);
-            var stripped = (raw.Substring(0, match.Index) + raw.Substring(match.Index + match.Length)).Trim();
-            // Aynı sorguda peş peşe boşluk kalmasın
-            stripped = Regex.Replace(stripped, "\\s+", " ");
-            return (stripped, year);
+            var parsed = GameSearch.Parse(query);
+            if (parsed.IsEmpty) return new List<GameSearch.Candidate>();
+
+            var exactPrefix = GameSearch.ExactNamePrefix(parsed);
+            var candidates = await GameSearch.Project(
+                    GameSearch.WhereMatches(_context.Games.AsNoTracking(), parsed.Tokens)
+                        .OrderByDescending(g => g.SearchText != null && g.SearchText.StartsWith(exactPrefix))
+                        .ThenByDescending(g => g.HypeScore)
+                        .ThenByDescending(g => g.RawgAdded ?? 0))
+                .Take(80)
+                .ToListAsync();
+
+            if (candidates.Count < 3)
+            {
+                var seen = candidates.Select(c => c.Id).ToList();
+                var substringQuery = _context.Games.AsNoTracking().Where(g => !seen.Contains(g.Id));
+                var usable = parsed.Tokens.Where(t => t.Length >= 2).ToList();
+                if (usable.Count > 0)
+                {
+                    foreach (var token in usable)
+                    {
+                        var pattern = $"%{token}%";
+                        substringQuery = substringQuery.Where(g => EF.Functions.ILike(g.Name, pattern));
+                    }
+
+                    candidates.AddRange(await GameSearch.Project(substringQuery
+                            .OrderByDescending(g => g.HypeScore)
+                            .ThenByDescending(g => g.RawgAdded ?? 0))
+                        .Take(20)
+                        .ToListAsync());
+                }
+            }
+
+            var ranked = candidates
+                .Select(c => (Candidate: c, Score: GameSearch.Score(c, parsed)))
+                .OrderByDescending(x => x.Score)
+                .ThenBy(x => x.Candidate.Name.Length)
+                .Select(x => x.Candidate)
+                .Take(limit)
+                .ToList();
+
+            if (ranked.Count < 3 && parsed.NormalizedQuery.Length >= 4)
+            {
+                ranked.AddRange((await FuzzyCandidatesAsync(parsed, ranked.Select(r => r.Id).ToList()))
+                    .Take(limit - ranked.Count));
+            }
+
+            return ranked;
         }
 
-        private static string[] Tokenize(string nameQuery)
+        /// <summary>
+        /// Yazim hatasi toleransi. pg_trgm eklentisi yoksa (ya da sorgu patlarsa) bos doner;
+        /// arama asla bu yuzden dusmez.
+        /// </summary>
+        private async Task<List<GameSearch.Candidate>> FuzzyCandidatesAsync(GameSearch.ParsedQuery parsed, List<int> exclude)
         {
-            if (string.IsNullOrWhiteSpace(nameQuery)) return System.Array.Empty<string>();
-            return nameQuery
-                .Split(new[] { ' ', '\t' }, System.StringSplitOptions.RemoveEmptyEntries)
-                .Where(t => t.Length >= 2)
-                .ToArray();
+            try
+            {
+                var q = parsed.NormalizedQuery;
+                // "<%" word_similarity esigi (varsayilan 0.6) ile trigram indeksini kullanir.
+                var ids = await _context.Database
+                    .SqlQuery<int>($@"SELECT ""Id"" AS ""Value"" FROM ""Games""
+                        WHERE ""SearchText"" IS NOT NULL AND {q} <% ""SearchText""
+                        ORDER BY word_similarity({q}, ""SearchText"") DESC, ""HypeScore"" DESC
+                        LIMIT 12")
+                    .ToListAsync();
+
+                ids = ids.Where(id => !exclude.Contains(id)).ToList();
+                if (ids.Count == 0) return new List<GameSearch.Candidate>();
+
+                var rows = await GameSearch.Project(_context.Games.AsNoTracking().Where(g => ids.Contains(g.Id)))
+                    .ToListAsync();
+                // Benzerlik sirasini koru.
+                return ids.Select(id => rows.FirstOrDefault(r => r.Id == id))
+                    .Where(r => r != null)
+                    .Select(r => r!)
+                    .ToList();
+            }
+            catch (Exception)
+            {
+                return new List<GameSearch.Candidate>();
+            }
         }
     }
 }

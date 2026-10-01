@@ -1413,6 +1413,9 @@ export const enUSMessages = {
         wishlistName: "My Wishlist",
         rateEdit: "Edit Your Rating",
         ratePrompt: "Click to rate",
+        rateLocked: "You can rate it once it releases",
+        lockedUntilRelease: "This game is not out yet. You can review it once it releases.",
+        emptyLockedDescription: "{gameName} is not out yet. Be the first to review it on release!",
     },
     profileOverview: {
         badgeCollection: "Badge Collection",

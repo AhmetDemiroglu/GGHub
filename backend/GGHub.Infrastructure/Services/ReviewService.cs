@@ -35,6 +35,13 @@ namespace GGHub.Infrastructure.Services
         {
             var game = await _gameService.GetOrCreateGameByRawgIdAsync(reviewDto.GameId);
 
+            // Cikmamis oyuna inceleme yok. Istemciler butonu zaten kapatiyor; bu kapi eski
+            // mobil surumler ve dogrudan API cagrilari icin.
+            if (GameRelease.IsUnreleased(game.Released, DateTime.UtcNow))
+            {
+                throw new InvalidOperationException(AppText.Get("reviews.gameNotReleased"));
+            }
+
             var existingReview = await _context.Reviews
                 .FirstOrDefaultAsync(r => r.UserId == userId && r.GameId == game.Id);
 

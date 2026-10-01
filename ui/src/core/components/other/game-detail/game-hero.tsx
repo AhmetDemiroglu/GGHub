@@ -19,9 +19,11 @@ import placeHolder2 from "@core/assets/placeholder2.png";
 interface GameHeroProps {
     game: Game;
     onOpenReviewModal: () => void;
+    /** Oyun henuz cikmadi: puan cubugu kilit metnini gosterir. */
+    reviewLocked?: boolean;
 }
 
-export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
+export const GameHero = ({ game, onOpenReviewModal, reviewLocked = false }: GameHeroProps) => {
     const t = useI18n();
     const locale = useCurrentLocale();
     const { isAuthenticated, user } = useAuth();
@@ -188,7 +190,7 @@ export const GameHero = ({ game, onOpenReviewModal }: GameHeroProps) => {
                     </div>
 
                     <div className="lg:col-span-5 lg:flex lg:justify-end">
-                        <GameRatingBar rating={game.gghubRating || 0} onRateClick={onOpenReviewModal} actionLabel={myReview ? t("reviewList.rateEdit") : t("reviewList.ratePrompt")} />
+                        <GameRatingBar rating={game.gghubRating || 0} onRateClick={onOpenReviewModal} actionLabel={reviewLocked ? t("reviewList.rateLocked") : myReview ? t("reviewList.rateEdit") : t("reviewList.ratePrompt")} />
                     </div>
                 </div>
                 <GameAddToListDialog isOpen={isListDialogOpen} onClose={() => setIsListDialogOpen(false)} gameId={game.rawgId} />
