@@ -97,14 +97,49 @@ namespace GGHub.Infrastructure.Services
             await _context.SaveChangesAsync();
             return true;
         }
+        /// <summary>
+        /// Kayip yanit kurtarma penceresi. Refresh token tek kullanimlik: sunucu yeniler, eskisini
+        /// iptal eder. Yanit istemciye ULASMAZSA (deploy sirasinda kesilen istek, zaman asimi, arka
+        /// plana alinan mobil uygulama) istemci eski token'la tekrar dener ve eskiden 401 alip
+        /// oturumdan atiliyordu (1 Eki 2026: gun icinde onlarca deploy sonrasi web + mobilde cikis).
+        /// Eski token yenilemeyle iptal edildiyse ve yerine verilen token HIC KULLANILMADIYSA istemci
+        /// yaniti almamis demektir; yenileme o token uzerinden yapilir. Yerine gelen kullanildiysa
+        /// ya da iptal baska sebeple olduysa (sifre degisikligi, hesap silme) yine reddedilir.
+        /// </summary>
+        private static readonly TimeSpan LostResponseWindow = TimeSpan.FromHours(24);
+
         public async Task<LoginResponseDto?> RefreshTokenAsync(string token)
         {
             var refreshToken = await _context.RefreshTokens
                 .Include(rt => rt.User) 
                 .FirstOrDefaultAsync(rt => rt.Token == token);
 
-            if (refreshToken == null || refreshToken.ExpiresAt <= DateTime.UtcNow || refreshToken.RevokedAt != null ||
-                refreshToken.User.IsDeleted)
+            if (refreshToken == null || refreshToken.User.IsDeleted)
+            {
+                return null;
+            }
+
+            if (refreshToken.RevokedAt != null)
+            {
+                var successor = refreshToken.ReplacedByToken != null && refreshToken.RevokedAt > DateTime.UtcNow - LostResponseWindow
+                    ? await _context.RefreshTokens.Include(rt => rt.User).FirstOrDefaultAsync(rt => rt.Token == refreshToken.ReplacedByToken)
+                    : null;
+
+                if (successor == null || successor.RevokedAt != null || successor.ExpiresAt <= DateTime.UtcNow)
+                {
+                    _logger.LogWarning(
+                        "auth-refresh: iptal edilmis token reddedildi (kullanici {UserId}, {Seconds} sn once iptal, yenileme ile: {Rotated})",
+                        refreshToken.UserId, (int)(DateTime.UtcNow - refreshToken.RevokedAt.Value).TotalSeconds, refreshToken.ReplacedByToken != null);
+                    return null;
+                }
+
+                _logger.LogInformation(
+                    "auth-refresh: kayip yanit kurtarildi (kullanici {UserId}, {Seconds} sn once yenilenmisti)",
+                    refreshToken.UserId, (int)(DateTime.UtcNow - refreshToken.RevokedAt.Value).TotalSeconds);
+                refreshToken = successor;
+            }
+
+            if (refreshToken.ExpiresAt <= DateTime.UtcNow)
             {
                 return null;
             }
@@ -119,6 +154,7 @@ namespace GGHub.Infrastructure.Services
             };
 
             refreshToken.RevokedAt = DateTime.UtcNow;
+            refreshToken.ReplacedByToken = newRefreshToken.Token;
 
             await _context.RefreshTokens.AddAsync(newRefreshToken);
             await _context.SaveChangesAsync();

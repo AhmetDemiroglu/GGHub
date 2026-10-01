@@ -211,6 +211,9 @@ namespace GGHub.Infrastructure.Persistence
             modelBuilder.Entity<RefreshToken>()
                 .HasIndex(rt => rt.Token)
                 .HasDatabaseName("IX_RefreshTokens_Token");
+            modelBuilder.Entity<RefreshToken>()
+                .Property(rt => rt.ReplacedByToken)
+                .HasMaxLength(128);
 
             // NOT (Kesfet zevk grafigi icin): "su oyunlari iceren listeler" ve
             // "su oyunlar hakkindaki incelemeler" sorgulari GameId uzerinden ters
