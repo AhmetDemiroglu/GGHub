@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using GGHub.Core.Utilities;
 using GGHub.Application.DTOs.Common;
 using GGHub.Application.Dtos.DownloadAnalytics;
@@ -24,6 +25,18 @@ namespace GGHub.Infrastructure.Services
         {
             "app_store", "google_play", "web"
         };
+
+        /// <summary>
+        /// Kanal onceligi: utm_source > clickIdSource > uygulama ici tarayici > referrer > direct.
+        /// KOLONA YAZILMAZ, sorgu aninda turetilir; kural yanlis cikarsa migration olmadan geriye
+        /// donuk duzeltilir. Kirilim ve ham olay suzgeci ayni ifadeyi kullanir.
+        /// </summary>
+        private static readonly Expression<Func<DownloadPageEvent, string>> ChannelSelector =
+            e => e.UtmSource != null ? e.UtmSource
+                : e.ClickIdSource != null ? e.ClickIdSource
+                : (e.Browser == "instagram" || e.Browser == "facebook" || e.Browser == "tiktok") ? e.Browser
+                : e.ReferrerHost != null ? e.ReferrerHost
+                : "direct";
 
         /// <summary>Mağazaya ulaşmış sayılan olaylar (huninin dönüşüm adımı).</summary>
         private static readonly string[] StoreReachEvents = { "auto_redirect", "store_click" };
@@ -140,8 +153,10 @@ namespace GGHub.Infrastructure.Services
         {
             var query = BuildQuery(filter);
 
+            // Yerel gune gore grupla: UTC gun siniri Turkiye'de 03:00'e denk geliyor.
+            var tz = filter.TzOffset;
             var rows = await query
-                .GroupBy(e => e.OccurredAt.Date)
+                .GroupBy(e => e.OccurredAt.AddMinutes(tz).Date)
                 .Select(g => new
                 {
                     Date = g.Key,
@@ -168,7 +183,7 @@ namespace GGHub.Infrastructure.Services
 
             // Boyut seciciler DERLENMIS ifadeler: kullanicidan gelen dizge asla
             // sorguya gomulmez, yalnizca bu switch'ten bir dala eslesir.
-            System.Linq.Expressions.Expression<Func<DownloadPageEvent, string>> selector = dimension switch
+            Expression<Func<DownloadPageEvent, string>> selector = dimension switch
             {
                 "utmSource" => e => e.UtmSource ?? "(bilinmiyor)",
                 "utmMedium" => e => e.UtmMedium ?? "(bilinmiyor)",
@@ -178,14 +193,7 @@ namespace GGHub.Infrastructure.Services
                 "country" => e => e.CountryCode ?? "(bilinmiyor)",
                 "browser" => e => e.Browser ?? "(bilinmiyor)",
                 "referrer" => e => e.ReferrerHost ?? "(dogrudan)",
-                // Kanal onceligi: utm_source > clickIdSource > uygulama ici tarayici
-                // > referrer > direct. KOLONA YAZILMAZ, sorgu aninda turetilir; kural
-                // yanlis cikarsa migration olmadan geriye donuk duzeltilir.
-                _ => e => e.UtmSource != null ? e.UtmSource
-                        : e.ClickIdSource != null ? e.ClickIdSource
-                        : (e.Browser == "instagram" || e.Browser == "facebook" || e.Browser == "tiktok") ? e.Browser
-                        : e.ReferrerHost != null ? e.ReferrerHost
-                        : "direct",
+                _ => ChannelSelector,
             };
 
             var rows = await query
@@ -255,6 +263,17 @@ namespace GGHub.Infrastructure.Services
         public async Task<PaginatedResult<DownloadPageEventDto>> GetEventsAsync(DownloadAnalyticsFilterParams filter)
         {
             var query = BuildQuery(filter);
+
+            if (!string.IsNullOrWhiteSpace(filter.EventType))
+                query = query.Where(e => e.EventType == filter.EventType);
+
+            if (!string.IsNullOrWhiteSpace(filter.Channel))
+            {
+                var channelEquals = Expression.Lambda<Func<DownloadPageEvent, bool>>(
+                    Expression.Equal(ChannelSelector.Body, Expression.Constant(filter.Channel)),
+                    ChannelSelector.Parameters);
+                query = query.Where(channelEquals);
+            }
             var totalCount = await query.CountAsync();
 
             var items = await query
@@ -316,16 +335,17 @@ namespace GGHub.Infrastructure.Services
         {
             var query = _context.DownloadPageEvents.AsNoTracking();
 
+            // Tarihler tarayicinin YEREL gunudur; yerel gece yarisi UTC'ye cevrilir.
             if (filter.StartDate.HasValue)
             {
-                var start = DateTime.SpecifyKind(filter.StartDate.Value.Date, DateTimeKind.Utc);
+                var start = DateTime.SpecifyKind(filter.StartDate.Value.Date, DateTimeKind.Utc).AddMinutes(-filter.TzOffset);
                 query = query.Where(e => e.OccurredAt >= start);
             }
 
             if (filter.EndDate.HasValue)
             {
                 // Bitiş günü DAHİL olmalı; kullanıcı "1-7 Temmuz" derken 7'yi de kastediyor.
-                var end = DateTime.SpecifyKind(filter.EndDate.Value.Date.AddDays(1), DateTimeKind.Utc);
+                var end = DateTime.SpecifyKind(filter.EndDate.Value.Date.AddDays(1), DateTimeKind.Utc).AddMinutes(-filter.TzOffset);
                 query = query.Where(e => e.OccurredAt < end);
             }
 

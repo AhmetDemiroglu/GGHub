@@ -6,6 +6,12 @@ export interface DownloadAnalyticsFilter {
     platform?: string;
     countryCode?: string;
     includeBots?: boolean;
+    /** Tarayicinin UTC farki, dakika, doguya pozitif (Turkiye +180). Gun sinirlari yerel. */
+    tzOffset?: number;
+    /** Yalniz ham olay listesi. */
+    eventType?: string;
+    /** Yalniz ham olay listesi; turetilmis kanal (ig, fb, direct...). */
+    channel?: string;
     page?: number;
     pageSize?: number;
 }

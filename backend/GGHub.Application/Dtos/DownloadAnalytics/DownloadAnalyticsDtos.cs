@@ -51,6 +51,19 @@ namespace GGHub.Application.Dtos.DownloadAnalytics
         public string? CountryCode { get; set; }
         /// <summary>Varsayılan false: crawler trafiği raporları şişirmesin.</summary>
         public bool IncludeBots { get; set; }
+
+        /// <summary>
+        /// Tarayıcının UTC'den farkı, dakika, doğuya pozitif (Türkiye +180; behavior sayfasının
+        /// tzOffset'iyle aynı kural). Başlangıç/bitiş günleri ve günlük gruplama YEREL güne göre
+        /// yapılır; yoksa "Bugün" Türkiye'de gece 03:00'e kadar dünü gösterir.
+        /// </summary>
+        public int TzOffset { get; set; }
+
+        /// <summary>Yalnız ham olay listesine uygulanır; özet ve huni tüm olay tiplerine bakmak zorunda.</summary>
+        public string? EventType { get; set; }
+
+        /// <summary>Türetilmiş kanal (utm_source > click id > uygulama içi tarayıcı > referrer > direct). Yalnız ham olay listesi.</summary>
+        public string? Channel { get; set; }
     }
 
     public class DownloadAnalyticsSummaryDto

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Bot, Eye, Loader2, ShoppingBag, TrendingUp, Users } from "lucide-react";
+import { Bot, ChevronLeft, ChevronRight, Eye, Loader2, ShoppingBag, TrendingUp, Users } from "lucide-react";
 
 import { useI18n, useCurrentLocale } from "@/core/contexts/locale-context";
 import {
@@ -23,14 +23,24 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/core/components/ui/badge";
 import { Switch } from "@/core/components/ui/switch";
 import { Label } from "@/core/components/ui/label";
+import { Button } from "@/core/components/ui/button";
 
-/** Gun sayisindan ISO tarih araligi uretir. */
+/** Yerel tarihi YYYY-MM-DD yazar. toISOString UTC'ye cevirir; Turkiye'de 03:00'e kadar dunu verirdi. */
+function localDate(date: Date): string {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/** Gun sayisindan YEREL tarih araligi uretir (1 = bugun). Backend tzOffset ile UTC'ye cevirir. */
 function rangeFromDays(days: number): { startDate: string; endDate: string } {
     const end = new Date();
     const start = new Date();
     start.setDate(start.getDate() - (days - 1));
-    return { startDate: start.toISOString().slice(0, 10), endDate: end.toISOString().slice(0, 10) };
+    return { startDate: localDate(start), endDate: localDate(end) };
 }
+
+const EVENT_TYPES = ["page_view", "auto_redirect", "store_click", "redirect_cancel", "web_click"] as const;
+const EVENTS_PAGE_SIZE = 50;
 
 const BREAKDOWNS: { dimension: BreakdownDimension; labelKey: string }[] = [
     { dimension: "channel", labelKey: "admin.downloadAnalytics.byChannel" },
@@ -48,14 +58,37 @@ export default function DownloadAnalyticsPage() {
     const [platform, setPlatform] = useState("all");
     const [includeBots, setIncludeBots] = useState(false);
 
+    // Ham olay listesinin kendi suzgecleri. Platform secilirse ustteki platform filtresini ezer.
+    const [eventType, setEventType] = useState("all");
+    const [eventPlatform, setEventPlatform] = useState("all");
+    const [eventChannel, setEventChannel] = useState("all");
+    const [eventsPage, setEventsPage] = useState(1);
+
+    const tzOffset = -new Date().getTimezoneOffset();
     const filter: DownloadAnalyticsFilter = {
         ...rangeFromDays(Number(days)),
         platform: platform === "all" ? undefined : platform,
         includeBots,
+        tzOffset,
     };
     // Sorgu anahtari filtrenin TAMAMINI icermeli, yoksa filtre degisince
     // TanStack onbellekten eski veriyi doner.
-    const key = [filter.startDate, filter.endDate, filter.platform ?? "all", includeBots];
+    const key = [filter.startDate, filter.endDate, filter.platform ?? "all", includeBots, tzOffset];
+
+    const eventsFilter: DownloadAnalyticsFilter = {
+        ...filter,
+        platform: eventPlatform !== "all" ? eventPlatform : filter.platform,
+        eventType: eventType === "all" ? undefined : eventType,
+        channel: eventChannel === "all" ? undefined : eventChannel,
+        page: eventsPage,
+        pageSize: EVENTS_PAGE_SIZE,
+    };
+
+    // Suzgec degisince ilk sayfaya don; yoksa 4. sayfada bos liste gorunur.
+    const resetEventsPage = <T,>(setter: (value: T) => void) => (value: T) => {
+        setter(value);
+        setEventsPage(1);
+    };
 
     const summaryQuery = useQuery({
         queryKey: ["download-analytics", "summary", ...key],
@@ -76,10 +109,18 @@ export default function DownloadAnalyticsPage() {
     });
 
     const eventsQuery = useQuery({
-        queryKey: ["download-analytics", "events", ...key],
-        queryFn: async () => (await getDownloadEvents({ ...filter, page: 1, pageSize: 25 })).data,
+        queryKey: ["download-analytics", "events", ...key, eventsFilter.platform ?? "all", eventType, eventChannel, eventsPage],
+        queryFn: async () => (await getDownloadEvents(eventsFilter)).data,
         placeholderData: (prev) => prev,
     });
+
+    // Kanal secenekleri kanal kirilimindan gelir (BreakdownSection ile ayni anahtar, tek istek).
+    const channelQuery = useQuery({
+        queryKey: ["download-analytics", "breakdown", "channel", ...key],
+        queryFn: async () => (await getDownloadBreakdown("channel", filter)).data,
+        placeholderData: (prev) => prev,
+    });
+    const channelOptions = (channelQuery.data ?? []).map((row) => row.key);
 
     const isLoading = summaryQuery.isLoading || funnelQuery.isLoading;
     const isError = summaryQuery.isError || funnelQuery.isError;
@@ -119,11 +160,12 @@ export default function DownloadAnalyticsPage() {
                 <CardContent className="flex flex-wrap items-end gap-4 pt-6">
                     <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">{t("admin.downloadAnalytics.filterRange")}</Label>
-                        <Select value={days} onValueChange={setDays}>
+                        <Select value={days} onValueChange={resetEventsPage(setDays)}>
                             <SelectTrigger className="w-[160px]">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
+                                <SelectItem value="1">{t("admin.downloadAnalytics.today")}</SelectItem>
                                 <SelectItem value="7">{t("admin.downloadAnalytics.last7")}</SelectItem>
                                 <SelectItem value="30">{t("admin.downloadAnalytics.last30")}</SelectItem>
                                 <SelectItem value="90">{t("admin.downloadAnalytics.last90")}</SelectItem>
@@ -133,7 +175,7 @@ export default function DownloadAnalyticsPage() {
 
                     <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">{t("admin.downloadAnalytics.platform")}</Label>
-                        <Select value={platform} onValueChange={setPlatform}>
+                        <Select value={platform} onValueChange={resetEventsPage(setPlatform)}>
                             <SelectTrigger className="w-[160px]">
                                 <SelectValue />
                             </SelectTrigger>
@@ -147,7 +189,7 @@ export default function DownloadAnalyticsPage() {
                     </div>
 
                     <div className="flex items-center gap-2 pb-2">
-                        <Switch id="include-bots" checked={includeBots} onCheckedChange={setIncludeBots} />
+                        <Switch id="include-bots" checked={includeBots} onCheckedChange={resetEventsPage(setIncludeBots)} />
                         <Label htmlFor="include-bots" className="text-sm">
                             {t("admin.downloadAnalytics.includeBots")}
                         </Label>
@@ -222,7 +264,49 @@ export default function DownloadAnalyticsPage() {
                     <CardTitle>{t("admin.downloadAnalytics.eventsTitle")}</CardTitle>
                     <CardDescription>{t("admin.downloadAnalytics.eventsDescription")}</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
+                    <div className="flex flex-wrap gap-3">
+                        <Select value={eventType} onValueChange={resetEventsPage(setEventType)}>
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">{t("admin.downloadAnalytics.eventsAllTypes")}</SelectItem>
+                                {EVENT_TYPES.map((type) => (
+                                    <SelectItem key={type} value={type}>
+                                        {type}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        <Select value={eventPlatform} onValueChange={resetEventsPage(setEventPlatform)}>
+                            <SelectTrigger className="w-[160px]">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">{t("admin.downloadAnalytics.allPlatforms")}</SelectItem>
+                                <SelectItem value="ios">iOS</SelectItem>
+                                <SelectItem value="android">Android</SelectItem>
+                                <SelectItem value="other">Desktop</SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                        <Select value={eventChannel} onValueChange={resetEventsPage(setEventChannel)}>
+                            <SelectTrigger className="w-[160px]">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">{t("admin.downloadAnalytics.eventsAllChannels")}</SelectItem>
+                                {channelOptions.map((channel) => (
+                                    <SelectItem key={channel} value={channel}>
+                                        {channel}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
                     {(eventsQuery.data?.items.length ?? 0) === 0 ? (
                         <p className="py-6 text-center text-sm text-muted-foreground">{t("admin.downloadAnalytics.noData")}</p>
                     ) : (
@@ -264,8 +348,59 @@ export default function DownloadAnalyticsPage() {
                             </Table>
                         </div>
                     )}
+
+                    {eventsQuery.data && eventsQuery.data.totalCount > 0 ? (
+                        <EventsPager
+                            page={eventsPage}
+                            total={eventsQuery.data.totalCount}
+                            onPageChange={setEventsPage}
+                            loading={eventsQuery.isFetching}
+                        />
+                    ) : null}
                 </CardContent>
             </Card>
+        </div>
+    );
+}
+
+function EventsPager({
+    page,
+    total,
+    onPageChange,
+    loading,
+}: {
+    page: number;
+    total: number;
+    onPageChange: (page: number) => void;
+    loading: boolean;
+}) {
+    const t = useI18n();
+    const lastPage = Math.max(1, Math.ceil(total / EVENTS_PAGE_SIZE));
+    const from = (page - 1) * EVENTS_PAGE_SIZE + 1;
+    const to = Math.min(page * EVENTS_PAGE_SIZE, total);
+
+    return (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs text-muted-foreground">
+                {t("admin.downloadAnalytics.eventsRange")
+                    .replace("{from}", from.toLocaleString())
+                    .replace("{to}", to.toLocaleString())
+                    .replace("{total}", total.toLocaleString())}
+            </p>
+            <div className="flex items-center gap-2">
+                {loading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : null}
+                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+                    <ChevronLeft className="h-4 w-4" />
+                    {t("admin.downloadAnalytics.eventsPrev")}
+                </Button>
+                <span className="text-xs tabular-nums text-muted-foreground">
+                    {page} / {lastPage}
+                </span>
+                <Button variant="outline" size="sm" disabled={page >= lastPage} onClick={() => onPageChange(page + 1)}>
+                    {t("admin.downloadAnalytics.eventsNext")}
+                    <ChevronRight className="h-4 w-4" />
+                </Button>
+            </div>
         </div>
     );
 }

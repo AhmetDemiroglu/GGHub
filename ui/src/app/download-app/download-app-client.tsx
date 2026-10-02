@@ -22,11 +22,17 @@ import logoSrc from "@core/assets/logo.png";
  * OG/Twitter card is wired up server-side in page.tsx.
  */
 
-const AUTO_REDIRECT_SECONDS = 5;
+/**
+ * 1,5 sn (2 Eki 2026, Ahmet): 5 sn'de reklamdan gelen mobil ziyaretcinin yarisindan fazlasi
+ * geri sayim bitmeden cikiyordu. Sayac 2'den baslar, 1'i gosterir, 1,5 sn'de yonlendirir;
+ * yonlendirme ekrani yine bir an gorunur. Adim 500 ms: sayac ve ilerleme cubugu ayni ritimde.
+ */
+const AUTO_REDIRECT_MS = 1500;
+const TICK_MS = 500;
 
 export default function DownloadAppClient() {
     const [target, setTarget] = useState<string | null>(null);
-    const [seconds, setSeconds] = useState(AUTO_REDIRECT_SECONDS);
+    const [remainingMs, setRemainingMs] = useState(AUTO_REDIRECT_MS);
     const [cancelled, setCancelled] = useState(false);
     // React 19 StrictMode dev'de effect'leri iki kez calistirir; guard olmadan
     // her ziyaret iki page_view yazardi.
@@ -54,7 +60,7 @@ export default function DownloadAppClient() {
     // Countdown + redirect when a matching store exists for this device.
     useEffect(() => {
         if (!target || cancelled) return;
-        if (seconds <= 0) {
+        if (remainingMs <= 0) {
             // Beacon navigasyondan HEMEN once, senkron gonderilir. true donerse
             // tarayici istegi kuyruga aldi ve sayfa kapansa da yasar; kullaniciyi
             // bekletmenin anlami yok. Yalnizca yedek yola dusuldugunde kisa sigorta.
@@ -70,14 +76,15 @@ export default function DownloadAppClient() {
             }
             return;
         }
-        const id = setTimeout(() => setSeconds((s) => s - 1), 1000);
+        const id = setTimeout(() => setRemainingMs((ms) => ms - TICK_MS), TICK_MS);
         return () => clearTimeout(id);
-    }, [target, seconds, cancelled]);
+    }, [target, remainingMs, cancelled]);
 
     const storeName = target === GOOGLE_PLAY_URL ? "Google Play" : "App Store";
     const isRedirecting = !!target && !cancelled;
-    const progress = Math.max(0, Math.min(1, seconds / AUTO_REDIRECT_SECONDS));
-    const n = Math.max(seconds, 0);
+    const progress = Math.max(0, Math.min(1, remainingMs / AUTO_REDIRECT_MS));
+    // 1500 -> 2, 1000 -> 1, 500 -> 1: sayac 2'den baslar.
+    const n = Math.max(Math.ceil(remainingMs / 1000), 0);
 
     return (
         <main className="relative flex min-h-[100dvh] w-full items-center justify-center overflow-hidden bg-[#0a0b14] px-4 py-6 text-white">
@@ -113,7 +120,7 @@ export default function DownloadAppClient() {
                         </div>
                         <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-white/10">
                             <div
-                                className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-violet-400 transition-[width] duration-1000 ease-linear"
+                                className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-violet-400 transition-[width] duration-500 ease-linear"
                                 style={{ width: `${progress * 100}%` }}
                             />
                         </div>
