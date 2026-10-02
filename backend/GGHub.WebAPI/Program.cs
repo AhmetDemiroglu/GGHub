@@ -150,6 +150,7 @@ builder.Services.AddScoped<IUserDtoEnricher, UserDtoEnricher>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<IUserListService, UserListService>();
 builder.Services.AddScoped<IProfileService, ProfileService>();
+builder.Services.AddScoped<IAccountPurgeService, AccountPurgeService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IAdminService, AdminService>();

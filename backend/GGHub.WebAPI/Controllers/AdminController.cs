@@ -191,6 +191,24 @@ namespace GGHub.WebAPI.Controllers
             return Ok(result);
         }
 
+        /// <summary>Silinmis hesaplarda hala duran icerigin sayimi (temizlemeden once gosterilir).</summary>
+        [HttpGet("users/deleted-residue")]
+        public async Task<IActionResult> GetDeletedAccountResidue([FromServices] IAccountPurgeService purge, CancellationToken ct)
+            => Ok(await purge.GetDeletedAccountResidueAsync(ct));
+
+        /// <summary>
+        /// Daha once silinmis hesaplarin kalan icerigini siler (geri alinamaz). Yeni silinen hesaplar
+        /// bunu zaten kendiliginden yapar; bu uc eski kayitlar ve basarisiz temizlikler icindir.
+        /// </summary>
+        [HttpPost("users/purge-deleted")]
+        public async Task<IActionResult> PurgeDeletedAccounts([FromServices] IAccountPurgeService purge, CancellationToken ct)
+        {
+            var adminId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var purged = await purge.PurgeAllDeletedAccountsAsync(ct);
+            _logger.LogInformation("[AccountPurge] Admin {AdminId} silinmis hesap temizligi calistirdi: {Count} hesap.", adminId, purged);
+            return Ok(new { purgedAccounts = purged, residue = await purge.GetDeletedAccountResidueAsync(ct) });
+        }
+
         [HttpGet("users/{userId}")]
         public async Task<IActionResult> GetUserDetails(int userId)
         {

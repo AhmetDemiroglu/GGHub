@@ -6,6 +6,7 @@ using GGHub.Core.Utilities;
 using GGHub.Infrastructure.Localization;
 using GGHub.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace GGHub.Infrastructure.Services
 {
@@ -15,13 +16,19 @@ namespace GGHub.Infrastructure.Services
         private readonly IAuditService _auditService;
         private readonly IUserDtoEnricher _userDtoEnricher;
         private readonly IAiInteractionPolicy _aiPolicy;
+        private readonly IAccountPurgeService _accountPurge;
+        private readonly ILogger<ProfileService> _logger;
 
         public ProfileService(
             GGHubDbContext context,
             IAuditService auditService,
             IUserDtoEnricher userDtoEnricher,
-            IAiInteractionPolicy aiPolicy)
+            IAiInteractionPolicy aiPolicy,
+            IAccountPurgeService accountPurge,
+            ILogger<ProfileService> logger)
         {
+            _accountPurge = accountPurge;
+            _logger = logger;
             _context = context;
             _auditService = auditService;
             _userDtoEnricher = userDtoEnricher;
@@ -480,6 +487,18 @@ namespace GGHub.Infrastructure.Services
             }
 
             await _context.SaveChangesAsync();
+
+            // Icerik temizligi anonimlestirmeden SONRA ve ondan bagimsiz: giris yollarinin kapanmasi
+            // her durumda kalici olsun. Temizlik basarisiz olursa hata kaydina duser ve admin
+            // panelindeki "Silinmis hesap artiklarini temizle" dugmesi kalan icerigi siler.
+            try
+            {
+                await _accountPurge.PurgeUserContentAsync(userId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[AccountPurge] Silinen hesabin icerigi temizlenemedi (kullanici {UserId}).", userId);
+            }
         }
             public async Task<UserDataExportDto> GetUserDataForExportAsync(int userId)
             {

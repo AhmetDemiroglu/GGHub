@@ -16,6 +16,7 @@ import { Input } from "@/core/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/core/components/ui/select";
 import { Button } from "@/core/components/ui/button";
 import { BrushCleaning } from "lucide-react";
+import { DeletedAccountPurgeCard } from "@/core/components/admin/deleted-account-purge-card";
 import { useCurrentLocale, useI18n } from "@/core/contexts/locale-context";
 
 function useDebounce<T>(value: T, delay: number): T {
@@ -156,6 +157,8 @@ export default function UsersPage() {
                 <h2 className="text-3xl font-bold tracking-tight">{t("admin.usersPageTitle")}</h2>
                 <p className="text-muted-foreground">{t("admin.usersPageDescription")}</p>
             </div>
+
+            <DeletedAccountPurgeCard />
             <div className="flex flex-wrap items-center gap-4">
                 <Input
                     placeholder={t("admin.usersPageSearchPlaceholder")}

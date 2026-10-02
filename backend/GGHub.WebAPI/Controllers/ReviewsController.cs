@@ -27,7 +27,21 @@ namespace GGHub.WebAPI.Controllers
             try
             {
                 var createdReview = await _reviewService.CreateReviewAsync(reviewDto, userId);
-                return StatusCode(201, createdReview);
+
+                // Entity'nin kendisi DONULMEZ: oyun etiketleri context'e yuklenmisse (oyun ilk kez RAWG'dan
+                // detaylandiginda) Review -> Game -> Tags -> Game dongusu olusuyor, inceleme kaydedildigi
+                // halde yanit 500 donuyordu ve kullanici tekrar deneyince "zaten inceledin" aliyordu.
+                // Web ve mobil yanit govdesini kullanmiyor (yalniz basariya bakiyor); alan adlari ayni.
+                return StatusCode(201, new
+                {
+                    createdReview.Id,
+                    createdReview.GameId,
+                    createdReview.UserId,
+                    createdReview.Rating,
+                    createdReview.Content,
+                    createdReview.CreatedAt,
+                    createdReview.UpdatedAt
+                });
             }
             catch (InvalidOperationException ex)
             {

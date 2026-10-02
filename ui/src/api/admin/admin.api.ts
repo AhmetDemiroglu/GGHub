@@ -82,3 +82,24 @@ export const getReportDetail = (reportId: number) => {
 export const forceSyncMetacritic = (gameId: number) => {
     return axiosInstance.post(`/admin/sync-metacritic/${gameId}`);
 };
+
+/** Silinmis hesaplarda kalan icerigin sayimi (backend AccountPurgeService). */
+export interface DeletedAccountResidue {
+    accounts: number;
+    reviews: number;
+    comments: number;
+    lists: number;
+    posts: number;
+    likes: number;
+    follows: number;
+    rankingEntries: number;
+}
+
+export const getDeletedAccountResidue = () => {
+    return axiosInstance.get<DeletedAccountResidue>("/admin/users/deleted-residue");
+};
+
+/** Geri alinamaz: silinmis hesaplarin kalan icerigini siler. */
+export const purgeDeletedAccounts = () => {
+    return axiosInstance.post<{ purgedAccounts: number; residue: DeletedAccountResidue }>("/admin/users/purge-deleted");
+};

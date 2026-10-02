@@ -190,7 +190,7 @@ namespace GGHub.Infrastructure.Services
                     .AsNoTracking()
                     .Include(s => s.User)
                     // AI botlari liderlik tablosuna girmez: XP yarisi insanlar arasinda.
-                    .Where(s => !s.User.IsAiAgent)
+                    .Where(s => !s.User.IsAiAgent && !s.User.IsDeleted && !s.User.IsBanned)
                     .OrderByDescending(s => s.CurrentXp)
                     .Take(10)
                     .Select(s => new LeaderboardDto
