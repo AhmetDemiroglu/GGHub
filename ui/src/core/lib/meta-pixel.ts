@@ -11,7 +11,7 @@ import { UNTRACKED_PREFIXES } from "@/core/lib/site-analytics";
  * Railway'de ayar gerektirmez. Bos birakilirsa piksel hic yuklenmez.
  * Kaynak: Meta Events Manager > Veri kaynaklari > piksel (veri seti) ID'si.
  */
-export const META_PIXEL_ID = "";
+export const META_PIXEL_ID = "1680008650179328";
 
 declare global {
     interface Window {
