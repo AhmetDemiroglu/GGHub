@@ -42,6 +42,12 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
         title: m.title,
         description: m.description,
         alternates: { canonical: "/download-app" },
+        // Root layout'taki Meta App Links (al:ios / al:android) BU SAYFADA kapali. O etiketler
+        // Instagram/Facebook'a "bu baglanti uygulamaya aittir" der; reklam tiklamasi sayfayi
+        // acmadan uygulamaya ya da magazaya devredilebiliyor. 2 Eki 2026: 946 reklam
+        // tiklamasina karsi mobilden tek bir sayfa goruntulemesi gelmedi. Bu sayfanin isi
+        // zaten magazaya goturmek; atlanirsa olcum ve piksel hic calismaz.
+        appLinks: null,
         openGraph: {
             type: "website",
             url: `${siteUrl}/download-app`,

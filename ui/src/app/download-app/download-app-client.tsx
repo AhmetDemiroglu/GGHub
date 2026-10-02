@@ -6,6 +6,7 @@ import { Play } from "lucide-react";
 import { APP_STORE_URL, GOOGLE_PLAY_URL } from "@/core/lib/store-links";
 import { AppleLogo, StoreButton } from "@/core/components/other/public/store-buttons";
 import { startVisit, trackDownloadEvent } from "@/core/lib/download-analytics";
+import { metaPixelCustom } from "@/core/lib/meta-pixel";
 import logoSrc from "@core/assets/logo.png";
 
 /**
@@ -57,9 +58,9 @@ export default function DownloadAppClient() {
             // Beacon navigasyondan HEMEN once, senkron gonderilir. true donerse
             // tarayici istegi kuyruga aldi ve sayfa kapansa da yasar; kullaniciyi
             // bekletmenin anlami yok. Yalnizca yedek yola dusuldugunde kisa sigorta.
-            const delivered = trackDownloadEvent("auto_redirect", {
-                target: target === GOOGLE_PLAY_URL ? "google_play" : "app_store",
-            });
+            const storeTarget = target === GOOGLE_PLAY_URL ? "google_play" : "app_store";
+            metaPixelCustom("StoreRedirect", { target: storeTarget, method: "auto" });
+            const delivered = trackDownloadEvent("auto_redirect", { target: storeTarget });
             if (delivered) {
                 window.location.href = target;
             } else {
@@ -134,14 +135,20 @@ export default function DownloadAppClient() {
                         icon={<AppleLogo className="h-5 w-5" />}
                         label="App Store"
                         href={APP_STORE_URL}
-                        onClick={() => trackDownloadEvent("store_click", { target: "app_store", secondsLeft: n })}
+                        onClick={() => {
+                            metaPixelCustom("StoreRedirect", { target: "app_store", method: "click" });
+                            trackDownloadEvent("store_click", { target: "app_store", secondsLeft: n });
+                        }}
                     />
                     {GOOGLE_PLAY_URL ? (
                         <StoreButton
                             icon={<Play className="h-5 w-5" />}
                             label="Google Play"
                             href={GOOGLE_PLAY_URL}
-                            onClick={() => trackDownloadEvent("store_click", { target: "google_play", secondsLeft: n })}
+                            onClick={() => {
+                                metaPixelCustom("StoreRedirect", { target: "google_play", method: "click" });
+                                trackDownloadEvent("store_click", { target: "google_play", secondsLeft: n });
+                            }}
                         />
                     ) : (
                         <StoreButton icon={<Play className="h-5 w-5" />} label="Google Play" soon="Soon" />

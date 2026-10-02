@@ -16,6 +16,8 @@ import { ANDROID_PACKAGE } from "@/core/lib/store-links";
 import { JsonLd, mobileApplicationJsonLd, organizationJsonLd, webSiteJsonLd } from "@/core/seo/json-ld";
 import GAListener from "./ga-listener";
 import SiteAnalyticsListener from "./site-analytics-listener";
+import MetaPixelListener from "./meta-pixel-listener";
+import { metaPixelBootstrapScript } from "@/core/lib/meta-pixel";
 import "./globals.css";
 
 // latin-ext olmadan Türkçe ğ/ş/İ glifleri fallback font'tan çiziliyordu.
@@ -129,6 +131,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     const locale = await resolveServerLocale();
     const messages = getMessages(locale);
     const gaId = process.env.NEXT_PUBLIC_GA_ID;
+    const metaPixelScript = metaPixelBootstrapScript();
     // Microsoft Clarity KALDIRILDI (29 Eyl 2026, Ahmet): site ici davranis olcumu artik kendi
     // SiteEvents altyapimizda (/behavior, /traffic). Lighthouse'ta 311 ms CPU + 27 KB + 76 ms
     // ana is parcacigi blokaji vardi, karsiliginda kullandigimiz tek bir veri yoktu.
@@ -160,6 +163,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     </>
                 ) : null}
 
+                {/* Meta pikseli: GA'nin aksine beforeInteractive. Reklamdan gelen ziyaretci hizli
+                    cikiyor, ilk PageView hidrasyonu beklerse Meta sayfanin acildigini hic gormez. */}
+                {metaPixelScript ? (
+                    <Script id="meta-pixel" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: metaPixelScript }} />
+                ) : null}
             </head>
             <body className={inter.className}>
                 {/* Site geneli yapisal veri: kurulus, site (arama eylemi) ve mobil uygulama.
@@ -168,6 +176,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <Suspense fallback={null}>
                     <GAListener />
                 </Suspense>
+                <MetaPixelListener />
                 <NextTopLoader
                     color="#B026FF"
                     initialPosition={0.08}
