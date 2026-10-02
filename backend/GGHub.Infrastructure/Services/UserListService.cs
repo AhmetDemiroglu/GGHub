@@ -309,8 +309,10 @@ namespace GGHub.Infrastructure.Services
 
         public async Task<PaginatedResult<UserListPublicDto>> GetPublicListsAsync(ListQueryParams query, int? currentUserId)
         {
+            // Istek listesi ve favoriler sistem listesidir; kendi sayfalarinda gorunur, kesfette degil.
             var baseQuery = _context.UserLists
                 .WhereOwnerActive()
+                .Where(l => l.Type == UserListType.Custom)
                 .Where(l =>
                     l.Visibility == ListVisibilitySetting.Public ||
                     (currentUserId.HasValue &&
@@ -392,6 +394,7 @@ namespace GGHub.Infrastructure.Services
 
             var baseQuery = _context.UserLists
                 .Where(l => followedListIdsQuery.Contains(l.Id))
+                .Where(l => l.Type == UserListType.Custom)
                 .WhereOwnerActive()
                 .Where(l =>
                     l.Visibility == ListVisibilitySetting.Public ||
@@ -742,7 +745,8 @@ namespace GGHub.Infrastructure.Services
                     Description = AppText.Get("lists.defaultFavoritesDescription"),
                     Category = ListCategory.Other,
                     Type = UserListType.Favorites,
-                    Visibility = ListVisibilitySetting.Public,
+                    // Favoriler profil vitrininde ayri uctan gorunur; liste olarak gizli dogar.
+                    Visibility = ListVisibilitySetting.Private,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };

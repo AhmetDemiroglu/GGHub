@@ -119,6 +119,7 @@ namespace GGHub.Infrastructure.Services
         {
             var listToFollow = await _context.UserLists.FirstOrDefaultAsync(l => l.Id == listId);
             if (listToFollow == null || listToFollow.UserId == userId) return false;
+            if (listToFollow.Type != UserListType.Custom) return false;
 
             if (listToFollow.Visibility == ListVisibilitySetting.Private) return false;
 

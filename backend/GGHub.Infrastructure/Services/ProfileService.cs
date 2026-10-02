@@ -49,7 +49,7 @@ namespace GGHub.Infrastructure.Services
                 .Select(u => new
                 {
                     ReviewCount = _context.Reviews.Count(r => r.UserId == userId),
-                    ListCount = _context.UserLists.Count(l => l.UserId == userId),
+                    ListCount = _context.UserLists.Count(l => l.UserId == userId && l.Type == UserListType.Custom),
                     FollowerCount = _context.Follows.Count(f => f.FolloweeId == userId),
                     FollowingCount = _context.Follows.Count(f => f.FollowerId == userId)
                 })
@@ -386,7 +386,7 @@ namespace GGHub.Infrastructure.Services
                     FollowerCount = _context.Follows.Count(f => f.FolloweeId == profileUser.Id),
                     FollowingCount = _context.Follows.Count(f => f.FollowerId == profileUser.Id),
                     ReviewCount = _context.Reviews.Count(r => r.UserId == profileUser.Id),
-                    ListCount = _context.UserLists.Count(l => l.UserId == profileUser.Id)
+                    ListCount = _context.UserLists.Count(l => l.UserId == profileUser.Id && l.Type == UserListType.Custom)
                 })
                 .FirstOrDefaultAsync();
 

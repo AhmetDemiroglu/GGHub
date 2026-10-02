@@ -246,7 +246,7 @@ namespace GGHub.Infrastructure.Services
                 var lowered = raw.ToLower();
                 var lists = await _context.UserLists
                     .AsNoTracking()
-                    .Where(l => l.Name.ToLower().Contains(lowered))
+                    .Where(l => l.Name.ToLower().Contains(lowered) && l.Type == UserListType.Custom)
                     .Where(l => !l.User.IsDeleted && !l.User.IsBanned)
                     .Where(l =>
                         l.Visibility == ListVisibilitySetting.Public ||

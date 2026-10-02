@@ -102,7 +102,7 @@ namespace GGHub.Infrastructure.Services
             // 2. LISTS  
             var lists = await _context.UserLists
                 .AsNoTracking()
-                .Where(l => l.UserId == user.Id)
+                .Where(l => l.UserId == user.Id && l.Type == UserListType.Custom)
                 .Where(l =>
                     isOwner ||
                     l.Visibility == ListVisibilitySetting.Public ||
@@ -862,6 +862,7 @@ namespace GGHub.Infrastructure.Services
             var query = _context.UserLists
                 .AsNoTracking()
                 .Where(l => authorIds.Contains(l.UserId) && !l.User.IsDeleted && !l.User.IsBanned &&
+                           l.Type == UserListType.Custom &&
                            (l.Visibility == ListVisibilitySetting.Public || l.Visibility == ListVisibilitySetting.Followers));
 
             if (cursor.HasValue) query = query.Where(l => l.CreatedAt < cursor.Value);
