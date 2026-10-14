@@ -1,69 +1,101 @@
 # Bakım modu kılavuzu
 
-Amaç: backend'i (Railway "GGHub / api") durdurup yalnız web servisini açık bırakmak. Site bakım sayfası
-gösterir. Mağazadaki mobil uygulamalar yeni sürüm gerekmeden kendi bakım ekranını (dinozor oyunlu) açar.
+Kod: `ui/src/core/lib/maintenance.ts` ve `ui/src/middleware.ts`. Önizleme her zaman açık: https://gghub.social/maintenance
 
-Kod: `ui/src/core/lib/maintenance.ts` ve `ui/src/middleware.ts`. Önizleme her zaman açık:
-https://gghub.social/maintenance
+## 1. Şu anki durum (14 Ekim 2026 öğleden sonra, bakıma alındı)
 
-## A. İzleme (1-2 gün)
+| Parça | Durum | Nerede |
+|---|---|---|
+| Web | Bakım sayfası, 503 | Railway > GGHub / UI > Variables: `MAINTENANCE_MODE=1` |
+| Mobil | Bakım ekranı (dinozor oyunlu) | `api.gghub.social` UI servisine bağlı, UI "maintenance" cevabı veriyor |
+| Backend | DURDU (deployment Removed) | Railway > GGHub / api. Servis, 31 değişken, ayarlar yerinde |
+| Postgres | AÇIK, veri yerinde | Railway > Postgres (dokunulmadı) |
+| Katalog botu (Mac) | Durdu + açılışta başlamıyor | `launchctl disable gui/$(id -u)/social.gghub.bot` yapıldı |
+| www.gghub.social | Cloudflare 301 -> gghub.social | Cloudflare > Rules > "Redirect from WWW to root", `www` kaydı Proxied |
 
-1. Railway > Usage sayfasında "Current Usage" değerini ve saati not al.
-2. 24 saat sonra tekrar bak. Fark ~0,6 $ altındaysa site açık kalabilir.
-3. Fark bunun üstündeyse B bölümüne geç.
+Bakımdayken beklenen fatura: ayda ~7 $ (Postgres ~5 $, web ~2 $).
 
-Dikkat: 20 $ limit dolarsa Railway web servisini de durdurur, bakım sayfası da kapanır.
-Limite ~1 $ kala B bölümünü uygula.
+### Bakım sürerken DOKUNMA
 
-## B. Bakıma alma (~15 dk)
+- **GGHub / api değişkenlerini değiştirme.** Railway değişken değişince servisi kendiliğinden yeniden başlatır,
+  backend sessizce açılır ve para yakar. (14 Ekim'de tam olarak bu oldu.)
+- **`backend/` altına dokunan push yapma.** Aynı sebep: Railway otomatik deploy eder.
+- `ui/` push'u sorun değil, web bakım bayrağıyla tekrar bakım sayfası olarak açılır.
+- Railway Hobby: servis başına en fazla 2 özel alan adı. UI'da şu an `gghub.social` + `api.gghub.social` var.
 
-0. **Meta reklamlarını durdur:** Ads Manager'da kampanyayı kapat. Açık kalırsa bakımdaki uygulamaya para ödenir.
+### Eski ve yeni DNS değerleri (Cloudflare > DNS > Records)
 
-Başlamadan önce Cloudflare > DNS'te `api` kaydının CNAME hedefini bir yere kopyala. Geri dönüşte lazım.
+| Kayıt | Bakımdan ÖNCE | Bakımda (şimdi) |
+|---|---|---|
+| `api` CNAME | `zsyz1tgi.up.railway.app` (API servisi) | `66sdk2sn.up.railway.app` (UI servisi) |
+| `_railway-verify.api` TXT | yoktu | `railway-verify=5578d9a4...2c4c` (UI servisi için) |
+| `www` CNAME | `o60ys4ka.up.railway.app`, DNS only | aynı hedef, Proxied + yönlendirme kuralı |
 
-1. **Web'i bakıma al:** Railway > GGHub / UI > Variables > New Variable: `MAINTENANCE_MODE` = `1` > Deploy.
-   ~3 dk sonra https://gghub.social bakım sayfasını gösterir.
-2. **api alan adını API'den sök:** Railway > GGHub / api > Settings > Networking > `api.gghub.social` > sil.
-3. **api alan adını web'e tak:** Railway > GGHub / UI > Settings > Networking > Custom Domain >
-   `api.gghub.social`. Railway yeni bir CNAME hedefi gösterir (TXT isterse onu da).
-4. **Cloudflare DNS:** `api` CNAME hedefini 3. adımdaki değerle değiştir (gri bulut kalsın), TXT istendiyse ekle.
-   Kontrol: aşağıdaki adres `"status":"maintenance"` dönmeli.
+Railway alan adını yeniden eklerken YENİ hedef ve YENİ TXT değeri verebilir. Her zaman Railway'in o an
+gösterdiği değeri yaz, bu tablodakini değil.
+
+## 2. Geri açma (5 Kasım 2026 veya sonrası, ~30 dk)
+
+Neden 5 Kasım: Railway fatura dönemi her ayın 5'inde sıfırlanır. Önce açılırsa Ekim'in limitine yazar.
+Bu oturuma gel ve "bakımdan çıkalım" de. Claude her adımdan sonra kontrol eder. Adımlar sırayla:
+
+### Adım 1: Backend'i aç (~7 dk)
+1. Railway > kanvasta **GGHub / api** kartına tıkla > **Variables** > `MAINTENANCE_MODE` satırı > ⋮ > Delete.
+   (Bu değişken yanlışlıkla buraya da eklenmişti, backend okumaz ama temiz kalsın.)
+2. **Deployments** sekmesi > "Deploy the repo AhmetDemiroglu/GGHub" düğmesi.
+   Bu düğme yoksa History'deki en üstteki REMOVED satırı > ⋮ > **Redeploy**.
+3. Yeşil **ACTIVE** + "Deployment successful" yazana kadar bekle (~5 dk, migration'lar da uygulanır).
+4. Kontrol (tarayıcıda aç), `"status":"ok"` görmelisin:
+   https://gghub-production.up.railway.app/api/app-release/check?platform=ios&version=1.4.0
+
+### Adım 2: api alan adını UI'dan sök (~1 dk)
+1. Railway > **GGHub / UI** > **Settings** > Networking.
+2. `api.gghub.social` satırındaki çöp kutusu > açılan pencerede kırmızı **Delete**.
+   Bu andan Adım 4 bitene kadar mobil uygulama hata görür. Ara vermeden devam et.
+
+### Adım 3: api alan adını API servisine tak (~2 dk)
+1. Railway > **GGHub / api** > **Settings** > Networking > **Custom Domain** > `api.gghub.social` yaz.
+2. Port sorarsa `8080`.
+3. Satırdaki **"DNS records"** yazısına tıkla. İki değeri not al:
+   - CNAME `api` -> `xxxx.up.railway.app`
+   - TXT `_railway-verify.api` -> `railway-verify=...` (istemeyebilir)
+
+### Adım 4: Cloudflare DNS (~3 dk + sertifika 5-15 dk)
+1. Cloudflare > gghub.social > **DNS > Records**.
+2. `api` satırı > **Edit** > Target = Adım 3'teki CNAME değeri. Bulut GRİ (DNS only) kalsın > **Save**.
+3. Railway TXT istediyse: `_railway-verify.api` satırı > Edit > Content = Adım 3'teki TXT > Save.
+   İstemediyse bu TXT kaydını **Delete** ile sil.
+4. Railway'de alan adının yanında yeşil tik çıkmasını bekle ("Waiting for DNS update" yazıyorsa bekle).
+5. Kontrol, `"status":"ok"` görmelisin (SSL hatası alırsan 5 dk sonra tekrar dene):
    https://api.gghub.social/api/app-release/check?platform=ios&version=1.4.0
-5. **Backend'i durdur:** kanvasta GGHub / api kartına tıkla > Deployments sekmesi > yeşil ACTIVE satırının
-   sağındaki ⋮ > Remove. Yalnız çalışan kopya kalkar; servis, değişkenler, alan adı ve ayarlar yerinde kalır.
-   Servisi SİLME (Settings > Delete service değil).
 
-Bakım süresince `backend/` altına dokunan push yapma: Railway API'yi otomatik yeniden başlatır.
+### Adım 5: Web'i bakımdan çıkar (~4 dk)
+1. Railway > **GGHub / UI** > **Variables** > `MAINTENANCE_MODE` > ⋮ > Delete.
+2. Üstte çıkan **Deploy** düğmesine bas, ~3 dk bekle.
+3. Kontrol: https://gghub.social normal siteyi açmalı, giriş yapılabilmeli.
 
-İsteğe bağlı: Mac'teki katalog botunu durdur: `scripts/gghub-bot stop`.
-Postgres açık kalır, veri yerinde durur. Bakımdayken beklenen fatura ayda ~7 $.
+### Adım 6: Geri kalanlar (~3 dk)
+1. Mac katalog botu, terminalde sırayla:
+   ```bash
+   launchctl enable gui/$(id -u)/social.gghub.bot
+   ```
+   ```bash
+   /Volumes/KIOXIA/Dev/SaaS/GGHub/scripts/gghub-bot start
+   ```
+2. Meta Ads Manager'da kampanyayı yeniden aç (istiyorsan).
+3. Mobil uygulamayı tamamen kapatıp aç: normal açılmalı. Mağaza tarafında yapılacak bir şey yok.
+4. Railway > Usage: limit 20 $ ise yerinde kalsın. Ertesi gün günlük artışa bak (hedef < 0,6 $/gün).
 
-## Ekim 2026 bakımında yapılanlar (geri açarken buna bak)
+### Dokunulmayacaklar
+- `www` yönlendirmesi kalıcı kalır. Railway'e geri ekleme, UI'da yer yok (2 alan adı sınırı).
+- Postgres zaten açık.
 
-- Railway Hobby planı servis başına 2 özel alan adı veriyor. UI'da `gghub.social` + `www` doluydu, `api` sığmadı.
-- Bu yüzden `www` Railway'den çıkarıldı. Yerine Cloudflare'de "Redirect from WWW to root" kuralı (301,
-  sorgu dizesi korunur) kuruldu ve `www` kaydı Proxied (turuncu bulut) yapıldı. Bu kalıcı kalabilir, geri almaya gerek yok.
-- Eski hedefler: `api` -> `zsyz1tgi.up.railway.app`, `www` -> `o60ys4ka.up.railway.app` (ikisi de DNS only).
-  Railway alan adını yeniden ekleyince yeni hedef verebilir; Cloudflare'e Railway'in gösterdiğini yaz.
+## 3. Nasıl çalışıyor
 
-## C. Bakımdan çıkma (~15 dk)
-
-Zamanlama: Railway fatura dönemi her ayın 5'inde sıfırlanır. 5'inden önce açılırsa eski dönemin limitine yazar.
-Bakım mesajı "Kasım ayının ilk haftası" diyor (`maintenance.ts`). Tarih değişirse oradaki metni güncelle.
-Meta reklamlarını bakımdan çıkınca yeniden aç.
-
-1. Railway > GGHub / api > Deployments > History'deki en üstteki REMOVED satırı > ⋮ > Redeploy. "Active" olmasını bekle.
-2. Railway > GGHub / UI > Settings > Networking > `api.gghub.social` > sil.
-3. Railway > GGHub / api > Settings > Networking > Custom Domain > `api.gghub.social` ekle.
-4. Cloudflare DNS: `api` CNAME hedefini Railway'in verdiği yeni değere çevir.
-   Kontrol: 4. adımdaki adres `"status":"ok"` dönmeli.
-5. Railway > GGHub / UI > Variables > `MAINTENANCE_MODE` sil > Deploy. Katalog botu: `scripts/gghub-bot start`.
-
-## Nasıl çalışıyor
-
-- `MAINTENANCE_MODE=1`: web'in her sayfası 503 + `Retry-After` ile statik bakım sayfası döner.
+- `MAINTENANCE_MODE=1` (UI servisi): web'in her sayfası 503 + `Retry-After` ile statik bakım sayfası döner.
   Google bunu "geçici kapalı" diye okur, sıralamayı silmez. Sayfa backend'e istek atmaz.
-- `api.gghub.social` web servisine gelince: `/api/app-release/check` bakım cevabı döner, diğer her istek
-  JSON 503 alır. Bu bayraktan bağımsızdır; normal çalışmada api host'u web servisine hiç gelmez.
-- Mobil kapı (`AppReleaseGate`) açılışta ve uygulama öne gelince bu ucu sorar, bakım görünce
-  navigator yerine `BlockedScreen` açar.
+- `api.gghub.social` UI servisine gelince: `/api/app-release/check` "maintenance" döner, diğer her istek JSON 503 alır.
+  Bu, bayraktan bağımsızdır. Normal çalışmada api host'u UI servisine hiç gelmez.
+- Mobil kapı (`AppReleaseGate`) açılışta ve uygulama öne gelince bu ucu sorar, bakım görünce `BlockedScreen` açar.
+  Uç ağ/SSL hatası verirse kapı "ok" varsayar ve uygulama açılıp hata gösterir (14 Ekim'de TXT eksikken olan buydu).
+- Bakım mesajı (TR/EN) `maintenance.ts` içindeki `MOBILE_MESSAGE` ve `COPY`. Tarih değişirse oradan güncelle.
