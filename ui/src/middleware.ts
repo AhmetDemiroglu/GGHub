@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { appReleaseMaintenanceResponse, isApiHost, isMaintenanceModeOn, maintenanceJsonResponse, maintenancePageResponse, type MaintenanceLocale } from "@/core/lib/maintenance";
 import { buildLocalizedPathname, countryToLocale, defaultLocale, isLocale, localeCookieName, localeHeaderName, localeManualCookieName, normalizeLocale, parseAcceptLanguage } from "@/i18n/config";
 
 const publicFilePattern = /\.(.*)$/;
@@ -50,8 +51,29 @@ const withLocaleHeader = (request: NextRequest, locale: string) => {
     return requestHeaders;
 };
 
+const maintenanceLocale = (request: NextRequest, pathname: string): MaintenanceLocale => {
+    const first = pathname.split("/").filter(Boolean)[0];
+    if (first && isLocale(first)) return first === "tr" ? "tr" : "en";
+    return resolveLocale(request) === "tr" ? "tr" : "en";
+};
+
+/** Bakim modu (ayrinti ve kullanim: core/lib/maintenance.ts, docs/bakim-modu.md). Cevap yoksa null. */
+const maintenanceResponse = (request: NextRequest, pathname: string): Response | null => {
+    // api.gghub.social bu servise tasindiysa backend kapali demektir: her istege bakim cevabi.
+    if (isApiHost(request.headers.get("x-forwarded-host") ?? request.headers.get("host"))) {
+        return pathname === "/api/app-release/check" ? appReleaseMaintenanceResponse(request.nextUrl) : maintenanceJsonResponse();
+    }
+    if (pathname === "/maintenance") return maintenancePageResponse(maintenanceLocale(request, pathname), 200);
+    if (!isMaintenanceModeOn()) return null;
+    if (pathname.startsWith("/api")) return maintenanceJsonResponse();
+    return maintenancePageResponse(maintenanceLocale(request, pathname), 503);
+};
+
 export function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
+
+    const maintenance = maintenanceResponse(request, pathname);
+    if (maintenance) return maintenance;
 
     if (
         pathname.startsWith("/_next") ||
