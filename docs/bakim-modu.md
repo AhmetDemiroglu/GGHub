@@ -17,6 +17,8 @@ Limite ~1 $ kala B bölümünü uygula.
 
 ## B. Bakıma alma (~15 dk)
 
+0. **Meta reklamlarını durdur:** Ads Manager'da kampanyayı kapat. Açık kalırsa bakımdaki uygulamaya para ödenir.
+
 Başlamadan önce Cloudflare > DNS'te `api` kaydının CNAME hedefini bir yere kopyala. Geri dönüşte lazım.
 
 1. **Web'i bakıma al:** Railway > GGHub / UI > Variables > New Variable: `MAINTENANCE_MODE` = `1` > Deploy.
@@ -33,6 +35,10 @@ Başlamadan önce Cloudflare > DNS'te `api` kaydının CNAME hedefini bir yere k
 Postgres açık kalır, veri yerinde durur. Bakımdayken beklenen fatura ayda ~7 $.
 
 ## C. Bakımdan çıkma (~15 dk)
+
+Zamanlama: Railway fatura dönemi her ayın 5'inde sıfırlanır. 5'inden önce açılırsa eski dönemin limitine yazar.
+Bakım mesajı "Kasım ayının ilk haftası" diyor (`maintenance.ts`). Tarih değişirse oradaki metni güncelle.
+Meta reklamlarını bakımdan çıkınca yeniden aç.
 
 1. Railway > GGHub / api > Deployments > en son deploy > ⋮ > Redeploy. "Active" olmasını bekle.
 2. Railway > GGHub / UI > Settings > Networking > `api.gghub.social` > sil.

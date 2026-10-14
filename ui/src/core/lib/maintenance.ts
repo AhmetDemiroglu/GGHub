@@ -22,8 +22,8 @@ const STORE_URLS = {
 } as const;
 
 const MOBILE_MESSAGE = {
-    tr: "Size daha iyi bir hizmet verebilmek için GGHub'ı yeniliyoruz. Kısa bir süre sonra geri döneceğiz.",
-    en: "We're upgrading GGHub to serve you better. We'll be back soon.",
+    tr: "Size daha iyi bir hizmet verebilmek için GGHub'ı yeniliyoruz. Kasım ayının ilk haftasında yeniden açılıyoruz. Hesabınız, listeleriniz ve incelemeleriniz güvende, hiçbir veri silinmeyecek. Beklerken bir el oynayın.",
+    en: "We're upgrading GGHub to serve you better. We'll be back in the first week of November. Your account, lists and reviews are safe and nothing will be deleted. Play a round while you wait.",
 } as const;
 
 const COPY = {
@@ -33,7 +33,7 @@ const COPY = {
         badge: "Bakım çalışması sürüyor",
         title: "Bakımdayız",
         lead: "Size daha iyi bir hizmet verebilmek için GGHub'ı yeniliyoruz.",
-        body: "Kısa bir süre sonra daha güçlü haliyle geri döneceğiz. Anlayışınız için teşekkür ederiz.",
+        body: "Kasım ayının ilk haftasında yeniden açılıyoruz. Hesabınız, listeleriniz ve incelemeleriniz güvende, hiçbir veri silinmeyecek. Anlayışınız için teşekkür ederiz.",
         footer: "GGHub ekibi",
         svgLabel: "Vinçlerin GGHub binasını inşa ettiği hareketli çizim",
     },
@@ -43,7 +43,7 @@ const COPY = {
         badge: "Maintenance in progress",
         title: "We're under maintenance",
         lead: "We're upgrading GGHub to serve you better.",
-        body: "We'll be back soon, stronger than before. Thanks for your patience.",
+        body: "We'll be back in the first week of November. Your account, lists and reviews are safe and nothing will be deleted. Thanks for your patience.",
         footer: "The GGHub team",
         svgLabel: "Animated drawing of cranes building the GGHub tower",
     },
