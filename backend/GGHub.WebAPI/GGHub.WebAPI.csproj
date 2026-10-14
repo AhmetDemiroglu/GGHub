@@ -4,6 +4,10 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Railway RAM'e gore faturaliyor. Server GC 8 vCPU'lu kapta cekirdek basina heap acip
+         ~1.3 GB'ta duruyordu (Eki 2026, faturanin %25'i). Workstation GC bu trafikte yeterli. -->
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
   </PropertyGroup>
 
   <ItemGroup>
