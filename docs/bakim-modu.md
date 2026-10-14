@@ -38,6 +38,14 @@ Bakım süresince `backend/` altına dokunan push yapma: Railway API'yi otomatik
 İsteğe bağlı: Mac'teki katalog botunu durdur: `scripts/gghub-bot stop`.
 Postgres açık kalır, veri yerinde durur. Bakımdayken beklenen fatura ayda ~7 $.
 
+## Ekim 2026 bakımında yapılanlar (geri açarken buna bak)
+
+- Railway Hobby planı servis başına 2 özel alan adı veriyor. UI'da `gghub.social` + `www` doluydu, `api` sığmadı.
+- Bu yüzden `www` Railway'den çıkarıldı. Yerine Cloudflare'de "Redirect from WWW to root" kuralı (301,
+  sorgu dizesi korunur) kuruldu ve `www` kaydı Proxied (turuncu bulut) yapıldı. Bu kalıcı kalabilir, geri almaya gerek yok.
+- Eski hedefler: `api` -> `zsyz1tgi.up.railway.app`, `www` -> `o60ys4ka.up.railway.app` (ikisi de DNS only).
+  Railway alan adını yeniden ekleyince yeni hedef verebilir; Cloudflare'e Railway'in gösterdiğini yaz.
+
 ## C. Bakımdan çıkma (~15 dk)
 
 Zamanlama: Railway fatura dönemi her ayın 5'inde sıfırlanır. 5'inden önce açılırsa eski dönemin limitine yazar.
