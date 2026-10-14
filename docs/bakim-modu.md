@@ -29,7 +29,11 @@ Başlamadan önce Cloudflare > DNS'te `api` kaydının CNAME hedefini bir yere k
 4. **Cloudflare DNS:** `api` CNAME hedefini 3. adımdaki değerle değiştir (gri bulut kalsın), TXT istendiyse ekle.
    Kontrol: aşağıdaki adres `"status":"maintenance"` dönmeli.
    https://api.gghub.social/api/app-release/check?platform=ios&version=1.4.0
-5. **Backend'i durdur:** Railway > GGHub / api > Deployments > aktif deploy > ⋮ > Remove.
+5. **Backend'i durdur:** kanvasta GGHub / api kartına tıkla > Deployments sekmesi > yeşil ACTIVE satırının
+   sağındaki ⋮ > Remove. Yalnız çalışan kopya kalkar; servis, değişkenler, alan adı ve ayarlar yerinde kalır.
+   Servisi SİLME (Settings > Delete service değil).
+
+Bakım süresince `backend/` altına dokunan push yapma: Railway API'yi otomatik yeniden başlatır.
 
 İsteğe bağlı: Mac'teki katalog botunu durdur: `scripts/gghub-bot stop`.
 Postgres açık kalır, veri yerinde durur. Bakımdayken beklenen fatura ayda ~7 $.
@@ -40,7 +44,7 @@ Zamanlama: Railway fatura dönemi her ayın 5'inde sıfırlanır. 5'inden önce 
 Bakım mesajı "Kasım ayının ilk haftası" diyor (`maintenance.ts`). Tarih değişirse oradaki metni güncelle.
 Meta reklamlarını bakımdan çıkınca yeniden aç.
 
-1. Railway > GGHub / api > Deployments > en son deploy > ⋮ > Redeploy. "Active" olmasını bekle.
+1. Railway > GGHub / api > Deployments > History'deki en üstteki REMOVED satırı > ⋮ > Redeploy. "Active" olmasını bekle.
 2. Railway > GGHub / UI > Settings > Networking > `api.gghub.social` > sil.
 3. Railway > GGHub / api > Settings > Networking > Custom Domain > `api.gghub.social` ekle.
 4. Cloudflare DNS: `api` CNAME hedefini Railway'in verdiği yeni değere çevir.
