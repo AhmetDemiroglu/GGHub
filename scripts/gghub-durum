@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# GGHub canli durum ozeti: bakim mi, acik mi, karisik mi? Yalniz okur (curl + dig), hicbir seyi degistirmez.
+# Kullanim: scripts/gghub-durum
+# Ayrinti ve acma/kapama adimlari: docs/bakim-modu.md
+
+CF_NS="addyson.ns.cloudflare.com"
+CHECK="/api/app-release/check?platform=ios&version=1.4.0"
+BACKEND_DIRECT="https://gghub-production.up.railway.app"
+
+ok()   { printf "  \033[32m%-22s\033[0m %s\n" "$1" "$2"; }
+bad()  { printf "  \033[31m%-22s\033[0m %s\n" "$1" "$2"; }
+info() { printf "  %-22s %s\n" "$1" "$2"; }
+
+proxied() {
+  local ip; ip=$(dig +short "$1" @"$CF_NS" | tail -1)
+  case "$ip" in 104.*|172.6*|172.7*|188.114.*) echo "turuncu (Cloudflare)";; *) echo "gri -> $(dig +short "$1" @"$CF_NS" | head -1)";; esac
+}
+
+echo "GGHub durum  $(date '+%Y-%m-%d %H:%M')"
+echo "DNS"
+info "gghub.social" "$(proxied gghub.social)"
+info "api.gghub.social" "$(proxied api.gghub.social)"
+info "www.gghub.social" "$(proxied www.gghub.social)"
+
+echo "Canli cevaplar"
+web_code=$(curl -s -m 15 -o /tmp/.gghub-durum.html -w '%{http_code}' https://gghub.social/tr)
+if grep -q 'Bakımdayız\|under maintenance' /tmp/.gghub-durum.html 2>/dev/null; then web="BAKIM"; else web="ACIK"; fi
+[ "$web_code" = "200" ] && ok "web" "$web_code $web" || info "web" "$web_code $web"
+rm -f /tmp/.gghub-durum.html
+
+api_status=$(curl -s -m 15 "https://api.gghub.social$CHECK" | sed -n 's/.*"status":"\([a-z]*\)".*/\1/p')
+case "$api_status" in
+  ok) ok "mobil kapi" "ok (uygulama normal acilir)";;
+  maintenance) info "mobil kapi" "maintenance (bakim ekrani)";;
+  *) bad "mobil kapi" "CEVAP YOK/HATA -> uygulama 'bir hata olustu' gosterir";;
+esac
+
+be=$(curl -s -m 15 "$BACKEND_DIRECT$CHECK" | sed -n 's/.*"status":"\([a-z]*\)".*/\1/p')
+case "$be" in ok|maintenance|recommended|required) ok "backend (Railway)" "calisiyor ($be)";; *) info "backend (Railway)" "kapali (Railway: ${be:-cevap yok})";; esac
+
+www=$(curl -s -m 15 -o /dev/null -w '%{http_code} %{redirect_url}' https://www.gghub.social/)
+info "www" "$www"
+
+echo "Ozet"
+if [ "$web" = "BAKIM" ] && [ "$api_status" = "maintenance" ]; then echo "  MOD: BAKIM"
+elif [ "$web" = "ACIK" ] && [ "$api_status" = "ok" ]; then echo "  MOD: ACIK"
+else echo "  MOD: KARISIK (web=$web, mobil=$api_status) -> docs/bakim-modu.md"; fi
