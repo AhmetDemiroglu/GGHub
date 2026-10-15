@@ -3,6 +3,37 @@
 Anlık durum: `scripts/gghub-durum` (yalnız okur; MOD: BAKIM / ACIK / KARISIK yazar).
 Bakım sayfası kaynağı: `ui/src/core/lib/maintenance.ts`. Cloudflare Worker kopyası: `docs/bakim-worker.js`.
 
+## 0. Faturanın kök nedeni (15 Ekim 2026 kanıtlı teşhis)
+
+5-15 Ekim faturası 20,03 $: RAM 10,7 $ (UI 5,5 + api 3,8 + Postgres 1,4), Postgres egress 5,6 $ (111 GB), CPU 0,13 $.
+Trafik kaynağı insan değil: web analitiği 7 günde 99 insan sayfa görüntülemesi gösterirken API haftada 130 bin istek aldı.
+
+### Neden 1: Benzer oyunlar ucu + Applebot + public DB bağlantısı (egress 5,6 $)
+- **Kim:** Apple'ın tarayıcısı Applebot (17.166.x.x), JavaScript çalıştırdığı için her oyun sayfasında istemci tarafı
+  `GET /api/games/{id}/suggested` çağrısını tetikledi. Railway HTTP loglarında 4 ayrı örnek (11, 13, 14 Ekim) hepsi Applebot;
+  14 Ekim 10:47-10:48'de 40 saniyede 6 çağrı (saatte ~500).
+- **Ne:** `SimilarGamesService.LoadProfilesAsync` etiketleri projeksiyonda `g.Tags.Select(...)` ile alıyordu. EF Core tek sorguda
+  `LEFT JOIN "GameTags"` üretip oyunun tüm JSON kolonlarını her etiket satırında tekrarlıyordu (`ToQueryString` ile doğrulandı).
+  ~700 aday x ~25 etiket = ~17 bin satır, çağrı başına onlarca MB. 13 Ekim 20:00'den sonra Postgres egress saatte 3-5 GB.
+- **Neden ücretli:** API, Postgres'e Railway'in public proxy'si (`*.proxy.rlwy.net`) üzerinden bağlıydı; iç ağ (`railway.internal`)
+  ücretsizdir. Mac'teki katalog botu ölçüldü: aynı saatlerde 0,3 MB, suçlu değil.
+- **Düzeltme:** `AsSplitQuery()` (dal `bakim-5kasim`, commit d4728e3; 5 Kasım'da main'e alınır). Bağlantı iç ağa
+  (Adım 1.1). Cloudflare `/suggested` cevabını 6 saat önbellekler (Adım 5b).
+
+### Neden 2: Web sunucusu Node belleği sınırsız (RAM 5,5 $)
+- Railway kabı 8 GB gösterdiği için V8 çöp toplamayı erteliyor; tarama yükü altında heap büyüyor.
+  Yerel ölçüm (sahte API, 2400 oyun sayfası, 20 sn): sınırsız 251 -> 1150 MB ve yükselmeye devam; `--max-old-space-size=512`
+  ile 249 -> 412 MB sabit. Canlıda görülen 1,5-2,1 GB bununla uyumlu.
+- Görsel optimizasyonu (sharp/AVIF) ölçüldü: 516 görsel +74 MB, ana neden değil.
+- **Düzeltme:** commit 6893401 (`MALLOC_ARENA_MAX=2 NODE_OPTIONS=--max-old-space-size=512 next start`), main'de.
+
+### Neden 3: API .NET Server GC (RAM 3,8 $)
+- 8 vCPU'lu kapta Server GC çekirdek başına heap açıp ~1,2 GB'ta duruyordu. `ServerGarbageCollection=false` (6893401).
+  Beklenen: ~300 MB. 5 Kasım'da Metrics'ten doğrulanır.
+
+### Hedef
+Aylık ~12 $ (Postgres 4,6 + UI ~4 + api ~3 + egress ~0). 10 $ e-posta uyarısı, 20 $ hard limit.
+
 ## 1. Şu anki durum (15 Ekim 2026 akşamı)
 
 | Parça | Durum |
@@ -50,7 +81,9 @@ DNS kayıtları turuncu KALIR (Railway belgesi: proxy + SSL Full desteklenir); b
 4. Railway kanvas: Postgres ve UI "Online" mı? Değilse ilgili servis > Deployments > en üst satır > ⋮ > Redeploy.
 5. Railway > Usage > limit ayarlarında e-posta uyarısını **10 $**'a kur (yoksa ekle). Hard limit 20 $ kalır.
 
-### Adım 1: Maliyet kilidi, backend açılmadan ÖNCE (~3 dk)
+### Adım 1: Maliyet kilidi, backend açılmadan ÖNCE (~5 dk)
+0. Terminal: `git checkout main && git merge bakim-5kasim && git push origin main` (AsSplitQuery düzeltmesi main'e girer;
+   api servisi Removed olduğu için push tek başına backend'i açmaz, UI yeniden deploy olur, bakım sayfası worker'da).
 1. GGHub / api > Variables > `ConnectionStrings__DefaultConnection`: yalnız Host kısmına bak.
    `railway.internal` içermeli. `proxy.rlwy.net` görürsen değeri şununla değiştir (şifreyi göstermez):
    ```
@@ -84,6 +117,15 @@ DNS kayıtları turuncu KALIR (Railway belgesi: proxy + SSL Full desteklenir); b
 1. GGHub / UI > Variables > `MAINTENANCE_MODE` > Delete > Deploy. ACTIVE bekle (~3 dk).
 2. Arkadan test: `curl -sk --resolve gghub.social:443:$(dig +short o5qfo2qo.up.railway.app | head -1) https://gghub.social/tr`
    normal sitenin HTML'i gelmeli ("Bakımdayız" değil).
+
+### Adım 5a: Cloudflare Cache Rules (~5 dk, perde kalkmadan)
+Cloudflare > gghub.social > Caching > Cache Rules > Create rule. Üç kural, hepsi "Eligible for cache", Edge TTL "Override origin":
+1. `benzer-oyunlar`: Hostname eq `api.gghub.social` AND URI Path matches regex `^/api/games/[^/]+/suggested$` -> 6 saat.
+   (Uç kullanıcıya bağlı değil, Authorization taşısa da aynı cevap.)
+2. `oyun-sayfalari`: Hostname eq `gghub.social` AND URI Path matches regex `^/(tr|en-US)/games/[^/]+$` -> 3 gün.
+   (Middleware bu yollarda Set-Cookie yazmaz; Vercel'deki CDN önbelleğinin aynısı. Giriş yapmış kullanıcı istemcide tazeler.)
+3. `next-static`: Hostname eq `gghub.social` AND URI Path starts with `/_next/static/` -> 30 gün.
+Worker rotaları hâlâ önde olduğu için kurallar perde kalkınca devreye girer.
 
 ### Adım 5: Perdeyi kaldır (~2 dk)
 1. Cloudflare > Workers & Pages > `gghub-bakim` > Domains > iki rotanın da ⋯ menüsünden sil.
