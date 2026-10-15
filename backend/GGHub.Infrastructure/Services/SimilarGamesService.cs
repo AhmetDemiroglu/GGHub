@@ -186,9 +186,17 @@ namespace GGHub.Infrastructure.Services
             return weights;
         }
 
+        /// <summary>
+        /// Tags koleksiyonu projeksiyonda oldugu icin EF tek sorguda GameTags'e LEFT JOIN yapiyor ve
+        /// oyunun tum kolonlarini (GenresJson, PlatformsJson, DevelopersJson, IgdbSimilarJson...) HER etiket
+        /// satirinda tekrarliyordu: ~700 aday x ~25 etiket = ~17 bin satir, cagri basina onlarca MB Postgres
+        /// trafigi. Ekim 2026'da Applebot oyun sayfalarini gezerken bu uc tek basina Postgres'ten 111 GB
+        /// okuttu (public proxy uzerinden ucretli). AsSplitQuery: oyunlar bir sorgu, etiketler ayri
+        /// kucuk sorgu; satir sayisi aday sayisina iner.
+        /// </summary>
         private async Task<List<SimilarGameProfile>> LoadProfilesAsync(IQueryable<Game> query)
         {
-            var rows = await query.Select(g => new
+            var rows = await query.AsSplitQuery().Select(g => new
             {
                 g.Id, g.RawgId, g.Name, g.Slug, g.Released, g.BackgroundImage, g.Rating, g.Metacritic,
                 g.AverageRating, g.RatingCount, g.IgdbRating, g.IgdbRatingCount, g.IgdbId, g.RawgAdded, g.EsrbRating,
