@@ -34,6 +34,19 @@ Bakımdayken beklenen fatura: ayda ~7 $ (Postgres ~5 $, web ~2 $).
 Railway alan adını yeniden eklerken YENİ hedef ve YENİ TXT değeri verebilir. Her zaman Railway'in o an
 gösterdiği değeri yaz, bu tablodakini değil.
 
+## 1b. 15 Ekim 2026: Railway 20 $ limitine vurdu, HER ŞEY kapandı
+
+Railway "Deployments stopped": UI (bakım sayfası) ve Postgres de offline alındı. Railway belgesine göre bu
+"offline", silme değil; veri volume'da durur ve **yeni fatura döneminde (5 Kasım) Railway durdurulan servisleri
+kendiliğinden yeniden başlatır**. API'yi biz Removed yaptığımız için o kendiliğinden gelmez (iyi).
+
+Karar: Ekim boyunca Railway'e hiç dokunulmaz, limit yükseltilmez. Bakım sayfası ve mobil bakım cevabı
+**Cloudflare Worker**'dan (ücretsiz) verilir:
+- Worker kodu: `docs/bakim-worker.js` (maintenance.ts'ten üretildi). Worker adı: `gghub-bakim`.
+- Rotalar: `gghub.social/*`, `api.gghub.social/*`, `www.gghub.social/*`.
+- DNS: `gghub.social` ve `api` kayıtları **Proxied (turuncu)** yapıldı; worker isteği Railway'e gitmeden cevaplar.
+- Yeniden üretmek için (metin değişirse): `ui/` içinde maintenance.ts'i düzenle, sonra bu oturuma "worker'ı yeniden üret" de.
+
 ## 2. Geri açma (5 Kasım 2026 veya sonrası, ~30 dk)
 
 Neden 5 Kasım: Railway fatura dönemi her ayın 5'inde sıfırlanır. Önce açılırsa Ekim'in limitine yazar.
@@ -69,10 +82,15 @@ Bu oturuma gel ve "bakımdan çıkalım" de. Claude her adımdan sonra kontrol e
 5. Kontrol, `"status":"ok"` görmelisin (SSL hatası alırsan 5 dk sonra tekrar dene):
    https://api.gghub.social/api/app-release/check?platform=ios&version=1.4.0
 
-### Adım 5: Web'i bakımdan çıkar (~4 dk)
+### Adım 5: Web'i bakımdan çıkar (~6 dk)
 1. Railway > **GGHub / UI** > **Variables** > `MAINTENANCE_MODE` > ⋮ > Delete.
-2. Üstte çıkan **Deploy** düğmesine bas, ~3 dk bekle.
-3. Kontrol: https://gghub.social normal siteyi açmalı, giriş yapılabilmeli.
+2. Üstte çıkan **Deploy** düğmesine bas, ~3 dk bekle. (Railway UI'ı 5 Kasım'da kendiliğinden
+   başlatmadıysa Deployments > en üst satır > ⋮ > Redeploy.)
+3. **Cloudflare Worker'ı devreden çıkar:** Workers & Pages > `gghub-bakim` > Settings > Domains & Routes >
+   üç rotayı da sil (`gghub.social/*`, `api.gghub.social/*`, `www.gghub.social/*`). Worker'ı silmene gerek yok.
+4. **Cloudflare DNS:** `gghub.social` ve `api` kayıtlarının bulutunu GRİ (DNS only) yap. `www` turuncu kalır
+   (yönlendirme kuralı onu kullanıyor).
+5. Kontrol: https://gghub.social normal siteyi açmalı, giriş yapılabilmeli.
 
 ### Adım 6: Geri kalanlar (~3 dk)
 1. Mac katalog botu, terminalde sırayla:
