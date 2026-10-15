@@ -1,0 +1,6 @@
+# GGHub bakim worker'i (bkz. bakim-modu.md). Yukleme: docs/ icinde
+#   npx wrangler@4 deploy -c wrangler.bakim.toml
+name = "gghub-bakim"
+main = "bakim-worker.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
