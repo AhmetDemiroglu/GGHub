@@ -43,14 +43,14 @@ kendiliğinden yeniden başlatır**. API'yi biz Removed yaptığımız için o k
 Karar: Ekim boyunca Railway'e hiç dokunulmaz, limit yükseltilmez. Bakım sayfası ve mobil bakım cevabı
 **Cloudflare Worker**'dan (ücretsiz) verilir:
 - Worker kodu: `docs/bakim-worker.js` (maintenance.ts'ten üretildi). Worker adı: `gghub-bakim`.
-- Rotalar: `gghub.social/*`, `api.gghub.social/*`, `www.gghub.social/*`.
+- Rotalar: `gghub.social/*`, `api.gghub.social/*` (www rotası yok, www'yu yönlendirme kuralı karşılıyor).
 - DNS: `gghub.social` ve `api` kayıtları **Proxied (turuncu)** yapıldı; worker isteği Railway'e gitmeden cevaplar.
 - Yeniden üretmek için (metin değişirse): `ui/` içinde maintenance.ts'i düzenle, sonra bu oturuma "worker'ı yeniden üret" de.
 
 ## 2. Geri açma (5 Kasım 2026 veya sonrası, ~30 dk)
 
 Neden 5 Kasım: Railway fatura dönemi her ayın 5'inde sıfırlanır. Önce açılırsa Ekim'in limitine yazar.
-Bu oturuma gel ve "bakımdan çıkalım" de. Claude her adımdan sonra kontrol eder. Adımlar sırayla:
+Bu oturuma gel ve "bakımdan çıkalım" de. **Railway ve Cloudflare tıklamalarını Claude, Ahmet'in açık Chrome'unda kendisi yapar** (Ahmet'in açık isteği, 15 Ekim). Ahmet yalnız giriş ekranı çıkarsa devreye girer. Adımlar sırayla:
 
 ### Adım 1: Backend'i aç (~7 dk)
 1. Railway > kanvasta **GGHub / api** kartına tıkla > **Variables** > `MAINTENANCE_MODE` satırı > ⋮ > Delete.
@@ -87,7 +87,7 @@ Bu oturuma gel ve "bakımdan çıkalım" de. Claude her adımdan sonra kontrol e
 2. Üstte çıkan **Deploy** düğmesine bas, ~3 dk bekle. (Railway UI'ı 5 Kasım'da kendiliğinden
    başlatmadıysa Deployments > en üst satır > ⋮ > Redeploy.)
 3. **Cloudflare Worker'ı devreden çıkar:** Workers & Pages > `gghub-bakim` > Settings > Domains & Routes >
-   üç rotayı da sil (`gghub.social/*`, `api.gghub.social/*`, `www.gghub.social/*`). Worker'ı silmene gerek yok.
+   iki rotayı da sil (`gghub.social/*`, `api.gghub.social/*`). Worker'ı silmene gerek yok.
 4. **Cloudflare DNS:** `gghub.social` ve `api` kayıtlarının bulutunu GRİ (DNS only) yap. `www` turuncu kalır
    (yönlendirme kuralı onu kullanıyor).
 5. Kontrol: https://gghub.social normal siteyi açmalı, giriş yapılabilmeli.
